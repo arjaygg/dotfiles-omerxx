@@ -3,7 +3,7 @@
 # version = "0.95.0"
 
 def create_left_prompt [] {
-    let dir = match (do --ignore-shell-errors { $env.PWD | path relative-to $nu.home-path }) {
+    let dir = match (do --ignore-errors { $env.PWD | path relative-to $nu.home-path }) {
         null => $env.PWD
         '' => '~'
         $relative_pwd => ([~ $relative_pwd] | path join)
@@ -104,13 +104,38 @@ path add /opt/homebrew/opt/ruby/bin:$PATH
 # To load from a custom file you can use:
 # source ($nu.default-config-dir | path join 'custom.nu')
 
-mkdir ~/.cache/starship
-starship init nu | save -f ~/.cache/starship/init.nu
-zoxide init nushell | save -f ~/.zoxide.nu
+try { mkdir ~/.cache/starship } catch { }
+if (which starship | is-empty) {
+  # starship not installed; skip injection
+} else if (not ("~/.cache/starship/init.nu" | path expand | path exists)) {
+  try {
+    starship init nu | save -f ~/.cache/starship/init.nu
+  } catch {
+    null
+  }
+}
+if (which zoxide | is-empty) {
+  # zoxide not available; skip helper file creation
+} else if (not ("~/.zoxide.nu" | path expand | path exists)) {
+  try {
+    zoxide init nushell | save -f ~/.zoxide.nu
+  } catch {
+    null
+  }
+}
 
-$env.STARSHIP_CONFIG = /Users/omerxx/.config/starship/starship.toml
-$env.NIX_CONF_DIR = /Users/omerxx/.config/nix
+$env.STARSHIP_CONFIG = '/Users/omerxx/.config/starship/starship.toml'
+$env.NIX_CONF_DIR = '/Users/omerxx/.config/nix'
 $env.CARAPACE_BRIDGES = 'zsh,fish,bash,inshellisense' # optional
-mkdir ~/.cache/carapace
-carapace _carapace nushell | save --force ~/.cache/carapace/init.nu
-
+if (which carapace | is-empty) {
+  # carapace not installed; skip shell integration
+} else if (not ("~/.cache/carapace/init.nu" | path expand | path exists)) {
+  try {
+    mkdir ~/.cache/carapace
+  } catch { }
+  try {
+    carapace _carapace nushell | save --force ~/.cache/carapace/init.nu
+  } catch {
+    null
+  }
+}
