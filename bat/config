@@ -1,0 +1,20 @@
+# bat configuration
+# Syntax highlighting and paging for files
+
+# Theme (see `bat --list-themes` for available themes)
+--theme="gruvbox-dark"
+
+# Show line numbers and git modifications
+--style="numbers,changes,header"
+
+# Use italic text on the terminal (not supported on all terminals)
+--italic-text=always
+
+# Wrap lines if they don't fit on the screen
+--wrap=auto
+
+# Set tab width to 4
+--tabs=4
+
+# Show non-printable characters
+--show-all
