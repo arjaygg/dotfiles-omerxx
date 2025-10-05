@@ -124,6 +124,22 @@ if (which zoxide | is-empty) {
   }
 }
 
+if (which atuin | is-empty) {
+  # atuin not installed; skip init script generation
+} else if (not ("~/.local/share/atuin/init.nu" | path expand | path exists)) {
+  try {
+    mkdir ~/.local/share/atuin
+  } catch { }
+  try {
+    mkdir ~/.config/atuin
+  } catch { }
+  try {
+    atuin init nu | save -f ~/.local/share/atuin/init.nu
+  } catch {
+    null
+  }
+}
+
 $env.STARSHIP_CONFIG = '/Users/omerxx/.config/starship/starship.toml'
 $env.NIX_CONF_DIR = '/Users/omerxx/.config/nix'
 $env.CARAPACE_BRIDGES = 'zsh,fish,bash,inshellisense' # optional
