@@ -98,8 +98,11 @@ use std "path add"
 # $env.PATH = ($env.PATH | uniq)
 path add /opt/homebrew/bin
 path add /run/current-system/sw/bin
-path add /Users/omerxx/.local/bin
-path add /opt/homebrew/opt/ruby/bin:$PATH
+path add ($nu.home-path | path join ".local" "bin")
+path add /opt/homebrew/opt/ruby/bin
+path add /Users/axos-agallentes/homebrew/Cellar/node/24.9.0_1/bin
+path add ($nu.home-path | path join "homebrew" "bin")
+path add ($nu.home-path | path join ".codeium" "windsurf" "bin")
 
 # To load from a custom file you can use:
 # source ($nu.default-config-dir | path join 'custom.nu')
