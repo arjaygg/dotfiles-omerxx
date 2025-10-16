@@ -9,6 +9,9 @@ tap "FelixKratz/formulae"
 # Terminal emulators
 cask "ghostty"
 
+# Fonts
+cask "font-jetbrains-mono"
+
 # Window management & productivity
 brew "koekeishiya/formulae/skhd"
 cask "nikitabobko/tap/aerospace"
@@ -76,3 +79,19 @@ brew "hyperfine"  # Benchmarking tool
 brew "grex"  # Regex generator
 brew "sd"  # Better sed
 brew "choose"  # Better cut/awk
+
+# Additional developer tools
+brew "thefuck"          # Corrects previous command
+brew "tldr"             # Better man pages
+brew "navi"             # Interactive cheatsheet
+brew "httpie"           # Better curl
+brew "ranger"           # Terminal file manager
+brew "lf"               # Lightweight file manager
+brew "nmap"             # Network scanner
+brew "speedtest-cli"    # Internet speed test
+
+# Container & orchestration
+brew "docker"           # Containerization
+brew "docker-compose"   # Multi-container apps
+brew "k9s"             # Kubernetes TUI
+brew "dive"            # Docker image analyzer
