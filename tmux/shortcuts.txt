@@ -1,0 +1,51 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         TMUX SHORTCUTS (Prefix: Ctrl-A)                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─ SESSION & WINDOWS ─────────────────────────────────────────────────────────┐
+│ Ctrl-A + Ctrl-C     → New window (in $HOME)                                 │
+│ Ctrl-A + H          → Previous window                                       │
+│ Ctrl-A + L          → Next window                                           │
+│ Ctrl-A + Ctrl-A     → Last window                                           │
+│ Ctrl-A + Ctrl-W/w   → List windows                                          │
+│ Ctrl-A + "          → Choose window                                         │
+│ Ctrl-A + r          → Rename window                                         │
+│ Ctrl-A + S          → Choose session                                        │
+│ Ctrl-A + o          → SessionX (fuzzy session switcher)                     │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ PANES ─────────────────────────────────────────────────────────────────────┐
+│ Ctrl-A + s          → Split horizontally (keep current path)                │
+│ Ctrl-A + v          → Split vertically (keep current path)                  │
+│ Ctrl-A + |          → Split window                                          │
+│ Ctrl-A + h/j/k/l    → Navigate panes (vim-style)                            │
+│ Ctrl-A + ,/.        → Resize pane left/right (20px, repeatable)             │
+│ Ctrl-A + -/=        → Resize pane down/up (7px, repeatable)                 │
+│ Ctrl-A + z          → Zoom/unzoom pane                                      │
+│ Ctrl-A + c          → Kill pane                                             │
+│ Ctrl-A + x          → Swap pane down                                        │
+│ Ctrl-A + *          → Synchronize panes / List clients                      │
+│ Ctrl-A + P          → Set pane border status                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ PLUGINS & SPECIAL ─────────────────────────────────────────────────────────┐
+│ Ctrl-A + p          → Floax (floating terminal 80x80%)                      │
+│ Ctrl-A + o          → SessionX                                              │
+│ Ctrl-Y              → SessionX new window (within SessionX)                 │
+│ Ctrl-A + Ctrl-L/l   → Refresh client                                        │
+│ Ctrl-A + R          → Reload config                                         │
+│ Ctrl-A + K          → Clear screen                                          │
+│ Ctrl-A + :          → Command prompt                                        │
+│ Ctrl-A + Ctrl-D     → Detach                                                │
+│ Ctrl-A + Ctrl-X     → Lock server                                           │
+│ Ctrl-A + ?          → Show this cheat sheet                                 │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ COPY MODE (vi-mode enabled) ───────────────────────────────────────────────┐
+│ v                   → Begin selection (in copy mode)                        │
+│ [ (Prefix + [)      → Enter copy mode                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ PLUGIN MANAGER ────────────────────────────────────────────────────────────┐
+│ Ctrl-I              → Install/update TPM plugins                            │
+└──────────────────────────────────────────────────────────────────────────────┘
