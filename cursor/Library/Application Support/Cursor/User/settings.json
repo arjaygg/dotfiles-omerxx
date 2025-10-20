@@ -1,0 +1,31 @@
+{
+    "window.commandCenter": true,
+    "workbench.colorTheme": "Catppuccin Mocha",
+    "workbench.iconTheme": "catppuccin-mocha",
+    "editor.fontFamily": "JetBrains Mono",
+    "editor.fontSize": 19,
+    "editor.fontLigatures": true,
+    "editor.cursorBlinking": "smooth",
+    "editor.cursorSmoothCaretAnimation": "on",
+    "editor.smoothScrolling": true,
+    "editor.minimap.enabled": false,
+    "editor.bracketPairColorization.enabled": true,
+    "editor.guides.bracketPairs": true,
+    "editor.inlayHints.enabled": "on",
+    "editor.stickyScroll.enabled": true,
+    "editor.wordWrap": "on",
+    "editor.rulers": [
+        80,
+        120
+    ],
+    "workbench.tree.indent": 20,
+    "terminal.integrated.fontFamily": "JetBrains Mono",
+    "git.autofetch": true,
+    "files.autoSave": "onFocusChange",
+    "explorer.confirmDelete": false,
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit"
+    },
+    "terminal.integrated.shellIntegration.enabled": false
+}
