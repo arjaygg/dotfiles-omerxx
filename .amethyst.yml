@@ -1,0 +1,108 @@
+# Amethyst Configuration
+# Place this file at ~/.amethyst.yml or symlink it from your dotfiles
+
+# Available layouts (in cycling order)
+layouts:
+  - tall
+  - wide
+  - fullscreen
+  - column
+
+# Modifier key combinations
+# mod1 = option + shift (Amethyst default, not used)
+# mod2 = control + option + shift (for swap commands)
+# mod3 = control + option (for layout cycling)
+# mod4 = control + shift (for focus and pane adjustments)
+mod1:
+  - option
+  - shift
+
+mod2:
+  - control
+  - option
+  - shift
+
+mod3:
+  - control
+  - option
+
+mod4:
+  - control
+  - shift
+
+# Keyboard shortcuts
+# Commands use 'mod: mod1/mod2/mod3/mod4' to reference the modifiers above
+
+# Layout management
+cycle-layout: # Control + Option + Space
+  mod: mod3
+  key: space
+cycle-layout-backward: # Control + Option + Shift + Space
+  mod: mod2
+  key: space
+
+# Window focus (Control + Shift + key)
+focus-ccw: # Counter-clockwise (J)
+  mod: mod4
+  key: j
+focus-cw: # Clockwise (K)
+  mod: mod4
+  key: k
+focus-main: # Main window (M)
+  mod: mod4
+  key: m
+focus-screen-ccw: # Previous screen (P)
+  mod: mod4
+  key: p
+focus-screen-cw: # Next screen (N)
+  mod: mod4
+  key: "n"
+
+# Pane adjustments
+shrink-main: # Control + Shift + H
+  mod: mod4
+  key: h
+expand-main: # Control + Shift + L
+  mod: mod4
+  key: l
+increase-main: # Control + Shift + ,
+  mod: mod4
+  key: ","
+decrease-main: # Control + Shift + .
+  mod: mod4
+  key: "."
+
+# Window swapping
+swap-screen-ccw: # Control + Option + Shift + H
+  mod: mod2
+  key: h
+swap-screen-cw: # Control + Option + Shift + L
+  mod: mod2
+  key: l
+swap-ccw: # Control + Option + Shift + J
+  mod: mod2
+  key: j
+swap-cw: # Control + Option + Shift + K
+  mod: mod2
+  key: k
+
+# Display settings
+window-margins: true
+window-margin-size: 5
+screen-padding-left: 0
+screen-padding-right: 0
+screen-padding-top: 0
+screen-padding-bottom: 0
+
+# Behavior
+enables-layout-hud: true
+enables-layout-hud-on-space-change: true
+floating: []
+floating-is-blacklist: true
+focus-follows-mouse: false
+mouse-follows-focus: false
+mouse-swaps-windows: false
+mouse-resizes-windows: false
+
+# Automatically float small windows
+float-small-windows: true
