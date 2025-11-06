@@ -39,6 +39,10 @@ keybind = cmd+0=reset_font_size
 # ─── Your Custom Keybinds ─────────────────────────────────────────────────
 keybind = shift+enter=text:\x1b\r
 
+# ─── Vim-like Keyboard Selection Mode ─────────────────────────────────────
+keybind = ctrl+shift+space=toggle_selection_mode
+keybind = ctrl+shift+c=copy_to_clipboard
+
 # ─── Quality of Life ──────────────────────────────────────────────────────
 scrollback-limit = 10000
 confirm-close-surface = true
