@@ -40,7 +40,8 @@ keybind = cmd+0=reset_font_size
 keybind = shift+enter=text:\x1b\r
 
 # ─── Vim-like Keyboard Selection Mode ─────────────────────────────────────
-keybind = ctrl+shift+space=toggle_selection_mode
+# Note: toggle_selection_mode doesn't exist in Ghostty
+# keybind = ctrl+shift+space=toggle_selection_mode
 keybind = ctrl+shift+c=copy_to_clipboard
 
 # ─── Quality of Life ──────────────────────────────────────────────────────
