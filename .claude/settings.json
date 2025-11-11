@@ -1,8 +1,8 @@
 {
   "model": "sonnet[1m]",
-  "alwaysThinkingEnabled": false,
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/claude-statusline/statusline.sh"
-  }
+  },
+  "alwaysThinkingEnabled": true
 }
