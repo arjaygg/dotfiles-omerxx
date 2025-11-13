@@ -3,9 +3,13 @@ debug/
 downloads/
 file-history/
 history.jsonl
+ide/
 projects/
 session-env/
 shell-snapshots/
 statsig/
 todos/
 *.log
+
+# Plugin marketplaces (downloaded content, like node_modules)
+plugins/marketplaces/
