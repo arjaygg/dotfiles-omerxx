@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "plugins": {
+    "document-skills@anthropic-agent-skills": {
+      "version": "unknown",
+      "installedAt": "2025-11-11T08:56:55.823Z",
+      "lastUpdated": "2025-11-11T08:56:55.823Z",
+      "installPath": "/Users/axos-agallentes/.claude/plugins/marketplaces/anthropic-agent-skills/",
+      "gitCommitSha": "c74d647e56e6daa12029b6acb11a821348ad044b",
+      "isLocal": true
+    }
+  }
+}

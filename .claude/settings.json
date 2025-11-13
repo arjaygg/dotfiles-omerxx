@@ -4,5 +4,8 @@
     "type": "command",
     "command": "bash ~/.claude/claude-statusline/statusline.sh"
   },
+  "enabledPlugins": {
+    "document-skills@anthropic-agent-skills": true
+  },
   "alwaysThinkingEnabled": true
 }
