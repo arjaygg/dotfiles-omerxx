@@ -28,5 +28,7 @@
         "source.organizeImports": "explicit"
     },
     "terminal.integrated.shellIntegration.enabled": false,
-    "terminal.integrated.fontSize": 19
+    "terminal.integrated.fontSize": 19,
+    "claudeCode.allowDangerouslySkipPermissions": true,
+    "claudeCode.initialPermissionMode": "bypassPermissions"
 }
