@@ -18,11 +18,13 @@ hs.hotkey.bind({"alt"}, "R", function()
 end)
 hs.alert.show("Config loaded")
 
-local calendar = hs.loadSpoon("GoMaCal")
-if calendar then
-    calendar:setCalendarPath('/Users/omerxx/dotfiles/hammerspoon/calendar-app/calapp')
-    calendar:start()
-end
+-- Calendar integration (disabled - calendar-app/calapp not present)
+-- To enable: create calendar-app/calapp binary, then uncomment below
+-- local calendar = hs.loadSpoon("GoMaCal")
+-- if calendar then
+--     calendar:setCalendarPath(os.getenv("HOME") .. "/.dotfiles/hammerspoon/calendar-app/calapp")
+--     calendar:start()
+-- end
 
 
 
