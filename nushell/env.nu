@@ -153,8 +153,8 @@ if (which atuin | is-empty) {
   }
 }
 
-$env.STARSHIP_CONFIG = '/Users/agallentes/.config/starship/starship.toml'
-$env.NIX_CONF_DIR = '/Users/agallentes/.config/nix'
+$env.STARSHIP_CONFIG = ($nu.home-path | path join '.config' 'starship' 'starship.toml')
+$env.NIX_CONF_DIR = ($nu.home-path | path join '.config' 'nix')
 $env.CARAPACE_BRIDGES = 'zsh,fish,bash,inshellisense' # optional
 if (which carapace | is-empty) {
   # carapace not installed; skip shell integration
@@ -170,6 +170,6 @@ if (which carapace | is-empty) {
 }
 
 # pnpm
-$env.PNPM_HOME = "/Users/agallentes/Library/pnpm"
-$env.PATH = ($env.PATH | split row (char esep) | prepend $env.PNPM_HOME )
+$env.PNPM_HOME = ($nu.home-path | path join 'Library' 'pnpm')
+$env.PATH = ($env.PATH | split row (char esep) | prepend $env.PNPM_HOME)
 # pnpm end

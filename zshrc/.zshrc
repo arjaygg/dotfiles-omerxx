@@ -82,7 +82,8 @@ alias v="$HOME/.nix-profile/bin/nvim"
 # Nmap
 alias nm="nmap -sC -sV -oN nmap"
 
-export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.vimpkg/bin:${GOPATH}/bin:$HOME/.cargo/bin
+# Consolidated PATH - order matters: nix > homebrew > system > user tools
+export PATH=/run/current-system/sw/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.vimpkg/bin:${GOPATH}/bin:$HOME/.cargo/bin
 
 alias cl='clear'
 
@@ -93,15 +94,13 @@ alias ka="kubectl apply -f"
 alias kg="kubectl get"
 alias kd="kubectl describe"
 alias kdel="kubectl delete"
-alias kl="kubectl logs"
+alias kl="kubectl logs -f"
 alias kgpo="kubectl get pod"
 alias kgd="kubectl get deployments"
 alias kc="kubectx"
 alias kns="kubens"
-alias kl="kubectl logs -f"
 alias ke="kubectl exec -it"
 alias kcns='kubectl config set-context --current --namespace'
-alias podname=''
 
 # HTTP requests with xh!
 alias http="xh"
@@ -127,13 +126,10 @@ alias gr='~/go/src/github.com/tomnomnom/gf/gf'
 export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow'
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
-export PATH=/opt/homebrew/bin:$PATH
-
 alias mat='osascript -e "tell application \"System Events\" to key code 126 using {command down}" && tmux neww "cmatrix"'
 
-# Nix!
+# Nix
 export NIX_CONF_DIR=$HOME/.config/nix
-export PATH=/run/current-system/sw/bin:$PATH
 
 function ranger {
 	local IFS=$'\t\n'
