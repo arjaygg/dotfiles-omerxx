@@ -1,11 +1,11 @@
 # home.nix
-# home-manager switch 
+# home-manager switch
 
-{ config, pkgs, ... }:
+{ config, pkgs, user, ... }:
 
 {
-  home.username = "omerxx";
-  home.homeDirectory = "/Users/omerxx";
+  home.username = user;
+  home.homeDirectory = "/Users/${user}";
   home.stateVersion = "23.05"; # Please read the comment before changing.
 
 # Makes sense for user specific applications that shouldn't be available system-wide

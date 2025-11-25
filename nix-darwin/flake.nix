@@ -13,11 +13,21 @@
 
   outputs = inputs@{ self, nix-darwin, nixpkgs, home-manager }:
   let
+    # ========================================
+    # CONFIGURE THESE FOR YOUR SYSTEM
+    # ========================================
+    username = builtins.getEnv "USER";  # Auto-detects current user
+    hostname = builtins.getEnv "HOST";  # Auto-detects hostname
+    # Fallbacks if env vars are empty (pure evaluation mode)
+    user = if username == "" then "agallentes" else username;
+    host = if hostname == "" then "MacBookPro" else hostname;
+    # ========================================
+
     configuration = { pkgs, ... }: {
       # List packages installed in system profile. To search by name, run:
       # $ nix-env -qaP | grep wget
       environment.systemPackages =
-        [ 
+        [
           pkgs.vim
           pkgs.direnv
           pkgs.sshs
@@ -33,7 +43,7 @@
       nixpkgs.hostPlatform = "aarch64-darwin";
       security.pam.enableSudoTouchIdAuth = true;
 
-      users.users.omerxx.home = "/Users/omerxx";
+      users.users.${user}.home = "/Users/${user}";
       home-manager.backupFileExtension = "backup";
       nix.configureBuildUsers = true;
       nix.useDaemon = true;
@@ -60,19 +70,21 @@
     };
   in
   {
-    darwinConfigurations."Omers-MacBook-Pro" = nix-darwin.lib.darwinSystem {
+    darwinConfigurations.${host} = nix-darwin.lib.darwinSystem {
       system = "aarch64-darwin";
-      modules = [ 
+      specialArgs = { inherit user; };  # Pass user to modules
+      modules = [
 	configuration
         home-manager.darwinModules.home-manager {
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
-          home-manager.users.omerxx = import ./home.nix;
+          home-manager.extraSpecialArgs = { inherit user; };  # Pass to home.nix
+          home-manager.users.${user} = import ./home.nix;
         }
       ];
     };
 
     # Expose the package set, including overlays, for convenience.
-    darwinPackages = self.darwinConfigurations."Omers-MacBook-Pro".pkgs;
+    darwinPackages = self.darwinConfigurations.${host}.pkgs;
   };
 }
