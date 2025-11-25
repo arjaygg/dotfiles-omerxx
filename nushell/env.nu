@@ -35,9 +35,10 @@ def create_right_prompt [] {
 }
 
 # Use nushell functions to define your right and left prompt
-$env.PROMPT_COMMAND = {|| create_left_prompt }
+# NOTE: Disabled in favor of starship prompt
+# $env.PROMPT_COMMAND = {|| create_left_prompt }
 # FIXME: This default is not implemented in rust code as of 2023-09-08.
-$env.PROMPT_COMMAND_RIGHT = {|| create_right_prompt }
+# $env.PROMPT_COMMAND_RIGHT = {|| create_right_prompt }
 
 # The prompt indicators are environmental variables that represent
 # the state of the prompt
@@ -153,7 +154,7 @@ if (which atuin | is-empty) {
   }
 }
 
-$env.STARSHIP_CONFIG = ($nu.home-path | path join '.config' 'starship' 'starship.toml')
+$env.STARSHIP_CONFIG = ($nu.home-path | path join '.dotfiles' 'starship' 'starship.toml')
 $env.NIX_CONF_DIR = ($nu.home-path | path join '.config' 'nix')
 $env.CARAPACE_BRIDGES = 'zsh,fish,bash,inshellisense' # optional
 if (which carapace | is-empty) {
@@ -168,6 +169,10 @@ if (which carapace | is-empty) {
     null
   }
 }
+
+# Claude Code local installation
+path add ($nu.home-path | path join ".claude" "local")
+alias claude = ~/.claude/local/claude
 
 # pnpm
 $env.PNPM_HOME = ($nu.home-path | path join 'Library' 'pnpm')
