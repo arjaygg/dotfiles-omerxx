@@ -4,6 +4,8 @@ ALERT_IF_IN_NEXT_MINUTES=10
 ALERT_POPUP_BEFORE_SECONDS=10
 NERD_FONT_FREE="󱁕 "
 NERD_FONT_MEETING="󰤙"
+# Calendars to exclude (comma-separated) - customize as needed
+EXCLUDE_CALS="${ICAL_EXCLUDE_CALS:-training}"
 
 get_attendees() {
 	attendees=$(
@@ -18,7 +20,7 @@ get_attendees() {
 		--separateByDate \
 		--excludeEndDates \
 		--bullet "" \
-		--excludeCals "training,omerxx@gmail.com" \
+		--excludeCals "$EXCLUDE_CALS" \
 		eventsToday)
 }
 
@@ -41,7 +43,7 @@ get_next_meeting() {
 		--excludeAllDayEvents \
 		--separateByDate \
 		--bullet "" \
-		--excludeCals "training,omerxx@gmail.com" \
+		--excludeCals "$EXCLUDE_CALS" \
 		eventsToday)
 }
 
@@ -58,7 +60,7 @@ get_next_next_meeting() {
 		--excludeAllDayEvents \
 		--separateByDate \
 		--bullet "" \
-		--excludeCals "training,omerxx@gmail.com" \
+		--excludeCals "$EXCLUDE_CALS" \
 		eventsFrom:"${end_timestamp}" to:"${tonight}")
 }
 
