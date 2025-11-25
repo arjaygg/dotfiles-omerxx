@@ -96,11 +96,21 @@ use std "path add"
 # path add ($env.CARGO_HOME | path join "bin")
 # path add ($env.HOME | path join ".local" "bin")
 # $env.PATH = ($env.PATH | uniq)
+path add /usr/local/bin
 path add /opt/homebrew/bin
 path add /run/current-system/sw/bin
 path add ($nu.home-path | path join ".local" "bin")
 path add /opt/homebrew/opt/ruby/bin
-path add /Users/axos-agallentes/homebrew/Cellar/node/24.9.0_1/bin
+
+# Dynamically add Node.js bin directory if .nvm exists
+let nvm_path = ($nu.home-path | path join ".nvm" "versions" "node")
+if ($nvm_path | path exists) {
+  let node_bins = (glob ($nvm_path | path join "*" "bin") | sort | last)
+  if ($node_bins | is-not-empty) {
+    path add $node_bins
+  }
+}
+
 path add ($nu.home-path | path join "homebrew" "bin")
 path add ($nu.home-path | path join ".codeium" "windsurf" "bin")
 
@@ -143,8 +153,8 @@ if (which atuin | is-empty) {
   }
 }
 
-$env.STARSHIP_CONFIG = '/Users/omerxx/.config/starship/starship.toml'
-$env.NIX_CONF_DIR = '/Users/omerxx/.config/nix'
+$env.STARSHIP_CONFIG = '/Users/agallentes/.config/starship/starship.toml'
+$env.NIX_CONF_DIR = '/Users/agallentes/.config/nix'
 $env.CARAPACE_BRIDGES = 'zsh,fish,bash,inshellisense' # optional
 if (which carapace | is-empty) {
   # carapace not installed; skip shell integration
@@ -158,3 +168,8 @@ if (which carapace | is-empty) {
     null
   }
 }
+
+# pnpm
+$env.PNPM_HOME = "/Users/agallentes/Library/pnpm"
+$env.PATH = ($env.PATH | split row (char esep) | prepend $env.PNPM_HOME )
+# pnpm end
