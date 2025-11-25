@@ -4,7 +4,7 @@
       "source": "github",
       "repo": "anthropics/claude-code"
     },
-    "installLocation": "/Users/axos-agallentes/.claude/plugins/marketplaces/claude-code-plugins",
+    "installLocation": "~/.claude/plugins/marketplaces/claude-code-plugins",
     "lastUpdated": "2025-11-11T08:56:27.579Z"
   },
   "anthropic-agent-skills": {
@@ -12,7 +12,7 @@
       "source": "github",
       "repo": "anthropics/skills"
     },
-    "installLocation": "/Users/axos-agallentes/.claude/plugins/marketplaces/anthropic-agent-skills",
+    "installLocation": "~/.claude/plugins/marketplaces/anthropic-agent-skills",
     "lastUpdated": "2025-11-10T15:47:45.036Z"
   }
 }
