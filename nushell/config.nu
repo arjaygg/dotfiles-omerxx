@@ -402,13 +402,14 @@ $env.config = {
                 ]
             }
         }
-        {
-            name: history_menu
-            modifier: control
-            keycode: char_r
-            mode: [emacs, vi_insert, vi_normal]
-            event: { send: menu name: history_menu }
-        }
+        # Commented out: Atuin handles Ctrl-R instead
+        # {
+        #     name: history_menu
+        #     modifier: control
+        #     keycode: char_r
+        #     mode: [emacs, vi_insert, vi_normal]
+        #     event: { send: menu name: history_menu }
+        # }
         {
             name: help_menu
             modifier: none
@@ -934,8 +935,16 @@ alias kns = kubens
 alias kl = kubectl logs -f
 alias ke = kubectl exec -it
 
-source ~/.config/nushell/env.nu
-source ~/.zoxide.nu
+# Note: env.nu is automatically loaded before config.nu by nushell
+# Load zoxide integration
+def --env z [...rest: string] {
+  cd (zoxide query -- ...$rest | str trim)
+}
+
+def --env zi [...rest: string] {
+  cd (zoxide query --interactive -- ...$rest | str trim)
+}
+
 
 source-env (
   if (("~/.cache/carapace/init.nu" | path expand | path exists)) {
