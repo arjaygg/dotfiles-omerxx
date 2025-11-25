@@ -20,19 +20,20 @@ format =  '[$symbol$branch(:$remote_branch)]($style)'
 format = '[$symbol(profile: "$profile" )(\(region: $region\) )]($style)'
 disabled = false
 style = 'bold blue'
-symbol = " "
+symbol = " "
 
 [golang]
-format = '[ ](bold cyan)'
+format = '[ ](bold cyan)'
 
 [kubernetes]
 symbol = '☸ '
 disabled = true
 detect_files = ['Dockerfile']
 format = '[$symbol$context( \($namespace\))]($style) '
-contexts = [
-  { context_pattern = "arn:aws:eks:us-west-2:577926974532:cluster/zd-pvc-omer", style = "green", context_alias = "omerxx", symbol = " " },
-]
+# Add your EKS clusters here for custom aliases:
+# contexts = [
+#   { context_pattern = "arn:aws:eks:REGION:ACCOUNT_ID:cluster/NAME", style = "green", context_alias = "alias" },
+# ]
 
 [docker_context]
 disabled = true
