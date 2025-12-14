@@ -79,6 +79,9 @@ export GOPATH="$HOME/go"
 # VIM
 alias v="$HOME/.nix-profile/bin/nvim"
 
+# Claude Code
+alias claude="~/.claude/local/claude"
+
 # Nmap
 alias nm="nmap -sC -sV -oN nmap"
 
