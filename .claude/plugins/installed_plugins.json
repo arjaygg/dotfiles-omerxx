@@ -1,13 +1,27 @@
 {
-  "version": 1,
+  "version": 2,
   "plugins": {
-    "document-skills@anthropic-agent-skills": {
-      "version": "unknown",
-      "installedAt": "2025-11-11T08:56:55.823Z",
-      "lastUpdated": "2025-11-11T08:56:55.823Z",
-      "installPath": "~/.claude/plugins/marketplaces/anthropic-agent-skills/",
-      "gitCommitSha": "c74d647e56e6daa12029b6acb11a821348ad044b",
-      "isLocal": true
-    }
+    "document-skills@anthropic-agent-skills": [
+      {
+        "scope": "user",
+        "installPath": "/Users/agallentes/.claude/plugins/cache/anthropic-agent-skills/document-skills/unknown",
+        "version": "unknown",
+        "installedAt": "2025-11-11T08:56:55.823Z",
+        "lastUpdated": "2025-11-11T08:56:55.823Z",
+        "gitCommitSha": "c74d647e56e6daa12029b6acb11a821348ad044b",
+        "isLocal": true
+      }
+    ],
+    "osgrep@osgrep": [
+      {
+        "scope": "user",
+        "installPath": "/Users/agallentes/.claude/plugins/cache/osgrep/osgrep/0.3.2",
+        "version": "0.3.2",
+        "installedAt": "2025-11-25T20:32:32.361Z",
+        "lastUpdated": "2025-11-25T20:32:32.361Z",
+        "gitCommitSha": "43ec1452ff6fefb4b9b428caa1fbbe6887b2295d",
+        "isLocal": true
+      }
+    ]
   }
 }
