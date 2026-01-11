@@ -1,15 +1,20 @@
 {
+  "enableAllProjectMcpServers": true,
   "env": {
     "USE_BUILTIN_RIPGREP": "0"
+  },
+  "permissions": {
+    "defaultMode": "dontAsk"
   },
   "statusLine": {
     "type": "command",
     "command": "input=$(cat); cwd=$(echo \"$input\" | jq -r '.workspace.current_dir'); project_dir=$(echo \"$input\" | jq -r '.workspace.project_dir'); model=$(echo \"$input\" | jq -r '.model.display_name'); style=$(echo \"$input\" | jq -r '.output_style.name'); if [[ \"$cwd\" == \"$project_dir\" ]]; then dir=\".\"; elif [[ \"$cwd\" == \"$HOME\" ]]; then dir=\"~\"; elif [[ \"$cwd\" == \"$HOME\"/* ]]; then dir=\"~${cwd#$HOME}\"; else dir=\"$cwd\"; fi; git_info=\"\"; if git -C \"$cwd\" rev-parse --git-dir > /dev/null 2>&1; then branch=$(git -C \"$cwd\" --no-optional-locks branch --show-current 2>/dev/null); if [[ -n \"$branch\" ]]; then remote=$(git -C \"$cwd\" --no-optional-locks rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null | sed 's#origin/##'); if [[ -n \"$remote\" ]] && [[ \"$remote\" != \"$branch\" ]]; then branch=\"$branch:$remote\"; fi; if ! git -C \"$cwd\" --no-optional-locks diff --quiet 2>/dev/null || ! git -C \"$cwd\" --no-optional-locks diff --cached --quiet 2>/dev/null; then branch=\"$branch*\"; fi; git_info=\" $(printf '\\033[35m')on$(printf '\\033[0m') $(printf '\\033[35m')$branch$(printf '\\033[0m')\"; fi; fi; right=\"$git_info\"; if [[ -n \"$model\" ]]; then right=\"$right $(printf '\\033[34m')[$model]$(printf '\\033[0m')\"; fi; if [[ -n \"$style\" ]] && [[ \"$style\" != \"default\" ]]; then right=\"$right $(printf '\\033[33m')($style)$(printf '\\033[0m')\"; fi; echo \"$(printf '\\033[36m')$dir$(printf '\\033[0m')$right\""
   },
   "enabledPlugins": {
-    "document-skills@anthropic-agent-skills": true,
-    "osgrep@osgrep": true
+    "document-skills@anthropic-agent-skills": false,
+    "osgrep@osgrep": true,
+    "gopls-lsp@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
-  "model": "haiku"
+  "model": "sonnet[1m]"
 }
