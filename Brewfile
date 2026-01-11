@@ -85,7 +85,9 @@ brew "thefuck"          # Corrects previous command
 brew "tldr"             # Better man pages
 brew "navi"             # Interactive cheatsheet
 brew "httpie"           # Better curl
-brew "ranger"           # Terminal file manager
+brew "yazi"             # Blazing fast terminal file manager
+brew "ffmpeg"           # For video previews
+brew "sevenzip"         # For archive previews
 brew "lf"               # Lightweight file manager
 brew "nmap"             # Network scanner
 brew "speedtest-cli"    # Internet speed test
