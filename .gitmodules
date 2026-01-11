@@ -1,3 +1,0 @@
-[submodule ".claude/claude-statusline"]
-	path = .claude/claude-statusline
-	url = https://github.com/dwillitzer/claude-statusline
