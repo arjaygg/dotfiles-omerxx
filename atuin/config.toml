@@ -46,7 +46,7 @@
 
 ## With workspace filtering enabled, Atuin will filter for commands executed
 ## in any directory within a git repository tree (default: false)
-# workspaces = false
+workspaces = false
 
 ## which filter mode to use when atuin is invoked from a shell up-key binding
 ## the accepted values are identical to those of "filter_mode"
@@ -123,7 +123,7 @@ style = "compact"
 # show_help = true
 
 ## Configure whether or not to show tabs for search and inspect
-# show_tabs = true
+show_tabs = false
 
 ## Defaults to true. This matches history against a set of default regex, and will not save it if we get a match. Defaults include
 ## 1. AWS key id
