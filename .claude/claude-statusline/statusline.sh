@@ -47,6 +47,9 @@ while [[ $# -gt 0 ]]; do
             echo "  %project%    - Project name"
             echo "  %message%    - Last message preview (first 5 words)"
             echo "  %output_style% - Output style name"
+            echo "  %cache%      - Cache performance (read/created tokens)"
+            echo "  %tokens%     - Token breakdown (input/output)"
+            echo "  %version%    - Claude Code version"
             echo ""
             echo "Examples:"
             echo "  $0 --compact"
@@ -210,10 +213,35 @@ if echo "$input" | jq -e . >/dev/null 2>&1 && [[ "$input" != "{}" ]]; then
     current_dir=$(echo "$input" | jq -r '.cwd // .workspace.current_dir // empty')
     output_style=$(echo "$input" | jq -r '.output_style.name // "default"')
 
-    # Extract Claude Code's model-aware token data
+    # Extract Claude Code's model-aware token data (legacy fields for backward compatibility)
     current_tokens=$(echo "$input" | jq -r '.current_tokens // 0')
     expected_total_tokens=$(echo "$input" | jq -r '.expected_total_tokens // 500000')
     min_tokens_for_perf_hint=$(echo "$input" | jq -r '.min_tokens_for_perf_hint // 180000')
+
+    # Extract official context_window fields (preferred)
+    context_window_size=$(echo "$input" | jq -r '.context_window.context_window_size // 0')
+    total_input_tokens=$(echo "$input" | jq -r '.context_window.total_input_tokens // 0')
+    total_output_tokens=$(echo "$input" | jq -r '.context_window.total_output_tokens // 0')
+    current_usage=$(echo "$input" | jq -r '.context_window.current_usage // null')
+
+    # Extract cache performance metrics
+    if [[ "$current_usage" != "null" ]]; then
+        cache_read_tokens=$(echo "$current_usage" | jq -r '.cache_read_input_tokens // 0')
+        cache_creation_tokens=$(echo "$current_usage" | jq -r '.cache_creation_input_tokens // 0')
+        usage_input_tokens=$(echo "$current_usage" | jq -r '.input_tokens // 0')
+        usage_output_tokens=$(echo "$current_usage" | jq -r '.output_tokens // 0')
+    else
+        cache_read_tokens=0
+        cache_creation_tokens=0
+        usage_input_tokens=0
+        usage_output_tokens=0
+    fi
+
+    # Extract session metadata
+    claude_version=$(echo "$input" | jq -r '.version // "unknown"')
+
+    # Extract workspace context
+    project_dir=$(echo "$input" | jq -r '.workspace.project_dir // empty')
 
     # If we got valid JSON but no session info, this might be a different JSON structure
     if [[ -z "$session_id" && -z "$transcript_path" ]]; then
@@ -308,9 +336,57 @@ detect_model_context_limit() {
     esac
 }
 
-# Calculate context usage - prioritize Claude Code data or detect model limits
-if [[ -n "$current_tokens" && "$current_tokens" -gt 0 ]]; then
-    # Claude Code provided the token data directly!
+# Calculate context usage - prioritize official context_window data, fallback to legacy fields
+if [[ -n "$context_window_size" && "$context_window_size" -gt 0 && "$current_usage" != "null" ]]; then
+    # Use official context_window data (preferred method)
+    context_limit="$context_window_size"
+
+    # Calculate actual tokens in context from current_usage
+    estimated_tokens=$((usage_input_tokens + cache_creation_tokens + cache_read_tokens))
+
+    # Calculate cache efficiency percentage
+    if [[ $estimated_tokens -gt 0 ]]; then
+        cache_hit_percent=$((cache_read_tokens * 100 / estimated_tokens))
+    else
+        cache_hit_percent=0
+    fi
+
+    # Calculate percentages and format
+    context_percent=$((estimated_tokens * 100 / context_limit))
+    remaining_tokens=$((context_limit - estimated_tokens))
+    remaining_k=$((remaining_tokens / 1000))
+
+    # Format cache info
+    if [[ $cache_read_tokens -gt 0 || $cache_creation_tokens -gt 0 ]]; then
+        cache_read_k=$((cache_read_tokens / 1000))
+        cache_created_k=$((cache_creation_tokens / 1000))
+        cache_info=$(printf "⚡%sk/%sk" "$cache_read_k" "$cache_created_k")
+    else
+        cache_info=""
+    fi
+
+    # Format token breakdown
+    if [[ $total_input_tokens -gt 0 || $total_output_tokens -gt 0 ]]; then
+        input_k=$((total_input_tokens / 1000))
+        output_k=$((total_output_tokens / 1000))
+        tokens_info=$(printf "%sk↓/%sk↑" "$input_k" "$output_k")
+    else
+        tokens_info=""
+    fi
+
+    # Color coding for usage levels
+    if [[ $context_percent -gt 80 ]]; then
+        context_color="31"  # Red for high usage
+    elif [[ $context_percent -gt 60 ]]; then
+        context_color="33"  # Yellow for medium usage
+    else
+        context_color="32"  # Green for low usage
+    fi
+
+    context_info=$(printf "\033[%sm%s%%\033[0m (%sk left)" "$context_color" "$context_percent" "$remaining_k")
+
+elif [[ -n "$current_tokens" && "$current_tokens" -gt 0 ]]; then
+    # Fallback to legacy fields for backward compatibility
     estimated_tokens=$current_tokens
 
     # Use intelligent model context limit detection
@@ -326,6 +402,10 @@ if [[ -n "$current_tokens" && "$current_tokens" -gt 0 ]]; then
     context_percent=$((estimated_tokens * 100 / context_limit))
     remaining_tokens=$((context_limit - estimated_tokens))
     remaining_k=$((remaining_tokens / 1000))
+
+    # No cache info available in legacy mode
+    cache_info=""
+    tokens_info=""
 
     # Color coding for usage levels
     if [[ $context_percent -gt 80 ]]; then
@@ -563,11 +643,16 @@ fi
 # Session timestamp (today's date)
 session_date=$(date "+%m/%d")
 
-# Current PST time
+# Current PST and EST times
 pst_time=$(TZ="America/Los_Angeles" date "+%I:%M %p PST")
+est_time=$(TZ="America/New_York" date "+%I:%M %p EST")
+combined_time="${pst_time} / ${est_time}"
 
-# Last message timing - find actual user message from Claude transcript
+# Current time for calculations
 current_time=$(date +%s)
+
+# Session duration - will be calculated after finding transcript
+session_duration=""
 
 # Try to find the real transcript file in ~/.claude/projects
 real_transcript=""
@@ -582,9 +667,9 @@ if [[ -z "$real_transcript" || ! -f "$real_transcript" ]]; then
     project_path=$(echo "$current_dir" | sed 's|/|-|g')
     # Use cross-platform function to find most recent transcript in project
     if [[ -d ~/.claude/projects ]]; then
-        for project_dir in ~/.claude/projects/*"$project_path"*; do
-            if [[ -d "$project_dir" ]]; then
-                real_transcript=$(find_most_recent_file "$project_dir" "*.jsonl")
+        for transcript_search_dir in ~/.claude/projects/*"$project_path"*; do
+            if [[ -d "$transcript_search_dir" ]]; then
+                real_transcript=$(find_most_recent_file "$transcript_search_dir" "*.jsonl")
                 if [[ -n "$real_transcript" && -f "$real_transcript" ]]; then
                     break
                 fi
@@ -599,6 +684,29 @@ if [[ -z "$real_transcript" || ! -f "$real_transcript" ]]; then
 fi
 
 if [[ -f "$real_transcript" ]]; then
+    # Calculate session duration from first message
+    first_message_timestamp=$(head -5 "$real_transcript" 2>/dev/null | jq -r '.timestamp // empty' 2>/dev/null | grep -v '^$' | head -1)
+    if [[ -n "$first_message_timestamp" ]]; then
+        first_message_epoch=$(parse_iso_timestamp "$first_message_timestamp")
+        session_duration_seconds=$((current_time - first_message_epoch))
+
+        # Format session duration
+        if [[ $session_duration_seconds -lt 60 ]]; then
+            session_duration="<1m"
+        elif [[ $session_duration_seconds -lt 3600 ]]; then
+            minutes=$((session_duration_seconds / 60))
+            session_duration="${minutes}m"
+        else
+            hours=$((session_duration_seconds / 3600))
+            minutes=$(((session_duration_seconds % 3600) / 60))
+            if [[ $minutes -gt 0 ]]; then
+                session_duration="${hours}h ${minutes}m"
+            else
+                session_duration="${hours}h"
+            fi
+        fi
+    fi
+
     # Find the most recent user message (human input, not tool results)
     # Look for messages that originate from human input
     # Find last human message timestamp and content
@@ -684,6 +792,20 @@ fi
 
 # Project context (shortened path)
 project_name=$(basename "$current_dir")
+
+# Workspace context awareness - show if navigated away from project root
+workspace_indicator=""
+if [[ -n "$project_dir" && "$current_dir" != "$project_dir" ]]; then
+    # User has navigated to a subdirectory
+    if [[ "$current_dir" == "$project_dir"/* ]]; then
+        # In a subdirectory of project
+        relative_path="${current_dir#$project_dir/}"
+        workspace_indicator=$(printf " \033[90m(%s)\033[0m" "$relative_path")
+    else
+        # Completely different directory
+        workspace_indicator=$(printf " \033[33m[outside project]\033[0m")
+    fi
+fi
 
 # Format last message preview (first 5 words or less)
 if [[ -n "$last_human_message" ]]; then
@@ -783,6 +905,17 @@ case "$model_name" in
         ;;
 esac
 
+# Append context limit to model display
+if [[ -n "$context_limit" && "$context_limit" -gt 0 ]]; then
+    # Format context limit in human-readable form
+    if [[ $context_limit -ge 1000000 ]]; then
+        context_limit_display="$((context_limit / 1000000))M"
+    else
+        context_limit_display="$((context_limit / 1000))k"
+    fi
+    model_display="${model_display} (${context_limit_display})"
+fi
+
 # Detect theme from environment or settings (future enhancement)
 # For now, use the JSON input to check for theme hints
 theme_name=$(echo "$input" | jq -r '.theme // .appearance // "default"' 2>/dev/null)
@@ -791,6 +924,13 @@ theme_name=$(echo "$input" | jq -r '.theme // .appearance // "default"' 2>/dev/n
 if [[ "$theme_name" == "light" || "$theme_name" == "day" ]]; then
     # Light theme - use darker/bolder colors
     model_color="1;${model_color}"  # Bold version
+fi
+
+# Format session display with date and duration
+if [[ -n "$session_duration" ]]; then
+    session_display="${session_date} (${session_duration})"
+else
+    session_display="${session_date}"
 fi
 
 # Build status line based on selected mode
@@ -810,23 +950,25 @@ case "$STATUSLINE_MODE" in
             if [[ "$message_preview" != "$compact_message" ]]; then
                 compact_message="${compact_message}..."
             fi
-            printf "\033[%sm%s\033[0m • \033[32m%d%%\033[0m • %s💬 \"%s\" • \033[34m%s\033[0m\n" \
+            printf "\033[%sm%s\033[0m • \033[32m%d%%\033[0m • %s💬 \"%s\" • \033[34m%s\033[0m%s\n" \
                 "$model_color" \
                 "$model_display" \
                 "$context_percent" \
                 "$output_style_compact" \
                 "$compact_message" \
-                "$project_name"
+                "$project_name" \
+                "$workspace_indicator"
         else
             # Fall back to time if no message
-            printf "\033[%sm%s\033[0m • \033[32m%d%%\033[0m • %s\033[%sm%s\033[0m • \033[34m%s\033[0m\n" \
+            printf "\033[%sm%s\033[0m • \033[32m%d%%\033[0m • %s\033[%sm%s\033[0m • \033[34m%s\033[0m%s\n" \
                 "$model_color" \
                 "$model_display" \
                 "$context_percent" \
                 "$output_style_compact" \
                 "$msg_color" \
                 "$last_msg" \
-                "$project_name"
+                "$project_name" \
+                "$workspace_indicator"
         fi
         ;;
 
@@ -837,12 +979,15 @@ case "$STATUSLINE_MODE" in
         output="${output//\%context\%/$context_info}"
         output="${output//\%percent\%/${context_percent}%}"
         output="${output//\%remaining\%/${remaining_display}}"
-        output="${output//\%session\%/$session_date}"
-        output="${output//\%time\%/$pst_time}"
+        output="${output//\%session\%/$session_display}"
+        output="${output//\%time\%/$combined_time}"
         output="${output//\%last\%/$last_msg}"
         output="${output//\%project\%/$project_name}"
         output="${output//\%message\%/$message_display}"
         output="${output//\%output_style\%/$output_style}"
+        output="${output//\%cache\%/$cache_info}"
+        output="${output//\%tokens\%/$tokens_info}"
+        output="${output//\%version\%/$claude_version}"
         echo "$output"
         ;;
 
@@ -857,27 +1002,29 @@ case "$STATUSLINE_MODE" in
 
         if [[ -n "$message_display" ]]; then
             # Show message preview instead of last time
-            printf "\033[%sm%s\033[0m \033[36m▸\033[0m Context: %s \033[36m▸\033[0m Session: \033[96m%s\033[0m \033[36m▸\033[0m %s %s\033[36m▸\033[0m %s \033[36m▸\033[0m \033[34m%s\033[0m\n" \
+            printf "\033[%sm%s\033[0m \033[36m▸\033[0m Context: %s \033[36m▸\033[0m Session: \033[96m%s\033[0m \033[36m▸\033[0m %s %s\033[36m▸\033[0m %s \033[36m▸\033[0m \033[34m%s\033[0m%s\n" \
                 "$model_color" \
                 "$model_display" \
                 "$context_info" \
-                "$session_date" \
-                "$pst_time" \
+                "$session_display" \
+                "$combined_time" \
                 "$output_style_display" \
                 "$message_display" \
-                "$project_name"
+                "$project_name" \
+                "$workspace_indicator"
         else
             # If no message, show timing instead
-            printf "\033[%sm%s\033[0m \033[36m▸\033[0m Context: %s \033[36m▸\033[0m Session: \033[96m%s\033[0m \033[36m▸\033[0m %s %s\033[36m▸\033[0m Last: \033[%sm%s\033[0m \033[36m▸\033[0m \033[34m%s\033[0m\n" \
+            printf "\033[%sm%s\033[0m \033[36m▸\033[0m Context: %s \033[36m▸\033[0m Session: \033[96m%s\033[0m \033[36m▸\033[0m %s %s\033[36m▸\033[0m Last: \033[%sm%s\033[0m \033[36m▸\033[0m \033[34m%s\033[0m%s\n" \
                 "$model_color" \
                 "$model_display" \
                 "$context_info" \
-                "$session_date" \
-                "$pst_time" \
+                "$session_display" \
+                "$combined_time" \
                 "$output_style_display" \
                 "$msg_color" \
                 "$last_msg" \
-                "$project_name"
+                "$project_name" \
+                "$workspace_indicator"
         fi
         ;;
 esac
