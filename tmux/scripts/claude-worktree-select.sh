@@ -3,23 +3,50 @@
 
 set -e
 
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
+# Find the main repository root (works even when inside a worktree)
+if git rev-parse --is-inside-work-tree &>/dev/null; then
+    # Get the common git directory (points to main repo's .git)
+    GIT_COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null)
+    # Get the main repository root by going up from the common git dir
+    REPO_ROOT=$(cd "$GIT_COMMON_DIR/.." && pwd)
+else
+    REPO_ROOT="$PWD"
+fi
+
 TREES_DIR="$REPO_ROOT/.trees"
+
+# Debug: show what we found
+echo "Repository root: $REPO_ROOT"
+echo "Looking for worktrees in: $TREES_DIR"
+echo ""
 
 # Check if .trees directory exists
 if [ ! -d "$TREES_DIR" ]; then
-    tmux display-message "No worktrees found. Create with git-worktree-tmux agent."
+    echo "❌ No .trees directory found at $TREES_DIR"
+    echo ""
+    read -p "Press enter to close..."
     exit 0
 fi
 
 # Get worktrees
-cd "$TREES_DIR"
+cd "$TREES_DIR" || {
+    echo "❌ Failed to cd to $TREES_DIR"
+    read -p "Press enter to close..."
+    exit 1
+}
+
 worktrees=$(ls -1 2>/dev/null)
 
 if [ -z "$worktrees" ]; then
-    tmux display-message "No worktrees in $TREES_DIR"
+    echo "❌ No worktrees found in $TREES_DIR"
+    echo ""
+    read -p "Press enter to close..."
     exit 0
 fi
+
+echo "Found worktrees:"
+ls -1
+echo ""
 
 # Use fzf with --bind to execute tmux command on selection
 # Enter = Claude, Alt-C = Cursor Agent
