@@ -171,8 +171,8 @@ if (which carapace | is-empty) {
 }
 
 # Claude Code local installation
-path add ($nu.home-path | path join ".claude" "local")
-alias claude = ~/.claude/local/claude
+path add ($nu.home-path | path join ".local" "bin")
+alias claude = ~/.local/bin/claude
 
 # pnpm
 $env.PNPM_HOME = "/Users/axos-agallentes/.local/share/pnpm"
