@@ -4,31 +4,31 @@
       "source": "github",
       "repo": "anthropics/claude-code"
     },
-    "installLocation": "~/.claude/plugins/marketplaces/claude-code-plugins",
-    "lastUpdated": "2025-11-25T20:26:20.515Z"
+    "installLocation": "/Users/axos-agallentes/.claude/plugins/marketplaces/claude-code-plugins",
+    "lastUpdated": "2026-01-11T06:53:51.872Z"
   },
   "anthropic-agent-skills": {
     "source": {
       "source": "github",
       "repo": "anthropics/skills"
     },
-    "installLocation": "~/.claude/plugins/marketplaces/anthropic-agent-skills",
-    "lastUpdated": "2025-12-09T21:45:00.840Z"
+    "installLocation": "/Users/axos-agallentes/.claude/plugins/marketplaces/anthropic-agent-skills",
+    "lastUpdated": "2025-12-16T21:53:08.648Z"
   },
   "osgrep": {
     "source": {
       "source": "github",
       "repo": "Ryandonofrio3/osgrep"
     },
-    "installLocation": "/Users/agallentes/.claude/plugins/marketplaces/osgrep",
-    "lastUpdated": "2025-12-14T07:59:35.824Z"
+    "installLocation": "/Users/axos-agallentes/.claude/plugins/marketplaces/osgrep",
+    "lastUpdated": "2025-12-16T21:52:11.601Z"
   },
   "claude-plugins-official": {
     "source": {
       "source": "github",
       "repo": "anthropics/claude-plugins-official"
     },
-    "installLocation": "/Users/agallentes/.claude/plugins/marketplaces/claude-plugins-official",
-    "lastUpdated": "2025-12-14T07:44:18.250Z"
+    "installLocation": "/Users/axos-agallentes/.claude/plugins/marketplaces/claude-plugins-official",
+    "lastUpdated": "2026-01-11T09:27:32.221Z"
   }
 }
