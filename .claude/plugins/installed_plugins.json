@@ -4,23 +4,31 @@
     "document-skills@anthropic-agent-skills": [
       {
         "scope": "user",
-        "installPath": "/Users/agallentes/.claude/plugins/cache/anthropic-agent-skills/document-skills/unknown",
-        "version": "unknown",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/anthropic-agent-skills/document-skills/f23222824449",
+        "version": "f23222824449",
         "installedAt": "2025-11-11T08:56:55.823Z",
-        "lastUpdated": "2025-11-11T08:56:55.823Z",
-        "gitCommitSha": "c74d647e56e6daa12029b6acb11a821348ad044b",
-        "isLocal": true
+        "lastUpdated": "2026-01-09T07:33:19.746Z",
+        "gitCommitSha": "c74d647e56e6daa12029b6acb11a821348ad044b"
       }
     ],
     "osgrep@osgrep": [
       {
         "scope": "user",
-        "installPath": "/Users/agallentes/.claude/plugins/cache/osgrep/osgrep/0.3.2",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/osgrep/osgrep/0.3.2",
         "version": "0.3.2",
-        "installedAt": "2025-11-25T20:32:32.361Z",
-        "lastUpdated": "2025-11-25T20:32:32.361Z",
-        "gitCommitSha": "43ec1452ff6fefb4b9b428caa1fbbe6887b2295d",
-        "isLocal": true
+        "installedAt": "2025-11-25T21:55:23.719Z",
+        "lastUpdated": "2025-11-25T21:55:23.719Z",
+        "gitCommitSha": "43ec1452ff6fefb4b9b428caa1fbbe6887b2295d"
+      }
+    ],
+    "gopls-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/claude-plugins-official/gopls-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-01-08T10:01:26.304Z",
+        "lastUpdated": "2026-01-08T10:01:26.304Z",
+        "gitCommitSha": "cc092042bba0a340b1dc5da05e9de0753a1fed6f"
       }
     ]
   }
