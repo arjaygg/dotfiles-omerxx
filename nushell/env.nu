@@ -175,6 +175,6 @@ path add ($nu.home-path | path join ".claude" "local")
 alias claude = ~/.claude/local/claude
 
 # pnpm
-$env.PNPM_HOME = ($nu.home-path | path join 'Library' 'pnpm')
-$env.PATH = ($env.PATH | split row (char esep) | prepend $env.PNPM_HOME)
+$env.PNPM_HOME = "/Users/axos-agallentes/.local/share/pnpm"
+$env.PATH = ($env.PATH | split row (char esep) | prepend $env.PNPM_HOME )
 # pnpm end
