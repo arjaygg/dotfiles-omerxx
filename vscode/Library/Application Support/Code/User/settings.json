@@ -30,5 +30,6 @@
     "terminal.integrated.shellIntegration.enabled": false,
     "terminal.integrated.fontSize": 19,
     "claudeCode.allowDangerouslySkipPermissions": true,
-    "claudeCode.initialPermissionMode": "bypassPermissions"
+    "claudeCode.initialPermissionMode": "bypassPermissions",
+    "claudeCode.preferredLocation": "panel"
 }
