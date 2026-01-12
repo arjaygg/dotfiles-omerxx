@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(ls)",
+      "Shell(sudo)",
+      "Shell(brew)"
+    ],
+    "deny": []
+  },
+  "version": 1,
+  "editor": {
+    "vimMode": false
+  },
+  "model": {
+    "modelId": "gpt-5",
+    "displayModelId": "gpt-5",
+    "displayName": "GPT-5",
+    "displayNameShort": "GPT-5",
+    "aliases": []
+  },
+  "hasChangedDefaultModel": true,
+  "privacyCache": {
+    "ghostMode": true,
+    "privacyMode": 2,
+    "updatedAt": 1764175837184
+  },
+  "network": {
+    "useHttp1ForAgent": false
+  }
+}
