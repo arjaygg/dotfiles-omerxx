@@ -4,5 +4,8 @@ raycast
 fzf
 history.txt
 *.log
+*.swp
+*.swo
+*.swpx
 karabiner/automatic_backups/
 .trees/
