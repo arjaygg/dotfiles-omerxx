@@ -1,11 +1,11 @@
 # Smart Commit and Push
 
-Analyze the current git changes and intelligently group related modifications into separate commits, then push them to the remote repository.
+Analyze the current git changes and intelligently split them into **atomic commits**, then push them to the remote repository.
 
 ## Instructions
 
 1. Run `git status` and `git diff` to see all current changes
-2. Analyze the changes and identify logical groups based on:
+2. Analyze the changes and identify candidate groups based on:
    - Files in the same directory or subdirectory
    - Related functionality (e.g., all documentation changes, all configuration changes)
    - Dependency relationships (e.g., tests that go with implementation files)
@@ -23,19 +23,18 @@ Analyze the current git changes and intelligently group related modifications in
        - Format: `type(scope): summary`
        - Common `type`: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, `build`, `perf`, `style`, `revert`
        - Use `!` and/or `BREAKING CHANGE:` in the body when applicable
-     - Summarizes the nature of the changes
      - Follows the repository's commit message style (check recent commits with `git log`)
      - Focuses on the "why" rather than just the "what"
    - Include an **intelligent footer** (trailers at the end of the commit message):
+     - If running in **Cursor**, include:
+       ```
+       🤖 Generated with Cursor
+       ```
      - If running in **Claude Code**, include:
        ```
        🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
        Co-Authored-By: Claude <noreply@anthropic.com>
-       ```
-     - If running in **Cursor**, include:
-       ```
-       🤖 Generated with Cursor
        ```
      - If unclear which tool is being used, **omit the footer** rather than guessing.
    - Commit the changes using a HEREDOC format
@@ -51,4 +50,4 @@ Analyze the current git changes and intelligently group related modifications in
 - If unclear about how to group changes, ask the user for guidance
 - Show the user your grouping plan before making commits
 - Use HEREDOC format for commit messages to ensure proper formatting
-- Follow the Git Safety Protocol (never force push to main/master, never skip hooks, etc.)
+- Follow safe git practices (never force push to main/master, never skip hooks, etc.)
