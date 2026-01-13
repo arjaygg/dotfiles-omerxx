@@ -1,11 +1,12 @@
 {
-  "enableAllProjectMcpServers": true,
   "env": {
     "USE_BUILTIN_RIPGREP": "0"
   },
   "permissions": {
     "defaultMode": "dontAsk"
   },
+  "model": "haiku",
+  "enableAllProjectMcpServers": true,
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/claude-statusline/statusline.sh"
@@ -15,6 +16,5 @@
     "osgrep@osgrep": true,
     "gopls-lsp@claude-plugins-official": true
   },
-  "alwaysThinkingEnabled": true,
-  "model": "sonnet[1m]"
+  "alwaysThinkingEnabled": true
 }
