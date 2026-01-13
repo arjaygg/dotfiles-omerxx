@@ -7,3 +7,21 @@ history.txt
 karabiner/automatic_backups/
 .trees/
 .claude/plugins/
+
+# Cursor local state (do not commit)
+.cursor/agent-cli-state.json
+.cursor/ai-tracking/
+.cursor/argv.json
+.cursor/blocklist
+.cursor/extensions/
+.cursor/mcp.json
+.cursor/projects/
+.cursor/prompt_history.json
+.cursor/unified_repo_list.json
+
+# Local tooling state (may contain tokens/pids)
+.osgrep/
+
+# Accidental/self-referential stow symlinks
+.claude/commands/commands
+.claude/output-styles/output-styles
