@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Shell(ls)"
+      "Shell(ls)",
+      "Shell(git*)",
+      "Shell(mkdir*)",
+      "Shell(cp*)",
+      "Shell(pwd)",
+      "Shell(basename*)"
     ],
     "deny": []
   },
