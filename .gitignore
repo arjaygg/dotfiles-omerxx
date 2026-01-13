@@ -6,3 +6,4 @@ history.txt
 *.log
 karabiner/automatic_backups/
 .trees/
+.claude/plugins/
