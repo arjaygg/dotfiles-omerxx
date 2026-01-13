@@ -1,0 +1,17 @@
+# User content and state
+chats/
+prompt_history.json
+browser-logs/
+ai-tracking/
+ide_state.json
+agent-cli-state.json
+projects/
+worktrees/
+unified_repo_list.json
+
+# Extensions
+extensions/
+extensions.json
+
+# System/Machine specific
+argv.json

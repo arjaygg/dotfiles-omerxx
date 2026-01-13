@@ -6,3 +6,7 @@ mkdir -p ~/.claude
 ln -sf ~/.dotfiles/.claude/commands ~/.claude/commands
 ln -sf ~/.dotfiles/.claude/settings.json ~/.claude/settings.json
 ln -sf ~/.dotfiles/.claude/output-styles ~/.claude/output-styles
+
+# Setup Cursor global config
+rm -rf ~/.cursor # Remove existing directory/symlink
+ln -sf ~/.dotfiles/.cursor ~/.cursor

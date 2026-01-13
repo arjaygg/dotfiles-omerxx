@@ -11,5 +11,8 @@ statsig/
 todos/
 *.log
 
+# Prevent accidental nested Claude config/state (e.g. running setup in the wrong place)
+.claude/
+
 # Plugin marketplaces (downloaded content, like node_modules)
 plugins/marketplaces/
