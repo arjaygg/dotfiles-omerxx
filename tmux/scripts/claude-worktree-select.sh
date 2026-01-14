@@ -49,12 +49,13 @@ ls -1
 echo ""
 
 # Use fzf with --bind to execute tmux command on selection
-# Enter = Claude, Alt-C = Cursor Agent (CLI), Alt-O = Open in Cursor (GUI)
+# Enter = Claude, Alt-C = Cursor Agent (CLI), Alt-O = Open in Cursor (GUI), Alt-W = Open in Windsurf (GUI)
 ls -1 | fzf \
     --prompt="Select worktree: " \
     --height=40% \
     --border \
-    --header="Enter: Claude | Alt-C: Cursor Agent | Alt-O: Open in Cursor" \
+    --header="Enter: Claude | Alt-C: Cursor Agent | Alt-O: Cursor | Alt-W: Windsurf" \
     --bind="enter:execute(tmux new-window -c '$TREES_DIR/{}' -n 'claude:{}' bash -l -c \"cd '$TREES_DIR/{}' && echo '📂 Worktree: {}' && echo '🌿 Branch: \\\$(git branch --show-current)' && echo '' && echo 'Starting Claude...' && exec \\\$HOME/.local/bin/claude --dangerously-skip-permissions\")+abort" \
     --bind="alt-c:execute(tmux new-window -c '$TREES_DIR/{}' -n 'cursor:{}' bash -l -c \"cd '$TREES_DIR/{}' && echo '📂 Worktree: {}' && echo '🌿 Branch: \\\$(git branch --show-current)' && echo '' && echo 'Starting Cursor Agent...' && exec \\\$HOME/.local/bin/cursor-agent --model gpt-5.2 -f\")+abort" \
-    --bind="alt-o:execute(tmux new-window -c '$TREES_DIR/{}' -n 'cursor-gui:{}' bash -l -c \"cd '$TREES_DIR/{}' && echo '📂 Worktree: {}' && echo '🌿 Branch: \\\$(git branch --show-current)' && echo '' && echo 'Opening Cursor...' && (command -v cursor >/dev/null 2>&1 && exec cursor '$TREES_DIR/{}' || (echo '❌ cursor CLI not found. Install/enable Cursor CLI (Command Palette: Install Shell Command)'; read -p 'Press enter to close...')))\")+abort"
+    --bind="alt-o:execute($HOME/.dotfiles/tmux/scripts/open-cursor.sh '$TREES_DIR/{}')+abort" \
+    --bind="alt-w:execute($HOME/.dotfiles/tmux/scripts/open-windsurf.sh '$TREES_DIR/{}')+abort"
