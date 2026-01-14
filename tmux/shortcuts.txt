@@ -7,7 +7,8 @@
 │ Ctrl-A + H          → Previous window                                       │
 │ Ctrl-A + L          → Next window                                           │
 │ Ctrl-A + Ctrl-A     → Last window                                           │
-│ Ctrl-A + Ctrl-W/w   → List windows                                          │
+│ Ctrl-A + Ctrl-W     → List windows                                          │
+│ Ctrl-A + w/W        → Worktree picker (Enter: Claude | Alt-O: Cursor)        │
 │ Ctrl-A + "          → Choose window                                         │
 │ Ctrl-A + r          → Rename window                                         │
 │ Ctrl-A + S          → Choose session                                        │
