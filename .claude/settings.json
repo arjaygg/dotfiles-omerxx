@@ -5,7 +5,6 @@
   "permissions": {
     "defaultMode": "dontAsk"
   },
-  "model": "haiku",
   "enableAllProjectMcpServers": true,
   "statusLine": {
     "type": "command",
