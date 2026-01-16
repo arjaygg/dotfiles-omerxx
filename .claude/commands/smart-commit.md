@@ -22,7 +22,7 @@ Analyze the current git changes and intelligently group related modifications in
      - Follows **Conventional Commits**: https://www.conventionalcommits.org/en/v1.0.0/
        - Format: `type(scope): summary`
        - Common `type`: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, `build`, `perf`, `style`, `revert`
-       - Use `!` or `BREAKING CHANGE:` (or both) in the body when applicable
+       - Use **!** or **BREAKING CHANGE:** (or both) in the body when applicable
      - Summarizes the nature of the changes
      - Follows the repository's commit message style (check recent commits with `git log`)
      - Focuses on the "why" rather than just the "what"
