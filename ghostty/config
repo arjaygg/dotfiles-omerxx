@@ -44,6 +44,9 @@ keybind = shift+enter=text:\x1b\r
 # keybind = ctrl+shift+space=toggle_selection_mode
 keybind = ctrl+shift+c=copy_to_clipboard
 
+# ─── Tab Management ─────────────────────────────────────────────────────
+keybind = cmd+shift+r=set_title
+
 # ─── Quality of Life ──────────────────────────────────────────────────────
 scrollback-limit = 10000
 confirm-close-surface = true
