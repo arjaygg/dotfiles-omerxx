@@ -93,6 +93,22 @@ if [ -d .serena ]; then
     cp -r .serena .trees/$DESCRIPTION/.serena
 fi
 
+# STEP 4b: Copy MCP configs (often gitignored) with updated paths
+WORKTREE_FULL_PATH="$(cd .trees/$DESCRIPTION && pwd)"
+
+# Copy Claude MCP config (.mcp.json) and update project paths
+if [ -f .mcp.json ]; then
+    # Copy and update paths to point to the worktree
+    sed "s|\"--project\", \"[^\"]*\"|\"--project\", \"$WORKTREE_FULL_PATH\"|g" .mcp.json > .trees/$DESCRIPTION/.mcp.json
+fi
+
+# Copy Cursor MCP config (.cursor/mcp.json) - often gitignored
+if [ -f .cursor/mcp.json ]; then
+    mkdir -p .trees/$DESCRIPTION/.cursor
+    # Copy and update paths to point to the worktree
+    sed "s|\"--project\", \"[^\"]*\"|\"--project\", \"$WORKTREE_FULL_PATH\"|g" .cursor/mcp.json > .trees/$DESCRIPTION/.cursor/mcp.json
+fi
+
 # STEP 5: Ensure .gitignore includes .trees/
 if ! grep -q "^.trees/" .gitignore 2>/dev/null; then
     echo ".trees/" >> .gitignore
@@ -143,7 +159,7 @@ When worktree is created successfully:
 ✅ Created worktree: .trees/user-login
 📂 Path: /full/path/.trees/user-login
 🌿 Branch: feature/user-login (follows Conventional Branch)
-📋 Copied: .env, .vscode/, .claude/, .serena/
+📋 Copied: .env, .vscode/, .claude/, .serena/, .mcp.json, .cursor/mcp.json
 
 To navigate to worktree:
   cd .trees/user-login
@@ -195,7 +211,7 @@ User: "Create worktree to update dependencies"
 - Include ticket numbers when applicable (e.g., `feature/issue-123-add-login`)
 - Always branch from `main` for clean starting point
 - Keep worktrees under `.trees/` for consistency
-- Copy configuration files (.env, .vscode/, .claude/, .serena/) to new worktrees
+- Copy configuration files (.env, .vscode/, .claude/, .serena/, .mcp.json, .cursor/mcp.json) to new worktrees
 - Clean up worktrees promptly after merging branches
 - Use `git worktree list` regularly to track active worktrees
 
