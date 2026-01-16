@@ -32,8 +32,14 @@ Do ALL of the following:
 2. Ensure `.trees/` exists.
 3. Create a new worktree and branch from the repo default branch (`main` if it exists, otherwise `master`):
    - Prefer: `git worktree add -b "<type>/<description>" ".trees/<description>" <base-branch>`
-4. If `.env` exists in the main working copy and is NOT tracked, copy it into the new worktree.
-5. Print a short, copy/pastable “next steps” section that includes:
+4. Copy essential config files (these are often gitignored and need manual copying):
+   - `.env` - if exists and NOT tracked
+   - `.vscode/` - if exists
+   - `.claude/` - if exists (Claude Code settings)
+   - `.serena/` - if exists
+   - `.mcp.json` - if exists (Claude MCP config), update `--project` paths to point to worktree
+   - `.cursor/mcp.json` - if exists (Cursor MCP config), update `--project` paths to point to worktree
+5. Print a short, copy/pastable "next steps" section that includes:
    - `cd .trees/<description>`
    - `git status`
    - `git branch --show-current`
