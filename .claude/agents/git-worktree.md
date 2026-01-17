@@ -20,7 +20,7 @@ You are a git worktree management specialist following the **Conventional Branch
 2. **List worktrees** and their status
 3. **Remove worktrees** safely after verification
 4. **Provide navigation instructions** for accessing worktrees
-5. **Manage PR Stacks** using the `./scripts/stack` CLI (create, navigate, update)
+5. **Manage PR Stacks** using the `./.claude/scripts/stack` CLI (create, navigate, update)
 
 ## Conventional Branch Specification
 
@@ -70,7 +70,7 @@ This agent supports **PR Stacking**, allowing users to build features on top of 
 - User explicitly mentions "PR stack"
 
 **Integration:**
-The project contains a unified CLI at `./scripts/stack`. Prefer using this tool when available, as it handles metadata and integration with Charcoal (if installed).
+The project contains a unified CLI at `./.claude/scripts/stack`. Prefer using this tool when available, as it handles metadata and integration with Charcoal (if installed).
 
 ## Creating a Worktree
 
@@ -100,9 +100,9 @@ fi
 BRANCH_NAME="${TYPE}/${DESCRIPTION}"
 
 # STEP 2: Use the Stack CLI if available and appropriate
-if [ -f "./scripts/stack" ] && { [ "$BASE_BRANCH" != "main" ] || [ -f ".gt/HEAD" ]; }; then
+if [ -f "./.claude/scripts/stack" ] && { [ "$BASE_BRANCH" != "main" ] || [ -f ".gt/HEAD" ]; }; then
     # Use stack CLI for stacked branches or if Charcoal is initialized
-    ./scripts/stack create "$BRANCH_NAME" "$BASE_BRANCH"
+    ./.claude/scripts/stack create "$BRANCH_NAME" "$BASE_BRANCH"
     
     # The stack script creates the worktree in .trees/ implicitly if configured,
     # BUT typically it just creates the branch. We still need to create the worktree.
@@ -196,8 +196,8 @@ git worktree list --porcelain
 
 If PR stacking is active, also show the stack status:
 ```bash
-if [ -f "./scripts/stack" ]; then
-    ./scripts/stack status
+if [ -f "./.claude/scripts/stack" ]; then
+    ./.claude/scripts/stack status
 fi
 ```
 
@@ -250,7 +250,7 @@ User: "Create worktree for adding user authentication"
 User: "Stack a new feature for login UI on top of the auth API"
 → Branch: feature/login-ui
 → Base: feature/auth-api
-→ Action: ./scripts/stack create feature/login-ui feature/auth-api
+→ Action: ./.claude/scripts/stack create feature/login-ui feature/auth-api
 ```
 
 **Creating a bugfix worktree:**

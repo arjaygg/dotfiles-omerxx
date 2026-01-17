@@ -1,55 +1,48 @@
 ---
 name: stack-pr
-description: Creates a pull request in Azure DevOps for PR stacking. Use when user wants to create a PR, submit code for review, or open a pull request targeting a specific branch.
+description: Creates a Pull Request in Azure DevOps for the current or specified branch. Handles stacked dependencies automatically.
 ---
 
 # Stack PR
 
-Creates a pull request in Azure DevOps for the current or specified branch.
+Creates a Pull Request in Azure DevOps, correctly handling stacked dependencies.
 
 ## When to Use
 
 Use this skill when the user wants to:
-- Create a PR for the current branch
-- Submit code for review
-- Open a pull request targeting a specific branch
+- Create a PR for their current work
+- Submit a feature for review
 - Create a draft PR
+- Stack a PR on top of another PR
 
 ## Instructions
 
-1. Parse the user's request to identify:
-   - `source-branch`: Branch to create PR from (default: current branch)
-   - `target-branch`: Branch to target (default: main, or the base branch if stacked)
-   - `title`: PR title (optional, derived from commits if not provided)
-   - `--draft`: Whether to create as draft PR
+1. Identify parameters:
+   - `branch`: Source branch (default: current)
+   - `target`: Target branch (default: inferred from stack or main)
+   - `title`: PR title (optional)
+   - `draft`: Whether to create as draft (optional)
 
 2. Execute the PR creation script:
    ```bash
-   ./scripts/pr-stack/create-pr.sh <source-branch> [target-branch] [title] [--draft]
+   .claude/scripts/stack pr <branch> [target] [title]
    ```
 
-3. If the script is not found, use Azure CLI directly:
-   ```bash
-   az repos pr create \
-     --organization "https://dev.azure.com/bofaz" \
-     --project "Axos-Universal-Core" \
-     --source-branch <source-branch> \
-     --target-branch <target-branch> \
-     --title "<title>"
-   ```
+   This will:
+   - Push the branch if needed
+   - Create PR in Azure DevOps
+   - Link dependencies in description
+   - Add "Stacked PR" metadata
 
-4. Report the result including:
-   - PR number and URL
-   - Target branch
-   - Next steps
+3. Return the PR URL to the user.
 
 ## Examples
 
-User: "Create a PR for this branch"
-Action: `./scripts/pr-stack/create-pr.sh $(git branch --show-current)`
+User: "Create a PR for this feature"
+Action: `.claude/scripts/stack pr $(git branch --show-current)`
 
-User: "Create a PR targeting the API branch"
-Action: `./scripts/pr-stack/create-pr.sh $(git branch --show-current) feature/api`
+User: "Create a stacked PR for feature/login-ui"
+Action: `.claude/scripts/stack pr feature/login-ui`
 
-User: "Open a draft PR with title 'Add user profile'"
-Action: `./scripts/pr-stack/create-pr.sh $(git branch --show-current) main "Add user profile" --draft`
+User: "Submit this as a draft"
+Action: `.claude/scripts/stack pr $(git branch --show-current) --draft`

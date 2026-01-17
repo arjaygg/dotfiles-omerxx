@@ -10,9 +10,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/validation.sh"
 
 # Azure DevOps Configuration
-# NOTE: Prefer dev.azure.com format (current Azure DevOps standard)
-ORGANIZATION="https://dev.azure.com/bofaz"
-PROJECT="Axos-Universal-Core"
+# Try to get from git config, default to hardcoded values
+ORGANIZATION=$(git config --get azure.organization || echo "https://dev.azure.com/bofaz")
+PROJECT=$(git config --get azure.project || echo "Axos-Universal-Core")
 REPOSITORY=$(git remote get-url origin | sed -e 's/.*[\/:]\([^\/]*\)\.git/\1/' -e 's/.*[\/:]\([^\/]*\)$/\1/')
 if [ -z "$REPOSITORY" ]; then
     print_warning "Could not detect repository name from git remote. Defaulting to current directory name."

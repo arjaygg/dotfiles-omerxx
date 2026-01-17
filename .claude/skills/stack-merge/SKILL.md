@@ -5,52 +5,38 @@ description: Completes a PR merge in Azure DevOps and updates the entire stack. 
 
 # Stack Merge
 
-Completes a PR merge in Azure DevOps and updates the entire stack.
+Merges a Pull Request and rebases dependent branches in the stack.
 
 ## When to Use
 
 Use this skill when the user wants to:
-- Merge a PR that's been approved
-- Complete a PR and update dependent branches
-- Merge and clean up the stack automatically
+- Merge a specific PR
+- "Ship" a feature in the stack
+- Update the stack after a PR has been approved and completed
 
 ## Instructions
 
-1. Parse the user's request to identify:
-   - `pr-id`: The Azure DevOps PR ID to merge (required)
+1. Identify the PR ID from the user's request.
 
-2. Execute the merge script:
+2. Execute the merge command:
    ```bash
-   ./scripts/pr-stack/merge-stack.sh <pr-id>
+   .claude/scripts/stack merge <pr-id>
    ```
 
-3. If the script is not found, perform manually:
-   - Complete PR merge via Azure CLI:
-     ```bash
-     az repos pr update --id <pr-id> --status completed \
-       --organization "https://dev.azure.com/bofaz"
-     ```
-   - Update local repository: `git fetch origin && git pull`
-   - Run stack update to rebase dependents
+   This will:
+   - Complete the PR in Azure DevOps
+   - Update the local stack metadata
+   - Prompt to rebase dependent branches
 
-4. Report results including:
-   - PR merged successfully
-   - Branches that were updated
-   - New stack status
-
-## Requirements
-
-- PR must be approved
-- All build validations must pass
-- No merge conflicts
+3. Report status to user:
+   - Confirm merge success
+   - List any branches that were rebased
+   - Check if any conflicts occurred during rebase
 
 ## Examples
 
-User: "Merge PR 123"
-Action: `./scripts/pr-stack/merge-stack.sh 123`
+User: "Merge PR #12345"
+Action: `.claude/scripts/stack merge 12345`
 
-User: "Complete the merge for PR #456 and update the stack"
-Action: `./scripts/pr-stack/merge-stack.sh 456`
-
-User: "Help me merge this PR"
-Action: First get PR ID, then `./scripts/pr-stack/merge-stack.sh <id>`
+User: "Ship the current PR"
+Action: First find PR ID, then `.claude/scripts/stack merge <id>`
