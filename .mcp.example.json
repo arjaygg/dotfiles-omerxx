@@ -11,7 +11,7 @@
         "--context",
         "ide-assistant",
         "--project",
-        "/Users/axos-agallentes/.dotfiles"
+        "/ABSOLUTE/PATH/TO/PROJECT"
       ],
       "env": {}
     },
@@ -19,7 +19,7 @@
       "type": "http",
       "url": "https://api.ref.tools/mcp",
       "headers": {
-        "x-ref-api-key": "ref-e12567ea1d5b4c4bb0c8"
+        "x-ref-api-key": "REPLACE_ME"
       }
     },
     "exa": {
@@ -31,17 +31,14 @@
         "--tools=web_search_exa,deep_search_exa,get_code_context_exa,crawling_exa,company_research_exa,linkedin_search_exa,deep_researcher_start,deep_researcher_check"
       ],
       "env": {
-        "EXA_API_KEY": "1d49fa71-5a7a-4886-a823-aa085c25d061",
-        "PATH": "/Users/axos-agallentes/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+        "EXA_API_KEY": "REPLACE_ME"
       }
     },
     "sequential-thinking": {
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
-      "env": {
-        "PATH": "/Users/axos-agallentes/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-      }
+      "env": {}
     }
   }
 }
