@@ -20,6 +20,7 @@ You are a git worktree management specialist following the **Conventional Branch
 2. **List worktrees** and their status
 3. **Remove worktrees** safely after verification
 4. **Provide navigation instructions** for accessing worktrees
+5. **Manage PR Stacks** using the `./scripts/stack` CLI (create, navigate, update)
 
 ## Conventional Branch Specification
 
@@ -59,6 +60,18 @@ When user requests a worktree, infer the type from context:
 
 If unclear, use `feature/` as default or ask the user for clarification.
 
+## PR Stacking Support
+
+This agent supports **PR Stacking**, allowing users to build features on top of other features.
+
+**When to use PR Stacking:**
+- User asks to "stack" a branch
+- User asks to create a branch "on top of" or "based on" another branch
+- User explicitly mentions "PR stack"
+
+**Integration:**
+The project contains a unified CLI at `./scripts/stack`. Prefer using this tool when available, as it handles metadata and integration with Charcoal (if installed).
+
 ## Creating a Worktree
 
 When creating a worktree:
@@ -68,8 +81,15 @@ When creating a worktree:
 # Extract type and description from user input
 # Ensure description uses lowercase, hyphens, and follows rules
 
+# Determine default branch (main or master)
+DEFAULT_BRANCH=$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5)
+if [ -z "$DEFAULT_BRANCH" ]; then
+    DEFAULT_BRANCH="main"
+fi
+
 TYPE="feature"  # determined from context or explicit input
 DESCRIPTION="user-login"  # sanitized: lowercase, spaces→hyphens, no special chars
+BASE_BRANCH="$DEFAULT_BRANCH" # Default to main/master, unless user specifies "on top of X"
 
 # Validate description format
 if ! echo "$DESCRIPTION" | grep -qE '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$'; then
@@ -79,13 +99,31 @@ fi
 
 BRANCH_NAME="${TYPE}/${DESCRIPTION}"
 
-# STEP 2: Ensure .trees/ directory exists
+# STEP 2: Use the Stack CLI if available and appropriate
+if [ -f "./scripts/stack" ] && { [ "$BASE_BRANCH" != "main" ] || [ -f ".gt/HEAD" ]; }; then
+    # Use stack CLI for stacked branches or if Charcoal is initialized
+    ./scripts/stack create "$BRANCH_NAME" "$BASE_BRANCH"
+    
+    # The stack script creates the worktree in .trees/ implicitly if configured,
+    # BUT typically it just creates the branch. We still need to create the worktree.
+    # Note: If ./scripts/stack create DOES NOT create the worktree, proceed to Step 3.
+fi
+
+# STEP 3: Ensure .trees/ directory exists
 mkdir -p .trees
 
-# STEP 3: Create worktree with conventional branch
-git worktree add -b "$BRANCH_NAME" ".trees/$DESCRIPTION" main
+# STEP 4: Create worktree with conventional branch
+# Only run this if the worktree doesn't exist yet (stack script might have done it)
+if [ ! -d ".trees/$DESCRIPTION" ]; then
+    # If branch already created by stack script, checkout it. Otherwise create it.
+    if git rev-parse --verify "$BRANCH_NAME" >/dev/null 2>&1; then
+        git worktree add ".trees/$DESCRIPTION" "$BRANCH_NAME"
+    else
+        git worktree add -b "$BRANCH_NAME" ".trees/$DESCRIPTION" "$BASE_BRANCH"
+    fi
+fi
 
-# STEP 4: Copy essential config files (ONLY if NOT tracked by git)
+# STEP 5: Copy essential config files (ONLY if NOT tracked by git)
 # Git automatically checks out tracked files, so we only copy gitignored files
 # to avoid creating nested duplicates like .claude/.claude/
 
@@ -118,7 +156,7 @@ if [ -d .serena/cache ]; then
     cp -r .serena/cache .trees/$DESCRIPTION/.serena/cache 2>/dev/null || true
 fi
 
-# STEP 4b: Copy MCP configs (often gitignored) with updated paths
+# STEP 6: Copy MCP configs (often gitignored) with updated paths
 WORKTREE_FULL_PATH="$(cd .trees/$DESCRIPTION && pwd)"
 
 # Copy Claude MCP config (.mcp.json) and update project paths
@@ -134,7 +172,7 @@ if [ -f .cursor/mcp.json ]; then
     sed "s|\"--project\", \"[^\"]*\"|\"--project\", \"$WORKTREE_FULL_PATH\"|g" .cursor/mcp.json > .trees/$DESCRIPTION/.cursor/mcp.json
 fi
 
-# STEP 5: Ensure .gitignore includes .trees/
+# STEP 7: Ensure .gitignore includes .trees/
 if ! grep -q "^.trees/" .gitignore 2>/dev/null; then
     echo ".trees/" >> .gitignore
 fi
@@ -154,6 +192,13 @@ For more detailed information about each worktree:
 
 ```bash
 git worktree list --porcelain
+```
+
+If PR stacking is active, also show the stack status:
+```bash
+if [ -f "./scripts/stack" ]; then
+    ./scripts/stack status
+fi
 ```
 
 ## Removing Worktrees
@@ -183,7 +228,7 @@ When worktree is created successfully:
 ```
 ✅ Created worktree: .trees/user-login
 📂 Path: /full/path/.trees/user-login
-🌿 Branch: feature/user-login (follows Conventional Branch)
+🌿 Branch: feature/user-login (Base: main)
 📋 Copied: .env (if gitignored), .mcp.json, .cursor/mcp.json
 ℹ️  Note: .vscode/, .claude/, .serena/, .cursor/ are tracked by git
          and automatically checked out (not copied to avoid duplicates)
@@ -198,6 +243,14 @@ To navigate to worktree:
 ```
 User: "Create worktree for adding user authentication"
 → Branch: feature/add-user-authentication or feature/user-authentication
+```
+
+**Creating a stacked feature:**
+```
+User: "Stack a new feature for login UI on top of the auth API"
+→ Branch: feature/login-ui
+→ Base: feature/auth-api
+→ Action: ./scripts/stack create feature/login-ui feature/auth-api
 ```
 
 **Creating a bugfix worktree:**
@@ -236,7 +289,7 @@ User: "Create worktree to update dependencies"
 - **Follow Conventional Branch naming strictly** - Use appropriate type prefix based on work type
 - Create descriptive worktree names using lowercase and hyphens (not "test" or "temp")
 - Include ticket numbers when applicable (e.g., `feature/issue-123-add-login`)
-- Always branch from `main` for clean starting point
+- Always branch from `main` for clean starting point, **unless specifically stacking**
 - Keep worktrees under `.trees/` for consistency
 - **Only copy gitignored files** to avoid nested duplicates (git automatically checks out tracked files)
 - Copy MCP configs (.mcp.json, .cursor/mcp.json) and update paths to point to worktree

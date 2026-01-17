@@ -1,0 +1,385 @@
+#!/usr/bin/env bash
+
+# stack - Unified CLI for PR stacking
+# Routes commands to Charcoal (if available) or native scripts
+#
+# Usage: ./scripts/stack <command> [options]
+#
+# Branch Management (uses Charcoal if available):
+#   create <branch> [base]    Create a new stacked branch
+#   up                        Move to parent branch
+#   down                      Move to child branch
+#   restack                   Rebase all branches in the stack
+#
+# PR Management (always uses Azure DevOps scripts):
+#   pr [branch] [target]      Create a pull request
+#   merge <pr-id>             Merge PR and update dependent branches
+#   update [merged-branch]    Update stack after a base PR merge
+#
+# Status:
+#   status                    Show stack status (both views if Charcoal available)
+#   init                      Initialize Charcoal and import existing stack
+#   sync                      Sync metadata between Charcoal and native format
+
+set -e
+
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PR_STACK_DIR="$SCRIPT_DIR/pr-stack"
+
+# Load libraries
+source "$PR_STACK_DIR/lib/validation.sh"
+source "$PR_STACK_DIR/lib/charcoal-compat.sh"
+
+# Colors
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+
+# ============================================================================
+# Help Functions
+# ============================================================================
+
+print_usage() {
+    echo -e "${BOLD}stack${NC} - Unified CLI for PR stacking"
+    echo ""
+    echo -e "${BLUE}Usage:${NC}"
+    echo "  ./scripts/stack <command> [options]"
+    echo ""
+    echo -e "${BLUE}Branch Management${NC} (uses Charcoal if available):"
+    echo "  create <branch> [base]    Create a new stacked branch"
+    echo "  up                        Move to parent branch"
+    echo "  down                      Move to child branch"
+    echo "  restack                   Rebase all branches in the stack"
+    echo ""
+    echo -e "${BLUE}PR Management${NC} (uses Azure DevOps scripts):"
+    echo "  pr [branch] [target] [title]  Create a pull request"
+    echo "  merge <pr-id>                 Merge PR and update dependents"
+    echo "  update [merged-branch]        Update stack after merge"
+    echo ""
+    echo -e "${BLUE}Status:${NC}"
+    echo "  status                    Show stack hierarchy and PR status"
+    echo "  init                      Initialize Charcoal + import existing stack"
+    echo "  sync                      Sync metadata between systems"
+    echo ""
+    echo -e "${BLUE}Charcoal Status:${NC}"
+    if charcoal_available; then
+        echo -e "  ${GREEN}Charcoal installed${NC}: $(charcoal_version)"
+        if charcoal_initialized; then
+            echo -e "  ${GREEN}Charcoal initialized${NC} in this repository"
+        else
+            echo -e "  ${YELLOW}Charcoal not initialized${NC} - run: ./scripts/stack init"
+        fi
+    else
+        echo -e "  ${YELLOW}Charcoal not installed${NC}"
+        echo "  Install: brew install danerwilliams/tap/charcoal"
+        echo "  All commands will use native scripts"
+    fi
+    echo ""
+    echo -e "${BLUE}Examples:${NC}"
+    echo "  ./scripts/stack create feature/api main"
+    echo "  ./scripts/stack create feature/ui          # Auto-stacks on current branch"
+    echo "  ./scripts/stack up                         # Navigate to parent"
+    echo "  ./scripts/stack pr feature/api main \"API Implementation\""
+    echo "  ./scripts/stack status"
+}
+
+# ============================================================================
+# Command Handlers
+# ============================================================================
+
+cmd_create() {
+    local branch=$1
+    local base=$2
+
+    if [ -z "$branch" ]; then
+        print_error "Branch name required"
+        echo "Usage: ./scripts/stack create <branch> [base]"
+        exit 1
+    fi
+
+    # If Charcoal is initialized, use it
+    if charcoal_initialized; then
+        print_info "Using Charcoal to create branch: $branch"
+
+        # If base is specified and different from current, checkout first
+        if [ -n "$base" ]; then
+            local current_branch
+            current_branch=$(git branch --show-current)
+            if [ "$current_branch" != "$base" ]; then
+                print_info "Checking out base branch: $base"
+                git checkout "$base"
+            fi
+        fi
+
+        # Create branch with Charcoal
+        if gt branch create "$branch"; then
+            print_success "Branch created with Charcoal: $branch"
+
+            # Sync to native format for Azure DevOps compatibility
+            local parent
+            parent=$(git rev-parse --abbrev-ref HEAD~1 2>/dev/null || echo "${base:-main}")
+            sync_add_branch "$branch" "${base:-$parent}"
+
+            echo ""
+            echo -e "${GREEN}Next steps:${NC}"
+            echo "  1. Make your changes and commit"
+            echo "  2. Push: git push -u origin $branch"
+            echo "  3. Create PR: ./scripts/stack pr $branch"
+        else
+            print_error "Failed to create branch with Charcoal"
+            exit 1
+        fi
+    else
+        # Fall back to native script
+        print_info "Using native script to create branch"
+        "$PR_STACK_DIR/create-stack.sh" "$branch" "${base:-main}"
+    fi
+}
+
+cmd_up() {
+    if charcoal_initialized; then
+        gt up
+    else
+        print_error "Navigation requires Charcoal"
+        echo ""
+        echo "Install Charcoal to enable branch navigation:"
+        echo "  brew install danerwilliams/tap/charcoal"
+        echo "  ./scripts/stack init"
+        echo ""
+        echo "Alternative: manually checkout the parent branch"
+        echo "  git checkout <parent-branch>"
+        exit 1
+    fi
+}
+
+cmd_down() {
+    local index=${1:-0}
+
+    if charcoal_initialized; then
+        gt down "$index"
+    else
+        print_error "Navigation requires Charcoal"
+        echo ""
+        echo "Install Charcoal to enable branch navigation:"
+        echo "  brew install danerwilliams/tap/charcoal"
+        echo "  ./scripts/stack init"
+        echo ""
+        echo "Alternative: manually checkout the child branch"
+        echo "  git checkout <child-branch>"
+        exit 1
+    fi
+}
+
+cmd_restack() {
+    if charcoal_initialized; then
+        print_info "Using Charcoal to restack branches..."
+        if gt restack; then
+            print_success "Stack rebased successfully"
+
+            # Sync metadata after restack
+            sync_charcoal_to_native
+        fi
+    else
+        # Fall back to native update-stack
+        print_info "Charcoal not available, using native rebase workflow"
+        echo ""
+        echo "To rebase your stack manually:"
+        echo "  1. Checkout each branch in order"
+        echo "  2. git rebase <parent-branch>"
+        echo "  3. git push --force-with-lease"
+        echo ""
+        echo "Or install Charcoal for automatic restacking:"
+        echo "  brew install danerwilliams/tap/charcoal"
+        echo "  ./scripts/stack init"
+    fi
+}
+
+cmd_pr() {
+    local branch=$1
+    local target=$2
+    local title=$3
+
+    # Always use native Azure DevOps script
+    if [ -f "$PR_STACK_DIR/create-pr.sh" ]; then
+        "$PR_STACK_DIR/create-pr.sh" "$branch" "$target" "$title"
+    else
+        print_error "PR creation script not found: $PR_STACK_DIR/create-pr.sh"
+        exit 1
+    fi
+}
+
+cmd_merge() {
+    local pr_id=$1
+
+    if [ -z "$pr_id" ]; then
+        print_error "PR ID required"
+        echo "Usage: ./scripts/stack merge <pr-id>"
+        exit 1
+    fi
+
+    # Always use native Azure DevOps script
+    if [ -f "$PR_STACK_DIR/merge-stack.sh" ]; then
+        "$PR_STACK_DIR/merge-stack.sh" "$pr_id"
+
+        # Sync metadata after merge
+        if charcoal_initialized; then
+            sync_charcoal_to_native
+        fi
+    else
+        print_error "Merge script not found: $PR_STACK_DIR/merge-stack.sh"
+        exit 1
+    fi
+}
+
+cmd_update() {
+    local merged_branch=$1
+
+    # Use native script for updating after merge
+    "$PR_STACK_DIR/update-stack.sh" "$merged_branch"
+
+    # Sync metadata after update
+    if charcoal_initialized; then
+        sync_charcoal_to_native
+    fi
+}
+
+cmd_status() {
+    echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║                     PR STACK STATUS                        ║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Show Charcoal status if available
+    if charcoal_initialized; then
+        echo -e "${CYAN}Charcoal View:${NC}"
+        gt stack 2>/dev/null || true
+        echo ""
+        echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+        echo ""
+    fi
+
+    # Always show native status (includes Azure DevOps PR info)
+    if [ -f "$PR_STACK_DIR/list-stack.sh" ]; then
+        "$PR_STACK_DIR/list-stack.sh"
+    else
+        print_warning "Native stack listing not available"
+    fi
+}
+
+cmd_init() {
+    local trunk=${1:-main}
+
+    if ! charcoal_available; then
+        print_error "Charcoal is not installed"
+        echo ""
+        echo "Install Charcoal to enable enhanced PR stacking:"
+        echo "  brew install danerwilliams/tap/charcoal"
+        echo ""
+        echo "Benefits of Charcoal:"
+        echo "  - Easy branch navigation (gt up/down)"
+        echo "  - Automatic restacking (gt restack)"
+        echo "  - Visual stack display (gt stack)"
+        exit 1
+    fi
+
+    print_info "Initializing Charcoal..."
+
+    # Initialize Charcoal
+    if ! charcoal_initialized; then
+        gt repo init --trunk "$trunk"
+        print_success "Charcoal initialized with trunk: $trunk"
+    else
+        print_info "Charcoal already initialized"
+    fi
+
+    # Import existing stack if present
+    local repo_root
+    repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+    local stack_info_file="$repo_root/.git/pr-stack-info"
+
+    if [ -f "$stack_info_file" ]; then
+        print_info "Importing existing stack to Charcoal..."
+        sync_native_to_charcoal
+    fi
+
+    echo ""
+    print_success "Initialization complete!"
+    echo ""
+    echo -e "${GREEN}You can now use:${NC}"
+    echo "  ./scripts/stack create <branch>   # Create stacked branch"
+    echo "  ./scripts/stack up                # Navigate to parent"
+    echo "  ./scripts/stack down              # Navigate to child"
+    echo "  ./scripts/stack restack           # Rebase all branches"
+    echo "  ./scripts/stack status            # View stack"
+}
+
+cmd_sync() {
+    print_info "Syncing metadata between Charcoal and native format..."
+
+    if charcoal_initialized; then
+        sync_charcoal_to_native
+        print_success "Metadata synced"
+    else
+        print_warning "Charcoal not initialized, nothing to sync"
+        echo "Run: ./scripts/stack init"
+    fi
+}
+
+# ============================================================================
+# Main Entry Point
+# ============================================================================
+
+main() {
+    local command=$1
+    shift || true
+
+    case "$command" in
+        create)
+            cmd_create "$@"
+            ;;
+        up)
+            cmd_up "$@"
+            ;;
+        down)
+            cmd_down "$@"
+            ;;
+        restack)
+            cmd_restack "$@"
+            ;;
+        pr)
+            cmd_pr "$@"
+            ;;
+        merge)
+            cmd_merge "$@"
+            ;;
+        update)
+            cmd_update "$@"
+            ;;
+        status|list)
+            cmd_status "$@"
+            ;;
+        init)
+            cmd_init "$@"
+            ;;
+        sync)
+            cmd_sync "$@"
+            ;;
+        help|--help|-h|"")
+            print_usage
+            ;;
+        *)
+            print_error "Unknown command: $command"
+            echo ""
+            print_usage
+            exit 1
+            ;;
+    esac
+}
+
+# Ensure we're in a git repository
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+    print_error "Not in a git repository"
+    exit 1
+fi
+
+main "$@"
