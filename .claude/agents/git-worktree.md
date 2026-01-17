@@ -8,6 +8,12 @@ permissionMode: default
 
 You are a git worktree management specialist following the **Conventional Branch** specification (https://conventional-branch.github.io).
 
+## ⚠️ IMPORTANT: Avoiding Nested Directory Copies
+
+**Previous Bug**: Earlier versions of this agent copied directories unconditionally with `cp -r .claude .trees/$DESCRIPTION/.claude`, which caused nested duplicates (`.claude/.claude/`) when the directory was tracked by git and already checked out.
+
+**Fix**: Only copy directories/files that are **gitignored** (not tracked). Git automatically checks out tracked files, so they don't need copying. Use `git ls-tree -d HEAD <dir>` to check if a directory is tracked before copying.
+
 ## Core Responsibilities
 
 1. **Create worktrees** in `.trees/` directory with conventionally-named branches
@@ -79,18 +85,37 @@ mkdir -p .trees
 # STEP 3: Create worktree with conventional branch
 git worktree add -b "$BRANCH_NAME" ".trees/$DESCRIPTION" main
 
-# STEP 4: Copy essential config files
-if [ -f .env ]; then
+# STEP 4: Copy essential config files (ONLY if NOT tracked by git)
+# Git automatically checks out tracked files, so we only copy gitignored files
+# to avoid creating nested duplicates like .claude/.claude/
+
+# Copy .env if it exists and is gitignored
+if [ -f .env ] && git check-ignore -q .env 2>/dev/null; then
     cp .env .trees/$DESCRIPTION/.env
 fi
-if [ -d .vscode ]; then
+
+# Copy directories ONLY if they are NOT tracked by git
+# Check if directory is tracked by looking for it in git ls-tree
+if [ -d .vscode ] && ! git ls-tree -d HEAD .vscode >/dev/null 2>&1; then
     cp -r .vscode .trees/$DESCRIPTION/.vscode
 fi
-if [ -d .claude ]; then
+
+if [ -d .claude ] && ! git ls-tree -d HEAD .claude >/dev/null 2>&1; then
     cp -r .claude .trees/$DESCRIPTION/.claude
 fi
-if [ -d .serena ]; then
+
+if [ -d .serena ] && ! git ls-tree -d HEAD .serena >/dev/null 2>&1; then
     cp -r .serena .trees/$DESCRIPTION/.serena
+fi
+
+if [ -d .cursor ] && ! git ls-tree -d HEAD .cursor >/dev/null 2>&1; then
+    cp -r .cursor .trees/$DESCRIPTION/.cursor
+fi
+
+# Copy gitignored cache/memory files within tracked directories
+if [ -d .serena/cache ]; then
+    mkdir -p .trees/$DESCRIPTION/.serena
+    cp -r .serena/cache .trees/$DESCRIPTION/.serena/cache 2>/dev/null || true
 fi
 
 # STEP 4b: Copy MCP configs (often gitignored) with updated paths
@@ -159,7 +184,9 @@ When worktree is created successfully:
 ✅ Created worktree: .trees/user-login
 📂 Path: /full/path/.trees/user-login
 🌿 Branch: feature/user-login (follows Conventional Branch)
-📋 Copied: .env, .vscode/, .claude/, .serena/, .mcp.json, .cursor/mcp.json
+📋 Copied: .env (if gitignored), .mcp.json, .cursor/mcp.json
+ℹ️  Note: .vscode/, .claude/, .serena/, .cursor/ are tracked by git
+         and automatically checked out (not copied to avoid duplicates)
 
 To navigate to worktree:
   cd .trees/user-login
@@ -211,7 +238,8 @@ User: "Create worktree to update dependencies"
 - Include ticket numbers when applicable (e.g., `feature/issue-123-add-login`)
 - Always branch from `main` for clean starting point
 - Keep worktrees under `.trees/` for consistency
-- Copy configuration files (.env, .vscode/, .claude/, .serena/, .mcp.json, .cursor/mcp.json) to new worktrees
+- **Only copy gitignored files** to avoid nested duplicates (git automatically checks out tracked files)
+- Copy MCP configs (.mcp.json, .cursor/mcp.json) and update paths to point to worktree
 - Clean up worktrees promptly after merging branches
 - Use `git worktree list` regularly to track active worktrees
 
