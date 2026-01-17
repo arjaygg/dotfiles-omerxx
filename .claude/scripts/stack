@@ -25,7 +25,14 @@ set -e
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PR_STACK_DIR="$SCRIPT_DIR/pr-stack"
+# Fix for when script is run from .claude/scripts symlinked location
+# We need to find the project root, which is likely the parent of .claude
+if [[ "$SCRIPT_DIR" == *".claude/scripts"* ]]; then
+    PR_STACK_DIR="$SCRIPT_DIR/pr-stack"
+else
+    # Fallback for old location
+    PR_STACK_DIR="$SCRIPT_DIR/pr-stack"
+fi
 
 # Load libraries
 source "$PR_STACK_DIR/lib/validation.sh"

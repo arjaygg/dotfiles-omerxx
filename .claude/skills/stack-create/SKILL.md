@@ -24,7 +24,7 @@ Use this skill when the user wants to:
 
 2. Execute the unified stack CLI:
    ```bash
-   ./scripts/stack create <branch-name> [base-branch]
+   .claude/scripts/stack create <branch-name> [base-branch]
    ```
 
    This will automatically:
@@ -49,27 +49,27 @@ Use this skill when the user wants to:
 If Charcoal is installed and initialized, the unified CLI will:
 - Use `gt branch create` for better stack tracking
 - Automatically set the parent branch
-- Enable navigation with `./scripts/stack up` and `./scripts/stack down`
+- Enable navigation with `.claude/scripts/stack up` and `.claude/scripts/stack down`
 
 To enable Charcoal:
 ```bash
 brew install danerwilliams/tap/charcoal
-./scripts/stack init
+.claude/scripts/stack init
 ```
 
 ## Examples
 
 User: "Create a new stacked branch for user authentication"
-Action: `./scripts/stack create feature/user-auth main`
+Action: `.claude/scripts/stack create feature/user-auth main`
 
 User: "Create a branch for tests based on the API branch"
-Action: `./scripts/stack create feature/api-tests feature/api`
+Action: `.claude/scripts/stack create feature/api-tests feature/api`
 
 User: "Stack a new branch called feature/ui on top of feature/backend"
-Action: `./scripts/stack create feature/ui feature/backend`
+Action: `.claude/scripts/stack create feature/ui feature/backend`
 
 User: "Create a feature branch on top of current branch"
-Action: `./scripts/stack create feature/next-step`
+Action: `.claude/scripts/stack create feature/next-step`
 (Will automatically use current branch as base)
 
 ## Related Skills
