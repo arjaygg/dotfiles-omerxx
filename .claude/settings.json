@@ -13,7 +13,8 @@
   "enabledPlugins": {
     "document-skills@anthropic-agent-skills": false,
     "osgrep@osgrep": true,
-    "gopls-lsp@claude-plugins-official": true
+    "gopls-lsp@claude-plugins-official": true,
+    "gopls@claude-code-lsps": true
   },
   "alwaysThinkingEnabled": true
 }
