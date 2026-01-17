@@ -18,9 +18,16 @@ karabiner/automatic_backups/
 .cursor/blocklist
 .cursor/extensions/
 .cursor/mcp.json
+.cursor/mcp.local.json
 .cursor/projects/
 .cursor/prompt_history.json
+.cursor/plans/
+.cursor/skills-cursor/
 .cursor/unified_repo_list.json
+
+# MCP local config (may contain API keys / machine-specific paths)
+.mcp.json
+.mcp.local.json
 
 # Local tooling state (may contain tokens/pids)
 .osgrep/
