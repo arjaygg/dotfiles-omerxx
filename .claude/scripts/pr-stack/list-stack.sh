@@ -37,9 +37,19 @@ if ! git rev-parse --git-dir > /dev/null 2>&1; then
     exit 1
 fi
 
+# Robust Repo Root detection (handles worktrees correctly)
 REPO_ROOT=$(git rev-parse --show-toplevel)
-STACK_INFO_FILE="$REPO_ROOT/.git/pr-stack-info"
-PR_CREATED_FILE="$REPO_ROOT/.git/pr-created"
+GIT_DIR=$(git rev-parse --git-dir)
+
+# Resolve paths relative to the true repo root (not just PWD)
+# This allows the script to run correctly from inside a worktree
+STACK_INFO_FILE="$(git rev-parse --git-path pr-stack-info)"
+PR_CREATED_FILE="$(git rev-parse --git-path pr-created)"
+
+# Fix relative paths from git-path if necessary
+if [[ "$STACK_INFO_FILE" != /* ]]; then STACK_INFO_FILE="$GIT_DIR/$STACK_INFO_FILE"; fi
+if [[ "$PR_CREATED_FILE" != /* ]]; then PR_CREATED_FILE="$GIT_DIR/$PR_CREATED_FILE"; fi
+
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║                     PR STACK STATUS                        ║${NC}"

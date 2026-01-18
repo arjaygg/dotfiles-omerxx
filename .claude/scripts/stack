@@ -37,6 +37,7 @@ fi
 # Load libraries
 source "$PR_STACK_DIR/lib/validation.sh"
 source "$PR_STACK_DIR/lib/charcoal-compat.sh"
+source "$PR_STACK_DIR/lib/worktree-charcoal.sh"
 
 # Colors
 CYAN='\033[0;36m'
@@ -53,20 +54,25 @@ print_usage() {
     echo "  ./scripts/stack <command> [options]"
     echo ""
     echo -e "${BLUE}Branch Management${NC} (uses Charcoal if available):"
-    echo "  create <branch> [base]    Create a new stacked branch"
-    echo "  up                        Move to parent branch"
-    echo "  down                      Move to child branch"
-    echo "  restack                   Rebase all branches in the stack"
+    echo "  create <branch> [base] [--worktree]  Create a new stacked branch"
+    echo "  up                                   Move to parent branch (worktree-aware)"
+    echo "  down [index]                         Move to child branch (worktree-aware)"
+    echo "  restack                              Rebase all branches in the stack"
+    echo ""
+    echo -e "${BLUE}Worktree Management:${NC}"
+    echo "  worktree-add <branch>                Add worktree for existing branch"
+    echo "  worktree-list                        List all worktrees with branches"
+    echo "  worktree-remove <path>               Remove a worktree"
     echo ""
     echo -e "${BLUE}PR Management${NC} (uses Azure DevOps scripts):"
-    echo "  pr [branch] [target] [title]  Create a pull request"
-    echo "  merge <pr-id>                 Merge PR and update dependents"
-    echo "  update [merged-branch]        Update stack after merge"
+    echo "  pr [branch] [target] [title]         Create a pull request"
+    echo "  merge <pr-id>                        Merge PR and update dependents"
+    echo "  update [merged-branch]               Update stack after merge"
     echo ""
     echo -e "${BLUE}Status:${NC}"
-    echo "  status                    Show stack hierarchy and PR status"
-    echo "  init                      Initialize Charcoal + import existing stack"
-    echo "  sync                      Sync metadata between systems"
+    echo "  status                               Show stack hierarchy (with worktree info)"
+    echo "  init                                 Initialize Charcoal + import existing stack"
+    echo "  sync                                 Sync metadata between systems"
     echo ""
     echo -e "${BLUE}Charcoal Status:${NC}"
     if charcoal_available; then
@@ -83,11 +89,12 @@ print_usage() {
     fi
     echo ""
     echo -e "${BLUE}Examples:${NC}"
-    echo "  ./scripts/stack create feature/api main"
-    echo "  ./scripts/stack create feature/ui          # Auto-stacks on current branch"
-    echo "  ./scripts/stack up                         # Navigate to parent"
+    echo "  ./scripts/stack create feature/api main --worktree"
+    echo "  ./scripts/stack create feature/ui feature/api --worktree"
+    echo "  ./scripts/stack up                         # Navigate to parent (cd to worktree if exists)"
+    echo "  ./scripts/stack worktree-add feature/api   # Add worktree for existing branch"
+    echo "  ./scripts/stack status                     # View stack with worktree info"
     echo "  ./scripts/stack pr feature/api main \"API Implementation\""
-    echo "  ./scripts/stack status"
 }
 
 # ============================================================================
@@ -95,17 +102,44 @@ print_usage() {
 # ============================================================================
 
 cmd_create() {
-    local branch=$1
-    local base=$2
+    local positional_args=()
+    local create_worktree=false
+
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --worktree|-w)
+                create_worktree=true
+                shift
+                ;;
+            *)
+                positional_args+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    local branch=${positional_args[0]}
+    local base=${positional_args[1]}
 
     if [ -z "$branch" ]; then
         print_error "Branch name required"
-        echo "Usage: ./scripts/stack create <branch> [base]"
+        echo "Usage: ./scripts/stack create <branch> [base] [--worktree]"
         exit 1
     fi
 
-    # If Charcoal is initialized, use it
-    if charcoal_initialized; then
+    # NEW BEHAVIOR: Always use native script for worktrees, but ensure Charcoal tracks it
+    if [ "$create_worktree" = true ]; then
+        print_info "Creating branch with worktree (Charcoal will track it)"
+        "$PR_STACK_DIR/create-stack.sh" "$branch" "${base:-main}" "--worktree"
+        
+        # If Charcoal is initialized, track the branch
+        if charcoal_initialized; then
+            print_info "Tracking branch in Charcoal..."
+            gt branch track "$branch" --parent "${base:-main}" 2>/dev/null || true
+            print_success "Branch tracked in Charcoal - you can use 'stack up/down' for navigation"
+        fi
+    # Use Charcoal for non-worktree creation
+    elif charcoal_initialized; then
         print_info "Using Charcoal to create branch: $branch"
 
         # If base is specified and different from current, checkout first
@@ -132,6 +166,9 @@ cmd_create() {
             echo "  1. Make your changes and commit"
             echo "  2. Push: git push -u origin $branch"
             echo "  3. Create PR: ./scripts/stack pr $branch"
+            echo ""
+            echo -e "${BLUE}Optional:${NC} Add worktree for parallel development:"
+            echo "  ./scripts/stack worktree-add $branch"
         else
             print_error "Failed to create branch with Charcoal"
             exit 1
@@ -145,7 +182,8 @@ cmd_create() {
 
 cmd_up() {
     if charcoal_initialized; then
-        gt up
+        # Use worktree-aware navigation
+        wt_charcoal_up
     else
         print_error "Navigation requires Charcoal"
         echo ""
@@ -163,7 +201,8 @@ cmd_down() {
     local index=${1:-0}
 
     if charcoal_initialized; then
-        gt down "$index"
+        # Use worktree-aware navigation
+        wt_charcoal_down "$index"
     else
         print_error "Navigation requires Charcoal"
         echo ""
@@ -179,13 +218,9 @@ cmd_down() {
 
 cmd_restack() {
     if charcoal_initialized; then
-        print_info "Using Charcoal to restack branches..."
-        if gt restack; then
-            print_success "Stack rebased successfully"
-
-            # Sync metadata after restack
-            sync_charcoal_to_native
-        fi
+        print_info "Using Charcoal to restack branches (worktree-aware)..."
+        # Use worktree-aware restack
+        wt_charcoal_restack
     else
         # Fall back to native update-stack
         print_info "Charcoal not available, using native rebase workflow"
@@ -251,17 +286,16 @@ cmd_update() {
 }
 
 cmd_status() {
-    echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║                     PR STACK STATUS                        ║${NC}"
-    echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-
-    # Show Charcoal status if available
+    # Show Charcoal status with worktree info if available
     if charcoal_initialized; then
-        echo -e "${CYAN}Charcoal View:${NC}"
-        gt stack 2>/dev/null || true
+        wt_stack_status
         echo ""
         echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+        echo ""
+    else
+        echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${BLUE}║                     PR STACK STATUS                        ║${NC}"
+        echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
         echo ""
     fi
 
@@ -332,6 +366,65 @@ cmd_sync() {
     fi
 }
 
+cmd_worktree_add() {
+    local branch=$1
+    
+    if [ -z "$branch" ]; then
+        print_error "Branch name required"
+        echo "Usage: ./scripts/stack worktree-add <branch>"
+        exit 1
+    fi
+    
+    wt_add_for_branch "$branch"
+}
+
+cmd_worktree_list() {
+    echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║                    WORKTREE LIST                           ║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    git worktree list
+}
+
+cmd_worktree_remove() {
+    local path=$1
+    
+    if [ -z "$path" ]; then
+        print_error "Worktree path required"
+        echo "Usage: ./scripts/stack worktree-remove <path>"
+        exit 1
+    fi
+    
+    # Check if worktree is clean
+    if [ -d "$path" ]; then
+        local status
+        status=$(git -C "$path" status --short 2>/dev/null)
+        
+        if [ -n "$status" ]; then
+            print_error "Worktree has uncommitted changes:"
+            echo "$status"
+            echo ""
+            read -p "Remove anyway? (y/N) " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                print_info "Cancelled"
+                exit 0
+            fi
+        fi
+    fi
+    
+    print_info "Removing worktree: $path"
+    git worktree remove "$path"
+    
+    if [ $? -eq 0 ]; then
+        print_success "Worktree removed"
+    else
+        print_error "Failed to remove worktree"
+        exit 1
+    fi
+}
+
 # ============================================================================
 # Main Entry Point
 # ============================================================================
@@ -370,6 +463,15 @@ main() {
             ;;
         sync)
             cmd_sync "$@"
+            ;;
+        worktree-add|wt-add)
+            cmd_worktree_add "$@"
+            ;;
+        worktree-list|wt-list)
+            cmd_worktree_list "$@"
+            ;;
+        worktree-remove|wt-remove)
+            cmd_worktree_remove "$@"
             ;;
         help|--help|-h|"")
             print_usage

@@ -50,9 +50,25 @@ fi
 # Validate prerequisites using library functions
 validate_stack_update_prerequisites || exit 1
 
-REPO_ROOT=$(get_repo_root)
-# NOTE: Worktree-safe path resolution (in worktrees, .git is not a directory)
+# Robust Repo Root detection (handles worktrees correctly)
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+# Robust Git Dir detection
+GIT_DIR=$(git rev-parse --git-dir)
+
+# Worktree-safe path resolution
+# If inside a worktree, --git-path might return a path relative to the worktree root or absolute
+# We use absolute path for safety
+STACK_INFO_FILE="$REPO_ROOT/.git/pr-stack-info"
+# Fallback if that specific file pathing fails in some git versions, but usually REPO_ROOT/.git is safe for the shared info
+# However, strictly speaking, `git rev-parse --git-path` handles the redirection better.
+# Let's trust rev-parse but ensure we handle the result correctly.
 STACK_INFO_FILE="$(git rev-parse --git-path pr-stack-info)"
+# If STACK_INFO_FILE is relative, make it absolute based on GIT_DIR
+if [[ "$STACK_INFO_FILE" != /* ]]; then
+    STACK_INFO_FILE="$GIT_DIR/$STACK_INFO_FILE"
+fi
+
 
 # Get merged branch
 MERGED_BRANCH=$1
