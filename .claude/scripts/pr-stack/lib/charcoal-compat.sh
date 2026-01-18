@@ -67,7 +67,7 @@ charcoal_get_parent() {
 
     # Use gt branch info to get parent
     # Output format: "Parent: <branch-name>"
-    gt branch info "$branch" 2>/dev/null | grep "^Parent:" | sed 's/^Parent: //' | tr -d ' '
+    gt branch info "$branch" 2>/dev/null | grep "^Parent:" | sed 's/^Parent: //' | tr -d ' ' || true
 }
 
 # Get child branches for a given branch
@@ -195,123 +195,8 @@ charcoal_stack_status() {
 # ============================================================================
 # Metadata Sync Functions
 # ============================================================================
-
-# Sync Charcoal metadata to our .git/pr-stack-info format
-# This ensures Azure DevOps scripts can still read stack information
-# Returns: 0 on success, 1 on failure
-sync_charcoal_to_native() {
-    if ! charcoal_initialized; then
-        return 1
-    fi
-
-    local git_dir
-    git_dir=$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir 2>/dev/null)
-    local stack_info_file="$git_dir/pr-stack-info"
-
-    # Get all branches and their parents from Charcoal
-    # Format: branch:base:timestamp
-    local temp_file="${stack_info_file}.tmp"
-    > "$temp_file"  # Clear file
-
-    # Iterate through all local branches
-    local all_branches
-    all_branches=$(git branch --format='%(refname:short)')
-
-    while IFS= read -r branch; do
-        if [ -z "$branch" ]; then
-            continue
-        fi
-
-        # Get parent using our helper function
-        local parent
-        parent=$(charcoal_get_parent "$branch" 2>/dev/null)
-
-        if [ -n "$parent" ]; then
-            echo "${branch}:${parent}:$(date +%s)" >> "$temp_file"
-        fi
-    done <<< "$all_branches"
-
-    # Only update if we got data
-    if [ -s "$temp_file" ]; then
-        mv "$temp_file" "$stack_info_file"
-        print_success "Synced Charcoal metadata to native format"
-        return 0
-    else
-        rm -f "$temp_file"
-        return 1
-    fi
-}
-
-# Sync native .git/pr-stack-info to Charcoal
-# This imports existing stacks into Charcoal
-# Returns: 0 on success, 1 on failure
-sync_native_to_charcoal() {
-    if ! charcoal_available; then
-        print_error "Charcoal not installed"
-        return 1
-    fi
-
-    local repo_root
-    repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
-    local stack_info_file="$repo_root/.git/pr-stack-info"
-
-    if [ ! -f "$stack_info_file" ]; then
-        print_info "No native stack info to import"
-        return 0
-    fi
-
-    # Initialize Charcoal if needed
-    if ! charcoal_initialized; then
-        charcoal_init
-    fi
-
-    print_info "Importing existing stack to Charcoal..."
-
-    # Read native format and track branches in Charcoal
-    local imported=0
-    while IFS=: read -r branch parent timestamp; do
-        if [ -n "$branch" ] && [ -n "$parent" ]; then
-            # Check if branch exists
-            if git rev-parse --verify "$branch" > /dev/null 2>&1; then
-                # Track branch in Charcoal
-                if gt branch track "$branch" --parent "$parent" 2>/dev/null; then
-                    print_info "Tracked: $branch -> $parent"
-                    imported=$((imported + 1))
-                fi
-            fi
-        fi
-    done < "$stack_info_file"
-
-    if [ $imported -gt 0 ]; then
-        print_success "Imported $imported branch(es) to Charcoal"
-    fi
-
-    return 0
-}
-
-# Add a branch to both Charcoal and native metadata
-# Args: $1 - branch name, $2 - parent branch
-# Returns: 0 on success
-sync_add_branch() {
-    local branch=$1
-    local parent=$2
-
-    if [ -z "$branch" ] || [ -z "$parent" ]; then
-        return 1
-    fi
-
-    local repo_root
-    repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
-    local stack_info_file="$repo_root/.git/pr-stack-info"
-
-    # Add to native format
-    echo "${branch}:${parent}:$(date +%s)" >> "$stack_info_file"
-
-    # Add to Charcoal if available
-    if charcoal_initialized; then
-        gt branch track "$branch" --parent "$parent" 2>/dev/null || true
-    fi
-}
+# NOTE: Legacy sync functions removed. We now use Charcoal exclusively.
+# The pr-stack-info file is no longer maintained or used.
 
 # ============================================================================
 # Fallback Logic
@@ -386,7 +271,4 @@ export -f charcoal_up 2>/dev/null || true
 export -f charcoal_down 2>/dev/null || true
 export -f charcoal_restack 2>/dev/null || true
 export -f charcoal_stack_status 2>/dev/null || true
-export -f sync_charcoal_to_native 2>/dev/null || true
-export -f sync_native_to_charcoal 2>/dev/null || true
-export -f sync_add_branch 2>/dev/null || true
 export -f charcoal_or_fallback 2>/dev/null || true
