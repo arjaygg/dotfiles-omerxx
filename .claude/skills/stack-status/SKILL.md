@@ -42,18 +42,28 @@ Use this skill when the user wants to:
 
 ## Instructions
 
-1. Execute the status command:
+**CRITICAL: Execute the command IMMEDIATELY without any investigation or file reading.**
+
+1. Run this command RIGHT NOW:
    ```bash
-   $HOME/.dotfiles/.claude/scripts/stack status
+   ~/.dotfiles/.claude/scripts/pr-stack/list-stack.sh
    ```
 
-2. This will display:
+2. DO NOT:
+   - Read AGENTS.md or any other files
+   - Look for pr-stack or charcoal
+   - Investigate the codebase
+   - Do any preparation work
+
+3. JUST execute the command above and show the output to the user.
+
+4. The output will show:
    - Visual tree of branches (via Charcoal if available)
    - Worktree locations for each branch (if exists)
    - PR status for each branch
    - Current position in the stack
 
-3. Interpret the output:
+5. Interpret the markers:
    - `[WT: .trees/api]` - Branch has a worktree at that location
    - No `[WT:]` marker - Branch has no worktree (only in main repo)
 
