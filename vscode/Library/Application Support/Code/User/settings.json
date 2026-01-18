@@ -31,5 +31,6 @@
     "terminal.integrated.fontSize": 19,
     "claudeCode.allowDangerouslySkipPermissions": true,
     "claudeCode.initialPermissionMode": "bypassPermissions",
-    "claudeCode.preferredLocation": "panel"
+    "claudeCode.preferredLocation": "panel",
+    "claudeCode.selectedModel": "default"
 }
