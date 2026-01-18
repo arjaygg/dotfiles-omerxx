@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Minimal stub for Charcoal/Graphite `gt` used by e2e tests.
+# Stores metadata in `.git/pr-stack-info` (already used by the native scripts)
+# and uses `.git/.graphite_repo_config` as "initialized" marker.
+
+cmd="${1:-}"
+shift || true
+
+ensure_repo() {
+  git rev-parse --git-dir >/dev/null 2>&1 || { echo "gt: not a git repo" >&2; exit 1; }
+}
+
+git_common_dir() {
+  git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir
+}
+
+stack_info_file() {
+  # Use common dir so it works from worktrees too.
+  local gdir
+  gdir="$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir 2>/dev/null || true)"
+  if [ -n "$gdir" ]; then
+    echo "$gdir/pr-stack-info"
+  fi
+}
+
+case "$cmd" in
+  --version|version)
+    echo "gt 0.0.0-test-stub"
+    ;;
+
+  repo)
+    sub="${1:-}"
+    shift || true
+    case "$sub" in
+      init)
+        ensure_repo
+        # Mark initialized the way our scripts detect it.
+        gdir="$(git_common_dir)"
+        : > "$gdir/.graphite_repo_config"
+        exit 0
+        ;;
+      *)
+        echo "gt stub: unsupported: repo $sub" >&2
+        exit 2
+        ;;
+    esac
+    ;;
+
+  branch)
+    sub="${1:-}"
+    shift || true
+    case "$sub" in
+      info)
+        ensure_repo
+        b="${1:-$(git branch --show-current)}"
+        sif="$(stack_info_file)"
+        parent=""
+        if [ -n "$sif" ] && [ -f "$sif" ]; then
+          parent="$(awk -F: -v b="$b" '$1==b {print $2; exit}' "$sif" || true)"
+        fi
+        echo "Branch: $b"
+        if [ -n "$parent" ]; then
+          echo "Parent: $parent"
+        else
+          echo "Parent:"
+        fi
+        ;;
+      track)
+        # No-op for stub: native scripts already write pr-stack-info.
+        exit 0
+        ;;
+      create)
+        ensure_repo
+        b="${1:-}"
+        [ -n "$b" ] || { echo "gt stub: branch create requires name" >&2; exit 2; }
+        git checkout -b "$b" >/dev/null
+        ;;
+      untrack)
+        exit 0
+        ;;
+      *)
+        echo "gt stub: unsupported: branch $sub" >&2
+        exit 2
+        ;;
+    esac
+    ;;
+
+  log)
+    sub="${1:-}"
+    shift || true
+    case "$sub" in
+      short)
+        ensure_repo
+        # Very small tree: print the default trunk and then one chain based on pr-stack-info ordering.
+        trunk="${GT_TRUNK:-main}"
+        echo "$trunk"
+        sif="$(stack_info_file)"
+        if [ -n "$sif" ] && [ -f "$sif" ]; then
+          # Sort by timestamp asc, then print as a simple chain.
+          mapfile -t branches < <(sort -t: -k3,3n "$sif" | awk -F: '{print $1}')
+          if [ "${#branches[@]}" -gt 0 ]; then
+            echo "└── ${branches[0]}"
+            i=1
+            while [ $i -lt "${#branches[@]}" ]; do
+              echo "    └── ${branches[$i]}"
+              i=$((i+1))
+            done
+          fi
+        fi
+        ;;
+      *)
+        echo "gt stub: unsupported: log $sub" >&2
+        exit 2
+        ;;
+    esac
+    ;;
+
+  up)
+    ensure_repo
+    b="$(git branch --show-current)"
+    sif="$(stack_info_file)"
+    parent=""
+    if [ -n "$sif" ] && [ -f "$sif" ]; then
+      parent="$(awk -F: -v b="$b" '$1==b {print $2; exit}' "$sif" || true)"
+    fi
+    [ -n "$parent" ] || { echo "gt stub: no parent" >&2; exit 1; }
+    git checkout "$parent" >/dev/null
+    ;;
+
+  down)
+    ensure_repo
+    idx="${1:-0}"
+    b="$(git branch --show-current)"
+    sif="$(stack_info_file)"
+    [ -n "$sif" ] && [ -f "$sif" ] || { echo "gt stub: no stack info" >&2; exit 1; }
+    mapfile -t kids < <(awk -F: -v p="$b" '$2==p {print $1}' "$sif")
+    [ "${#kids[@]}" -gt 0 ] || { echo "gt stub: no child" >&2; exit 1; }
+    kid="${kids[$idx]:-}"
+    [ -n "$kid" ] || { echo "gt stub: invalid child index" >&2; exit 1; }
+    git checkout "$kid" >/dev/null
+    ;;
+
+  restack)
+    # Stub: assume clean restack.
+    exit 0
+    ;;
+
+  *)
+    echo "gt stub: unsupported: $cmd" >&2
+    exit 2
+    ;;
+esac
+
