@@ -20,6 +20,22 @@ if [ -f "$SCRIPT_DIR/lib/worktree-charcoal.sh" ]; then
     source "$SCRIPT_DIR/lib/worktree-charcoal.sh"
 fi
 
+# Defensive: in some environments sourcing may be skipped/partial.
+# Provide minimal fallbacks so update-stack still works.
+if ! type get_main_repo_path >/dev/null 2>&1; then
+    get_main_repo_path() {
+        local git_common_dir
+        git_common_dir="$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir 2>/dev/null)"
+        echo "${git_common_dir%/.git}"
+    }
+fi
+
+if ! type sync_all_worktrees >/dev/null 2>&1; then
+    sync_all_worktrees() {
+        : # no-op fallback
+    }
+fi
+
 print_usage() {
     echo -e "${BLUE}Usage:${NC}"
     echo "  ./update-stack.sh [merged-branch]"
@@ -75,12 +91,9 @@ fi
 # Robust Repo Root detection (handles worktrees correctly)
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
-# Worktree-safe path resolution
-STACK_INFO_FILE="$(git rev-parse --git-path pr-stack-info)"
-if [[ "$STACK_INFO_FILE" != /* ]]; then
-    GIT_DIR=$(git rev-parse --git-dir)
-    STACK_INFO_FILE="$GIT_DIR/$STACK_INFO_FILE"
-fi
+# Worktree-safe path resolution (shared across all worktrees)
+GIT_COMMON_DIR="$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir)"
+STACK_INFO_FILE="$GIT_COMMON_DIR/pr-stack-info"
 
 # Get merged branch
 MERGED_BRANCH=$1
@@ -157,7 +170,9 @@ if gt restack; then
 
     # Sync metadata
     print_info "Updating metadata..."
-    sync_charcoal_to_native
+    if type sync_charcoal_to_native >/dev/null 2>&1; then
+        sync_charcoal_to_native || true
+    fi
 
     # Clean up merged branch from stack info
     if [ -n "$TARGET_BRANCH" ] && [ -f "$STACK_INFO_FILE" ]; then

@@ -46,20 +46,11 @@ fi
 # Robust Repo Root detection (handles worktrees correctly)
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
-# Get absolute path to .git directory (works for both regular repos and worktrees)
-if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-    # Use --absolute-git-dir if available (Git 2.13+), fallback to resolving manually
-    GIT_DIR=$(git rev-parse --absolute-git-dir 2>/dev/null || {
-        rel_git_dir=$(git rev-parse --git-dir)
-        cd "$rel_git_dir" && pwd
-    })
-else
-    GIT_DIR=$(git rev-parse --git-dir)
-fi
-
-# Use absolute paths to avoid relative path issues when running from subdirectories
-STACK_INFO_FILE="$GIT_DIR/pr-stack-info"
-PR_CREATED_FILE="$GIT_DIR/pr-created"
+# Use the common git dir so worktrees share metadata files.
+# This matches docs: all worktrees share `.git/pr-stack-info` and `.git/pr-created`.
+GIT_COMMON_DIR="$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir)"
+STACK_INFO_FILE="$GIT_COMMON_DIR/pr-stack-info"
+PR_CREATED_FILE="$GIT_COMMON_DIR/pr-created"
 
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
