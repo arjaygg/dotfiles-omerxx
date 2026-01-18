@@ -9,6 +9,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Print functions
@@ -154,28 +155,27 @@ validate_azure_cli() {
 # Check if PR stacking is detected (opt-in detection)
 # Returns: 0 if stacking is active, 1 if not
 is_stacking_active() {
-    local repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
-    # NOTE: Worktree-safe path resolution (in worktrees, .git is not a directory)
-    local stack_info_file
-    stack_info_file="$(git rev-parse --git-path pr-stack-info 2>/dev/null)"
-
-    if [ -f "$stack_info_file" ] && [ -s "$stack_info_file" ]; then
-        return 0
+    # Source charcoal-compat if not already sourced
+    if ! type charcoal_initialized &>/dev/null; then
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        source "$SCRIPT_DIR/charcoal-compat.sh" 2>/dev/null || return 1
     fi
 
-    return 1
+    charcoal_initialized
 }
 
 # Validate stack info file exists
 # Returns: 0 if exists, 1 if not
 validate_stack_info_exists() {
-    # NOTE: Worktree-safe path resolution (in worktrees, .git is not a directory)
-    local stack_info_file
-    stack_info_file="$(git rev-parse --git-path pr-stack-info 2>/dev/null)"
+    # Source charcoal-compat if not already sourced
+    if ! type charcoal_initialized &>/dev/null; then
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        source "$SCRIPT_DIR/charcoal-compat.sh" 2>/dev/null || return 1
+    fi
 
-    if [ ! -f "$stack_info_file" ]; then
-        print_error "No stack information found"
-        print_info "Run: scripts/pr-stack/create-stack.sh to create stacked branches"
+    if ! charcoal_initialized; then
+        print_error "Charcoal is not initialized"
+        print_info "Run: gt repo init --trunk main"
         return 1
     fi
 
@@ -187,23 +187,18 @@ validate_stack_info_exists() {
 # Returns: Echoes base branch name, or empty if not found
 get_stack_base_branch() {
     local branch_name=$1
-    # NOTE: Worktree-safe path resolution (in worktrees, .git is not a directory)
-    local stack_info_file
-    stack_info_file="$(git rev-parse --git-path pr-stack-info 2>/dev/null)"
 
-    if [ ! -f "$stack_info_file" ]; then
+    # Source charcoal-compat if not already sourced
+    if ! type charcoal_get_parent &>/dev/null; then
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        source "$SCRIPT_DIR/charcoal-compat.sh" 2>/dev/null || return 1
+    fi
+
+    if ! charcoal_initialized; then
         return 1
     fi
 
-    local base_branch=""
-    while IFS=: read -r branch target timestamp; do
-        if [ "$branch" == "$branch_name" ]; then
-            base_branch=$target
-            break
-        fi
-    done < "$stack_info_file"
-
-    echo "$base_branch"
+    charcoal_get_parent "$branch_name"
 }
 
 # Validate that a branch is in sync with its base

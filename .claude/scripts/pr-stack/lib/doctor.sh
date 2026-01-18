@@ -46,20 +46,11 @@ check_charcoal_branch_exists() {
 }
 
 # Check: Branch exists in native metadata but not in git
+# NOTE: This check is deprecated. We now only use Charcoal metadata.
+# Kept as placeholder for backward compatibility.
 check_native_branch_exists() {
-    local stack_info_file
-    stack_info_file="$(git rev-parse --git-path pr-stack-info 2>/dev/null)"
-
-    if [ ! -f "$stack_info_file" ]; then
-        return 0
-    fi
-
-    while IFS=: read -r branch target timestamp; do
-        if [ -n "$branch" ] && ! git rev-parse --verify "$branch" &>/dev/null; then
-            DOCTOR_ERRORS+=("Branch '$branch' in stack-info but doesn't exist in git")
-            DOCTOR_FIXES+=("Remove '$branch' from $stack_info_file")
-        fi
-    done < "$stack_info_file"
+    # No-op: Native metadata (.git/pr-stack-info) is no longer used
+    return 0
 }
 
 # Check: PR target doesn't match Charcoal parent
@@ -69,7 +60,7 @@ check_pr_target_mismatch() {
     fi
 
     local pr_created_file
-    pr_created_file="$(git rev-parse --git-path pr-created 2>/dev/null)"
+    pr_created_file="$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir 2>/dev/null)/pr-created"
 
     if [ ! -f "$pr_created_file" ]; then
         return 0
@@ -118,15 +109,24 @@ check_orphan_worktrees() {
 
 # Check: Branch is out of sync with parent (has conflicts hiding)
 check_branch_sync() {
-    local stack_info_file
-    stack_info_file="$(git rev-parse --git-path pr-stack-info 2>/dev/null)"
-
-    if [ ! -f "$stack_info_file" ]; then
+    if ! charcoal_initialized; then
         return 0
     fi
 
-    while IFS=: read -r branch parent timestamp; do
-        if [ -z "$branch" ] || [ -z "$parent" ]; then
+    # Get all local branches
+    local all_branches
+    all_branches=$(git branch --format='%(refname:short)')
+
+    while IFS= read -r branch; do
+        if [ -z "$branch" ]; then
+            continue
+        fi
+
+        # Get parent from Charcoal
+        local parent
+        parent=$(charcoal_get_parent "$branch" 2>/dev/null)
+
+        if [ -z "$parent" ]; then
             continue
         fi
 
@@ -144,20 +144,29 @@ check_branch_sync() {
             DOCTOR_WARNINGS+=("Branch '$branch' is $behind commit(s) behind parent '$parent' - may have merge conflicts")
             DOCTOR_FIXES+=("git checkout $branch && git rebase $parent")
         fi
-    done < "$stack_info_file"
+    done <<< "$all_branches"
 }
 
 # Check: Remote branch missing (not pushed)
 check_remote_branches() {
-    local stack_info_file
-    stack_info_file="$(git rev-parse --git-path pr-stack-info 2>/dev/null)"
-
-    if [ ! -f "$stack_info_file" ]; then
+    if ! charcoal_initialized; then
         return 0
     fi
 
-    while IFS=: read -r branch parent timestamp; do
+    # Get all local branches
+    local all_branches
+    all_branches=$(git branch --format='%(refname:short)')
+
+    while IFS= read -r branch; do
         if [ -z "$branch" ]; then
+            continue
+        fi
+
+        # Only check branches that are tracked in Charcoal (have a parent)
+        local parent
+        parent=$(charcoal_get_parent "$branch" 2>/dev/null)
+
+        if [ -z "$parent" ]; then
             continue
         fi
 
@@ -171,69 +180,21 @@ check_remote_branches() {
             DOCTOR_WARNINGS+=("Branch '$branch' exists locally but not pushed to origin")
             DOCTOR_FIXES+=("git push -u origin $branch")
         fi
-    done < "$stack_info_file"
+    done <<< "$all_branches"
 }
 
 # Check: Charcoal and native metadata out of sync
+# NOTE: This check is deprecated. We now only use Charcoal metadata.
+# Kept as placeholder for backward compatibility.
 check_metadata_sync() {
-    if ! charcoal_initialized; then
-        return 0
-    fi
-
-    local stack_info_file
-    stack_info_file="$(git rev-parse --git-path pr-stack-info 2>/dev/null)"
-
-    if [ ! -f "$stack_info_file" ]; then
-        return 0
-    fi
-
-    # Get branches from native
-    local native_branches=()
-    while IFS=: read -r branch target timestamp; do
-        if [ -n "$branch" ]; then
-            native_branches+=("$branch")
-        fi
-    done < "$stack_info_file"
-
-    # Get branches from Charcoal (all branches with parents)
-    local charcoal_branches=()
-    local all_branches
-    all_branches=$(git branch --format='%(refname:short)')
-
-    while IFS= read -r branch; do
-        if [ -z "$branch" ]; then
-            continue
-        fi
-
-        # Check if this branch has a parent (tracked by Charcoal)
-        local parent
-        parent=$(charcoal_get_parent "$branch" 2>/dev/null)
-
-        if [ -n "$parent" ]; then
-            charcoal_branches+=("$branch")
-        fi
-    done <<< "$all_branches"
-
-    # Check for branches in native but not Charcoal
-    for branch in "${native_branches[@]}"; do
-        local found=false
-        for cb in "${charcoal_branches[@]}"; do
-            if [ "$branch" == "$cb" ]; then
-                found=true
-                break
-            fi
-        done
-        if [ "$found" == false ]; then
-            DOCTOR_WARNINGS+=("Branch '$branch' in native metadata but not tracked by Charcoal")
-            DOCTOR_FIXES+=("gt branch track $branch")
-        fi
-    done
+    # No-op: Native metadata (.git/pr-stack-info) is no longer used
+    return 0
 }
 
 # Check: PR exists but branch was force-pushed (PR may be stale)
 check_pr_freshness() {
     local pr_created_file
-    pr_created_file="$(git rev-parse --git-path pr-created 2>/dev/null)"
+    pr_created_file="$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir 2>/dev/null)/pr-created"
 
     if [ ! -f "$pr_created_file" ]; then
         return 0
