@@ -39,16 +39,21 @@ fi
 
 # Robust Repo Root detection (handles worktrees correctly)
 REPO_ROOT=$(git rev-parse --show-toplevel)
-GIT_DIR=$(git rev-parse --git-dir)
 
-# Resolve paths relative to the true repo root (not just PWD)
-# This allows the script to run correctly from inside a worktree
-STACK_INFO_FILE="$(git rev-parse --git-path pr-stack-info)"
-PR_CREATED_FILE="$(git rev-parse --git-path pr-created)"
+# Get absolute path to .git directory (works for both regular repos and worktrees)
+if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    # Use --absolute-git-dir if available (Git 2.13+), fallback to resolving manually
+    GIT_DIR=$(git rev-parse --absolute-git-dir 2>/dev/null || {
+        rel_git_dir=$(git rev-parse --git-dir)
+        cd "$rel_git_dir" && pwd
+    })
+else
+    GIT_DIR=$(git rev-parse --git-dir)
+fi
 
-# Fix relative paths from git-path if necessary
-if [[ "$STACK_INFO_FILE" != /* ]]; then STACK_INFO_FILE="$GIT_DIR/$STACK_INFO_FILE"; fi
-if [[ "$PR_CREATED_FILE" != /* ]]; then PR_CREATED_FILE="$GIT_DIR/$PR_CREATED_FILE"; fi
+# Use absolute paths to avoid relative path issues when running from subdirectories
+STACK_INFO_FILE="$GIT_DIR/pr-stack-info"
+PR_CREATED_FILE="$GIT_DIR/pr-created"
 
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
@@ -58,8 +63,8 @@ echo ""
 
 # Show Charcoal view if available
 if type charcoal_initialized &>/dev/null && charcoal_initialized; then
-    echo -e "${CYAN}Charcoal View (gt stack):${NC}"
-    gt stack 2>/dev/null || echo "  (no stack tracked)"
+    echo -e "${CYAN}Charcoal View (gt log short):${NC}"
+    gt log short 2>/dev/null || echo "  (no stack tracked)"
     echo ""
     echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
     echo ""

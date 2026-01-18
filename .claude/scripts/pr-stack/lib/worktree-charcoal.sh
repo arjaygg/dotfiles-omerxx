@@ -334,9 +334,9 @@ wt_stack_status() {
     echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     
-    # Get Charcoal stack
+    # Get Charcoal stack (using gt log short for visual representation)
     local stack_output
-    stack_output=$(gt stack 2>/dev/null)
+    stack_output=$(gt log short 2>/dev/null)
     
     # Enhance with worktree information
     echo "$stack_output" | while IFS= read -r line; do
