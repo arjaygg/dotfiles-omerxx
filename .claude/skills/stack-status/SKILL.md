@@ -46,7 +46,7 @@ Use this skill when the user wants to:
 
 1. Run this command RIGHT NOW:
    ```bash
-   ~/.dotfiles/.claude/scripts/pr-stack/list-stack.sh
+   $HOME/.dotfiles/.claude/scripts/stack status
    ```
 
 2. DO NOT:
