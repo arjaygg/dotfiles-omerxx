@@ -13,7 +13,8 @@ source "$SCRIPT_DIR/lib/validation.sh"
 # Try to get from git config, default to hardcoded values
 ORGANIZATION=$(git config --get azure.organization || echo "https://dev.azure.com/bofaz")
 PROJECT=$(git config --get azure.project || echo "Axos-Universal-Core")
-REPOSITORY=$(git remote get-url origin | sed -e 's/.*[\/:]\([^\/]*\)\.git/\1/' -e 's/.*[\/:]\([^\/]*\)$/\1/')
+REMOTE_URL="$(git remote get-url origin 2>/dev/null || true)"
+REPOSITORY="$(echo "$REMOTE_URL" | sed -e 's/.*[\/:]\([^\/]*\)\.git/\1/' -e 's/.*[\/:]\([^\/]*\)$/\1/')"
 if [ -z "$REPOSITORY" ]; then
     print_warning "Could not detect repository name from git remote. Defaulting to current directory name."
     REPOSITORY=$(basename "$PWD")
@@ -66,7 +67,26 @@ validate_pr_target "$SOURCE_BRANCH" "$TARGET_BRANCH" || exit 1
 # Get repository root (already at root from validation)
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
-# ... (rest of the script)
+# Build commit list for PR description.
+#
+# Prefer commits that are on SOURCE_BRANCH but not on TARGET_BRANCH.
+# If branches are missing/upstream refs are unusual, fall back gracefully.
+COMMITS="$(git log --oneline "${TARGET_BRANCH}..${SOURCE_BRANCH}" 2>/dev/null || true)"
+if [ -z "$COMMITS" ]; then
+    COMMITS="$(git log -1 --oneline "${SOURCE_BRANCH}" 2>/dev/null || true)"
+fi
+if [ -z "$COMMITS" ]; then
+    COMMITS="(no commits found)"
+fi
+
+# Title: if not provided, auto-generate (non-interactive safe).
+if [ -z "${TITLE:-}" ]; then
+    # If interactive, prompt; otherwise default.
+    if [ -t 0 ]; then
+        read -p "Enter PR title (default: ${SOURCE_BRANCH}): " TITLE
+    fi
+    TITLE=${TITLE:-$SOURCE_BRANCH}
+fi
 
 # Check if there are related stories
 # Fix: Search from REPO_ROOT to find docs even if we are in a worktree
@@ -86,8 +106,9 @@ $COMMITS
 "
 
 # Check if this PR depends on another
-# NOTE: Worktree-safe path resolution (in worktrees, .git is not a directory)
-STACK_INFO_FILE="$(git rev-parse --git-path pr-stack-info)"
+# Worktree-safe path resolution (shared across all worktrees)
+GIT_COMMON_DIR="$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir)"
+STACK_INFO_FILE="$GIT_COMMON_DIR/pr-stack-info"
 if [ -f "$STACK_INFO_FILE" ] && [ "$TARGET_BRANCH" != "main" ]; then
     DESCRIPTION="$DESCRIPTION
 ⚠️ **This PR depends on \`$TARGET_BRANCH\` being merged first**
@@ -117,22 +138,23 @@ $STORY_REF
 # Create the PR
 print_info "Creating Pull Request..."
 
-# Build az command
-AZ_CMD="az repos pr create \
-    --repository \"$REPOSITORY\" \
-    --organization \"$ORGANIZATION\" \
-    --project \"$PROJECT\" \
-    --source-branch \"$SOURCE_BRANCH\" \
-    --target-branch \"$TARGET_BRANCH\" \
-    --title \"$TITLE\" \
-    --description \"$DESCRIPTION\""
+AZ_ARGS=(
+    repos pr create
+    --repository "$REPOSITORY"
+    --organization "$ORGANIZATION"
+    --project "$PROJECT"
+    --source-branch "$SOURCE_BRANCH"
+    --target-branch "$TARGET_BRANCH"
+    --title "$TITLE"
+    --description "$DESCRIPTION"
+)
 
 if [ "$DRAFT" = true ]; then
-    AZ_CMD="$AZ_CMD --draft true"
+    AZ_ARGS+=(--draft true)
 fi
 
-# Execute command
-PR_OUTPUT=$(eval $AZ_CMD 2>&1)
+# Execute command (avoid eval; allow multi-line description safely)
+PR_OUTPUT="$(az "${AZ_ARGS[@]}" 2>&1)"
 
 if [ $? -eq 0 ]; then
     print_success "Pull Request created successfully!"
@@ -165,8 +187,7 @@ if [ $? -eq 0 ]; then
     echo ""
 
     # Store PR info for tracking
-    PR_CREATED_FILE="$(git rev-parse --git-path pr-created)"
-    mkdir -p "$(dirname "$PR_CREATED_FILE")"
+    PR_CREATED_FILE="$GIT_COMMON_DIR/pr-created"
     echo "$SOURCE_BRANCH:$TARGET_BRANCH:$PR_ID:$(date +%s)" >> "$PR_CREATED_FILE"
 
     # Show next steps
