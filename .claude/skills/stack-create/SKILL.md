@@ -1,6 +1,15 @@
 ---
 name: stack-create
-description: Creates a new stacked branch for PR stacking workflows with full Charcoal integration. Supports worktrees for parallel development while maintaining Charcoal's navigation and restacking capabilities.
+description: Creates a new stacked branch for PR stacking workflows with full Charcoal integration. Supports worktrees for parallel development. USE THIS SKILL when user says "create worktree", "create branch on top of", "stack a branch", "worktree and branch", or mentions parallel development with git worktrees. Maintains Charcoal's navigation and restacking capabilities.
+triggers:
+  - create worktree
+  - create branch on top of
+  - stack a branch
+  - new stacked branch
+  - parallel development
+  - git worktree
+  - branch with worktree
+  - worktree for branch
 ---
 
 # Stack Create
@@ -8,6 +17,16 @@ description: Creates a new stacked branch for PR stacking workflows with full Ch
 Creates a new stacked branch with optional worktree for PR stacking workflows. Now with full Charcoal integration for worktrees!
 
 ## When to Use
+
+**TRIGGER IMMEDIATELY** when the user's request contains any of these patterns:
+- "create [a] worktree" + "branch"
+- "create [a] branch on top of [branch]"
+- "stack [a] branch on [branch]"
+- "new stacked branch"
+- "worktree for [branch]"
+- "parallel development"
+- "create worktree and branch"
+- Any mention of "worktree" combined with "create" or "branch"
 
 Use this skill when the user wants to:
 - Create a new branch that builds on another branch (not just main)
