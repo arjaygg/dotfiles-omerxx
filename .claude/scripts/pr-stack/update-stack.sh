@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
-# update-stack.sh - Update all dependent branches after a base branch is merged
+# update-stack.sh - Update stack after a branch is merged
 # Usage: ./update-stack.sh [merged-branch]
+#
+# This script updates the entire stack after a PR is merged by:
+# 1. Using Charcoal to restack all branches
+# 2. Syncing all worktrees
+# 3. Updating metadata to reflect the merge
 
 set -e
 
@@ -10,65 +15,72 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/validation.sh"
 source "$SCRIPT_DIR/lib/charcoal-compat.sh"
 
+# Only source worktree-charcoal if file exists
+if [ -f "$SCRIPT_DIR/lib/worktree-charcoal.sh" ]; then
+    source "$SCRIPT_DIR/lib/worktree-charcoal.sh"
+fi
+
 print_usage() {
     echo -e "${BLUE}Usage:${NC}"
     echo "  ./update-stack.sh [merged-branch]"
-    echo "  ./update-stack.sh --restack"
     echo ""
     echo -e "${BLUE}Description:${NC}"
-    echo "  Updates all branches that depend on the merged branch by rebasing them"
-    echo "  onto the branch's target (usually main)."
+    echo "  Updates all branches that depend on the merged branch using Charcoal."
+    echo "  Rebases dependent branches and syncs all worktrees."
     echo ""
-    echo -e "${BLUE}Options:${NC}"
-    echo "  --restack    Use Charcoal's restack command (if available)"
+    echo -e "${BLUE}Requirements:${NC}"
+    echo "  - Charcoal CLI (gt) must be installed"
+    echo "  - Install: brew install danerwilliams/tap/charcoal"
     echo ""
     echo -e "${BLUE}Examples:${NC}"
     echo "  ./update-stack.sh feature/base-implementation"
-    echo "  ./update-stack.sh  # Interactive mode - will prompt for branch"
-    echo "  ./update-stack.sh --restack  # Use Charcoal restack"
+    echo "  ./update-stack.sh  # Interactive mode"
 }
 
-# Check for --restack flag
-if [ "$1" == "--restack" ]; then
-    if charcoal_initialized; then
-        print_info "Using Charcoal to restack all branches..."
-        if gt restack; then
-            print_success "Stack rebased successfully with Charcoal"
-            sync_charcoal_to_native
-        else
-            print_error "Charcoal restack failed"
-            exit 1
-        fi
-        exit 0
-    else
-        print_warning "Charcoal not available, falling back to standard update"
-        print_info "Install Charcoal for easier restacking: brew install danerwilliams/tap/charcoal"
-        shift  # Remove --restack flag
-    fi
+# Check for help flag
+if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+    print_usage
+    exit 0
 fi
 
-# Validate prerequisites using library functions
-validate_stack_update_prerequisites || exit 1
+# Validate git repository
+validate_git_repository || exit 1
+
+# REQUIRE Charcoal - no fallback
+if ! charcoal_available; then
+    print_error "Charcoal CLI is required but not installed"
+    echo ""
+    echo -e "${YELLOW}Charcoal provides:${NC}"
+    echo "  • Automatic stack rebasing"
+    echo "  • Dependency resolution"
+    echo "  • Conflict handling"
+    echo "  • Branch relationship tracking"
+    echo ""
+    echo -e "${BLUE}Install Charcoal:${NC}"
+    echo "  brew install danerwilliams/tap/charcoal"
+    echo ""
+    echo -e "${BLUE}Then initialize in this repo:${NC}"
+    echo "  ~/.claude/scripts/stack init"
+    exit 1
+fi
+
+if ! charcoal_initialized; then
+    print_error "Charcoal is not initialized in this repository"
+    echo ""
+    echo -e "${BLUE}Initialize Charcoal:${NC}"
+    echo "  ~/.claude/scripts/stack init"
+    exit 1
+fi
 
 # Robust Repo Root detection (handles worktrees correctly)
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
-# Robust Git Dir detection
-GIT_DIR=$(git rev-parse --git-dir)
-
 # Worktree-safe path resolution
-# If inside a worktree, --git-path might return a path relative to the worktree root or absolute
-# We use absolute path for safety
-STACK_INFO_FILE="$REPO_ROOT/.git/pr-stack-info"
-# Fallback if that specific file pathing fails in some git versions, but usually REPO_ROOT/.git is safe for the shared info
-# However, strictly speaking, `git rev-parse --git-path` handles the redirection better.
-# Let's trust rev-parse but ensure we handle the result correctly.
 STACK_INFO_FILE="$(git rev-parse --git-path pr-stack-info)"
-# If STACK_INFO_FILE is relative, make it absolute based on GIT_DIR
 if [[ "$STACK_INFO_FILE" != /* ]]; then
+    GIT_DIR=$(git rev-parse --git-dir)
     STACK_INFO_FILE="$GIT_DIR/$STACK_INFO_FILE"
 fi
-
 
 # Get merged branch
 MERGED_BRANCH=$1
@@ -77,6 +89,12 @@ if [ -z "$MERGED_BRANCH" ]; then
     # Interactive mode - show branches and let user select
     echo -e "${BLUE}Select a merged branch to update dependents:${NC}"
     echo ""
+
+    if [ ! -f "$STACK_INFO_FILE" ]; then
+        print_error "No stack information found"
+        print_info "Create stacked branches first: ~/.claude/scripts/stack create"
+        exit 1
+    fi
 
     # Read branches from stack file
     i=1
@@ -103,151 +121,76 @@ if [ -z "$MERGED_BRANCH" ]; then
     exit 1
 fi
 
-print_info "Finding branches that depend on: $MERGED_BRANCH"
+print_info "Updating stack after merge of: $MERGED_BRANCH"
+echo ""
 
-# Find the target branch for the merged branch
+# Find the target branch for the merged branch (for cleanup)
 TARGET_BRANCH=""
-while IFS=: read -r branch target timestamp; do
-    if [ "$branch" == "$MERGED_BRANCH" ]; then
-        TARGET_BRANCH=$target
-        break
-    fi
-done < "$STACK_INFO_FILE"
+if [ -f "$STACK_INFO_FILE" ]; then
+    while IFS=: read -r branch target timestamp; do
+        if [ "$branch" == "$MERGED_BRANCH" ]; then
+            TARGET_BRANCH=$target
+            break
+        fi
+    done < "$STACK_INFO_FILE"
+fi
 
-if [ -z "$TARGET_BRANCH" ]; then
-    print_error "Could not find target branch for $MERGED_BRANCH"
+# Use Charcoal to restack everything
+print_info "Using Charcoal to restack dependent branches..."
+echo ""
+
+# Navigate to main repo if in worktree
+MAIN_REPO=$(get_main_repo_path)
+CURRENT_DIR=$(pwd)
+
+cd "$MAIN_REPO"
+
+# Run Charcoal restack
+if gt restack; then
+    print_success "Stack rebased successfully"
+    echo ""
+
+    # Sync worktrees if any exist
+    print_info "Syncing worktrees..."
+    sync_all_worktrees
+    echo ""
+
+    # Sync metadata
+    print_info "Updating metadata..."
+    sync_charcoal_to_native
+
+    # Clean up merged branch from stack info
+    if [ -n "$TARGET_BRANCH" ] && [ -f "$STACK_INFO_FILE" ]; then
+        print_info "Cleaning up stack information for merged branch..."
+        grep -v "^${MERGED_BRANCH}:" "$STACK_INFO_FILE" > "${STACK_INFO_FILE}.tmp" && mv "${STACK_INFO_FILE}.tmp" "$STACK_INFO_FILE"
+
+        # Update any branches that targeted the merged branch to now target its parent
+        sed -i.bak "s/:${MERGED_BRANCH}:/:${TARGET_BRANCH}:/" "$STACK_INFO_FILE"
+        rm -f "${STACK_INFO_FILE}.bak"
+    fi
+
+    echo ""
+    echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+    print_success "Stack update complete!"
+    echo ""
+    print_info "Next steps:"
+    echo "  • Review updated branches: ~/.claude/scripts/stack status"
+    echo "  • Push force if needed: git push --force-with-lease"
+    echo "  • Delete merged branch: git branch -d $MERGED_BRANCH"
+
+else
+    print_error "Restack failed"
+    echo ""
+    print_info "Common causes:"
+    echo "  • Merge conflicts in dependent branches"
+    echo "  • Uncommitted changes in worktrees"
+    echo ""
+    print_info "To resolve:"
+    echo "  1. Check conflict messages above"
+    echo "  2. Resolve conflicts: git add <files> && git rebase --continue"
+    echo "  3. Run this script again: ~/.claude/scripts/stack update $MERGED_BRANCH"
     exit 1
 fi
 
-print_info "Target branch: $TARGET_BRANCH"
-
-# Find all branches that depend on MERGED_BRANCH
-DEPENDENT_BRANCHES=()
-while IFS=: read -r branch target timestamp; do
-    if [ "$target" == "$MERGED_BRANCH" ]; then
-        DEPENDENT_BRANCHES+=("$branch")
-    fi
-done < "$STACK_INFO_FILE"
-
-if [ ${#DEPENDENT_BRANCHES[@]} -eq 0 ]; then
-    print_warning "No dependent branches found"
-    print_info "Stack update complete - no action needed"
-    exit 0
-fi
-
-print_info "Found ${#DEPENDENT_BRANCHES[@]} dependent branch(es):"
-for dep_branch in "${DEPENDENT_BRANCHES[@]}"; do
-    echo "  - $dep_branch"
-done
-
-echo ""
-read -p "Update all dependent branches? (y/n) " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    print_info "Update cancelled"
-    exit 0
-fi
-
-# Fetch latest changes
-print_info "Fetching latest changes from remote..."
-git fetch origin
-
-# Update each dependent branch
-UPDATED=0
-FAILED=0
-
-for dep_branch in "${DEPENDENT_BRANCHES[@]}"; do
-    echo ""
-    print_info "Updating $dep_branch..."
-
-    # Check if branch exists locally
-    if ! git rev-parse --verify "$dep_branch" > /dev/null 2>&1; then
-        print_warning "Branch $dep_branch does not exist locally, skipping..."
-        continue
-    fi
-
-    # Stash current changes if any
-    CURRENT_BRANCH=$(git branch --show-current)
-    STASHED=false
-    if [ -n "$(git status --porcelain)" ]; then
-        print_info "Stashing current changes..."
-        git stash push -m "Auto-stash before updating $dep_branch"
-        STASHED=true
-    fi
-
-    # Checkout the dependent branch
-    git checkout "$dep_branch"
-
-    # Rebase onto the target branch
-    print_info "Rebasing $dep_branch onto $TARGET_BRANCH..."
-
-    if git rebase "origin/$TARGET_BRANCH"; then
-        print_success "Successfully rebased $dep_branch"
-
-        # Push the updated branch
-        print_info "Pushing updated branch..."
-        if git push --force-with-lease; then
-            print_success "$dep_branch updated and pushed"
-            UPDATED=$((UPDATED + 1))
-
-            # Update stack info - change target from MERGED_BRANCH to TARGET_BRANCH
-            sed -i.bak "s/^${dep_branch}:${MERGED_BRANCH}:/${dep_branch}:${TARGET_BRANCH}:/" "$STACK_INFO_FILE"
-            rm -f "${STACK_INFO_FILE}.bak"
-        else
-            print_error "Failed to push $dep_branch"
-            print_info "You may need to resolve conflicts and push manually"
-            FAILED=$((FAILED + 1))
-        fi
-    else
-        print_error "Rebase failed for $dep_branch"
-        print_warning "Resolve conflicts manually, then run:"
-        print_warning "  git add <resolved-files>"
-        print_warning "  git rebase --continue"
-        print_warning "  git push --force-with-lease"
-        FAILED=$((FAILED + 1))
-
-        # Abort the rebase
-        git rebase --abort 2>/dev/null || true
-    fi
-
-    # Return to original branch
-    if [ "$CURRENT_BRANCH" != "$dep_branch" ]; then
-        git checkout "$CURRENT_BRANCH" 2>/dev/null || git checkout main
-    fi
-
-    # Restore stashed changes
-    if [ "$STASHED" = true ]; then
-        print_info "Restoring stashed changes..."
-        git stash pop
-    fi
-done
-
-# Remove merged branch from stack info
-print_info "Cleaning up stack information..."
-grep -v "^${MERGED_BRANCH}:" "$STACK_INFO_FILE" > "${STACK_INFO_FILE}.tmp" && mv "${STACK_INFO_FILE}.tmp" "$STACK_INFO_FILE"
-
-# Summary
-echo ""
-echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}Update Summary:${NC}"
-echo "  Successfully updated: $UPDATED branch(es)"
-if [ $FAILED -gt 0 ]; then
-    echo -e "  ${RED}Failed to update: $FAILED branch(es)${NC}"
-fi
-echo ""
-
-if [ $UPDATED -gt 0 ]; then
-    print_success "Stack updated successfully!"
-    print_info "Run ./scripts/pr-stack/list-stack.sh to see updated stack"
-fi
-
-if [ $FAILED -gt 0 ]; then
-    print_warning "Some branches failed to update"
-    print_info "Check the errors above and resolve manually"
-fi
-
-# Sync to Charcoal if available
-if charcoal_initialized; then
-    print_info "Syncing metadata to Charcoal..."
-    sync_charcoal_to_native
-fi
+# Return to original directory
+cd "$CURRENT_DIR"

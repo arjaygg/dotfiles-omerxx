@@ -2,7 +2,19 @@
 
 ## TL;DR
 
-You can now use **Charcoal's navigation and restacking** with **worktrees for parallel development**!
+Use **Charcoal's navigation and restacking** with **worktrees for parallel development**!
+
+## Prerequisites
+
+**Charcoal is required** for all stack operations:
+
+```bash
+# Check if installed
+gt --version
+
+# If not installed
+brew install danerwilliams/tap/charcoal
+```
 
 ## Setup (One-time)
 

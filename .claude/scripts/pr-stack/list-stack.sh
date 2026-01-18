@@ -5,10 +5,13 @@
 
 set -e
 
-# Load charcoal-compat library
+# Load libraries
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -f "$SCRIPT_DIR/lib/charcoal-compat.sh" ]; then
     source "$SCRIPT_DIR/lib/charcoal-compat.sh"
+fi
+if [ -f "$SCRIPT_DIR/lib/cache.sh" ]; then
+    source "$SCRIPT_DIR/lib/cache.sh"
 fi
 
 # Colors for output
@@ -21,6 +24,7 @@ NC='\033[0m' # No Color
 
 VERBOSE=false
 CHARCOAL_ONLY=false
+SHOW_CI=false
 
 # Check for flags
 for arg in "$@"; do
@@ -28,6 +32,8 @@ for arg in "$@"; do
         VERBOSE=true
     elif [ "$arg" == "--charcoal-only" ] || [ "$arg" == "-c" ]; then
         CHARCOAL_ONLY=true
+    elif [ "$arg" == "--ci" ] || [ "$arg" == "--builds" ]; then
+        SHOW_CI=true
     fi
 done
 
@@ -78,7 +84,7 @@ if type charcoal_initialized &>/dev/null && charcoal_initialized; then
     echo ""
 fi
 
-# Function to get PR status from Azure DevOps
+# Function to get PR status from Azure DevOps (with caching)
 get_pr_status() {
     local branch=$1
     local pr_id=$2
@@ -88,11 +94,16 @@ get_pr_status() {
         return
     fi
 
-    # Try to get PR status (requires Azure CLI)
+    # Try to get PR status (requires Azure CLI) - use cache if available
     if command -v az &> /dev/null; then
-        STATUS=$(az repos pr show --id "$pr_id" \
-            --organization "https://dev.azure.com/bofaz" \
-            --query "status" -o tsv 2>/dev/null || echo "unknown")
+        local STATUS
+        if type cached_get_pr_status &>/dev/null; then
+            STATUS=$(cached_get_pr_status "$pr_id")
+        else
+            STATUS=$(az repos pr show --id "$pr_id" \
+                --organization "https://dev.azure.com/bofaz" \
+                --query "status" -o tsv 2>/dev/null || echo "unknown")
+        fi
 
         case "$STATUS" in
             active)
@@ -126,6 +137,56 @@ get_commits_ahead() {
     fi
 }
 
+# Function to get CI/CD build status for a branch
+get_build_status() {
+    local branch=$1
+
+    if [ "$SHOW_CI" != "true" ]; then
+        echo ""
+        return
+    fi
+
+    # Try to get build status (requires Azure CLI) - use cache if available
+    if command -v az &> /dev/null; then
+        local status
+        if type cached_get_build_status &>/dev/null; then
+            status=$(cached_get_build_status "$branch")
+        else
+            status=$(az pipelines build list \
+                --organization "https://dev.azure.com/bofaz" \
+                --branch "$branch" \
+                --top 1 \
+                --query "[0].result" -o tsv 2>/dev/null || echo "unknown")
+        fi
+
+        case "$status" in
+            succeeded)
+                echo -e " ${GREEN}✓ Build${NC}"
+                ;;
+            failed)
+                echo -e " ${RED}✗ Build${NC}"
+                ;;
+            canceled)
+                echo -e " ${YELLOW}⊘ Build${NC}"
+                ;;
+            partiallySucceeded)
+                echo -e " ${YELLOW}⚠ Build${NC}"
+                ;;
+            inProgress|notStarted)
+                echo -e " ${CYAN}⟳ Build${NC}"
+                ;;
+            ""|null|unknown)
+                echo ""
+                ;;
+            *)
+                echo ""
+                ;;
+        esac
+    else
+        echo ""
+    fi
+}
+
 # Build a map of branches and their PRs
 declare -A BRANCH_TO_PR
 declare -A BRANCH_TO_TARGET
@@ -136,6 +197,13 @@ if [ -f "$PR_CREATED_FILE" ]; then
     while IFS=: read -r branch target pr_id timestamp; do
         BRANCH_TO_PR["$branch"]=$pr_id
     done < "$PR_CREATED_FILE"
+fi
+
+# Prefetch all PR statuses in parallel (if caching available)
+if type fetch_pr_statuses_parallel &>/dev/null && [ ${#BRANCH_TO_PR[@]} -gt 0 ]; then
+    pr_ids=("${BRANCH_TO_PR[@]}")
+    fetch_pr_statuses_parallel "${pr_ids[@]}" >/dev/null 2>&1 &
+    PREFETCH_PID=$!
 fi
 
 # Read stack info file
@@ -196,6 +264,13 @@ print_branch_tree() {
         echo -n -e " → $pr_status"
     else
         echo -n -e " → ${YELLOW}NO PR${NC}"
+    fi
+
+    # Add build status if CI flag is set
+    local build_status
+    build_status=$(get_build_status "$branch")
+    if [ -n "$build_status" ]; then
+        echo -n -e "$build_status"
     fi
 
     echo "" # newline
@@ -262,6 +337,11 @@ done
 # Sort root branches by creation time
 IFS=$'\n' ROOT_BRANCHES=($(sort -t: -k3 -n <<<"${ROOT_BRANCHES[*]}"))
 unset IFS
+
+# Wait for parallel prefetch to complete (if started)
+if [ -n "${PREFETCH_PID:-}" ]; then
+    wait "$PREFETCH_PID" 2>/dev/null || true
+fi
 
 # Print the tree
 echo -e "${CYAN}main${NC}"

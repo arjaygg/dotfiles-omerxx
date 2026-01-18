@@ -38,6 +38,9 @@ fi
 source "$PR_STACK_DIR/lib/validation.sh"
 source "$PR_STACK_DIR/lib/charcoal-compat.sh"
 source "$PR_STACK_DIR/lib/worktree-charcoal.sh"
+source "$PR_STACK_DIR/lib/cache.sh"
+source "$PR_STACK_DIR/lib/doctor.sh"
+source "$PR_STACK_DIR/lib/graph.sh"
 
 # Colors
 CYAN='\033[0;36m'
@@ -48,12 +51,16 @@ BOLD='\033[1m'
 # ============================================================================
 
 print_usage() {
-    echo -e "${BOLD}stack${NC} - Unified CLI for PR stacking"
+    echo -e "${BOLD}stack${NC} - Unified CLI for PR stacking with Charcoal"
     echo ""
     echo -e "${BLUE}Usage:${NC}"
     echo "  ./scripts/stack <command> [options]"
     echo ""
-    echo -e "${BLUE}Branch Management${NC} (uses Charcoal if available):"
+    echo -e "${BLUE}Requirements:${NC}"
+    echo "  • Charcoal CLI (gt) - brew install danerwilliams/tap/charcoal"
+    echo "  • Azure CLI with DevOps extension"
+    echo ""
+    echo -e "${BLUE}Branch Management:${NC}"
     echo "  create <branch> [base] [--worktree]  Create a new stacked branch"
     echo "  up                                   Move to parent branch (worktree-aware)"
     echo "  down [index]                         Move to child branch (worktree-aware)"
@@ -64,28 +71,35 @@ print_usage() {
     echo "  worktree-list                        List all worktrees with branches"
     echo "  worktree-remove <path>               Remove a worktree"
     echo ""
-    echo -e "${BLUE}PR Management${NC} (uses Azure DevOps scripts):"
+    echo -e "${BLUE}PR Management:${NC}"
     echo "  pr [branch] [target] [title]         Create a pull request"
     echo "  merge <pr-id>                        Merge PR and update dependents"
     echo "  update [merged-branch]               Update stack after merge"
     echo ""
-    echo -e "${BLUE}Status:${NC}"
+    echo -e "${BLUE}Status & Diagnostics:${NC}"
     echo "  status                               Show stack hierarchy (with worktree info)"
+    echo "  graph [format]                       Show dependency graph (ascii/mermaid/dot)"
+    echo "  doctor [--fix]                       Check stack health and find issues"
     echo "  init                                 Initialize Charcoal + import existing stack"
     echo "  sync                                 Sync metadata between systems"
+    echo "  cache-clear                          Clear API response cache"
     echo ""
     echo -e "${BLUE}Charcoal Status:${NC}"
     if charcoal_available; then
-        echo -e "  ${GREEN}Charcoal installed${NC}: $(charcoal_version)"
+        echo -e "  ${GREEN}✓ Charcoal installed${NC}: $(charcoal_version)"
         if charcoal_initialized; then
-            echo -e "  ${GREEN}Charcoal initialized${NC} in this repository"
+            echo -e "  ${GREEN}✓ Charcoal initialized${NC} in this repository"
         else
-            echo -e "  ${YELLOW}Charcoal not initialized${NC} - run: ./scripts/stack init"
+            echo -e "  ${YELLOW}⚠ Charcoal not initialized${NC} - run: ./scripts/stack init"
         fi
     else
-        echo -e "  ${YELLOW}Charcoal not installed${NC}"
-        echo "  Install: brew install danerwilliams/tap/charcoal"
-        echo "  All commands will use native scripts"
+        echo -e "  ${RED}✗ Charcoal not installed${NC}"
+        echo ""
+        echo "  Install Charcoal:"
+        echo "    brew install danerwilliams/tap/charcoal"
+        echo ""
+        echo "  Then initialize:"
+        echo "    ./scripts/stack init"
     fi
     echo ""
     echo -e "${BLUE}Examples:${NC}"
@@ -102,6 +116,15 @@ print_usage() {
 # ============================================================================
 
 cmd_create() {
+    # Require Charcoal
+    if ! charcoal_initialized; then
+        print_error "Charcoal is required for stack management"
+        echo ""
+        echo "Initialize Charcoal:"
+        echo "  ./scripts/stack init"
+        exit 1
+    fi
+
     local positional_args=()
     local create_worktree=false
 
@@ -127,19 +150,17 @@ cmd_create() {
         exit 1
     fi
 
-    # NEW BEHAVIOR: Always use native script for worktrees, but ensure Charcoal tracks it
+    # Always use native script for worktrees, but ensure Charcoal tracks it
     if [ "$create_worktree" = true ]; then
         print_info "Creating branch with worktree (Charcoal will track it)"
         "$PR_STACK_DIR/create-stack.sh" "$branch" "${base:-main}" "--worktree"
-        
-        # If Charcoal is initialized, track the branch
-        if charcoal_initialized; then
-            print_info "Tracking branch in Charcoal..."
-            gt branch track "$branch" --parent "${base:-main}" 2>/dev/null || true
-            print_success "Branch tracked in Charcoal - you can use 'stack up/down' for navigation"
-        fi
-    # Use Charcoal for non-worktree creation
-    elif charcoal_initialized; then
+
+        # Track the branch in Charcoal
+        print_info "Tracking branch in Charcoal..."
+        gt branch track "$branch" --parent "${base:-main}" 2>/dev/null || true
+        print_success "Branch tracked in Charcoal - you can use 'stack up/down' for navigation"
+    else
+        # Use Charcoal for non-worktree creation
         print_info "Using Charcoal to create branch: $branch"
 
         # If base is specified and different from current, checkout first
@@ -173,67 +194,49 @@ cmd_create() {
             print_error "Failed to create branch with Charcoal"
             exit 1
         fi
-    else
-        # Fall back to native script
-        print_info "Using native script to create branch"
-        "$PR_STACK_DIR/create-stack.sh" "$branch" "${base:-main}"
     fi
 }
 
 cmd_up() {
-    if charcoal_initialized; then
-        # Use worktree-aware navigation
-        wt_charcoal_up
-    else
-        print_error "Navigation requires Charcoal"
+    if ! charcoal_initialized; then
+        print_error "Charcoal is required for navigation"
         echo ""
-        echo "Install Charcoal to enable branch navigation:"
-        echo "  brew install danerwilliams/tap/charcoal"
+        echo "Initialize Charcoal:"
         echo "  ./scripts/stack init"
-        echo ""
-        echo "Alternative: manually checkout the parent branch"
-        echo "  git checkout <parent-branch>"
         exit 1
     fi
+
+    # Use worktree-aware navigation
+    wt_charcoal_up
 }
 
 cmd_down() {
     local index=${1:-0}
 
-    if charcoal_initialized; then
-        # Use worktree-aware navigation
-        wt_charcoal_down "$index"
-    else
-        print_error "Navigation requires Charcoal"
+    if ! charcoal_initialized; then
+        print_error "Charcoal is required for navigation"
         echo ""
-        echo "Install Charcoal to enable branch navigation:"
-        echo "  brew install danerwilliams/tap/charcoal"
+        echo "Initialize Charcoal:"
         echo "  ./scripts/stack init"
-        echo ""
-        echo "Alternative: manually checkout the child branch"
-        echo "  git checkout <child-branch>"
         exit 1
     fi
+
+    # Use worktree-aware navigation
+    wt_charcoal_down "$index"
 }
 
 cmd_restack() {
-    if charcoal_initialized; then
-        print_info "Using Charcoal to restack branches (worktree-aware)..."
-        # Use worktree-aware restack
-        wt_charcoal_restack
-    else
-        # Fall back to native update-stack
-        print_info "Charcoal not available, using native rebase workflow"
+    if ! charcoal_initialized; then
+        print_error "Charcoal is required for restacking"
         echo ""
-        echo "To rebase your stack manually:"
-        echo "  1. Checkout each branch in order"
-        echo "  2. git rebase <parent-branch>"
-        echo "  3. git push --force-with-lease"
-        echo ""
-        echo "Or install Charcoal for automatic restacking:"
-        echo "  brew install danerwilliams/tap/charcoal"
+        echo "Initialize Charcoal:"
         echo "  ./scripts/stack init"
+        exit 1
     fi
+
+    print_info "Using Charcoal to restack branches (worktree-aware)..."
+    # Use worktree-aware restack
+    wt_charcoal_restack
 }
 
 cmd_pr() {
@@ -355,15 +358,17 @@ cmd_init() {
 }
 
 cmd_sync() {
-    print_info "Syncing metadata between Charcoal and native format..."
-
-    if charcoal_initialized; then
-        sync_charcoal_to_native
-        print_success "Metadata synced"
-    else
-        print_warning "Charcoal not initialized, nothing to sync"
-        echo "Run: ./scripts/stack init"
+    if ! charcoal_initialized; then
+        print_error "Charcoal is required for metadata sync"
+        echo ""
+        echo "Initialize Charcoal:"
+        echo "  ./scripts/stack init"
+        exit 1
     fi
+
+    print_info "Syncing metadata between Charcoal and native format..."
+    sync_charcoal_to_native
+    print_success "Metadata synced"
 }
 
 cmd_worktree_add() {
@@ -389,18 +394,18 @@ cmd_worktree_list() {
 
 cmd_worktree_remove() {
     local path=$1
-    
+
     if [ -z "$path" ]; then
         print_error "Worktree path required"
         echo "Usage: ./scripts/stack worktree-remove <path>"
         exit 1
     fi
-    
+
     # Check if worktree is clean
     if [ -d "$path" ]; then
         local status
         status=$(git -C "$path" status --short 2>/dev/null)
-        
+
         if [ -n "$status" ]; then
             print_error "Worktree has uncommitted changes:"
             echo "$status"
@@ -413,16 +418,34 @@ cmd_worktree_remove() {
             fi
         fi
     fi
-    
+
     print_info "Removing worktree: $path"
     git worktree remove "$path"
-    
+
     if [ $? -eq 0 ]; then
         print_success "Worktree removed"
     else
         print_error "Failed to remove worktree"
         exit 1
     fi
+}
+
+cmd_doctor() {
+    local fix_flag=""
+    if [ "$1" == "--fix" ]; then
+        fix_flag="--fix"
+    fi
+    doctor_main "$fix_flag"
+}
+
+cmd_graph() {
+    local format=${1:-ascii}
+    graph_main "$format"
+}
+
+cmd_cache_clear() {
+    cache_clear_all
+    print_success "Cache cleared"
 }
 
 # ============================================================================
@@ -472,6 +495,15 @@ main() {
             ;;
         worktree-remove|wt-remove)
             cmd_worktree_remove "$@"
+            ;;
+        doctor|check|health)
+            cmd_doctor "$@"
+            ;;
+        graph|tree|viz)
+            cmd_graph "$@"
+            ;;
+        cache-clear|clear-cache)
+            cmd_cache_clear "$@"
             ;;
         help|--help|-h|"")
             print_usage

@@ -1,6 +1,20 @@
 ---
 name: stack-status
-description: Shows the current PR stack status and branch hierarchy with worktree locations. Use when user wants to see their PR stack, view branch relationships, check PR status, understand the dependency tree, or see which branches have worktrees.
+description: Shows the current PR stack status and branch hierarchy with worktree locations. USE THIS SKILL when user says "show stack", "stack status", "show PR stack", "show branches", "where am I in stack", "list worktrees", "show dependencies", or wants to see their PR stack hierarchy.
+triggers:
+  - show stack
+  - stack status
+  - show PR stack
+  - show branches
+  - where am I in stack
+  - list worktrees
+  - show dependencies
+  - what's my stack
+  - view stack
+  - branch hierarchy
+  - PR dependencies
+  - show my PRs
+  - current stack
 ---
 
 # Stack Status
