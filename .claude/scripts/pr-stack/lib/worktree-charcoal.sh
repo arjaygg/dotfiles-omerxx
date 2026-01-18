@@ -74,14 +74,12 @@ wt_charcoal_up() {
     
     local current_branch
     current_branch=$(git branch --show-current)
-    
-    # Get parent branch from Charcoal
+
+    # Get parent branch from Charcoal using helper function
     local parent_branch
-    parent_branch=$(gt stack --json 2>/dev/null | jq -r --arg branch "$current_branch" '
-        .branches[] | select(.name == $branch) | .parent
-    ' 2>/dev/null)
-    
-    if [ -z "$parent_branch" ] || [ "$parent_branch" = "null" ]; then
+    parent_branch=$(charcoal_get_parent "$current_branch")
+
+    if [ -z "$parent_branch" ]; then
         print_error "No parent branch found for $current_branch"
         return 1
     fi
@@ -121,17 +119,22 @@ wt_charcoal_down() {
     
     local current_branch
     current_branch=$(git branch --show-current)
-    
-    # Get child branches from Charcoal
-    local child_branch
-    child_branch=$(gt stack --json 2>/dev/null | jq -r --arg branch "$current_branch" --argjson idx "$child_index" '
-        [.branches[] | select(.parent == $branch)] | .[$idx].name
-    ' 2>/dev/null)
-    
-    if [ -z "$child_branch" ] || [ "$child_branch" = "null" ]; then
+
+    # Get child branches from Charcoal using helper function
+    local children_array
+    children_array=($(charcoal_get_children "$current_branch"))
+
+    if [ ${#children_array[@]} -eq 0 ]; then
+        print_error "No child branches found for $current_branch"
+        return 1
+    fi
+
+    if [ "$child_index" -ge "${#children_array[@]}" ]; then
         print_error "No child branch found at index $child_index"
         return 1
     fi
+
+    local child_branch="${children_array[$child_index]}"
     
     # Check if child has a worktree
     local child_worktree

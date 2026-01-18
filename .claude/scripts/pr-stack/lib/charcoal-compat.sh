@@ -34,12 +34,13 @@ charcoal_initialized() {
         return 1
     fi
 
-    local repo_root
-    repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+    local git_dir
+    # Use --git-common-dir to work in both main repo and worktrees
+    git_dir=$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir 2>/dev/null)
 
     # Check for Graphite's config file (Charcoal/Graphite stores metadata in .git/)
     # Note: Graphite is the new name for Charcoal, uses .graphite_repo_config
-    if [ -f "$repo_root/.git/.graphite_repo_config" ]; then
+    if [ -f "$git_dir/.graphite_repo_config" ]; then
         return 0
     fi
 
@@ -52,6 +53,53 @@ charcoal_version() {
     if charcoal_available; then
         gt --version 2>/dev/null | head -1
     fi
+}
+
+# Get parent branch for a given branch
+# Args: $1 - branch name (default: current branch)
+# Returns: parent branch name or empty
+charcoal_get_parent() {
+    local branch=${1:-$(git branch --show-current)}
+
+    if ! charcoal_initialized; then
+        return 1
+    fi
+
+    # Use gt branch info to get parent
+    # Output format: "Parent: <branch-name>"
+    gt branch info "$branch" 2>/dev/null | grep "^Parent:" | sed 's/^Parent: //' | tr -d ' '
+}
+
+# Get child branches for a given branch
+# Args: $1 - branch name (default: current branch)
+# Returns: space-separated list of child branch names
+charcoal_get_children() {
+    local branch=${1:-$(git branch --show-current)}
+
+    if ! charcoal_initialized; then
+        return 1
+    fi
+
+    # Use gt log short to parse the tree and find children
+    # Look for branches that have this branch as parent
+    local all_branches
+    all_branches=$(git branch --format='%(refname:short)')
+
+    local children=""
+    while IFS= read -r child_candidate; do
+        if [ -z "$child_candidate" ]; then
+            continue
+        fi
+
+        local parent
+        parent=$(charcoal_get_parent "$child_candidate" 2>/dev/null)
+
+        if [ "$parent" = "$branch" ]; then
+            children="$children $child_candidate"
+        fi
+    done <<< "$all_branches"
+
+    echo "$children" | xargs
 }
 
 # ============================================================================
@@ -156,45 +204,32 @@ sync_charcoal_to_native() {
         return 1
     fi
 
-    local repo_root
-    repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
-    local stack_info_file="$repo_root/.git/pr-stack-info"
+    local git_dir
+    git_dir=$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir 2>/dev/null)
+    local stack_info_file="$git_dir/pr-stack-info"
 
-    # Get Charcoal's view of the stack
-    local stack_json
-    stack_json=$(gt stack --json 2>/dev/null)
-
-    if [ -z "$stack_json" ]; then
-        print_warning "Could not get Charcoal stack information"
-        return 1
-    fi
-
-    # Parse Charcoal JSON and convert to our format
+    # Get all branches and their parents from Charcoal
     # Format: branch:base:timestamp
     local temp_file="${stack_info_file}.tmp"
+    > "$temp_file"  # Clear file
 
-    # Use jq if available, otherwise fall back to basic parsing
-    if command -v jq &> /dev/null; then
-        echo "$stack_json" | jq -r '
-            .branches[]? |
-            select(.parent != null) |
-            "\(.name):\(.parent):\(now | floor)"
-        ' > "$temp_file" 2>/dev/null
-    else
-        # Basic fallback - parse gt stack output
-        gt stack 2>/dev/null | grep -E '^\s*(├|└)' | while read -r line; do
-            local branch
-            branch=$(echo "$line" | sed 's/.*[├└]── //' | awk '{print $1}')
-            if [ -n "$branch" ]; then
-                local parent
-                parent=$(git rev-parse --abbrev-ref "${branch}@{upstream}" 2>/dev/null | sed 's/origin\///')
-                if [ -z "$parent" ]; then
-                    parent="main"
-                fi
-                echo "${branch}:${parent}:$(date +%s)"
-            fi
-        done > "$temp_file"
-    fi
+    # Iterate through all local branches
+    local all_branches
+    all_branches=$(git branch --format='%(refname:short)')
+
+    while IFS= read -r branch; do
+        if [ -z "$branch" ]; then
+            continue
+        fi
+
+        # Get parent using our helper function
+        local parent
+        parent=$(charcoal_get_parent "$branch" 2>/dev/null)
+
+        if [ -n "$parent" ]; then
+            echo "${branch}:${parent}:$(date +%s)" >> "$temp_file"
+        fi
+    done <<< "$all_branches"
 
     # Only update if we got data
     if [ -s "$temp_file" ]; then
@@ -343,6 +378,8 @@ charcoal_or_fallback() {
 export -f charcoal_available 2>/dev/null || true
 export -f charcoal_initialized 2>/dev/null || true
 export -f charcoal_version 2>/dev/null || true
+export -f charcoal_get_parent 2>/dev/null || true
+export -f charcoal_get_children 2>/dev/null || true
 export -f charcoal_init 2>/dev/null || true
 export -f charcoal_create_branch 2>/dev/null || true
 export -f charcoal_up 2>/dev/null || true
