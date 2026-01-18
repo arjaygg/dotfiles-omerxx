@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Minimal stub for Azure CLI used by e2e tests.
+# Supports only the subcommands our scripts call.
+
+cmd1="${1:-}"
+shift || true
+
+json_pr_show() {
+  # Fields consumed by merge-stack.sh (via jq): sourceRefName, targetRefName, status, title, mergeStatus
+  cat <<'EOF'
+{
+  "sourceRefName": "refs/heads/feature/api",
+  "targetRefName": "refs/heads/main",
+  "status": "active",
+  "title": "Test PR",
+  "mergeStatus": "succeeded",
+  "repository": { "webUrl": "https://dev.azure.com/bofaz/Axos-Universal-Core/_git/testrepo" }
+}
+EOF
+}
+
+case "$cmd1" in
+  extension)
+    sub="${1:-}"
+    shift || true
+    case "$sub" in
+      list)
+        # Enough for `grep -q "azure-devops"`
+        echo '[{"name":"azure-devops"}]'
+        ;;
+      add)
+        echo '{"name":"azure-devops"}'
+        ;;
+      *)
+        echo "az stub: unsupported: extension $sub" >&2
+        exit 2
+        ;;
+    esac
+    ;;
+
+  repos)
+    sub="${1:-}"
+    shift || true
+    case "$sub" in
+      pr)
+        sub2="${1:-}"
+        shift || true
+        case "$sub2" in
+          create)
+            echo '{"pullRequestId": 123}'
+            ;;
+          show)
+            # Handle --query repository.webUrl -o tsv
+            if printf '%s ' "$@" | grep -q -- "--query repository.webUrl"; then
+              echo "https://dev.azure.com/bofaz/Axos-Universal-Core/_git/testrepo"
+            # Handle --query status -o tsv
+            elif printf '%s ' "$@" | grep -q -- "--query status"; then
+              echo "active"
+            else
+              json_pr_show
+            fi
+            ;;
+          update)
+            echo '{"status":"completed"}'
+            ;;
+          *)
+            echo "az stub: unsupported: repos pr $sub2" >&2
+            exit 2
+            ;;
+        esac
+        ;;
+      *)
+        echo "az stub: unsupported: repos $sub" >&2
+        exit 2
+        ;;
+    esac
+    ;;
+
+  pipelines)
+    sub="${1:-}"
+    shift || true
+    case "$sub" in
+      build)
+        sub2="${1:-}"
+        shift || true
+        case "$sub2" in
+          list)
+            echo '[]'
+            ;;
+          *)
+            echo "az stub: unsupported: pipelines build $sub2" >&2
+            exit 2
+            ;;
+        esac
+        ;;
+      *)
+        echo "az stub: unsupported: pipelines $sub" >&2
+        exit 2
+        ;;
+    esac
+    ;;
+
+  *)
+    echo "az stub: unsupported: $cmd1" >&2
+    exit 2
+    ;;
+esac
+

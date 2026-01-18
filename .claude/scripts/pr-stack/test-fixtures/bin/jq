@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Tiny `jq -r '.field'` stub for merge-stack.sh e2e tests.
+# Supports only: -r and filters for top-level fields used by merge-stack.sh.
+
+raw=false
+if [ "${1:-}" = "-r" ]; then
+  raw=true
+  shift
+fi
+
+filter="${1:-}"
+shift || true
+
+python3 -c '
+import json, sys
+flt = sys.argv[1].strip()
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = {}
+
+def get_field(name: str):
+    v = data.get(name, "")
+    if v is None:
+        v = ""
+    sys.stdout.write(str(v))
+
+if flt == ".sourceRefName":
+    get_field("sourceRefName")
+elif flt == ".targetRefName":
+    get_field("targetRefName")
+elif flt == ".status":
+    get_field("status")
+elif flt == ".title":
+    get_field("title")
+elif flt == ".mergeStatus":
+    get_field("mergeStatus")
+else:
+    sys.stdout.write("")
+' "$filter"
+
