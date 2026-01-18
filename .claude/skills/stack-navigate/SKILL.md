@@ -61,8 +61,8 @@ Use this skill when the user wants to:
    
    Or recommend setting up aliases:
    ```bash
-   alias stup='eval $(~/$HOME/.dotfiles/.claude/scripts/stack up)'
-   alias stdown='eval $(~/$HOME/.dotfiles/.claude/scripts/stack down)'
+   alias stup='eval $(~/.dotfiles/.claude/scripts/stack up)'
+   alias stdown='eval $(~/.dotfiles/.claude/scripts/stack down)'
    ```
 
 4. If command fails (Charcoal not installed), fall back to git:
