@@ -1,330 +1,311 @@
-# PR Stack Scripts
+# PR Stack Scripts with Charcoal + Worktrees Integration
 
-Automation scripts for managing stacked pull requests with Azure DevOps.
+A unified CLI for managing stacked PRs with full Charcoal integration and worktree support for parallel development.
 
-## Scripts Overview
+## 🎯 What This Gives You
 
-### create-stack.sh
-Creates a new branch in the PR stack based on another branch.
+Get **all** of these capabilities simultaneously:
 
-**Usage:**
+- ✅ **Parallel Development**: Work on multiple branches at the same time in separate directories
+- ✅ **Easy Navigation**: Use `stack up/down` to move between branches (worktree-aware)
+- ✅ **Automatic Restacking**: One command to rebase entire stack and sync all worktrees
+- ✅ **Visual Stack Display**: See your PR stack with worktree locations
+- ✅ **PR Stacking**: Create dependent PRs with proper base branches
+- ✅ **IDE Isolation**: Each worktree gets its own configuration
+
+## 🚀 Quick Start
+
+### Installation
+
 ```bash
-./create-stack.sh <new-branch-name> [base-branch] [commit-message]
+# Install Charcoal
+brew install danerwilliams/tap/charcoal
+
+# Initialize in your repo
+cd /path/to/your/repo
+~/.claude/scripts/stack init
 ```
 
-**Examples:**
+### Create Your First Stack
+
 ```bash
-# Create branch from main
-./create-stack.sh feature/new-api main
+# Create three stacked branches with worktrees
+stack create feature/api main --worktree
+stack create feature/ui feature/api --worktree
+stack create feature/polish feature/ui --worktree
 
-# Create branch from another feature
-./create-stack.sh feature/api-tests feature/new-api
-
-# Create with initial commit
-./create-stack.sh feature/ui feature/api "Initial UI setup"
+# Result: Three directories for parallel development
+# .trees/api/
+# .trees/ui/
+# .trees/polish/
 ```
 
-**What it does:**
-- Creates a new branch from the specified base
-- Validates branch names and existence
-- Updates stack tracking information
-- Optionally creates an initial commit
-- Shows next steps
+### Work in Parallel
+
+```bash
+# Terminal 1
+cd .trees/api
+# Work on API
+
+# Terminal 2
+cd .trees/ui
+# Work on UI (can reference API code)
+
+# Terminal 3
+cd .trees/polish
+# Polish the UI (can reference both)
+```
+
+### View Your Stack
+
+```bash
+stack status
+
+# Output:
+# main
+# ├── feature/api [WT: .trees/api]
+#     └── feature/ui [WT: .trees/ui]
+#         └── feature/polish [WT: .trees/polish]
+```
+
+### Navigate Between Worktrees
+
+```bash
+# From .trees/polish/
+eval $(stack up)      # Navigate to .trees/ui/
+eval $(stack down)    # Navigate back to .trees/polish/
+```
+
+### Restack After Changes
+
+```bash
+# After feature/api is merged or updated
+stack restack
+
+# Automatically:
+# - Rebases feature/ui onto new feature/api
+# - Rebases feature/polish onto new feature/ui
+# - Syncs all worktrees
+```
+
+## 📚 Documentation
+
+- **[QUICK_START.md](./QUICK_START.md)** - Get started in 5 minutes
+- **[WORKTREE_CHARCOAL_INTEGRATION.md](./WORKTREE_CHARCOAL_INTEGRATION.md)** - Complete integration guide
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Technical architecture and design
+- **[COMPARISON.md](./COMPARISON.md)** - Before vs After comparison
+
+## 🎨 Commands Reference
+
+### Branch Management
+
+```bash
+stack create <branch> [base] [--worktree]  # Create stacked branch
+stack up                                   # Navigate to parent (worktree-aware)
+stack down [index]                         # Navigate to child (worktree-aware)
+stack restack                              # Rebase entire stack
+```
+
+### Worktree Management
+
+```bash
+stack worktree-add <branch>      # Add worktree to existing branch
+stack worktree-list              # List all worktrees
+stack worktree-remove <path>     # Remove a worktree
+```
+
+### PR Management
+
+```bash
+stack pr <branch> <target> "title"  # Create PR
+stack merge <pr-id>                 # Merge PR and update stack
+stack update [merged-branch]        # Update stack after merge
+```
+
+### Status & Info
+
+```bash
+stack status     # Show stack with worktree info
+stack init       # Initialize Charcoal
+stack sync       # Sync metadata
+```
+
+## 🔧 Recommended Aliases
+
+Add to your `.zshrc`:
+
+```bash
+# Stack management
+alias st='~/.claude/scripts/stack'
+alias stup='eval $(~/.claude/scripts/stack up)'
+alias stdown='eval $(~/.claude/scripts/stack down)'
+alias stst='~/.claude/scripts/stack status'
+
+# Worktree management
+alias stwt='~/.claude/scripts/stack worktree-add'
+alias stwls='~/.claude/scripts/stack worktree-list'
+```
+
+## 💡 Use Cases
+
+### Full-Stack Feature Development
+
+```bash
+# Create layers
+st create feature/database main --worktree
+st create feature/api feature/database --worktree
+st create feature/ui feature/api --worktree
+
+# Work on all layers simultaneously
+# Terminal 1: Database schema
+# Terminal 2: API implementation
+# Terminal 3: UI components
+
+# After database PR feedback
+cd .trees/database
+# Make changes
+git commit --amend && git push -f
+
+# Restack everything
+st restack  # API and UI automatically rebased
+```
+
+### Hotfix While Working on Feature
+
+```bash
+# Working on feature in .trees/new-feature/
+# Urgent hotfix needed
+
+# Create hotfix in new worktree (doesn't disrupt current work)
+st create hotfix/security main --worktree
+cd .trees/security
+# Fix, commit, push
+
+# Continue working on feature (never stopped!)
+```
+
+### Experimental Branches
+
+```bash
+# Create experimental branch
+st create experiment/new-approach feature/api --worktree
+
+# Try new approach in .trees/new-approach/
+# Keep working on main approach in .trees/api/
+
+# If experiment works, merge it
+# If not, just remove the worktree
+st worktree-remove .trees/new-approach
+```
+
+## 🏗️ Architecture
+
+```
+Main Repo
+├── .git/
+│   ├── .gt/              # Charcoal metadata (shared)
+│   ├── pr-stack-info     # PR stack metadata (shared)
+│   └── worktrees/        # Worktree metadata (shared)
+├── .trees/
+│   ├── api/              # Worktree for feature/api
+│   ├── ui/               # Worktree for feature/ui
+│   └── polish/           # Worktree for feature/polish
+└── ...
+
+All worktrees share Charcoal metadata!
+Navigation and restacking work across all worktrees!
+```
+
+## 🔄 How It Works
+
+1. **Create worktree**: Native git creates isolated directory
+2. **Track in Charcoal**: `gt branch track` registers the branch
+3. **Navigate**: Commands detect worktrees and cd there
+4. **Restack**: Charcoal rebases, then syncs all worktrees
+5. **Metadata**: Kept in sync between Charcoal and native format
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for details.
+
+## 🆚 Comparison
+
+| Feature | Before | After |
+|---------|--------|-------|
+| Parallel development | ❌ | ✅ |
+| Easy navigation | ⚠️ Charcoal only | ✅ |
+| Automatic restacking | ⚠️ Charcoal only | ✅ |
+| Multiple IDE windows | ⚠️ Worktrees only | ✅ |
+| Visual stack display | ⚠️ Charcoal only | ✅ |
+
+See [COMPARISON.md](./COMPARISON.md) for detailed comparison.
+
+## 🐛 Troubleshooting
+
+### Navigation doesn't change directory
+
+**Problem:** `stack up` shows a cd command but doesn't change directory.
+
+**Solution:** Use `eval $(stack up)` or create an alias:
+```bash
+alias stup='eval $(stack up)'
+```
+
+### Worktree out of sync after restack
+
+**Problem:** Worktree shows conflicts after restack.
+
+**Solution:**
+```bash
+cd .trees/<worktree>
+git pull --rebase
+```
+
+### Can't remove worktree
+
+**Problem:** Uncommitted changes prevent removal.
+
+**Solution:**
+```bash
+cd .trees/<worktree>
+git add . && git commit -m "WIP"
+# Then remove
+stack worktree-remove .trees/<worktree>
+```
+
+## 📦 Requirements
+
+- Git 2.5+ (for worktree support)
+- Charcoal (`brew install danerwilliams/tap/charcoal`)
+- jq (optional, for better JSON parsing)
+- Bash 4.0+
+
+## 🤝 Integration with Claude Code
+
+This system integrates with Claude Code skills:
+
+- **stack-create**: Creates branches with worktrees
+- **stack-navigate**: Worktree-aware navigation
+- **stack-status**: Shows stack with worktree info
+- **stack-pr**: Creates PRs from any worktree
+- **stack-update**: Updates and syncs worktrees
+
+Claude understands the full workflow and can guide you through it!
+
+## 📝 License
+
+Part of your dotfiles setup. Modify as needed!
+
+## 🙏 Credits
+
+- **Charcoal**: [danerwilliams/charcoal](https://github.com/danerwilliams/charcoal)
+- **Git Worktrees**: Git core feature
+- **Integration**: Custom implementation for seamless workflow
 
 ---
 
-### create-pr.sh
-Creates a Pull Request in Azure DevOps.
-
-**Usage:**
+**Get started now:**
 ```bash
-./create-pr.sh <source-branch> [target-branch] [title] [--draft]
+stack init
+stack create feature/my-feature main --worktree
+cd .trees/my-feature
+# Start coding! 🚀
 ```
-
-**Examples:**
-```bash
-# Create PR targeting main
-./create-pr.sh feature/new-api
-
-# Create with custom title
-./create-pr.sh feature/new-api main "Add user API endpoint"
-
-# Create as draft
-./create-pr.sh feature/ui feature/api "Add UI" --draft
-```
-
-**What it does:**
-- Validates branches are pushed to remote
-- Generates PR description with commits and dependencies
-- Creates PR in Azure DevOps
-- Marks dependencies for stacked PRs
-- Stores PR information for tracking
-
-**Requirements:**
-- Azure CLI (`az`) installed and configured
-- Azure DevOps extension for Azure CLI
-- Authenticated to Azure DevOps organization
-
----
-
-### list-stack.sh
-Lists all branches in the current PR stack with status.
-
-**Usage:**
-```bash
-./list-stack.sh [--verbose]
-```
-
-**Examples:**
-```bash
-# Basic view
-./list-stack.sh
-
-# Detailed view with commits and status
-./list-stack.sh --verbose
-```
-
-**What it shows:**
-- Tree visualization of stacked branches
-- Current branch highlighted
-- Number of commits ahead
-- PR status (if created)
-- Branch existence (local/remote)
-
-**Example output:**
-```
-╔════════════════════════════════════════════════════════════╗
-║                     PR STACK STATUS                        ║
-╚════════════════════════════════════════════════════════════╝
-
-main
-├── feature/base-api [5 commits] → PR #12345 (ACTIVE)
-│   └── feature/api-tests [3 commits] → PR #12346 (DRAFT)
-│       └── feature/ui [2 commits] → NO PR
-└── feature/refactor [4 commits] → PR #12347 (MERGED)
-
-Summary:
-  Total branches in stack: 4
-  PRs created: 3
-  Branches without PRs: 1
-```
-
----
-
-### update-stack.sh
-Updates dependent branches after a base branch is merged.
-
-**Usage:**
-```bash
-./update-stack.sh [merged-branch]
-```
-
-**Examples:**
-```bash
-# Update after specific branch merged
-./update-stack.sh feature/base-api
-
-# Interactive mode - prompts for branch
-./update-stack.sh
-```
-
-**What it does:**
-- Finds all branches that depend on the merged branch
-- Rebases each dependent branch onto the merge target (usually main)
-- Force-pushes updated branches (with --force-with-lease)
-- Updates stack tracking to reflect new base branches
-- Handles merge conflicts gracefully
-
-**When to use:**
-- After a PR is merged in Azure DevOps
-- When you need to update dependent PRs to target main instead of the merged branch
-
----
-
-### merge-stack.sh
-Completes a PR merge and automatically updates the stack.
-
-**Usage:**
-```bash
-./merge-stack.sh <pr-id>
-```
-
-**Examples:**
-```bash
-# Merge PR and update stack
-./merge-stack.sh 12345
-```
-
-**What it does:**
-1. Fetches PR information from Azure DevOps
-2. Validates PR can be merged (build passed, approved, etc.)
-3. Completes the PR merge
-4. Updates local repository
-5. Optionally deletes merged branch (local and remote)
-6. Automatically runs `update-stack.sh` to update dependent branches
-
-**Requirements:**
-- Azure CLI with Azure DevOps extension
-- PR must be approved and ready to merge
-- Authenticated to Azure DevOps
-
----
-
-## Configuration
-
-### Azure DevOps Settings
-
-Scripts are pre-configured for:
-- **Organization**: `https://dev.azure.com/bofaz`
-- **Project**: `Axos-Universal-Core`
-- **Repository**: `auc-conversion`
-
-To change these, edit the variables at the top of `create-pr.sh` and `merge-stack.sh`:
-
-```bash
-ORGANIZATION="https://dev.azure.com/your-org"
-PROJECT="Your-Project-Name"
-```
-
-### Stack Tracking Files
-
-Scripts maintain tracking information in:
-- `.git/pr-stack-info` - Branch dependencies and creation time
-- `.git/pr-created` - PR IDs and metadata
-
-These files are automatically managed by the scripts.
-
-## Workflow Example
-
-### Scenario: Building a Feature in Stages
-
-```bash
-# Stage 1: Database Schema
-./create-stack.sh feature/user-schema main "Add user schema"
-# ... implement schema ...
-git add .
-git commit -m "feat: add user table schema"
-./create-pr.sh feature/user-schema main "Add user database schema"
-
-# Stage 2: API Layer
-./create-stack.sh feature/user-api feature/user-schema "Add user API"
-# ... implement API ...
-git add .
-git commit -m "feat: add user API endpoints"
-./create-pr.sh feature/user-api feature/user-schema "Add user API endpoints"
-
-# Stage 3: UI
-./create-stack.sh feature/user-ui feature/user-api "Add user UI"
-# ... implement UI ...
-git add .
-git commit -m "feat: add user profile page"
-./create-pr.sh feature/user-ui feature/user-api "Add user profile UI" --draft
-
-# Check status
-./list-stack.sh --verbose
-
-# After feature/user-schema PR is approved and merged
-./merge-stack.sh 12345  # Automatically updates feature/user-api and feature/user-ui
-```
-
-## Prerequisites
-
-1. **Git 2.5+** (for worktree support)
-2. **Azure CLI**
-   ```bash
-   # Install (macOS)
-   brew install azure-cli
-
-   # Login
-   az login
-   ```
-3. **Azure DevOps Extension**
-   ```bash
-   az extension add --name azure-devops
-   ```
-4. **Bash** (macOS/Linux) or Git Bash (Windows)
-
-## Troubleshooting
-
-### "Azure CLI not found"
-Install Azure CLI: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli
-
-### "Branch does not exist"
-Ensure you've pushed your branch:
-```bash
-git push -u origin <branch-name>
-```
-
-### "Failed to create PR"
-Check Azure DevOps authentication:
-```bash
-az account show
-az devops configure --list
-```
-
-### "Cannot rebase: you have unstaged changes"
-Stash your changes first:
-```bash
-git stash
-# Run update command
-git stash pop
-```
-
-### "Remote already exists"
-The script handles this, but if you see errors:
-```bash
-git remote remove origin
-git remote add origin <url>
-```
-
-## Tips
-
-1. **Use git aliases** for faster workflow:
-   ```bash
-   git config --global alias.stack-create '!f() { ./scripts/pr-stack/create-stack.sh "$@"; }; f'
-   git config --global alias.stack-list '!./scripts/pr-stack/list-stack.sh'
-   git config --global alias.stack-update '!./scripts/pr-stack/update-stack.sh'
-   ```
-
-2. **Check stack status regularly**:
-   ```bash
-   ./list-stack.sh
-   ```
-
-3. **Use --draft flag** for dependent PRs that aren't ready:
-   ```bash
-   ./create-pr.sh feature/my-feature feature/base --draft
-   ```
-
-4. **Keep PRs small**: Each PR should be reviewable in < 30 minutes
-
-5. **Document dependencies**: Always note in PR description which PR it depends on
-
-## Integration with AI Tools
-
-These scripts work excellently with AI coding assistants:
-
-- **Claude Code**: Can run scripts directly when you ask
-  - "Create a stacked branch for my new feature"
-  - "Show me my PR stack"
-
-- **Cursor**: Use in terminal within Cursor
-
-- **Windsurf**: Run from Cascade terminal
-
-See [.claude/docs/pr-stacking.md](../../.claude/docs/pr-stacking.md) for AI-specific workflows.
-
-## Support
-
-For issues or questions:
-1. Check [PR_STACKING_GUIDE.md](../../PR_STACKING_GUIDE.md)
-2. Review script source for detailed comments
-3. Contact team leads
-
-## Contributing
-
-When modifying scripts:
-1. Test thoroughly with a test repository
-2. Maintain backward compatibility
-3. Update this README with any new functionality
-4. Use consistent error handling and output formatting
