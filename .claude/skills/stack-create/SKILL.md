@@ -1,11 +1,11 @@
 ---
 name: stack-create
-description: Creates a new stacked branch for PR stacking workflows. Use when user wants to create a new branch that builds on another branch, start a PR stack, or create a feature branch with dependencies.
+description: Creates a new stacked branch for PR stacking workflows with full Charcoal integration. Supports worktrees for parallel development while maintaining Charcoal's navigation and restacking capabilities.
 ---
 
 # Stack Create
 
-Creates a new stacked branch with optional worktree for PR stacking workflows.
+Creates a new stacked branch with optional worktree for PR stacking workflows. Now with full Charcoal integration for worktrees!
 
 ## When to Use
 
@@ -14,67 +14,121 @@ Use this skill when the user wants to:
 - Start a PR stacking workflow
 - Create a feature branch with a specific base branch
 - Set up parallel development with git worktrees
+- Use Charcoal's navigation (up/down) and restacking across worktrees
+
+## Key Feature: Charcoal + Worktrees
+
+**NEW:** Worktrees are now fully integrated with Charcoal! You get:
+- ✅ Parallel development in separate directories
+- ✅ Charcoal navigation (`stack up/down`) that's worktree-aware
+- ✅ Automatic restacking with `stack restack`
+- ✅ Visual stack display with worktree locations
+- ✅ All Charcoal features work seamlessly with worktrees
 
 ## Instructions
 
 1. Parse the user's request to identify:
    - `branch-name`: The name for the new branch (required)
    - `base-branch`: The branch to base on (default: current branch or main)
-   - `commit-message`: Optional initial commit message
+   - `worktree`: Boolean, whether to create a worktree (explicit request or implied by context)
 
-2. Execute the unified stack CLI:
+2. Determine if worktree is needed:
+   - If user explicitly asks for "worktree" or "parallel development" -> Set `worktree=true`
+   - If user wants to work on multiple branches simultaneously -> Recommend worktrees
+   - If user asks for "branch" only -> Create without worktree (can add later)
+
+3. Execute the unified stack CLI:
    ```bash
-   .claude/scripts/stack create <branch-name> [base-branch]
+   .claude/scripts/stack create <branch-name> [base-branch] [--worktree]
    ```
 
    This will automatically:
-   - Use Charcoal if available (better UX, automatic stacking)
-   - Fall back to native scripts otherwise
-   - Sync metadata for Azure DevOps compatibility
-
-3. If scripts are not found, perform these steps manually:
-   - Fetch latest from remote: `git fetch origin`
-   - Create and checkout new branch: `git checkout -b <branch-name> <base-branch>`
-   - Push with tracking: `git push -u origin <branch-name>`
-   - If commit message provided, create initial commit
+   - Create the branch (and worktree if requested)
+   - Handle config copying for worktrees (IDE settings, MCP configs, .env)
+   - Track branch in Charcoal (enables navigation and restacking)
+   - Sync metadata for PR stacking
+   - Enable worktree-aware Charcoal commands
 
 4. Report the result to the user, including:
    - Branch created successfully
+   - Worktree path (if applicable)
    - Base branch it's built on
-   - Whether Charcoal was used
-   - Next steps (develop, then create PR)
+   - Charcoal tracking status
+   - Next steps (navigation commands, development workflow)
 
-## Charcoal Integration
+## Worktree Management
 
-If Charcoal is installed and initialized, the unified CLI will:
-- Use `gt branch create` for better stack tracking
-- Automatically set the parent branch
-- Enable navigation with `.claude/scripts/stack up` and `.claude/scripts/stack down`
-
-To enable Charcoal:
+If user needs to add worktree to existing branch:
 ```bash
-brew install danerwilliams/tap/charcoal
-.claude/scripts/stack init
+.claude/scripts/stack worktree-add <branch-name>
 ```
+
+List all worktrees:
+```bash
+.claude/scripts/stack worktree-list
+```
+
+Remove a worktree:
+```bash
+.claude/scripts/stack worktree-remove <path>
+```
+
+## Navigation with Worktrees
+
+When using worktrees with Charcoal:
+- `stack up` - Navigate to parent branch (cd to worktree if exists)
+- `stack down` - Navigate to child branch (cd to worktree if exists)
+- `stack status` - Shows stack with worktree locations
+- `stack restack` - Rebases entire stack and syncs all worktrees
 
 ## Examples
 
-User: "Create a new stacked branch for user authentication"
-Action: `.claude/scripts/stack create feature/user-auth main`
+User: "Create a new stacked branch for user authentication with a worktree"
+Action: `.claude/scripts/stack create feature/user-auth main --worktree`
+Result: Branch + worktree created, tracked in Charcoal
 
-User: "Create a branch for tests based on the API branch"
-Action: `.claude/scripts/stack create feature/api-tests feature/api`
+User: "Create stacked worktrees for API, UI, and polish"
+Actions:
+```bash
+.claude/scripts/stack create feature/api main --worktree
+.claude/scripts/stack create feature/ui feature/api --worktree
+.claude/scripts/stack create feature/polish feature/ui --worktree
+```
+Result: Three worktrees for parallel development, all tracked in Charcoal stack
 
 User: "Stack a new branch called feature/ui on top of feature/backend"
 Action: `.claude/scripts/stack create feature/ui feature/backend`
+Result: Branch created without worktree, can add later with `worktree-add`
 
-User: "Create a feature branch on top of current branch"
-Action: `.claude/scripts/stack create feature/next-step`
-(Will automatically use current branch as base)
+User: "Add a worktree for my existing feature/api branch"
+Action: `.claude/scripts/stack worktree-add feature/api`
+Result: Worktree created for existing branch, Charcoal navigation still works
+
+## Workflow Example
+
+```bash
+# Setup parallel development
+stack create feature/database main --worktree
+stack create feature/api feature/database --worktree
+stack create feature/ui feature/api --worktree
+
+# Work in parallel (3 terminal windows)
+cd .trees/database  # Terminal 1
+cd .trees/api       # Terminal 2
+cd .trees/ui        # Terminal 3
+
+# Navigate using Charcoal (from any terminal)
+stack up            # Goes to parent worktree
+stack down          # Goes to child worktree
+stack status        # Shows stack with worktree info
+
+# After making changes to database, restack everything
+stack restack       # Rebases api and ui, syncs all worktrees
+```
 
 ## Related Skills
 
-- **stack-navigate**: Move between branches (up/down)
-- **stack-status**: View stack hierarchy
+- **stack-navigate**: Move between branches (worktree-aware)
+- **stack-status**: View stack hierarchy with worktree info
 - **stack-pr**: Create Azure DevOps PR
-- **stack-update**: Update after merge
+- **stack-update**: Update after merge (syncs worktrees)
