@@ -68,7 +68,7 @@ get_worktree_path() {
 # If parent branch has a worktree, cd there; otherwise checkout in current location
 wt_charcoal_up() {
     if ! charcoal_initialized; then
-        print_error "Charcoal not initialized. Run: ./scripts/stack init"
+        print_error "Charcoal not initialized. Run: ./scripts/stack init" >&2
         return 1
     fi
     
@@ -80,7 +80,7 @@ wt_charcoal_up() {
     parent_branch=$(charcoal_get_parent "$current_branch")
 
     if [ -z "$parent_branch" ]; then
-        print_error "No parent branch found for $current_branch"
+        print_error "No parent branch found for $current_branch" >&2
         return 1
     fi
     
@@ -89,15 +89,16 @@ wt_charcoal_up() {
     parent_worktree=$(get_worktree_path "$parent_branch")
     
     if [ -n "$parent_worktree" ]; then
-        print_info "Navigating to worktree: $parent_worktree"
+        # IMPORTANT: Keep stdout clean for `eval $(stack up)`
+        print_info "Navigating to worktree: $parent_worktree" >&2
         echo "cd $parent_worktree"
         # Note: Can't actually cd from a script, so we output the command
         # User should use: eval $(wt gt up)
     else
         # No worktree, use regular Charcoal navigation
         if is_in_worktree; then
-            print_warning "Parent branch $parent_branch has no worktree"
-            print_info "Options:"
+            print_warning "Parent branch $parent_branch has no worktree" >&2
+            print_info "Options:" >&2
             echo "  1. Create worktree: ./scripts/stack worktree-add $parent_branch"
             echo "  2. Navigate in main repo: (cd $(get_main_repo_path) && gt up)"
             return 1
@@ -113,7 +114,7 @@ wt_charcoal_down() {
     local child_index=${1:-0}
     
     if ! charcoal_initialized; then
-        print_error "Charcoal not initialized. Run: ./scripts/stack init"
+        print_error "Charcoal not initialized. Run: ./scripts/stack init" >&2
         return 1
     fi
     
@@ -125,12 +126,12 @@ wt_charcoal_down() {
     children_array=($(charcoal_get_children "$current_branch"))
 
     if [ ${#children_array[@]} -eq 0 ]; then
-        print_error "No child branches found for $current_branch"
+        print_error "No child branches found for $current_branch" >&2
         return 1
     fi
 
     if [ "$child_index" -ge "${#children_array[@]}" ]; then
-        print_error "No child branch found at index $child_index"
+        print_error "No child branch found at index $child_index" >&2
         return 1
     fi
 
@@ -141,14 +142,15 @@ wt_charcoal_down() {
     child_worktree=$(get_worktree_path "$child_branch")
     
     if [ -n "$child_worktree" ]; then
-        print_info "Navigating to worktree: $child_worktree"
+        # IMPORTANT: Keep stdout clean for `eval $(stack down)`
+        print_info "Navigating to worktree: $child_worktree" >&2
         echo "cd $child_worktree"
         # Note: User should use: eval $(wt gt down)
     else
         # No worktree, use regular Charcoal navigation
         if is_in_worktree; then
-            print_warning "Child branch $child_branch has no worktree"
-            print_info "Options:"
+            print_warning "Child branch $child_branch has no worktree" >&2
+            print_info "Options:" >&2
             echo "  1. Create worktree: ./scripts/stack worktree-add $child_branch"
             echo "  2. Navigate in main repo: (cd $(get_main_repo_path) && gt down $child_index)"
             return 1
@@ -187,8 +189,10 @@ wt_charcoal_restack() {
         print_info "Syncing worktrees..."
         sync_all_worktrees
         
-        # Sync metadata
-        sync_charcoal_to_native
+        # Sync metadata (best-effort; may be unavailable in Charcoal-only mode)
+        if type sync_charcoal_to_native >/dev/null 2>&1; then
+            sync_charcoal_to_native || true
+        fi
     else
         print_error "Restack failed"
         return 1
