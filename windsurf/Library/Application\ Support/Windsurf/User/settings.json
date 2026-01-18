@@ -1,0 +1,220 @@
+{
+  // ============================================================================
+  // EDITOR - Core Display Settings (optimized for 40+ developer, MacBook Pro)
+  // ============================================================================
+  "editor.fontFamily": "JetBrains Mono",
+  "editor.fontSize": 17,
+  "editor.lineHeight": 1.6,
+  "editor.letterSpacing": 0.5,
+  "editor.fontLigatures": true,
+  "editor.fontVariations": true,
+
+  // ============================================================================
+  // CURSOR BEHAVIOR & VISUAL FEEDBACK
+  // ============================================================================
+  "editor.cursorBlinking": "smooth",
+  "editor.cursorSmoothCaretAnimation": "on",
+  "editor.cursorWidth": 2,
+  "editor.smoothScrolling": true,
+  "editor.scrollBeyondLastLine": false,
+
+  // ============================================================================
+  // THEME & APPEARANCE
+  // ============================================================================
+  "workbench.colorTheme": "Catppuccin Mocha",
+  "workbench.iconTheme": "catppuccin-mocha",
+  "workbench.colorCustomizations": {
+    "[Catppuccin Mocha]": {
+      "editor.background": "#1e1e2e",
+      "editor.lineNumberColor": "#45475a77",
+      "editorLineNumber.foreground": "#6f7086",
+      "editorLineNumber.activeForeground": "#cdd6f4"
+    }
+  },
+  "window.commandCenter": true,
+  "window.titleBarStyle": "custom",
+
+  // ============================================================================
+  // CODE EDITING - Readability & Navigation
+  // ============================================================================
+  "editor.wordWrap": "on",
+  "editor.wordWrapColumn": 100,
+  "editor.rulers": [80, 100, 120],
+  "editor.minimap.enabled": false,
+  "editor.minimap.renderCharacters": false,
+  "editor.stickyScroll.enabled": true,
+  "editor.stickyScroll.maxLineCount": 5,
+
+  // ============================================================================
+  // CODE INTELLIGENCE & HINTS
+  // ============================================================================
+  "editor.bracketPairColorization.enabled": true,
+  "editor.bracketPairColorization.independentColorPoolPerBracketType": true,
+  "editor.guides.bracketPairs": "active",
+  "editor.guides.indentation": true,
+  "editor.inlayHints.enabled": "on",
+  "editor.inlayHints.fontSize": 13,
+
+  // ============================================================================
+  // FORMATTING & SAVE
+  // ============================================================================
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.organizeImports": "explicit",
+    "source.formatDocument": "explicit"
+  },
+  "files.autoSave": "onFocusChange",
+  "files.trimTrailingWhitespace": true,
+  "files.trimFinalNewlines": true,
+  "files.insertFinalNewline": true,
+
+  // ============================================================================
+  // EXPLORER & UI
+  // ============================================================================
+  "explorer.confirmDelete": false,
+  "explorer.confirmDragAndDrop": false,
+  "workbench.tree.indent": 16,
+  "workbench.sideBar.location": "left",
+  "workbench.activityBar.location": "side",
+
+  // ============================================================================
+  // TERMINAL INTEGRATION (Nushell)
+  // ============================================================================
+  "terminal.integrated.fontFamily": "JetBrains Mono",
+  "terminal.integrated.fontSize": 17,
+  "terminal.integrated.lineHeight": 1.4,
+  "terminal.integrated.shellIntegration.enabled": true,
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  "terminal.integrated.profiles.osx": {
+    "bash": {
+      "path": "bash",
+      "args": ["-l"],
+      "icon": "terminal-bash"
+    },
+    "zsh": {
+      "path": "zsh",
+      "args": ["-l"],
+      "icon": "terminal-bash"
+    }
+  },
+  "terminal.integrated.enableMultiLinePasteWarning": false,
+
+  // ============================================================================
+  // GIT INTEGRATION
+  // ============================================================================
+  "git.autofetch": true,
+  "git.autofetchPeriod": 180,
+  "git.confirmSync": false,
+  "git.decorations.enabled": true,
+  "scm.defaultViewMode": "tree",
+
+  // ============================================================================
+  // SEARCH & REPLACE
+  // ============================================================================
+  "search.smartCase": true,
+  "search.followSymlinks": false,
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.git": true,
+    "**/build": true,
+    "**/.next": true
+  },
+
+  // ============================================================================
+  // EXTENSION SETTINGS
+  // ============================================================================
+  "extensions.recommendations": true,
+  "extensions.autoCheckUpdates": true,
+  "extensions.autoUpdate": true,
+
+  // Prettier Configuration
+  "prettier.printWidth": 100,
+  "prettier.tabWidth": 2,
+  "prettier.useTabs": false,
+  "prettier.semi": true,
+  "prettier.singleQuote": true,
+  "prettier.trailingComma": "es5",
+
+  // ============================================================================
+  // WINDSURF-SPECIFIC SETTINGS
+  // ============================================================================
+  "windsurf.fileExplorer.defaultFolderDragBehavior": "ask",
+  "windsurf.sidebar.focusMode": false,
+  "application.shellEnvironmentResolutionTimeout": 20,
+
+  // ============================================================================
+  // PERFORMANCE OPTIMIZATIONS (MacBook Pro M4)
+  // ============================================================================
+  "window.restoreWindows": "one",
+  "window.zoomLevel": 0,
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/*/**": true,
+    "**/.next/**": true,
+    "**/dist/**": true,
+    "**/.venv/**": true,
+    "**/venv/**": true
+  },
+  "search.followSymlinks": false,
+  "editor.largeFileOptimizations": true,
+  "editor.maxTokenizationLineLength": 20000,
+
+  // ============================================================================
+  // ACCESSIBILITY (40+ Developer Friendly)
+  // ============================================================================
+  "workbench.fontAliasing": "auto",
+  "editor.accessibilitySupport": "auto",
+  "editor.suggest.showStatusBar": true,
+  "breadcrumbs.enabled": true,
+  "breadcrumbs.showFiles": true,
+
+  // ============================================================================
+  // DEBUG & TESTING
+  // ============================================================================
+  "debug.console.fontFamily": "JetBrains Mono",
+  "debug.console.fontSize": 17,
+  "debug.inlineValues": "auto",
+
+  // ============================================================================
+  // LANGUAGE-SPECIFIC SETTINGS
+  // ============================================================================
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.python",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true
+  },
+
+  // ============================================================================
+  // OPTIONAL: Tweaks for Specific Workflows
+  // ============================================================================
+  "editor.renderWhitespace": "boundary",
+  "editor.renderControlCharacters": false,
+  "editor.showUnused": true,
+  "editor.showDeprecated": true,
+  "editor.suggest.snippetsPreventQuickSuggestions": false,
+  "editor.parameterHints.enabled": true,
+  "editor.parameterHints.cycle": true
+}

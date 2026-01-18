@@ -1,0 +1,154 @@
+[
+  // ============================================================================
+  // CURSOR AI FEATURES
+  // ============================================================================
+  {
+    "key": "cmd+i",
+    "command": "composerMode.agent",
+    "when": "editorFocus"
+  },
+  {
+    "key": "cmd+k cmd+c",
+    "command": "composerMode.composer",
+    "when": "editorFocus"
+  },
+  {
+    "key": "cmd+shift+i",
+    "command": "cursorPreview.openPreview"
+  },
+
+  // ============================================================================
+  // NAVIGATION & QUICK ACCESS
+  // ============================================================================
+  {
+    "key": "cmd+p",
+    "command": "workbench.action.quickOpen"
+  },
+  {
+    "key": "cmd+shift+p",
+    "command": "workbench.action.showCommands"
+  },
+  {
+    "key": "cmd+b",
+    "command": "workbench.action.toggleSidebarVisibility"
+  },
+  {
+    "key": "cmd+j",
+    "command": "workbench.action.togglePanel"
+  },
+  {
+    "key": "cmd+`",
+    "command": "workbench.action.terminal.toggleTerminal"
+  },
+
+  // ============================================================================
+  // CODE EDITING & FORMATTING
+  // ============================================================================
+  {
+    "key": "cmd+shift+f",
+    "command": "editor.action.formatDocument",
+    "when": "editorFocus && !editorReadonly"
+  },
+  {
+    "key": "cmd+/",
+    "command": "editor.action.commentLine",
+    "when": "editorFocus && !editorReadonly"
+  },
+  {
+    "key": "cmd+k cmd+0",
+    "command": "editor.foldAll"
+  },
+  {
+    "key": "cmd+k cmd+j",
+    "command": "editor.unfoldAll"
+  },
+  {
+    "key": "cmd+shift+k",
+    "command": "editor.action.deleteLines",
+    "when": "editorFocus && !editorReadonly"
+  },
+
+  // ============================================================================
+  // CODE NAVIGATION
+  // ============================================================================
+  {
+    "key": "cmd+f",
+    "command": "actions.find"
+  },
+  {
+    "key": "cmd+h",
+    "command": "editor.action.startFindReplaceAction"
+  },
+  {
+    "key": "cmd+shift+o",
+    "command": "workbench.action.gotoSymbol"
+  },
+  {
+    "key": "cmd+g",
+    "command": "workbench.action.gotoLine"
+  },
+
+  // ============================================================================
+  // MULTI-CURSOR & SELECTION
+  // ============================================================================
+  {
+    "key": "cmd+d",
+    "command": "editor.action.addSelectionToNextFindMatch",
+    "when": "editorFocus"
+  },
+  {
+    "key": "cmd+shift+l",
+    "command": "editor.action.selectHighlights",
+    "when": "editorFocus"
+  },
+  {
+    "key": "alt+cmd+up",
+    "command": "editor.action.insertCursorAbove",
+    "when": "editorFocus"
+  },
+  {
+    "key": "alt+cmd+down",
+    "command": "editor.action.insertCursorBelow",
+    "when": "editorFocus"
+  },
+
+  // ============================================================================
+  // GIT INTEGRATION
+  // ============================================================================
+  {
+    "key": "ctrl+shift+g",
+    "command": "workbench.view.scm",
+    "when": "workbench.scm.active"
+  },
+  {
+    "key": "cmd+shift+c",
+    "command": "git.commit",
+    "when": "gitbaseapi && scmRepository"
+  },
+
+  // ============================================================================
+  // REFACTORING
+  // ============================================================================
+  {
+    "key": "cmd+shift+r",
+    "command": "editor.action.refactor",
+    "when": "editorFocus"
+  },
+  {
+    "key": "f2",
+    "command": "editor.action.rename",
+    "when": "editorFocus"
+  },
+
+  // ============================================================================
+  // WINDOW MANAGEMENT
+  // ============================================================================
+  {
+    "key": "cmd+shift+enter",
+    "command": "workbench.action.toggleFullScreen"
+  },
+  {
+    "key": "cmd+n",
+    "command": "workbench.action.newWindow"
+  }
+]
