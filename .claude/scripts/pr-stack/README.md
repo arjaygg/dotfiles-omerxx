@@ -2,6 +2,29 @@
 
 A unified CLI for managing stacked PRs with full Charcoal integration and worktree support for parallel development.
 
+## ⚠️ Requirements
+
+**Charcoal is required** - this tooling is designed around Charcoal's stack management capabilities:
+
+```bash
+# Required
+brew install danerwilliams/tap/charcoal
+
+# Also required
+az extension add --name azure-devops  # Azure CLI DevOps extension
+
+# Optional but recommended
+brew install jq  # Better JSON parsing
+```
+
+**Why Charcoal is required:**
+- Automatic stack rebasing and dependency resolution
+- Branch relationship tracking
+- Worktree-aware navigation
+- Conflict handling
+
+Without Charcoal, you'd need ~200 lines of complex manual rebase logic that's error-prone and hard to maintain.
+
 ## 🎯 What This Gives You
 
 Get **all** of these capabilities simultaneously:

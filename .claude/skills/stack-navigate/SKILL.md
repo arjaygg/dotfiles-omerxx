@@ -1,6 +1,21 @@
 ---
 name: stack-navigate
-description: Navigate between stacked branches using Charcoal (gt up/down) with worktree awareness. Automatically detects and navigates to worktrees when available. Use when user wants to move to parent or child branch in their PR stack.
+description: Navigate between stacked branches using Charcoal (gt up/down) with worktree awareness. Automatically detects and navigates to worktrees when available. USE THIS SKILL when user says "go up", "go down", "navigate up", "navigate down", "parent branch", "child branch", "switch to parent", "switch to child", or wants to move between branches in their PR stack.
+triggers:
+  - go up
+  - go down
+  - navigate up
+  - navigate down
+  - parent branch
+  - child branch
+  - switch to parent
+  - switch to child
+  - move up stack
+  - move down stack
+  - next branch
+  - previous branch
+  - go to parent
+  - go to child
 ---
 
 # Stack Navigate

@@ -1,6 +1,18 @@
 ---
 name: stack-update
-description: Updates the PR stack after a base branch is merged. Use when a PR was merged and dependent branches need rebasing, or when user needs to sync their stack with main.
+description: Updates the PR stack after a base branch is merged. USE THIS SKILL when user says "restack", "update stack", "rebase stack", "sync stack", "refresh stack", "update after merge", or needs to rebase dependent branches after a merge.
+triggers:
+  - restack
+  - update stack
+  - rebase stack
+  - sync stack
+  - refresh stack
+  - update after merge
+  - rebase branches
+  - sync with main
+  - update dependencies
+  - rebase all
+  - stack rebase
 ---
 
 # Stack Update

@@ -1,6 +1,17 @@
 ---
 name: stack-merge
-description: Completes a PR merge in Azure DevOps and updates the entire stack. Use when user wants to merge a PR and automatically update all dependent branches.
+description: Completes a PR merge in Azure DevOps and updates the entire stack. USE THIS SKILL when user says "merge PR", "complete PR", "ship PR", "merge pull request", "complete the merge", or wants to merge a PR and update dependent branches.
+triggers:
+  - merge PR
+  - complete PR
+  - ship PR
+  - merge pull request
+  - complete the merge
+  - finish PR
+  - merge and update
+  - ship this PR
+  - land PR
+  - land the PR
 ---
 
 # Stack Merge

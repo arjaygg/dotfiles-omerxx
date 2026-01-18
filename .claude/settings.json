@@ -17,5 +17,5 @@
     "gopls@claude-code-lsps": true
   },
   "alwaysThinkingEnabled": true,
-  "model": "haiku"
+  "model": "sonnet"
 }
