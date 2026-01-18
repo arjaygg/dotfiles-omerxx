@@ -37,8 +37,9 @@ charcoal_initialized() {
     local repo_root
     repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
 
-    # Check for .gt directory (Charcoal's metadata)
-    if [ -d "$repo_root/.gt" ]; then
+    # Check for Graphite's config file (Charcoal/Graphite stores metadata in .git/)
+    # Note: Graphite is the new name for Charcoal, uses .graphite_repo_config
+    if [ -f "$repo_root/.git/.graphite_repo_config" ]; then
         return 0
     fi
 
@@ -140,7 +141,7 @@ charcoal_stack_status() {
         return 1
     fi
 
-    gt stack
+    gt log short
 }
 
 # ============================================================================
