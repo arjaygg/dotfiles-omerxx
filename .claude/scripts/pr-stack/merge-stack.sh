@@ -45,6 +45,38 @@ print_warning() {
     echo -e "${YELLOW}WARNING:${NC} $1"
 }
 
+is_true() {
+    case "${1:-}" in
+        1|true|TRUE|yes|YES|y|Y|on|ON) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+confirm() {
+    local prompt="$1"
+    local default_no=${2:-true}
+
+    # In e2e/CI, do not block on prompts.
+    if ! [ -t 0 ]; then
+        if is_true "${STACK_E2E:-}"; then
+            # For safety, only auto-yes for the merge confirmation.
+            if [[ "$prompt" == Proceed\ with\ merge* ]]; then
+                return 0
+            fi
+        fi
+        # default: no
+        if is_true "$default_no"; then
+            return 1
+        fi
+        return 0
+    fi
+
+    local reply=""
+    read -p "$prompt " -n 1 -r reply
+    echo
+    [[ "$reply" =~ ^[Yy]$ ]]
+}
+
 # Validate arguments
 if [ $# -lt 1 ]; then
     print_error "Missing required argument: pr-id"
@@ -53,6 +85,9 @@ if [ $# -lt 1 ]; then
 fi
 
 PR_ID=$1
+
+# Script directory (for calling sibling scripts reliably)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Check if we're in a git repository
 if ! git rev-parse --git-dir > /dev/null 2>&1; then
@@ -113,9 +148,7 @@ else
 
     # Confirm merge
     echo -e "${YELLOW}Ready to merge PR #$PR_ID${NC}"
-    read -p "Proceed with merge? (y/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    if ! confirm "Proceed with merge? (y/n)" true; then
         print_info "Merge cancelled"
         exit 0
     fi
@@ -140,24 +173,35 @@ fi
 
 # Update local repository
 print_info "Updating local repository..."
-git fetch origin
+if git remote get-url origin >/dev/null 2>&1; then
+    git fetch origin
+else
+    print_warning "No 'origin' remote configured; skipping fetch"
+fi
 
 # Checkout and update target branch
 if git rev-parse --verify "$TARGET_BRANCH" > /dev/null 2>&1; then
     print_info "Updating local $TARGET_BRANCH..."
     git checkout "$TARGET_BRANCH"
-    git pull origin "$TARGET_BRANCH"
+    if git remote get-url origin >/dev/null 2>&1; then
+        git pull origin "$TARGET_BRANCH"
+    else
+        print_warning "No 'origin' remote configured; skipping pull"
+    fi
 else
     print_warning "Local $TARGET_BRANCH does not exist"
     print_info "Creating $TARGET_BRANCH from origin..."
-    git checkout -b "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
+    if git remote get-url origin >/dev/null 2>&1; then
+        git checkout -b "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
+    else
+        # Fallback for local-only repos
+        git checkout -b "$TARGET_BRANCH"
+    fi
 fi
 
 # Delete the merged source branch (optional)
 echo ""
-read -p "Delete merged branch $SOURCE_BRANCH locally? (y/n) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+if confirm "Delete merged branch $SOURCE_BRANCH locally? (y/n)" true; then
     if git rev-parse --verify "$SOURCE_BRANCH" > /dev/null 2>&1; then
         git branch -d "$SOURCE_BRANCH" 2>/dev/null || \
             git branch -D "$SOURCE_BRANCH"
@@ -165,22 +209,24 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     fi
 fi
 
-read -p "Delete merged branch $SOURCE_BRANCH remotely? (y/n) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    git push origin --delete "$SOURCE_BRANCH" 2>/dev/null || \
-        print_warning "Could not delete remote branch (may already be deleted)"
+if confirm "Delete merged branch $SOURCE_BRANCH remotely? (y/n)" true; then
+    if git remote get-url origin >/dev/null 2>&1; then
+        git push origin --delete "$SOURCE_BRANCH" 2>/dev/null || \
+            print_warning "Could not delete remote branch (may already be deleted)"
+    else
+        print_warning "No 'origin' remote configured; skipping remote delete"
+    fi
 fi
 
 # Update dependent branches
 echo ""
 print_info "Updating dependent branches in the stack..."
 
-./scripts/pr-stack/update-stack.sh "$SOURCE_BRANCH"
+"$SCRIPT_DIR/update-stack.sh" "$SOURCE_BRANCH"
 
 print_success "Stack merge complete!"
 echo ""
 print_info "Next steps:"
-echo "  1. Review updated branches: ./scripts/pr-stack/list-stack.sh"
+echo "  1. Review updated branches: $SCRIPT_DIR/list-stack.sh"
 echo "  2. Verify CI builds for dependent PRs"
 echo "  3. Continue reviewing dependent PRs"
