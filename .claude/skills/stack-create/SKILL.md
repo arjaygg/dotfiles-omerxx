@@ -58,7 +58,7 @@ Use this skill when the user wants to:
 
 3. Execute the unified stack CLI:
    ```bash
-   .claude/scripts/stack create <branch-name> [base-branch] [--worktree]
+   $HOME/.dotfiles/.claude/scripts/stack create <branch-name> [base-branch] [--worktree]
    ```
 
    This will automatically:
@@ -79,17 +79,17 @@ Use this skill when the user wants to:
 
 If user needs to add worktree to existing branch:
 ```bash
-.claude/scripts/stack worktree-add <branch-name>
+$HOME/.dotfiles/.claude/scripts/stack worktree-add <branch-name>
 ```
 
 List all worktrees:
 ```bash
-.claude/scripts/stack worktree-list
+$HOME/.dotfiles/.claude/scripts/stack worktree-list
 ```
 
 Remove a worktree:
 ```bash
-.claude/scripts/stack worktree-remove <path>
+$HOME/.dotfiles/.claude/scripts/stack worktree-remove <path>
 ```
 
 ## Navigation with Worktrees
@@ -103,24 +103,24 @@ When using worktrees with Charcoal:
 ## Examples
 
 User: "Create a new stacked branch for user authentication with a worktree"
-Action: `.claude/scripts/stack create feature/user-auth main --worktree`
+Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/user-auth main --worktree`
 Result: Branch + worktree created, tracked in Charcoal
 
 User: "Create stacked worktrees for API, UI, and polish"
 Actions:
 ```bash
-.claude/scripts/stack create feature/api main --worktree
-.claude/scripts/stack create feature/ui feature/api --worktree
-.claude/scripts/stack create feature/polish feature/ui --worktree
+$HOME/.dotfiles/.claude/scripts/stack create feature/api main --worktree
+$HOME/.dotfiles/.claude/scripts/stack create feature/ui feature/api --worktree
+$HOME/.dotfiles/.claude/scripts/stack create feature/polish feature/ui --worktree
 ```
 Result: Three worktrees for parallel development, all tracked in Charcoal stack
 
 User: "Stack a new branch called feature/ui on top of feature/backend"
-Action: `.claude/scripts/stack create feature/ui feature/backend`
+Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/ui feature/backend`
 Result: Branch created without worktree, can add later with `worktree-add`
 
 User: "Add a worktree for my existing feature/api branch"
-Action: `.claude/scripts/stack worktree-add feature/api`
+Action: `$HOME/.dotfiles/.claude/scripts/stack worktree-add feature/api`
 Result: Worktree created for existing branch, Charcoal navigation still works
 
 ## Workflow Example

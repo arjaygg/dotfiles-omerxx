@@ -31,7 +31,7 @@ Use this skill when the user wants to:
 
 2. Execute the merge command:
    ```bash
-   .claude/scripts/stack merge <pr-id>
+   $HOME/.dotfiles/.claude/scripts/stack merge <pr-id>
    ```
 
    This will:
@@ -47,7 +47,7 @@ Use this skill when the user wants to:
 ## Examples
 
 User: "Merge PR #12345"
-Action: `.claude/scripts/stack merge 12345`
+Action: `$HOME/.dotfiles/.claude/scripts/stack merge 12345`
 
 User: "Ship the current PR"
-Action: First find PR ID, then `.claude/scripts/stack merge <id>`
+Action: First find PR ID, then `$HOME/.dotfiles/.claude/scripts/stack merge <id>`

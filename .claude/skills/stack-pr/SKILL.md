@@ -38,7 +38,7 @@ Use this skill when the user wants to:
 
 2. Execute the PR creation script:
    ```bash
-   .claude/scripts/stack pr <branch> [target] [title]
+   $HOME/.dotfiles/.claude/scripts/stack pr <branch> [target] [title]
    ```
 
    This will:
@@ -52,10 +52,10 @@ Use this skill when the user wants to:
 ## Examples
 
 User: "Create a PR for this feature"
-Action: `.claude/scripts/stack pr $(git branch --show-current)`
+Action: `$HOME/.dotfiles/.claude/scripts/stack pr $(git branch --show-current)`
 
 User: "Create a stacked PR for feature/login-ui"
-Action: `.claude/scripts/stack pr feature/login-ui`
+Action: `$HOME/.dotfiles/.claude/scripts/stack pr feature/login-ui`
 
 User: "Submit this as a draft"
-Action: `.claude/scripts/stack pr $(git branch --show-current) --draft`
+Action: `$HOME/.dotfiles/.claude/scripts/stack pr $(git branch --show-current) --draft`

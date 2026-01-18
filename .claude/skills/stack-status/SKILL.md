@@ -44,7 +44,7 @@ Use this skill when the user wants to:
 
 1. Execute the status command:
    ```bash
-   .claude/scripts/stack status
+   $HOME/.dotfiles/.claude/scripts/stack status
    ```
 
 2. This will display:
@@ -82,19 +82,19 @@ hotfix/security → main (PR #126: Merged)
 ## Examples
 
 User: "Show me my PR stack"
-Action: `.claude/scripts/stack status`
+Action: `$HOME/.dotfiles/.claude/scripts/stack status`
 Result: Shows stack with worktree locations
 
 User: "Where am I in the stack?"
-Action: `.claude/scripts/stack status`
+Action: `$HOME/.dotfiles/.claude/scripts/stack status`
 Result: Shows current branch and its position
 
 User: "Which branches have worktrees?"
-Action: `.claude/scripts/stack status`
+Action: `$HOME/.dotfiles/.claude/scripts/stack status`
 Result: Shows all branches with `[WT: path]` markers
 
 User: "Show me the full picture of my parallel development setup"
-Action: `.claude/scripts/stack status`
+Action: `$HOME/.dotfiles/.claude/scripts/stack status`
 Result: Complete view of stack + worktrees + PR status
 
 ## Workflow Integration

@@ -45,8 +45,8 @@ Use this skill when the user wants to:
 
 2. Execute the navigation command:
    ```bash
-   .claude/scripts/stack up    # Go to parent (worktree-aware)
-   .claude/scripts/stack down  # Go to child (worktree-aware)
+   $HOME/.dotfiles/.claude/scripts/stack up    # Go to parent (worktree-aware)
+   $HOME/.dotfiles/.claude/scripts/stack down  # Go to child (worktree-aware)
    ```
 
    **Behavior:**
@@ -56,13 +56,13 @@ Use this skill when the user wants to:
 
 3. Tell user to use `eval` for automatic navigation:
    ```bash
-   eval $(.claude/scripts/stack up)
+   eval $($HOME/.dotfiles/.claude/scripts/stack up)
    ```
    
    Or recommend setting up aliases:
    ```bash
-   alias stup='eval $(~/.claude/scripts/stack up)'
-   alias stdown='eval $(~/.claude/scripts/stack down)'
+   alias stup='eval $(~/$HOME/.dotfiles/.claude/scripts/stack up)'
+   alias stdown='eval $(~/$HOME/.dotfiles/.claude/scripts/stack down)'
    ```
 
 4. If command fails (Charcoal not installed), fall back to git:
@@ -72,20 +72,20 @@ Use this skill when the user wants to:
 ## Examples
 
 User: "Go to the parent branch"
-Action: `.claude/scripts/stack up`
+Action: `$HOME/.dotfiles/.claude/scripts/stack up`
 Result: 
 - If parent has worktree: `cd /path/to/.trees/parent`
 - If not: Suggests creating worktree or checking out
 
 User: "Navigate up in the stack"
-Action: Suggest `eval $(.claude/scripts/stack up)` for automatic cd
+Action: Suggest `eval $($HOME/.dotfiles/.claude/scripts/stack up)` for automatic cd
 
 User: "Switch to the next PR in the stack"
-Action: `.claude/scripts/stack down`
+Action: `$HOME/.dotfiles/.claude/scripts/stack down`
 Result: Navigates to child worktree if it exists
 
 User: "I'm in .trees/ui/, go to the API branch"
-Action: `.claude/scripts/stack up`
+Action: `$HOME/.dotfiles/.claude/scripts/stack up`
 Result: `cd /path/to/.trees/api` (if api has worktree)
 
 ## Workflow Integration
