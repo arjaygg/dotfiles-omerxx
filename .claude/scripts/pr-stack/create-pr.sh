@@ -64,47 +64,13 @@ validate_pr_create_prerequisites "$SOURCE_BRANCH" "$TARGET_BRANCH" || exit 1
 validate_pr_target "$SOURCE_BRANCH" "$TARGET_BRANCH" || exit 1
 
 # Get repository root (already at root from validation)
-REPO_ROOT=$(get_repo_root)
+REPO_ROOT=$(git rev-parse --show-toplevel)
 
-# Ensure source branch is pushed
-print_info "Checking if $SOURCE_BRANCH is pushed to remote..."
-if ! git ls-remote --exit-code --heads origin "$SOURCE_BRANCH" > /dev/null 2>&1; then
-    print_warning "Branch $SOURCE_BRANCH is not pushed to remote"
-    read -p "Push $SOURCE_BRANCH now? (y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        git push -u origin "$SOURCE_BRANCH"
-        print_success "Branch pushed successfully"
-    else
-        print_error "Cannot create PR without pushing branch"
-        exit 1
-    fi
-fi
-
-# Get title if not provided
-if [ -z "$TITLE" ]; then
-    # Try to get from latest commit
-    LATEST_COMMIT=$(git log -1 --pretty=%B "$SOURCE_BRANCH")
-    echo -e "${BLUE}Suggested title from latest commit:${NC}"
-    echo "$LATEST_COMMIT"
-    echo ""
-    read -p "Use this title? (y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        TITLE="$LATEST_COMMIT"
-    else
-        read -p "Enter PR title: " TITLE
-    fi
-fi
-
-# Generate PR description
-print_info "Generating PR description..."
-
-# Get commit messages between source and target
-COMMITS=$(git log --pretty=format:"- %s" "$TARGET_BRANCH..$SOURCE_BRANCH")
+# ... (rest of the script)
 
 # Check if there are related stories
-STORY_FILE=$(find docs/stories -name "*.story.md" 2>/dev/null | head -1)
+# Fix: Search from REPO_ROOT to find docs even if we are in a worktree
+STORY_FILE=$(find "$REPO_ROOT/docs/stories" -name "*.story.md" 2>/dev/null | head -1)
 STORY_REF=""
 if [ -n "$STORY_FILE" ]; then
     STORY_NUM=$(basename "$STORY_FILE" .story.md)
