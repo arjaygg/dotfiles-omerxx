@@ -30,11 +30,11 @@ Use this skill when:
 
 1. Execute the update/restack command:
    ```bash
-   .claude/scripts/stack restack
+   $HOME/.dotfiles/.claude/scripts/stack restack
    ```
    OR if updating specific branch after merge:
    ```bash
-   .claude/scripts/stack update [merged-branch]
+   $HOME/.dotfiles/.claude/scripts/stack update [merged-branch]
    ```
 
 2. This will:
@@ -47,7 +47,7 @@ Use this skill when:
 ## Examples
 
 User: "Restack my branches"
-Action: `.claude/scripts/stack restack`
+Action: `$HOME/.dotfiles/.claude/scripts/stack restack`
 
 User: "Update the stack after feature/base merged"
-Action: `.claude/scripts/stack update feature/base`
+Action: `$HOME/.dotfiles/.claude/scripts/stack update feature/base`

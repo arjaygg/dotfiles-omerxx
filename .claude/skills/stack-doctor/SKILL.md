@@ -44,7 +44,7 @@ Use this skill when the user wants to:
 
 1. Run the doctor command:
    ```bash
-   .claude/scripts/stack doctor
+   $HOME/.dotfiles/.claude/scripts/stack doctor
    ```
 
 2. This will check:
@@ -105,15 +105,15 @@ Summary: 1 error(s), 2 warning(s)
 ## Examples
 
 User: "Check my stack health"
-Action: `.claude/scripts/stack doctor`
+Action: `$HOME/.dotfiles/.claude/scripts/stack doctor`
 Result: Shows all checks and any issues found
 
 User: "What's wrong with my stack?"
-Action: `.claude/scripts/stack doctor`
+Action: `$HOME/.dotfiles/.claude/scripts/stack doctor`
 Result: Diagnoses issues and provides fixes
 
 User: "My stack seems broken, can you help?"
-Action: `.claude/scripts/stack doctor`
+Action: `$HOME/.dotfiles/.claude/scripts/stack doctor`
 Result: Run diagnostics, report findings, suggest fixes
 
 ## Related Skills
