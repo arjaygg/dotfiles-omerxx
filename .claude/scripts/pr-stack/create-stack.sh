@@ -78,7 +78,11 @@ print_info "Based on: $BASE_BRANCH"
 
 # Fetch latest changes
 print_info "Fetching latest changes..."
-git fetch origin
+if git remote get-url origin >/dev/null 2>&1; then
+    git fetch origin
+else
+    print_warning "No 'origin' remote configured; skipping fetch"
+fi
 
 # Check if base branch is up to date with remote
 BASE_BEHIND=$(git rev-list --count "$BASE_BRANCH..origin/$BASE_BRANCH" 2>/dev/null || echo "0")
@@ -92,7 +96,11 @@ if [ "$BASE_BEHIND" -gt 0 ]; then
          # For now, let's assume the user wants to branch from the local ref, 
          # but we warn them. If they wanted to update, they should have pulled.
          # OR we can try to fast-forward if possible without checkout:
-         git fetch origin "$BASE_BRANCH:$BASE_BRANCH" 2>/dev/null || print_warning "Could not fast-forward $BASE_BRANCH without checkout."
+         if git remote get-url origin >/dev/null 2>&1; then
+             git fetch origin "$BASE_BRANCH:$BASE_BRANCH" 2>/dev/null || print_warning "Could not fast-forward $BASE_BRANCH without checkout."
+         else
+             print_warning "No 'origin' remote configured; cannot fast-forward $BASE_BRANCH"
+         fi
     else
         read -p "Update $BASE_BRANCH from remote? (y/n) " -n 1 -r
         echo
