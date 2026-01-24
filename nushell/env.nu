@@ -114,6 +114,7 @@ if ($nvm_path | path exists) {
 
 path add ($nu.home-path | path join "homebrew" "bin")
 path add ($nu.home-path | path join ".codeium" "windsurf" "bin")
+path add ($nu.home-path | path join ".bun" "bin")
 
 # To load from a custom file you can use:
 # source ($nu.default-config-dir | path join 'custom.nu')
