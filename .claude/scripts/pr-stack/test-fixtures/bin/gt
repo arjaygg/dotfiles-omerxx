@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Minimal stub for Charcoal/Graphite `gt` used by e2e tests.
-# Stores metadata in `.git/pr-stack-info` (already used by the native scripts)
-# and uses `.git/.graphite_repo_config` as "initialized" marker.
+# Uses `.git/.graphite_repo_config` as "initialized" marker and stores
+# parent relationships in a simple file under the common git dir.
 
 cmd="${1:-}"
 shift || true
@@ -16,12 +16,47 @@ git_common_dir() {
   git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir
 }
 
-stack_info_file() {
+parents_file() {
   # Use common dir so it works from worktrees too.
   local gdir
   gdir="$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir 2>/dev/null || true)"
   if [ -n "$gdir" ]; then
-    echo "$gdir/pr-stack-info"
+    echo "$gdir/gt-parents"
+  fi
+}
+
+get_parent() {
+  local b="$1"
+  local pf
+  pf="$(parents_file)"
+  if [ -n "$pf" ] && [ -f "$pf" ]; then
+    awk -F: -v b="$b" '$1==b {print $2; exit}' "$pf" || true
+  fi
+}
+
+set_parent() {
+  local b="$1"
+  local p="$2"
+  local pf tmp
+  pf="$(parents_file)"
+  [ -n "$pf" ] || return 0
+  mkdir -p "$(dirname "$pf")"
+  tmp="${pf}.tmp"
+  if [ -f "$pf" ]; then
+    awk -F: -v b="$b" '$1!=b {print $0}' "$pf" > "$tmp" || true
+  else
+    : > "$tmp"
+  fi
+  echo "$b:$p" >> "$tmp"
+  mv "$tmp" "$pf"
+}
+
+list_children() {
+  local p="$1"
+  local pf
+  pf="$(parents_file)"
+  if [ -n "$pf" ] && [ -f "$pf" ]; then
+    awk -F: -v p="$p" '$2==p {print $1}' "$pf" | sort
   fi
 }
 
@@ -55,11 +90,7 @@ case "$cmd" in
       info)
         ensure_repo
         b="${1:-$(git branch --show-current)}"
-        sif="$(stack_info_file)"
-        parent=""
-        if [ -n "$sif" ] && [ -f "$sif" ]; then
-          parent="$(awk -F: -v b="$b" '$1==b {print $2; exit}' "$sif" || true)"
-        fi
+        parent="$(get_parent "$b" || true)"
         echo "Branch: $b"
         if [ -n "$parent" ]; then
           echo "Parent: $parent"
@@ -68,7 +99,24 @@ case "$cmd" in
         fi
         ;;
       track)
-        # No-op for stub: native scripts already write pr-stack-info.
+        ensure_repo
+        b="${1:-}"
+        shift || true
+        [ -n "$b" ] || { echo "gt stub: branch track requires name" >&2; exit 2; }
+        parent=""
+        while [ $# -gt 0 ]; do
+          case "${1:-}" in
+            --parent)
+              parent="${2:-}"
+              shift 2 || true
+              ;;
+            *)
+              shift || true
+              ;;
+          esac
+        done
+        [ -n "$parent" ] || { echo "gt stub: branch track requires --parent" >&2; exit 2; }
+        set_parent "$b" "$parent"
         exit 0
         ;;
       create)
@@ -93,21 +141,48 @@ case "$cmd" in
     case "$sub" in
       short)
         ensure_repo
-        # Very small tree: print the default trunk and then one chain based on pr-stack-info ordering.
+        # Print a simple tree from tracked parent relationships.
         trunk="${GT_TRUNK:-main}"
         echo "$trunk"
-        sif="$(stack_info_file)"
-        if [ -n "$sif" ] && [ -f "$sif" ]; then
-          # Sort by timestamp asc, then print as a simple chain.
-          mapfile -t branches < <(sort -t: -k3,3n "$sif" | awk -F: '{print $1}')
-          if [ "${#branches[@]}" -gt 0 ]; then
-            echo "└── ${branches[0]}"
-            i=1
-            while [ $i -lt "${#branches[@]}" ]; do
-              echo "    └── ${branches[$i]}"
-              i=$((i+1))
+        print_subtree() {
+          local node="$1"
+          local prefix="$2"
+          local is_last="$3"
+          if [ "$is_last" = "true" ]; then
+            echo "${prefix}└── ${node}"
+            child_prefix="${prefix}    "
+          else
+            echo "${prefix}├── ${node}"
+            child_prefix="${prefix}│   "
+          fi
+
+          mapfile -t kids < <(list_children "$node")
+          if [ "${#kids[@]}" -gt 0 ]; then
+            local i=0
+            local last_idx=$((${#kids[@]} - 1))
+            for kid in "${kids[@]}"; do
+              if [ "$i" -eq "$last_idx" ]; then
+                print_subtree "$kid" "$child_prefix" "true"
+              else
+                print_subtree "$kid" "$child_prefix" "false"
+              fi
+              i=$((i + 1))
             done
           fi
+        }
+
+        mapfile -t roots < <(list_children "$trunk")
+        if [ "${#roots[@]}" -gt 0 ]; then
+          i=0
+          last_idx=$((${#roots[@]} - 1))
+          for r in "${roots[@]}"; do
+            if [ "$i" -eq "$last_idx" ]; then
+              print_subtree "$r" "" "true"
+            else
+              print_subtree "$r" "" "false"
+            fi
+            i=$((i + 1))
+          done
         fi
         ;;
       *)
@@ -120,11 +195,7 @@ case "$cmd" in
   up)
     ensure_repo
     b="$(git branch --show-current)"
-    sif="$(stack_info_file)"
-    parent=""
-    if [ -n "$sif" ] && [ -f "$sif" ]; then
-      parent="$(awk -F: -v b="$b" '$1==b {print $2; exit}' "$sif" || true)"
-    fi
+    parent="$(get_parent "$b" || true)"
     [ -n "$parent" ] || { echo "gt stub: no parent" >&2; exit 1; }
     git checkout "$parent" >/dev/null
     ;;
@@ -133,13 +204,26 @@ case "$cmd" in
     ensure_repo
     idx="${1:-0}"
     b="$(git branch --show-current)"
-    sif="$(stack_info_file)"
-    [ -n "$sif" ] && [ -f "$sif" ] || { echo "gt stub: no stack info" >&2; exit 1; }
-    mapfile -t kids < <(awk -F: -v p="$b" '$2==p {print $1}' "$sif")
+    mapfile -t kids < <(list_children "$b")
     [ "${#kids[@]}" -gt 0 ] || { echo "gt stub: no child" >&2; exit 1; }
     kid="${kids[$idx]:-}"
     [ -n "$kid" ] || { echo "gt stub: invalid child index" >&2; exit 1; }
     git checkout "$kid" >/dev/null
+    ;;
+
+  stack)
+    sub="${1:-}"
+    shift || true
+    case "$sub" in
+      restack)
+        # Stub: assume clean restack.
+        exit 0
+        ;;
+      *)
+        echo "gt stub: unsupported: stack $sub" >&2
+        exit 2
+        ;;
+    esac
     ;;
 
   restack)

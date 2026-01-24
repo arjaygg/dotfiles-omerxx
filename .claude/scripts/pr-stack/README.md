@@ -227,7 +227,6 @@ st worktree-remove .trees/new-approach
 Main Repo
 ├── .git/
 │   ├── .gt/              # Charcoal metadata (shared)
-│   ├── pr-stack-info     # PR stack metadata (shared)
 │   └── worktrees/        # Worktree metadata (shared)
 ├── .trees/
 │   ├── api/              # Worktree for feature/api
@@ -245,7 +244,7 @@ Navigation and restacking work across all worktrees!
 2. **Track in Charcoal**: `gt branch track` registers the branch
 3. **Navigate**: Commands detect worktrees and cd there
 4. **Restack**: Charcoal rebases, then syncs all worktrees
-5. **Metadata**: Kept in sync between Charcoal and native format
+5. **PR discovery**: PR status is discovered from Azure DevOps on demand (no local tracking files)
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for details.
 

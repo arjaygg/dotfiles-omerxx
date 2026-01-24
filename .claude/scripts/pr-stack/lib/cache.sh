@@ -3,11 +3,13 @@
 # cache.sh - Caching layer for Azure DevOps API calls
 # Provides 5-minute TTL caching to reduce API calls and improve performance
 
-# Get cache directory (inside .git for repo-specific caching)
+# Get cache directory (ephemeral; avoids repo-local tracking files)
 get_cache_dir() {
-    local git_dir
-    git_dir=$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir)
-    echo "$git_dir/pr-stack-cache"
+    local tmp_base
+    tmp_base="${TMPDIR:-/tmp}"
+    local repo_name
+    repo_name="$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")"
+    echo "${tmp_base%/}/pr-stack-cache-${repo_name}"
 }
 
 # Initialize cache directory

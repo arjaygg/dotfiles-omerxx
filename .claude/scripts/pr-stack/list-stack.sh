@@ -7,12 +7,7 @@ set -e
 
 # Load libraries
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/lib/charcoal-compat.sh" ]; then
-    source "$SCRIPT_DIR/lib/charcoal-compat.sh"
-fi
-if [ -f "$SCRIPT_DIR/lib/cache.sh" ]; then
-    source "$SCRIPT_DIR/lib/cache.sh"
-fi
+source "$SCRIPT_DIR/lib/charcoal-compat.sh"
 
 # Colors for output
 RED='\033[0;31m'
@@ -43,77 +38,40 @@ if ! git rev-parse --git-dir > /dev/null 2>&1; then
     exit 1
 fi
 
-# Robust Repo Root detection (handles worktrees correctly)
-REPO_ROOT=$(git rev-parse --show-toplevel)
-
-# Use the common git dir so worktrees share metadata files.
-# This matches docs: all worktrees share `.git/pr-stack-info` and `.git/pr-created`.
-GIT_COMMON_DIR="$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir)"
-STACK_INFO_FILE="$GIT_COMMON_DIR/pr-stack-info"
-PR_CREATED_FILE="$GIT_COMMON_DIR/pr-created"
-
-
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║                     PR STACK STATUS                        ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Show Charcoal view if available
-if type charcoal_initialized &>/dev/null && charcoal_initialized; then
-    echo -e "${CYAN}Charcoal View (gt log short):${NC}"
-    gt log short 2>/dev/null || echo "  (no stack tracked)"
-    echo ""
-    echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
-    echo ""
+# Determine trunk branch
+DEFAULT_BRANCH="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")"
 
-    # If charcoal-only flag, exit after showing Charcoal view
-    if [ "$CHARCOAL_ONLY" = true ]; then
-        exit 0
-    fi
-
-    echo -e "${CYAN}Azure DevOps View:${NC}"
-    echo ""
+# Require Charcoal for stack relationships (no local tracking fallback)
+if ! charcoal_available; then
+    echo -e "${RED}ERROR:${NC} Charcoal (gt) is required"
+    echo "Install: brew install danerwilliams/tap/charcoal"
+    exit 1
 fi
 
-# Function to get PR status from Azure DevOps (with caching)
-get_pr_status() {
-    local branch=$1
-    local pr_id=$2
+if ! charcoal_initialized; then
+    echo -e "${RED}ERROR:${NC} Charcoal is not initialized in this repository"
+    echo "Run: ~/.claude/scripts/stack init"
+    exit 1
+fi
 
-    if [ -z "$pr_id" ]; then
-        echo "NOT CREATED"
-        return
-    fi
+echo -e "${CYAN}Charcoal View (gt log short):${NC}"
+gt log short 2>/dev/null || echo "  (no stack tracked)"
+echo ""
+echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+echo ""
 
-    # Try to get PR status (requires Azure CLI) - use cache if available
-    if command -v az &> /dev/null; then
-        local STATUS
-        if type cached_get_pr_status &>/dev/null; then
-            STATUS=$(cached_get_pr_status "$pr_id")
-        else
-            STATUS=$(az repos pr show --id "$pr_id" \
-                --organization "https://dev.azure.com/bofaz" \
-                --query "status" -o tsv 2>/dev/null || echo "unknown")
-        fi
+# If charcoal-only flag, exit after showing Charcoal view
+if [ "$CHARCOAL_ONLY" = true ]; then
+    exit 0
+fi
 
-        case "$STATUS" in
-            active)
-                echo -e "${YELLOW}ACTIVE${NC}"
-                ;;
-            completed)
-                echo -e "${GREEN}MERGED${NC}"
-                ;;
-            abandoned)
-                echo -e "${RED}ABANDONED${NC}"
-                ;;
-            *)
-                echo -e "${CYAN}PR #$pr_id${NC}"
-                ;;
-        esac
-    else
-        echo -e "${CYAN}PR #$pr_id${NC}"
-    fi
-}
+echo -e "${CYAN}Azure DevOps View:${NC}"
+echo ""
 
 # Function to count commits ahead
 get_commits_ahead() {
@@ -128,6 +86,31 @@ get_commits_ahead() {
     fi
 }
 
+# Function to get PR status from Azure DevOps (no local tracking)
+# Prints: "→ ACTIVE (PR #123)" or "→ NO PR"
+get_pr_status() {
+    local branch=$1
+
+    if ! command -v az &> /dev/null; then
+        echo -e "→ ${YELLOW}NO PR${NC}"
+        return
+    fi
+
+    local pr_id=""
+    pr_id="$(az repos pr list \
+        --organization "https://dev.azure.com/bofaz" \
+        --status active \
+        --source-branch "refs/heads/$branch" \
+        --query "[0].pullRequestId" -o tsv 2>/dev/null || true)"
+
+    if [ -z "$pr_id" ] || [ "$pr_id" = "null" ]; then
+        echo -e "→ ${YELLOW}NO PR${NC}"
+        return
+    fi
+
+    echo -e "→ ${YELLOW}ACTIVE${NC} ${CYAN}(PR #$pr_id)${NC}"
+}
+
 # Function to get CI/CD build status for a branch
 get_build_status() {
     local branch=$1
@@ -137,18 +120,14 @@ get_build_status() {
         return
     fi
 
-    # Try to get build status (requires Azure CLI) - use cache if available
+    # Try to get build status (requires Azure CLI)
     if command -v az &> /dev/null; then
         local status
-        if type cached_get_build_status &>/dev/null; then
-            status=$(cached_get_build_status "$branch")
-        else
-            status=$(az pipelines build list \
-                --organization "https://dev.azure.com/bofaz" \
-                --branch "$branch" \
-                --top 1 \
-                --query "[0].result" -o tsv 2>/dev/null || echo "unknown")
-        fi
+        status=$(az pipelines build list \
+            --organization "https://dev.azure.com/bofaz" \
+            --branch "$branch" \
+            --top 1 \
+            --query "[0].result" -o tsv 2>/dev/null || echo "unknown")
 
         case "$status" in
             succeeded)
@@ -178,36 +157,22 @@ get_build_status() {
     fi
 }
 
-# Build a map of branches and their PRs
-declare -A BRANCH_TO_PR
 declare -A BRANCH_TO_TARGET
-declare -A BRANCH_TO_TIME
 
-# Read PR created file
-if [ -f "$PR_CREATED_FILE" ]; then
-    while IFS=: read -r branch target pr_id timestamp; do
-        BRANCH_TO_PR["$branch"]=$pr_id
-    done < "$PR_CREATED_FILE"
-fi
+# Build stack relationships from Charcoal (single source of truth)
+while IFS= read -r branch; do
+    [ -n "$branch" ] || continue
+    parent="$(charcoal_get_parent "$branch" 2>/dev/null || true)"
+    if [ -n "$parent" ]; then
+        BRANCH_TO_TARGET["$branch"]="$parent"
+    fi
+done < <(git branch --format='%(refname:short)')
 
-# Prefetch all PR statuses in parallel (if caching available)
-if type fetch_pr_statuses_parallel &>/dev/null && [ ${#BRANCH_TO_PR[@]} -gt 0 ]; then
-    pr_ids=("${BRANCH_TO_PR[@]}")
-    fetch_pr_statuses_parallel "${pr_ids[@]}" >/dev/null 2>&1 &
-    PREFETCH_PID=$!
-fi
-
-# Read stack info file
-if [ -f "$STACK_INFO_FILE" ]; then
-    while IFS=: read -r branch target timestamp; do
-        BRANCH_TO_TARGET["$branch"]=$target
-        BRANCH_TO_TIME["$branch"]=$timestamp
-    done < "$STACK_INFO_FILE"
-else
-    echo -e "${YELLOW}No stack information found${NC}"
+if [ ${#BRANCH_TO_TARGET[@]} -eq 0 ]; then
+    echo -e "${YELLOW}No branches are tracked in Charcoal yet.${NC}"
     echo ""
     echo "Create your first stacked branch with:"
-    echo "  ./scripts/pr-stack/create-stack.sh feature/my-feature main"
+    echo "  ./scripts/stack create feature/my-feature $DEFAULT_BRANCH --worktree"
     exit 0
 fi
 
@@ -225,10 +190,10 @@ print_branch_tree() {
     local prefix=$2
     local is_last=$3
 
-    local pr_id="${BRANCH_TO_PR[$branch]}"
     local target="${BRANCH_TO_TARGET[$branch]}"
     local commits_ahead=$(get_commits_ahead "$branch" "$target")
-    local pr_status=$(get_pr_status "$branch" "$pr_id")
+    local pr_status
+    pr_status=$(get_pr_status "$branch")
 
     # Determine if branch exists locally and remotely
     local local_exists=$(git rev-parse --verify "$branch" 2>/dev/null && echo "✓" || echo "✗")
@@ -251,11 +216,7 @@ print_branch_tree() {
     # Add status indicators
     echo -n -e " [${commits_ahead} commits]"
 
-    if [ -n "$pr_id" ]; then
-        echo -n -e " → $pr_status"
-    else
-        echo -n -e " → ${YELLOW}NO PR${NC}"
-    fi
+    echo -n -e " $pr_status"
 
     # Add build status if CI flag is set
     local build_status
@@ -316,26 +277,21 @@ print_branch_tree() {
     fi
 }
 
-# Find root branches (those that target main or have no dependencies in stack)
+# Find root branches (those that target trunk or whose parent isn't tracked)
 ROOT_BRANCHES=()
 for branch in "${!BRANCH_TO_TARGET[@]}"; do
     target="${BRANCH_TO_TARGET[$branch]}"
-    if [ "$target" == "main" ] || [ -z "${BRANCH_TO_TARGET[$target]}" ]; then
+    if [ "$target" == "$DEFAULT_BRANCH" ] || [ -z "${BRANCH_TO_TARGET[$target]}" ]; then
         ROOT_BRANCHES+=("$branch")
     fi
 done
 
-# Sort root branches by creation time
-IFS=$'\n' ROOT_BRANCHES=($(sort -t: -k3 -n <<<"${ROOT_BRANCHES[*]}"))
+# Sort roots by name for stable output
+IFS=$'\n' ROOT_BRANCHES=($(sort <<<"${ROOT_BRANCHES[*]}"))
 unset IFS
 
-# Wait for parallel prefetch to complete (if started)
-if [ -n "${PREFETCH_PID:-}" ]; then
-    wait "$PREFETCH_PID" 2>/dev/null || true
-fi
-
 # Print the tree
-echo -e "${CYAN}main${NC}"
+echo -e "${CYAN}${DEFAULT_BRANCH}${NC}"
 
 for branch in "${ROOT_BRANCHES[@]}"; do
     is_last=false
@@ -350,15 +306,9 @@ echo -e "${BLUE}═════════════════════�
 
 # Summary statistics
 TOTAL_BRANCHES=${#BRANCH_TO_TARGET[@]}
-TOTAL_PRS=${#BRANCH_TO_PR[@]}
-BRANCHES_WITHOUT_PR=$((TOTAL_BRANCHES - TOTAL_PRS))
 
 echo -e "${BLUE}Summary:${NC}"
 echo "  Total branches in stack: $TOTAL_BRANCHES"
-echo "  PRs created: $TOTAL_PRS"
-if [ $BRANCHES_WITHOUT_PR -gt 0 ]; then
-    echo -e "  ${YELLOW}Branches without PRs: $BRANCHES_WITHOUT_PR${NC}"
-fi
 
 echo ""
 echo -e "${BLUE}Commands:${NC}"
@@ -366,14 +316,8 @@ echo "  Create branch: ./scripts/stack create <branch> [base]"
 echo "  Create PR:     ./scripts/stack pr <branch> [target]"
 echo "  Update stack:  ./scripts/stack update [merged-branch]"
 echo "  View status:   ./scripts/stack status"
-if type charcoal_initialized &>/dev/null && charcoal_initialized; then
-    echo ""
-    echo -e "${CYAN}Charcoal Commands:${NC}"
-    echo "  Navigate up:   ./scripts/stack up"
-    echo "  Navigate down: ./scripts/stack down"
-    echo "  Restack:       ./scripts/stack restack"
-elif type charcoal_available &>/dev/null && ! charcoal_available; then
-    echo ""
-    echo -e "${YELLOW}Tip:${NC} Install Charcoal for easier navigation:"
-    echo "  brew install danerwilliams/tap/charcoal"
-fi
+echo ""
+echo -e "${CYAN}Charcoal Commands:${NC}"
+echo "  Navigate up:   ./scripts/stack up"
+echo "  Navigate down: ./scripts/stack down"
+echo "  Restack:       ./scripts/stack restack"

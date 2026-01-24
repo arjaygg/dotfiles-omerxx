@@ -3,10 +3,22 @@
 # worktree-charcoal.sh - Charcoal integration for worktree workflows
 # Enables full Charcoal capabilities while working across multiple worktrees
 
-# Source dependencies
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/validation.sh"
-source "$SCRIPT_DIR/charcoal-compat.sh"
+# Prevent multiple sourcing
+if [ -n "${_WORKTREE_CHARCOAL_SOURCED:-}" ]; then
+    return 0
+fi
+_WORKTREE_CHARCOAL_SOURCED=1
+
+# Source dependencies only if not already loaded
+if ! type print_info &>/dev/null; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "$SCRIPT_DIR/validation.sh"
+fi
+
+if ! type charcoal_initialized &>/dev/null; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "$SCRIPT_DIR/charcoal-compat.sh"
+fi
 
 # ============================================================================
 # Worktree Detection
@@ -162,37 +174,92 @@ wt_charcoal_down() {
 
 # Restack from current location (worktree-aware)
 # Runs gt restack in main repo, then syncs all worktrees
+# Automatically handles uncommitted changes:
+#   - Staged changes → auto-commit with WIP message
+#   - Unstaged changes → auto-stash during rebase
+#   - Untracked files → ignored (won't interfere)
 wt_charcoal_restack() {
     if ! charcoal_initialized; then
         print_error "Charcoal not initialized. Run: ./scripts/stack init"
         return 1
     fi
-    
+
     local main_repo
     main_repo=$(get_main_repo_path)
-    
+
     local current_dir
     current_dir=$(pwd)
-    
-    print_info "Restacking in main repo..."
-    
-    # Run restack in main repo
+
+    # Detect uncommitted changes in current location
+    local has_staged_changes=false
+    local has_unstaged_changes=false
+    local current_branch
+
+    # Check for staged changes
+    if ! git diff --cached --quiet 2>/dev/null; then
+        has_staged_changes=true
+    fi
+
+    # Check for unstaged changes
+    if ! git diff --quiet 2>/dev/null; then
+        has_unstaged_changes=true
+    fi
+
+    # Handle uncommitted changes automatically
+    if [ "$has_staged_changes" = true ]; then
+        print_info "Detected staged changes - creating auto-commit..."
+        current_branch=$(git branch --show-current)
+        git commit -m "WIP: auto-commit before restack on $current_branch
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+        print_success "Auto-commit created"
+    elif [ "$has_unstaged_changes" = true ]; then
+        print_info "Detected unstaged changes - will use auto-stash..."
+    fi
+
+    # Determine where to run restack from
+    local restack_location="$main_repo"
+
+    # If current directory is a worktree, restack from here instead
+    if is_in_worktree; then
+        restack_location="$current_dir"
+        print_info "Running restack from current worktree..."
+    else
+        print_info "Restacking in main repo..."
+    fi
+
+    # Run restack with manual stash for unstaged changes
+    local restack_result
+    local stashed=false
     (
-        cd "$main_repo"
-        gt restack
+        cd "$restack_location"
+
+        # Manually stash unstaged changes before restack
+        if [ "$has_unstaged_changes" = true ] && [ "$has_staged_changes" = false ]; then
+            print_info "Stashing unstaged changes..."
+            git stash push -m "Auto-stash before restack at $(date +%Y-%m-%d\ %H:%M:%S)"
+            stashed=true
+        fi
+
+        # Run the restack
+        gt stack restack
+        restack_result=$?
+
+        # Restore stashed changes if we stashed them
+        if [ "$stashed" = true ] && [ $restack_result -eq 0 ]; then
+            print_info "Restoring stashed changes..."
+            git stash pop
+        fi
+
+        return $restack_result
     )
-    
+
     if [ $? -eq 0 ]; then
         print_success "Stack rebased successfully"
-        
+
         # Sync worktrees
         print_info "Syncing worktrees..."
         sync_all_worktrees
-        
-        # Sync metadata (best-effort; may be unavailable in Charcoal-only mode)
-        if type sync_charcoal_to_native >/dev/null 2>&1; then
-            sync_charcoal_to_native || true
-        fi
     else
         print_error "Restack failed"
         return 1
@@ -241,38 +308,47 @@ sync_all_worktrees() {
 # Args: $1 - branch name
 wt_add_for_branch() {
     local branch=$1
-    
+
     if [ -z "$branch" ]; then
         print_error "Branch name required"
         return 1
     fi
-    
+
     # Check if branch exists
     if ! git rev-parse --verify "$branch" > /dev/null 2>&1; then
         print_error "Branch $branch does not exist"
         return 1
     fi
-    
+
     # Check if branch already has a worktree
     local existing_wt
     existing_wt=$(get_worktree_path "$branch")
-    
+
     if [ -n "$existing_wt" ]; then
         print_warning "Branch $branch already has a worktree at: $existing_wt"
         return 1
     fi
-    
+
+    # CRITICAL: If we're already in a worktree, we must create the new worktree
+    # from the main repo root, not nested inside the current worktree.
+    if is_in_worktree; then
+        local main_repo
+        main_repo=$(get_main_repo_path)
+        print_info "Detected worktree context - creating from main repo at: $main_repo"
+        cd "$main_repo"
+    fi
+
     # Sanitize branch name for directory
     local description
     description=$(echo "$branch" | sed -E 's/^(feature|feat|bugfix|fix|hotfix|release|chore)\///')
     description=$(echo "$description" | tr '[:upper:]' '[:lower:]' | sed -E 's/[ _]/-/g' | sed -E 's/[^a-z0-9.-]//g' | sed -E 's/-+/-/g' | sed -E 's/^-|-$//g')
-    
+
     local worktree_path=".trees/$description"
-    
+
     print_info "Creating worktree for existing branch: $branch"
     print_info "Location: $worktree_path"
-    
-    # Ensure .trees exists
+
+    # Ensure .trees exists (in main repo root)
     mkdir -p .trees
     
     # Create worktree (branch already exists, so just add it)

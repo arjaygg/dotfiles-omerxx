@@ -8,6 +8,7 @@ set -e
 # Load validation library
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/validation.sh"
+source "$SCRIPT_DIR/lib/charcoal-compat.sh"
 
 # Azure DevOps Configuration
 # Try to get from git config, default to hardcoded values
@@ -45,9 +46,19 @@ if [ $# -lt 1 ]; then
 fi
 
 SOURCE_BRANCH=$1
-# Determine default branch
+# Determine default branch (trunk)
 DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
-TARGET_BRANCH=${2:-$DEFAULT_BRANCH}
+
+# Target branch:
+# - If explicitly provided, use it.
+# - Otherwise, prefer Charcoal parent (stacked PRs), falling back to trunk.
+TARGET_BRANCH="${2:-}"
+if [ -z "$TARGET_BRANCH" ]; then
+    if type charcoal_initialized >/dev/null 2>&1 && charcoal_initialized; then
+        TARGET_BRANCH="$(charcoal_get_parent "$SOURCE_BRANCH" 2>/dev/null || true)"
+    fi
+    TARGET_BRANCH="${TARGET_BRANCH:-$DEFAULT_BRANCH}"
+fi
 TITLE=$3
 DRAFT=false
 
@@ -60,6 +71,19 @@ done
 
 # Validate prerequisites using library functions
 validate_pr_create_prerequisites "$SOURCE_BRANCH" "$TARGET_BRANCH" || exit 1
+
+# Require Charcoal for PR stack workflows (single source of truth for relationships)
+if ! charcoal_available; then
+    print_error "Charcoal CLI (gt) is required but not installed"
+    print_info "Install with: brew install danerwilliams/tap/charcoal"
+    exit 1
+fi
+
+if ! charcoal_initialized; then
+    print_error "Charcoal is not initialized in this repository"
+    print_info "Initialize with: ~/.claude/scripts/stack init"
+    exit 1
+fi
 
 # Validate PR target is correct for stacked PRs (non-blocking warning)
 validate_pr_target "$SOURCE_BRANCH" "$TARGET_BRANCH" || exit 1
@@ -105,11 +129,8 @@ $COMMITS
 ## Dependencies
 "
 
-# Check if this PR depends on another
-# Worktree-safe path resolution (shared across all worktrees)
-GIT_COMMON_DIR="$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir)"
-STACK_INFO_FILE="$GIT_COMMON_DIR/pr-stack-info"
-if [ -f "$STACK_INFO_FILE" ] && [ "$TARGET_BRANCH" != "main" ]; then
+# If not targeting trunk, this is a dependent (stacked) PR.
+if [ "$TARGET_BRANCH" != "$DEFAULT_BRANCH" ]; then
     DESCRIPTION="$DESCRIPTION
 ⚠️ **This PR depends on \`$TARGET_BRANCH\` being merged first**
 
@@ -185,10 +206,6 @@ if [ $? -eq 0 ]; then
     print_info "PR #$PR_ID created"
     print_info "URL: $PR_URL"
     echo ""
-
-    # Store PR info for tracking
-    PR_CREATED_FILE="$GIT_COMMON_DIR/pr-created"
-    echo "$SOURCE_BRANCH:$TARGET_BRANCH:$PR_ID:$(date +%s)" >> "$PR_CREATED_FILE"
 
     # Show next steps
     echo -e "${GREEN}Next steps:${NC}"

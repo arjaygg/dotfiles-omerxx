@@ -36,6 +36,7 @@ cleanup() {
     (cd "$TMP_ROOT/repo" && git worktree remove .trees/api >/dev/null 2>&1 || true)
     (cd "$TMP_ROOT/repo" && git worktree remove .trees/ui >/dev/null 2>&1 || true)
     (cd "$TMP_ROOT/repo" && git worktree remove .trees/nwt >/dev/null 2>&1 || true)
+    (cd "$TMP_ROOT/repo" && git worktree remove .trees/nested-test >/dev/null 2>&1 || true)
   fi
   rm -rf "$TMP_ROOT" >/dev/null 2>&1 || true
 }
@@ -73,9 +74,21 @@ say "== stack e2e: create stacked worktrees =="
 "$STACK_CLI" create "feature/api" main --worktree >/dev/null
 "$STACK_CLI" create "feature/ui" "feature/api" --worktree >/dev/null
 
-assert_file_exists ".git/pr-stack-info"
 [ -d ".trees/api" ] || fail "Expected .trees/api to exist"
 [ -d ".trees/ui" ] || fail "Expected .trees/ui to exist"
+
+say "== stack e2e: create worktree from within worktree (nested prevention) =="
+# Critical: When creating a worktree from within another worktree,
+# it should create at repo root, not nested inside the current worktree.
+cd ".trees/api"
+"$STACK_CLI" create "feature/nested-test" "feature/api" --worktree >/dev/null
+cd "$TMP_ROOT/repo"
+# Should be at .trees/nested-test, NOT .trees/api/.trees/nested-test
+[ -d ".trees/nested-test" ] || fail "Expected .trees/nested-test at repo root"
+[ ! -d ".trees/api/.trees/nested-test" ] || fail "Unexpected nested worktree at .trees/api/.trees/"
+# Clean up nested-test to avoid interfering with subsequent navigation tests
+git worktree remove .trees/nested-test >/dev/null 2>&1 || true
+git branch -D feature/nested-test >/dev/null 2>&1 || true
 
 say "== stack e2e: status =="
 status_out="$("$STACK_CLI" status)"

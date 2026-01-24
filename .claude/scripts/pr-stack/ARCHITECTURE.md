@@ -51,9 +51,6 @@ User Command:
          ├─► Copy configs (.env, .vscode, .mcp.json, etc.)
          │   (Each worktree gets own IDE settings)
          │
-         ├─► Store in .git/pr-stack-info
-         │   feature/api:main:timestamp
-         │
          └─► gt branch track feature/api --parent main
              (Charcoal now knows about this branch!)
 
@@ -122,13 +119,12 @@ User Command:
            │       git fetch origin feature/test
            │       Check if behind upstream
            │
-           └─► sync_charcoal_to_native()
-               (Update .git/pr-stack-info)
+           └─► (no extra metadata sync required)
 
 Result:
   ✅ All branches rebased
   ✅ All worktrees notified
-  ✅ Metadata synced
+  ✅ Stack state remains in Charcoal
 ```
 
 ## Component Interaction
@@ -210,14 +206,6 @@ Result:
 }
 ```
 
-### Native State (`.git/pr-stack-info`)
-
-```
-feature/api:main:1705881234
-feature/ui:feature/api:1705881245
-feature/test:feature/ui:1705881256
-```
-
 ### Git Worktree State (`.git/worktrees/`)
 
 ```
@@ -265,14 +253,14 @@ feature/test:feature/ui:1705881256
 - Notify user if worktree is behind
 - User can then `git pull --rebase` if needed
 
-### 4. Why Keep Both Charcoal and Native Metadata?
+### 4. Why Avoid Extra Local Tracking Files?
 
-**Problem:** Azure DevOps scripts need `.git/pr-stack-info`, Charcoal uses `.git/.gt/`.
+**Goal:** Keep stack relationships in one place (Charcoal) and discover PR status directly from Azure DevOps when needed.
 
-**Solution:**
-- Maintain both formats
-- Sync bidirectionally
-- Each system can work independently if needed
+**Result:**
+- No `.git/pr-stack-info` file
+- No `.git/pr-created` file
+- Stack relationships come from `gt branch info` / `gt log short`
 
 ## Error Handling
 

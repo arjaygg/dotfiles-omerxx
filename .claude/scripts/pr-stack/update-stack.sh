@@ -91,39 +91,45 @@ fi
 # Robust Repo Root detection (handles worktrees correctly)
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
-# Worktree-safe path resolution (shared across all worktrees)
-GIT_COMMON_DIR="$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir)"
-STACK_INFO_FILE="$GIT_COMMON_DIR/pr-stack-info"
-
 # Get merged branch
 MERGED_BRANCH=$1
 
 if [ -z "$MERGED_BRANCH" ]; then
-    # Interactive mode - show branches and let user select
-    echo -e "${BLUE}Select a merged branch to update dependents:${NC}"
-    echo ""
-
-    if [ ! -f "$STACK_INFO_FILE" ]; then
-        print_error "No stack information found"
-        print_info "Create stacked branches first: ~/.claude/scripts/stack create"
+    # Interactive mode - show tracked branches and let user select
+    if ! [ -t 0 ]; then
+        print_error "Merged branch is required in non-interactive mode"
+        print_info "Usage: ~/.claude/scripts/stack update <merged-branch>"
         exit 1
     fi
 
-    # Read branches from stack file
+    echo -e "${BLUE}Select a merged branch to update dependents:${NC}"
+    echo ""
+
+    # List branches tracked in Charcoal (those with a parent)
     i=1
     declare -a BRANCHES
-    while IFS=: read -r branch target timestamp; do
-        BRANCHES[$i]="$branch:$target"
-        echo "  $i) $branch (target: $target)"
-        i=$((i + 1))
-    done < "$STACK_INFO_FILE"
+    while IFS= read -r branch; do
+        [ -n "$branch" ] || continue
+        parent="$(charcoal_get_parent "$branch" 2>/dev/null || true)"
+        if [ -n "$parent" ]; then
+            BRANCHES[$i]="$branch"
+            echo "  $i) $branch (parent: $parent)"
+            i=$((i + 1))
+        fi
+    done < <(git branch --format='%(refname:short)')
+
+    if [ ${#BRANCHES[@]} -eq 0 ]; then
+        print_error "No branches are tracked in Charcoal"
+        print_info "Create stacked branches first: ~/.claude/scripts/stack create"
+        exit 1
+    fi
 
     echo ""
     read -p "Enter number (or branch name): " SELECTION
 
     # Check if selection is a number
     if [[ "$SELECTION" =~ ^[0-9]+$ ]]; then
-        MERGED_BRANCH=$(echo "${BRANCHES[$SELECTION]}" | cut -d: -f1)
+        MERGED_BRANCH="${BRANCHES[$SELECTION]}"
     else
         MERGED_BRANCH=$SELECTION
     fi
@@ -136,17 +142,6 @@ fi
 
 print_info "Updating stack after merge of: $MERGED_BRANCH"
 echo ""
-
-# Find the target branch for the merged branch (for cleanup)
-TARGET_BRANCH=""
-if [ -f "$STACK_INFO_FILE" ]; then
-    while IFS=: read -r branch target timestamp; do
-        if [ "$branch" == "$MERGED_BRANCH" ]; then
-            TARGET_BRANCH=$target
-            break
-        fi
-    done < "$STACK_INFO_FILE"
-fi
 
 # Use Charcoal to restack everything
 print_info "Using Charcoal to restack dependent branches..."
@@ -167,22 +162,6 @@ if gt restack; then
     print_info "Syncing worktrees..."
     sync_all_worktrees
     echo ""
-
-    # Sync metadata
-    print_info "Updating metadata..."
-    if type sync_charcoal_to_native >/dev/null 2>&1; then
-        sync_charcoal_to_native || true
-    fi
-
-    # Clean up merged branch from stack info
-    if [ -n "$TARGET_BRANCH" ] && [ -f "$STACK_INFO_FILE" ]; then
-        print_info "Cleaning up stack information for merged branch..."
-        grep -v "^${MERGED_BRANCH}:" "$STACK_INFO_FILE" > "${STACK_INFO_FILE}.tmp" && mv "${STACK_INFO_FILE}.tmp" "$STACK_INFO_FILE"
-
-        # Update any branches that targeted the merged branch to now target its parent
-        sed -i.bak "s/:${MERGED_BRANCH}:/:${TARGET_BRANCH}:/" "$STACK_INFO_FILE"
-        rm -f "${STACK_INFO_FILE}.bak"
-    fi
 
     echo ""
     echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"

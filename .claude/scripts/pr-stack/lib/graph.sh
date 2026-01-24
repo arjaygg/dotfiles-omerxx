@@ -15,31 +15,33 @@ source "$SCRIPT_DIR/worktree-charcoal.sh"
 # Build branch hierarchy from stack info
 # Populates: BRANCH_PARENTS, BRANCH_CHILDREN, ROOT_BRANCHES
 build_branch_hierarchy() {
-    local stack_info_file
-    stack_info_file="$(git rev-parse --git-path pr-stack-info 2>/dev/null)"
-
     # Reset arrays
     declare -gA BRANCH_PARENTS
     declare -gA BRANCH_CHILDREN
     declare -ga ROOT_BRANCHES
 
-    if [ ! -f "$stack_info_file" ]; then
+    if ! charcoal_initialized >/dev/null 2>&1; then
         return 1
     fi
 
-    # Read stack info
-    while IFS=: read -r branch parent timestamp; do
-        if [ -n "$branch" ] && [ -n "$parent" ]; then
+    local trunk
+    trunk="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")"
+
+    # Build relationships from Charcoal (single source of truth)
+    while IFS= read -r branch; do
+        [ -n "$branch" ] || continue
+        local parent
+        parent="$(charcoal_get_parent "$branch" 2>/dev/null || true)"
+        if [ -n "$parent" ]; then
             BRANCH_PARENTS["$branch"]="$parent"
             BRANCH_CHILDREN["$parent"]+="$branch "
         fi
-    done < "$stack_info_file"
+    done < <(git branch --format='%(refname:short)')
 
-    # Find root branches (those whose parent is not in the stack)
+    # Find root branches (those whose parent is trunk or not tracked in Charcoal)
     for branch in "${!BRANCH_PARENTS[@]}"; do
         local parent="${BRANCH_PARENTS[$branch]}"
-        if [ -z "${BRANCH_PARENTS[$parent]}" ]; then
-            # Parent is not tracked, this is a root
+        if [ "$parent" == "$trunk" ] || [ -z "${BRANCH_PARENTS[$parent]+x}" ]; then
             ROOT_BRANCHES+=("$branch")
         fi
     done
@@ -47,25 +49,20 @@ build_branch_hierarchy() {
 
 # Get PR info for a branch
 # Args: $1 - branch name
-# Returns: "PR_ID:STATUS" or empty
+# Returns: PR_ID (active only) or empty
 get_branch_pr_info() {
     local branch=$1
-    local pr_created_file
-    pr_created_file="$(git rev-parse --git-path pr-created 2>/dev/null)"
 
-    if [ ! -f "$pr_created_file" ]; then
+    if ! command -v az &>/dev/null; then
         echo ""
         return
     fi
 
-    while IFS=: read -r b target pr_id timestamp; do
-        if [ "$b" == "$branch" ]; then
-            echo "$pr_id"
-            return
-        fi
-    done < "$pr_created_file"
-
-    echo ""
+    az repos pr list \
+        --organization "https://dev.azure.com/bofaz" \
+        --status active \
+        --source-branch "refs/heads/$branch" \
+        --query "[0].pullRequestId" -o tsv 2>/dev/null || echo ""
 }
 
 # ============================================================================
