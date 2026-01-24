@@ -65,9 +65,10 @@ Use this skill when the user wants to:
    alias stdown='eval $(~/.dotfiles/.claude/scripts/stack down)'
    ```
 
-4. If command fails (Charcoal not installed), fall back to git:
-   - Find parent/child branch name from `.git/pr-stack-info`
-   - `git checkout <branch>`
+4. If command fails because Charcoal is missing/uninitialized:
+   - Install: `brew install danerwilliams/tap/charcoal`
+   - Initialize in the repo: `$HOME/.dotfiles/.claude/scripts/stack init`
+   - Re-run: `$HOME/.dotfiles/.claude/scripts/stack up` or `down`
 
 ## Examples
 

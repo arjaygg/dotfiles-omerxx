@@ -35,7 +35,7 @@ Diagnoses and reports on PR stack health, finding issues like orphan branches, s
 Use this skill when the user wants to:
 - Check if their PR stack is healthy
 - Find issues with branches, worktrees, or metadata
-- Diagnose sync problems between Charcoal and native metadata
+- Diagnose Charcoal tracking problems (missing parents, orphaned tracking, etc.)
 - Identify orphan worktrees or missing branches
 - Check if PRs are targeting the correct base branches
 - Verify branches are pushed to remote
@@ -49,13 +49,11 @@ Use this skill when the user wants to:
 
 2. This will check:
    - ✓ Charcoal branch references (branches tracked but don't exist)
-   - ✓ Native metadata consistency
    - ✓ PR target alignment with Charcoal parents
    - ✓ Orphan worktrees (worktree exists but branch deleted)
    - ✓ Branch sync status (behind parent, potential conflicts)
    - ✓ Remote branches (not pushed)
-   - ✓ Metadata synchronization between systems
-   - ✓ PR freshness (local differs from remote)
+   - ✓ Local vs remote divergence (remote may be stale)
 
 3. Interpret results:
    - **Errors** (✗): Critical issues that need fixing
@@ -77,12 +75,10 @@ Use this skill when the user wants to:
 Running stack integrity checks...
 
   Checking Charcoal branch references... done
-  Checking native metadata consistency... done
   Checking PR target alignment... done
   Checking for orphan worktrees... done
   Checking branch sync status... done
   Checking remote branches... done
-  Checking metadata synchronization... done
   Checking PR freshness... done
 
 ════════════════════════════════════════════════════════════

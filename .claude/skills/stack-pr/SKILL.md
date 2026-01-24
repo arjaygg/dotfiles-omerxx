@@ -36,7 +36,11 @@ Use this skill when the user wants to:
    - `title`: PR title (optional)
    - `draft`: Whether to create as draft (optional)
 
-2. Execute the PR creation script:
+2. Ensure Charcoal is available (required for stack target inference):
+   - Install: `brew install danerwilliams/tap/charcoal`
+   - Initialize in the repo: `$HOME/.dotfiles/.claude/scripts/stack init`
+
+3. Execute the PR creation script:
    ```bash
    $HOME/.dotfiles/.claude/scripts/stack pr <branch> [target] [title]
    ```
@@ -47,7 +51,7 @@ Use this skill when the user wants to:
    - Link dependencies in description
    - Add "Stacked PR" metadata
 
-3. Return the PR URL to the user.
+4. Return the PR URL to the user.
 
 ## Examples
 

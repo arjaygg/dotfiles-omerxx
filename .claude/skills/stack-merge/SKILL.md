@@ -36,8 +36,8 @@ Use this skill when the user wants to:
 
    This will:
    - Complete the PR in Azure DevOps
-   - Update the local stack metadata
-   - Prompt to rebase dependent branches
+   - Restack dependent branches via Charcoal (`gt restack`)
+   - Sync worktrees after restack (if any)
 
 3. Report status to user:
    - Confirm merge success

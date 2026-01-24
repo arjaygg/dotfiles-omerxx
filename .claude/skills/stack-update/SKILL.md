@@ -37,12 +37,19 @@ Use this skill when:
    $HOME/.dotfiles/.claude/scripts/stack update [merged-branch]
    ```
 
-2. This will:
+2. This will automatically:
+   - **Handle uncommitted changes**:
+     - Staged changes → Auto-commit with "WIP: auto-commit before restack" message
+     - Unstaged changes → Auto-stash during rebase, then reapply
+     - Untracked files → Ignored (won't interfere)
    - Fetch latest changes
    - Rebase branches in order
+   - Sync all worktrees
    - Force push (safely) to update PRs
 
 3. Report any conflicts that require manual intervention.
+
+**Note**: The skill handles dirty working directories automatically - no need to manually commit or stash!
 
 ## Examples
 
