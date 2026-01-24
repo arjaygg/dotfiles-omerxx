@@ -68,7 +68,6 @@ Can only work on one branch at a time
 my-repo/
 ├── .git/
 │   ├── .gt/              # Charcoal metadata (shared!)
-│   ├── pr-stack-info     # PR metadata (shared!)
 │   └── worktrees/        # Worktree metadata (shared!)
 │
 ├── src/                  # Main repo (on main/master)
@@ -263,8 +262,6 @@ Process:
 │ 3. gt branch track feature/api --parent main               │
 │    ↓ Register in Charcoal                                  │
 │                                                             │
-│ 4. Update .git/pr-stack-info                               │
-│    ↓ Store PR metadata                                     │
 └─────────────────────────────────────────────────────────────┘
 
 Output:
@@ -367,7 +364,6 @@ Process:
 │       Check if behind                                       │
 │                                                             │
 │ 3. Sync metadata                                            │
-│    ↓ Update .git/pr-stack-info                             │
 └─────────────────────────────────────────────────────────────┘
 
 Output:
@@ -378,7 +374,6 @@ Output:
 │ ℹ️  Syncing worktree: .trees/api (feature/api)            │
 │ ℹ️  Syncing worktree: .trees/ui (feature/ui)              │
 │ ℹ️  Syncing worktree: .trees/polish (feature/polish)      │
-│ ✅ Metadata synced                                         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -388,17 +383,15 @@ Output:
 ┌─────────────────────────────────────────────────────────────┐
 │                    Shared Metadata                          │
 │                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
-│  │ .git/.gt/    │  │ .git/        │  │ .git/        │    │
-│  │ (Charcoal)   │  │ pr-stack-info│  │ worktrees/   │    │
-│  │              │  │ (Native)     │  │ (Git)        │    │
-│  │ Stack info   │  │ Stack info   │  │ Worktree     │    │
-│  │ Parent/child │  │ PR metadata  │  │ locations    │    │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘    │
-│         │                 │                 │              │
-│         └─────────────────┼─────────────────┘              │
-│                           │                                │
-│                    Kept in sync!                           │
+│  ┌──────────────┐  ┌──────────────┐                        │
+│  │ .git/.gt/    │  │ .git/        │                        │
+│  │ (Charcoal)   │  │ worktrees/   │                        │
+│  │              │  │ (Git)        │                        │
+│  │ Stack info   │  │ Worktree     │                        │
+│  │ Parent/child │  │ locations    │                        │
+│  └──────┬───────┘  └──────┬───────┘                        │
+│         │                 │                                │
+│         └─────────────────┘                                │
 └─────────────────────────────────────────────────────────────┘
                             │
                             ▼

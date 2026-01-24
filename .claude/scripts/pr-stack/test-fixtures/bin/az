@@ -51,6 +51,17 @@ case "$cmd1" in
           create)
             echo '{"pullRequestId": 123}'
             ;;
+          list)
+            # Minimal list result for "active PR for source branch" lookups.
+            # Support common `--query` patterns used by scripts.
+            if printf '%s ' "$@" | grep -q -- "--query \\[0\\]\\.pullRequestId"; then
+              echo "123"
+            elif printf '%s ' "$@" | grep -q -- "--query \\[0\\]\\.targetRefName"; then
+              echo "refs/heads/main"
+            else
+              echo '[{"pullRequestId":123,"sourceRefName":"refs/heads/feature/api","targetRefName":"refs/heads/main","status":"active"}]'
+            fi
+            ;;
           show)
             # Handle --query repository.webUrl -o tsv
             if printf '%s ' "$@" | grep -q -- "--query repository.webUrl"; then

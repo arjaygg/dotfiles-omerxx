@@ -6,9 +6,10 @@
 set -e
 
 # Load libraries
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/lib/validation.sh"
-source "$SCRIPT_DIR/lib/charcoal-compat.sh"
+_CREATE_STACK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$_CREATE_STACK_DIR/lib/validation.sh"
+source "$_CREATE_STACK_DIR/lib/charcoal-compat.sh"
+source "$_CREATE_STACK_DIR/lib/worktree-charcoal.sh"
 
 # Functions
 print_usage() {
@@ -70,6 +71,19 @@ COMMIT_MESSAGE=$3
 # Validate prerequisites using library functions
 validate_stack_create_prerequisites "$NEW_BRANCH" "$BASE_BRANCH" || exit 1
 
+# Require Charcoal: this toolchain is Charcoal-first and does not use local tracking files.
+if ! charcoal_available; then
+    print_error "Charcoal CLI (gt) is required but not installed"
+    print_info "Install with: brew install danerwilliams/tap/charcoal"
+    exit 1
+fi
+
+if ! charcoal_initialized; then
+    print_error "Charcoal is not initialized in this repository"
+    print_info "Initialize with: ~/.claude/scripts/stack init"
+    exit 1
+fi
+
 # Get repository root (already at root from validation)
 REPO_ROOT=$(get_repo_root)
 
@@ -113,7 +127,18 @@ fi
 
 if [ "$CREATE_WORKTREE" = true ]; then
     # Worktree Creation Logic
-    
+
+    # CRITICAL: If we're already in a worktree, we must create the new worktree
+    # from the main repo root, not nested inside the current worktree.
+    # E.g., if in .trees/story-1/, create .trees/new-branch/ not .trees/story-1/.trees/new-branch/
+
+    MAIN_REPO_ROOT="$REPO_ROOT"
+    if is_in_worktree; then
+        MAIN_REPO_ROOT=$(get_main_repo_path)
+        print_info "Detected worktree context - creating from main repo at: $MAIN_REPO_ROOT"
+        cd "$MAIN_REPO_ROOT"
+    fi
+
     # Sanitize directory name (remove type prefix if standard, replace slashes)
     # E.g. feature/foo -> foo
     # Sanitize logic:
@@ -122,18 +147,15 @@ if [ "$CREATE_WORKTREE" = true ]; then
     # 3. Replace spaces/underscores with hyphens
     # 4. Remove special chars
     # 5. Collapse hyphens
-    
+
     DESCRIPTION=$(echo "$NEW_BRANCH" | sed -E 's/^(feature|feat|bugfix|fix|hotfix|release|chore)\///')
     DESCRIPTION=$(echo "$DESCRIPTION" | tr '[:upper:]' '[:lower:]' | sed -E 's/[ _]/-/g' | sed -E 's/[^a-z0-9.-]//g' | sed -E 's/-+/-/g' | sed -E 's/^-|-$//g')
-    
+
     WORKTREE_PATH=".trees/$DESCRIPTION"
-    WORKTREE_FULL_PATH="$(cd "$(dirname "$REPO_ROOT")" && pwd)/$(basename "$REPO_ROOT")/$WORKTREE_PATH"
-    # Resolve relative path to absolute for sed usage later
-    # Actually, we can just use $(cd $WORKTREE_PATH && pwd) after creation.
-    
+
     print_info "Creating worktree at $WORKTREE_PATH..."
-    
-    # Ensure .trees exists
+
+    # Ensure .trees exists (in main repo root)
     mkdir -p .trees
     
     # Check if directory exists
@@ -304,14 +326,8 @@ EOF
 fi
 echo ""
 
-# Store stack information
-STACK_INFO_FILE="$REPO_ROOT/.git/pr-stack-info"
-echo "$NEW_BRANCH:$BASE_BRANCH:$(date +%s)" >> "$STACK_INFO_FILE"
-
-# Sync to Charcoal if available
-if charcoal_initialized; then
-    print_info "Syncing branch to Charcoal..."
-    gt branch track "$NEW_BRANCH" --parent "$BASE_BRANCH" 2>/dev/null || true
-fi
+# Track in Charcoal (single source of truth for stack relationships)
+print_info "Tracking branch in Charcoal..."
+gt branch track "$NEW_BRANCH" --parent "$BASE_BRANCH"
 
 print_success "Stack updated. Run './scripts/stack status' to see your PR stack"

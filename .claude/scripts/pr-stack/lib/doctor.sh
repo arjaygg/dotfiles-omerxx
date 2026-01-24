@@ -59,27 +59,45 @@ check_pr_target_mismatch() {
         return 0
     fi
 
-    local pr_created_file
-    pr_created_file="$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir 2>/dev/null)/pr-created"
-
-    if [ ! -f "$pr_created_file" ]; then
+    # Only do this check if we have `az` CLI
+    if ! command -v az &>/dev/null; then
         return 0
     fi
 
-    while IFS=: read -r branch target pr_id timestamp; do
-        if [ -z "$branch" ] || [ -z "$target" ] || [ -z "$pr_id" ]; then
+    local all_branches
+    all_branches=$(git branch --format='%(refname:short)')
+
+    while IFS= read -r branch; do
+        [ -n "$branch" ] || continue
+
+        local charcoal_parent
+        charcoal_parent=$(charcoal_get_parent "$branch" 2>/dev/null || true)
+        [ -n "$charcoal_parent" ] || continue
+
+        local pr_id
+        pr_id=$(az repos pr list \
+            --organization "https://dev.azure.com/bofaz" \
+            --status active \
+            --source-branch "refs/heads/$branch" \
+            --query "[0].pullRequestId" -o tsv 2>/dev/null || true)
+
+        if [ -z "$pr_id" ] || [ "$pr_id" == "null" ]; then
             continue
         fi
 
-        # Get Charcoal parent using helper function
-        local charcoal_parent
-        charcoal_parent=$(charcoal_get_parent "$branch" 2>/dev/null)
+        local target_ref
+        target_ref=$(az repos pr list \
+            --organization "https://dev.azure.com/bofaz" \
+            --status active \
+            --source-branch "refs/heads/$branch" \
+            --query "[0].targetRefName" -o tsv 2>/dev/null || true)
 
-        if [ -n "$charcoal_parent" ] && [ "$target" != "$charcoal_parent" ]; then
+        local target="${target_ref#refs/heads/}"
+        if [ -n "$target" ] && [ "$target" != "$charcoal_parent" ]; then
             DOCTOR_WARNINGS+=("PR #$pr_id for '$branch' targets '$target' but Charcoal parent is '$charcoal_parent'")
             DOCTOR_FIXES+=("Update PR #$pr_id target to '$charcoal_parent' or re-track branch")
         fi
-    done < "$pr_created_file"
+    done <<< "$all_branches"
 }
 
 # Check: Worktree exists but branch deleted
@@ -191,43 +209,46 @@ check_metadata_sync() {
     return 0
 }
 
-# Check: PR exists but branch was force-pushed (PR may be stale)
+# Check: Local differs from remote (PR may be stale)
 check_pr_freshness() {
-    local pr_created_file
-    pr_created_file="$(git rev-parse --git-common-dir 2>/dev/null || git rev-parse --git-dir 2>/dev/null)/pr-created"
-
-    if [ ! -f "$pr_created_file" ]; then
+    # Only do this check if we have a remote
+    if ! git remote get-url origin >/dev/null 2>&1; then
         return 0
     fi
 
-    # Only do this check if we have `az` CLI
-    if ! command -v az &>/dev/null; then
+    if ! charcoal_initialized; then
         return 0
     fi
 
-    while IFS=: read -r branch target pr_id timestamp; do
-        if [ -z "$pr_id" ] || [ -z "$branch" ]; then
-            continue
-        fi
+    local all_branches
+    all_branches=$(git branch --format='%(refname:short)')
 
-        # Check if branch exists
+    while IFS= read -r branch; do
+        [ -n "$branch" ] || continue
+
+        local parent
+        parent=$(charcoal_get_parent "$branch" 2>/dev/null || true)
+        [ -n "$parent" ] || continue
+
         if ! git rev-parse --verify "$branch" &>/dev/null; then
             continue
         fi
 
-        # Get local branch HEAD
-        local local_head
-        local_head=$(git rev-parse "$branch" 2>/dev/null)
+        # Only check if branch exists on origin
+        if ! git ls-remote --exit-code --heads origin "$branch" &>/dev/null; then
+            continue
+        fi
 
-        # Get remote branch HEAD
+        local local_head
+        local_head=$(git rev-parse "$branch" 2>/dev/null || true)
         local remote_head
-        remote_head=$(git ls-remote origin "$branch" 2>/dev/null | awk '{print $1}')
+        remote_head=$(git ls-remote origin "$branch" 2>/dev/null | awk '{print $1}' | head -1)
 
         if [ -n "$local_head" ] && [ -n "$remote_head" ] && [ "$local_head" != "$remote_head" ]; then
-            DOCTOR_WARNINGS+=("Branch '$branch' local HEAD differs from remote - PR #$pr_id may be stale")
-            DOCTOR_FIXES+=("git push -f origin $branch")
+            DOCTOR_WARNINGS+=("Branch '$branch' local HEAD differs from origin - remote PR may be stale")
+            DOCTOR_FIXES+=("git push --force-with-lease origin $branch")
         fi
-    done < "$pr_created_file"
+    done <<< "$all_branches"
 }
 
 # ============================================================================
