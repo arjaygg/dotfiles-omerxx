@@ -5,6 +5,7 @@
   "permissions": {
     "defaultMode": "dontAsk"
   },
+  "model": "sonnet",
   "enableAllProjectMcpServers": true,
   "statusLine": {
     "type": "command",
@@ -14,8 +15,10 @@
     "document-skills@anthropic-agent-skills": false,
     "osgrep@osgrep": true,
     "gopls-lsp@claude-plugins-official": true,
-    "gopls@claude-code-lsps": true
+    "gopls@claude-code-lsps": true,
+    "claude-md-management@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "claude-mem@thedotmack": false
   },
-  "alwaysThinkingEnabled": true,
-  "model": "sonnet"
+  "alwaysThinkingEnabled": true
 }

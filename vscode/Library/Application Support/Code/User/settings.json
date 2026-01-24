@@ -32,5 +32,6 @@
     "claudeCode.allowDangerouslySkipPermissions": true,
     "claudeCode.initialPermissionMode": "bypassPermissions",
     "claudeCode.preferredLocation": "panel",
-    "claudeCode.selectedModel": "default"
+    "claudeCode.selectedModel": "default",
+    "workbench.secondarySideBar.defaultVisibility": "hidden"
 }
