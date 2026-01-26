@@ -19,5 +19,6 @@
     "superpowers@claude-plugins-official": true,
     "claude-mem@thedotmack": false
   },
-  "alwaysThinkingEnabled": true
+  "alwaysThinkingEnabled": true,
+  "model": "sonnet"
 }
