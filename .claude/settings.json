@@ -5,7 +5,6 @@
   "permissions": {
     "defaultMode": "dontAsk"
   },
-  "model": "sonnet",
   "enableAllProjectMcpServers": true,
   "statusLine": {
     "type": "command",
@@ -13,7 +12,7 @@
   },
   "enabledPlugins": {
     "document-skills@anthropic-agent-skills": false,
-    "osgrep@osgrep": true,
+    "osgrep@osgrep": false,
     "gopls-lsp@claude-plugins-official": true,
     "gopls@claude-code-lsps": true,
     "claude-md-management@claude-plugins-official": true,
