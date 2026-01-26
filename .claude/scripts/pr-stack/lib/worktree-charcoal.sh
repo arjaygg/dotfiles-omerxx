@@ -241,6 +241,10 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
             stashed=true
         fi
 
+        # Sync trunk from remote before restacking
+        print_info "Syncing trunk from remote..."
+        gt repo sync --no-interactive
+
         # Run the restack
         gt stack restack
         restack_result=$?
