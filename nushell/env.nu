@@ -1,9 +1,10 @@
+#
 # Nushell Environment Config File
 #
 # version = "0.95.0"
 
 def create_left_prompt [] {
-    let dir = match (do --ignore-errors { $env.PWD | path relative-to $nu.home-path }) {
+    let dir = match (do -i { $env.PWD | path relative-to $nu.home-path }) {
         null => $env.PWD
         '' => '~'
         $relative_pwd => ([~ $relative_pwd] | path join)
@@ -35,10 +36,9 @@ def create_right_prompt [] {
 }
 
 # Use nushell functions to define your right and left prompt
-# NOTE: Disabled in favor of starship prompt
-# $env.PROMPT_COMMAND = {|| create_left_prompt }
+$env.PROMPT_COMMAND = {|| create_left_prompt }
 # FIXME: This default is not implemented in rust code as of 2023-09-08.
-# $env.PROMPT_COMMAND_RIGHT = {|| create_right_prompt }
+$env.PROMPT_COMMAND_RIGHT = {|| create_right_prompt }
 
 # The prompt indicators are environmental variables that represent
 # the state of the prompt
@@ -92,90 +92,25 @@ $env.NU_PLUGIN_DIRS = [
 # An alternate way to add entries to $env.PATH is to use the custom command `path add`
 # which is built into the nushell stdlib:
 use std "path add"
-# $env.PATH = ($env.PATH | split row (char esep))
-# path add /some/path
-# path add ($env.CARGO_HOME | path join "bin")
-# path add ($env.HOME | path join ".local" "bin")
-# $env.PATH = ($env.PATH | uniq)
-path add /usr/local/bin
-path add /opt/homebrew/bin
-path add /run/current-system/sw/bin
-path add ($nu.home-path | path join ".local" "bin")
-path add /opt/homebrew/opt/ruby/bin
+path add "/opt/homebrew/bin"
+path add "/opt/homebrew/sbin"
+path add ($env.HOME | path join ".turso")
+path add ($env.HOME | path join ".local/share/mise/shims")
+path add "/Users/omerxx/.local/bin"
 
-# Dynamically add Node.js bin directory if .nvm exists
-let nvm_path = ($nu.home-path | path join ".nvm" "versions" "node")
-if ($nvm_path | path exists) {
-  let node_bins = (glob ($nvm_path | path join "*" "bin") | sort | last)
-  if ($node_bins | is-not-empty) {
-    path add $node_bins
-  }
-}
-
-path add ($nu.home-path | path join "homebrew" "bin")
-path add ($nu.home-path | path join ".codeium" "windsurf" "bin")
-path add ($nu.home-path | path join ".bun" "bin")
 
 # To load from a custom file you can use:
 # source ($nu.default-config-dir | path join 'custom.nu')
 
-try { mkdir ~/.cache/starship } catch { }
-if (which starship | is-empty) {
-  # starship not installed; skip injection
-} else if (not ("~/.cache/starship/init.nu" | path expand | path exists)) {
-  try {
-    starship init nu | save -f ~/.cache/starship/init.nu
-  } catch {
-    null
-  }
-}
-if (which zoxide | is-empty) {
-  # zoxide not available; skip helper file creation
-} else if (not ("~/.zoxide.nu" | path expand | path exists)) {
-  try {
-    zoxide init nushell | save -f ~/.zoxide.nu
-  } catch {
-    null
-  }
-}
+mkdir ~/.cache/starship
+starship init nu | save -f ~/.cache/starship/init.nu
+zoxide init nushell | save -f ~/.zoxide.nu
+mkdir ~/.cache/mise
+^mise activate nu | save -f ~/.cache/mise/init.nu
 
-if (which atuin | is-empty) {
-  # atuin not installed; skip init script generation
-} else if (not ("~/.local/share/atuin/init.nu" | path expand | path exists)) {
-  try {
-    mkdir ~/.local/share/atuin
-  } catch { }
-  try {
-    mkdir ~/.config/atuin
-  } catch { }
-  try {
-    atuin init nu | save -f ~/.local/share/atuin/init.nu
-  } catch {
-    null
-  }
-}
-
-$env.STARSHIP_CONFIG = ($nu.home-path | path join '.dotfiles' 'starship' 'starship.toml')
-$env.NIX_CONF_DIR = ($nu.home-path | path join '.config' 'nix')
+$env.STARSHIP_CONFIG = "/Users/omerxx/.config/starship/starship.toml"
 $env.CARAPACE_BRIDGES = 'zsh,fish,bash,inshellisense' # optional
-if (which carapace | is-empty) {
-  # carapace not installed; skip shell integration
-} else if (not ("~/.cache/carapace/init.nu" | path expand | path exists)) {
-  try {
-    mkdir ~/.cache/carapace
-  } catch { }
-  try {
-    carapace _carapace nushell | save --force ~/.cache/carapace/init.nu
-  } catch {
-    null
-  }
-}
+mkdir ~/.cache/carapace
+carapace _carapace nushell | save --force ~/.cache/carapace/init.nu
 
-# Claude Code local installation
-path add ($nu.home-path | path join ".local" "bin")
-alias claude = ~/.local/bin/claude
-
-# pnpm
-$env.PNPM_HOME = "/Users/axos-agallentes/.local/share/pnpm"
-$env.PATH = ($env.PATH | split row (char esep) | prepend $env.PNPM_HOME )
-# pnpm end
+$env.EDITOR = "nvim"
