@@ -143,8 +143,7 @@ $env.config = {
     show_banner: false
 
     ls: {
-        use_ls_colors: true # use the LS_COLORS environment variable to colorize output
-        clickable_links: true # enable or disable clickable links. Your terminal has to support links.
+        use_ls_colors: true
     }
 
     rm: {
@@ -271,10 +270,20 @@ $env.config = {
     }
 
     hooks: {
-        pre_prompt: [{ null }] # run before the prompt is shown
+        pre_prompt: [{|| 
+            if (which direnv | is-empty) {
+                return
+            }
+            try {
+                direnv export json | from json | default {} | load-env
+                if 'PATH' in $env {
+                    $env.PATH = ($env.PATH | split row (char esep))
+                }
+            } catch {}
+        }]
         pre_execution: [{ null }] # run before the repl input is run
         env_change: {
-            PWD: [{|before, after| null }] # run if the PWD environment is different since the last repl input
+            PWD: [] # run if the PWD environment is different since the last repl input
         }
         display_output: "if (term size).columns >= 100 { table -e } else { table }" # run to display the output of a pipeline
         command_not_found: { null } # return an error message when a command is not found
@@ -402,14 +411,13 @@ $env.config = {
                 ]
             }
         }
-        # Commented out: Atuin handles Ctrl-R instead
-        # {
-        #     name: history_menu
-        #     modifier: control
-        #     keycode: char_r
-        #     mode: [emacs, vi_insert, vi_normal]
-        #     event: { send: menu name: history_menu }
-        # }
+        {
+            name: history_menu
+            modifier: control
+            keycode: char_r
+            mode: [emacs, vi_insert, vi_normal]
+            event: { send: menu name: history_menu }
+        }
         {
             name: help_menu
             modifier: none
@@ -886,17 +894,6 @@ $env.config = {
     ]
 }
 
-# Yazi wrapper for CD-on-exit
-def --env y [...args] {
-	let tmp = (mktemp -t "yazi-cwd.XXXXXX")
-	yazi ...$args --cwd-file $tmp
-	let cwd = (open $tmp)
-	if $cwd != "" and $cwd != $env.PWD {
-		cd $cwd
-	}
-	rm -f $tmp
-}
-
 def --env cx [arg] {
     cd $arg
     ls -l
@@ -907,7 +904,6 @@ alias c = clear
 alias ll = ls -l
 alias lt = eza --tree --level=2 --long --icons --git
 alias v = nvim
-alias hms = /nix/store/6kc5srg83nkyg21am089xx7pvq44kn2c-home-manager/bin/home-manager switch
 alias as = aerospace
 alias asr = atuin scripts run
 
@@ -946,46 +942,13 @@ alias kns = kubens
 alias kl = kubectl logs -f
 alias ke = kubectl exec -it
 
-# Note: env.nu is automatically loaded before config.nu by nushell
-# Load zoxide integration
-def --env z [...rest: string] {
-  cd (zoxide query -- ...$rest | str trim)
-}
-
-def --env zi [...rest: string] {
-  cd (zoxide query --interactive -- ...$rest | str trim)
-}
+source ~/.zoxide.nu
+source ~/.cache/carapace/init.nu
+source ~/.local/share/atuin/init.nu
+use ~/.cache/starship/init.nu
+use ~/.cache/mise/init.nu
 
 
-source-env (
-  if (("~/.cache/carapace/init.nu" | path expand | path exists)) {
-    "~/.cache/carapace/init.nu"
-  } else {
-    null
-  }
-)
+$env.DIRENV_LOG_FORMAT = ""
 
-source-env (
-  if (("~/.local/share/atuin/init.nu" | path expand | path exists)) {
-    "~/.local/share/atuin/init.nu"
-  } else {
-    null
-  }
-)
-
-if (("~/.cache/starship/init.nu" | path expand | path exists)) {
-  use ~/.cache/starship/init.nu
-}
-
-let ruby_ver = "3.4.0"
-let gem_home = ($nu.home-path | path join ".gem" "ruby" $ruby_ver)
-let gem_bin = ($gem_home | path join "bin")
-
-# Set GEM paths
-$env.GEM_HOME = $gem_home
-$env.GEM_PATH = $gem_home
-
-# Add gem bin to PATH if it exists
-if ($gem_bin | path exists) {
-  $env.PATH = ($env.PATH | prepend $gem_bin)
-}
+source ~/.config/nushell/vendor/autoload/wt.nu
