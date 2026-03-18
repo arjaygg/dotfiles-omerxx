@@ -106,7 +106,11 @@ mkdir ~/.cache/starship
 starship init nu | save -f ~/.cache/starship/init.nu
 zoxide init nushell | save -f ~/.zoxide.nu
 mkdir ~/.cache/mise
-^mise activate nu | save -f ~/.cache/mise/init.nu
+try {
+  ^mise activate nu | save -f ~/.cache/mise/init.nu
+} catch {
+  # mise not in PATH or not installed; init.nu will be created when you run: mise activate nushell
+}
 
 $env.STARSHIP_CONFIG = "/Users/omerxx/.config/starship/starship.toml"
 $env.CARAPACE_BRIDGES = 'zsh,fish,bash,inshellisense' # optional
