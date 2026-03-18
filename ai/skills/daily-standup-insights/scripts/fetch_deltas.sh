@@ -19,12 +19,11 @@ echo "AREA_PATH=\"$AREA_PATH\"" >> "$CONFIG_FILE"
 echo "ORG=\"$ORG\"" >> "$CONFIG_FILE"
 echo "SINCE_DAYS=\"$SINCE_DAYS\"" >> "$CONFIG_FILE"
 
-# Date calculation for ADO (Last N days)
-# Using a portable date approach
+# Date calculation for ADO (Last N days) - date only (ADO rejects time in WIQL)
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    SINCE_DATE=$(date -v-${SINCE_DAYS}d +"%Y-%m-%dT%H:%M:%SZ")
+    SINCE_DATE=$(date -v-${SINCE_DAYS}d +"%Y-%m-%d")
 else
-    SINCE_DATE=$(date -d "${SINCE_DAYS} days ago" +"%Y-%m-%dT%H:%M:%SZ")
+    SINCE_DATE=$(date -d "${SINCE_DAYS} days ago" +"%Y-%m-%d")
 fi
 
 echo "--- ADO Activity (Last $SINCE_DAYS Days) ---"
