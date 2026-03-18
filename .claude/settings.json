@@ -3,8 +3,29 @@
     "USE_BUILTIN_RIPGREP": "0"
   },
   "permissions": {
-    "defaultMode": "dontAsk"
+    "defaultMode": "dontAsk",
+    "allow": [
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "TaskCreate(*)",
+      "TaskGet(*)",
+      "TaskList(*)",
+      "TaskOutput(*)",
+      "TaskStop(*)",
+      "TaskUpdate(*)",
+      "mcp__serena__*",
+      "mcp__qmd__*",
+      "mcp__claude-in-chrome__*",
+      "mcp__*__*"
+    ]
   },
+  "model": "sonnet",
   "enableAllProjectMcpServers": true,
   "statusLine": {
     "type": "command",
@@ -16,9 +37,44 @@
     "gopls-lsp@claude-plugins-official": true,
     "gopls@claude-code-lsps": true,
     "claude-md-management@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": true,
-    "claude-mem@thedotmack": false
+    "superpowers@claude-plugins-official": false,
+    "claude-mem@thedotmack": false,
+    "skill-creator@claude-plugins-official": false
   },
   "alwaysThinkingEnabled": true,
-  "model": "sonnet"
+  "skipDangerousModePermissionPrompt": true,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "bash ~/.dotfiles/.claude/hooks/pre-tool-gate.sh" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "bash ~/.dotfiles/.claude/hooks/post-tool-handler.sh" }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          { "type": "command", "command": "bash ~/.dotfiles/.claude/hooks/context-monitor.sh" }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          { "type": "command", "command": "bash ~/.dotfiles/.claude/hooks/pre-compact.sh" }
+        ]
+      }
+    ]
+  }
 }
