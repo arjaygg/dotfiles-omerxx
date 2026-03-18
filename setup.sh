@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
+
+# The Router: Symlinks inside the repo (like .claude/skills/daily-standup-insights)
+# point back to the Unified AI Hub (ai/skills/).
+# GNU Stow mirrors this structure into your Home directory automatically.
+
 stow .
 
-# Setup Claude Code global config
-mkdir -p ~/.claude
-ln -sf ~/.dotfiles/.claude/commands ~/.claude/commands
-ln -sf ~/.dotfiles/.claude/settings.json ~/.claude/settings.json
-ln -sf ~/.dotfiles/.claude/output-styles ~/.claude/output-styles
+# Specific tool setup (for things Stow can't easily handle)
+mkdir -p ~/.cursor
+ln -sf ~/.dotfiles/.cursor/Library ~/.cursor/Library
 
-# Setup Cursor global config
-rm -rf ~/.cursor # Remove existing directory/symlink
-ln -sf ~/.dotfiles/.cursor ~/.cursor
+# Claude Code global settings (Stow handles the directory structure)
+mkdir -p ~/.claude
+ln -sf ~/.dotfiles/.claude/settings.json ~/.claude/settings.json
+
+# Cleanup legacy files if they exist in root
+rm -rf ~/.dotfiles/daily-standup-insights 2>/dev/null
+rm -rf ~/.dotfiles/daily-standup-insights.skill 2>/dev/null
