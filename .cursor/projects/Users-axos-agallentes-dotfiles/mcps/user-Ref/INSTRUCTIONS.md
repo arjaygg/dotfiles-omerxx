@@ -1,0 +1,1 @@
+Use ref_search_documentation and ref_read_url when working with libraries, frameworks or APIs to check the docs.

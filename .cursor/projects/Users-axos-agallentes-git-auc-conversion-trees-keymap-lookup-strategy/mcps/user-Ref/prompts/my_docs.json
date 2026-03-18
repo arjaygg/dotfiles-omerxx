@@ -1,0 +1,14 @@
+{
+  "name": "my_docs",
+  "description": "",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "The rest of your prompt or question you want informed by your private docs"
+      }
+    },
+    "required": []
+  }
+}

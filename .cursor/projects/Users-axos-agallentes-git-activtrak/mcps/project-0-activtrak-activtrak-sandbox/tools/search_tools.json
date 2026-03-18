@@ -1,0 +1,16 @@
+{
+  "name": "search_tools",
+  "description": "Search for available MCP tools by keyword. Returns tool names and descriptions. Call this first to discover which tools are relevant before using execute_code. Returns up to 8 matches.",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Keyword or natural language description of what you want to do"
+      }
+    },
+    "required": [
+      "query"
+    ]
+  }
+}

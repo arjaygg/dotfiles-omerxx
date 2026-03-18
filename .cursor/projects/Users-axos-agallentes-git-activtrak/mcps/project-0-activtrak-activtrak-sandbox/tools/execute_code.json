@@ -1,0 +1,16 @@
+{
+  "name": "execute_code",
+  "description": "Execute TypeScript code in a sandboxed environment. All MCP tools are pre-wired as async functions on `tools` (e.g. `await tools.serena__find_symbol({ name: 'Tracker' })`). Hyphens in tool names are replaced with underscores. IMPORTANT: return a concise string summary — this is the ONLY thing returned to the LLM context. Raw tool responses stay inside the sandbox. Use this for any task requiring 2+ tool calls.",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "string",
+        "description": "TypeScript code to execute. Use `await tools.server__toolname(args)` to call tools. Must return a string (or a value that converts to one)."
+      }
+    },
+    "required": [
+      "code"
+    ]
+  }
+}

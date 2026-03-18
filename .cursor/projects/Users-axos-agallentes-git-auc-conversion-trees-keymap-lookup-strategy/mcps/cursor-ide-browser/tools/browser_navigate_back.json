@@ -1,0 +1,14 @@
+{
+  "name": "browser_navigate_back",
+  "description": "Go back to the previous page",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "viewId": {
+        "type": "string",
+        "description": "Target browser tab ID. If omitted, uses the last interacted tab."
+      }
+    },
+    "required": []
+  }
+}

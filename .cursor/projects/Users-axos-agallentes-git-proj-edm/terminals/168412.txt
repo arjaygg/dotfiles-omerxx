@@ -1,0 +1,50 @@
+=== Background Shell 168412 ===
+Command: gh pr checks 10 --watch
+Working Directory: /Users/axos-agallentes/git/proj-edm
+PID: 21175
+Started: 2026-01-16T14:15:42.019Z
+============================================================
+
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+Quick Chaos Tests	pending	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119028	
+Quick Check (P0 Tests)	pending	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509489/job/60595119041	
+Full Chaos Tests	skipping	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119584	
+Full Stability Suite	skipping	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119592	
+Stress Tests	skipping	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119462	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+Quick Chaos Tests	pending	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119028	
+Quick Check (P0 Tests)	pending	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509489/job/60595119041	
+Full Chaos Tests	skipping	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119584	
+Full Stability Suite	skipping	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119592	
+Stress Tests	skipping	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119462	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+Quick Chaos Tests	fail	19s	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119028	
+Test Summary	pass	3s	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595156702	
+Quick Check (P0 Tests)	pending	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509489/job/60595119041	
+Full Chaos Tests	skipping	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119584	
+Full Stability Suite	skipping	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119592	
+Stress Tests	skipping	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119462	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+Quick Chaos Tests	fail	19s	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119028	
+Test Summary	pass	3s	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595156702	
+Quick Check (P0 Tests)	pending	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509489/job/60595119041	
+Full Chaos Tests	skipping	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119584	
+Full Stability Suite	skipping	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119592	
+Stress Tests	skipping	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119462	
+Refreshing checks status every 10 seconds. Press Ctrl+C to quit.
+
+Quick Chaos Tests	fail	19s	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119028	
+Test Summary	pass	3s	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595156702	
+Quick Check (P0 Tests)	pending	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509489/job/60595119041	
+Full Chaos Tests	skipping	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119584	
+Full Stability Suite	skipping	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119592	
+Stress Tests	skipping	0	https://github.com/arjaygg/proj-edm/actions/runs/21069509487/job/60595119462	
+
+============================================================
+Exited with code: unknown
+Elapsed time: 45218ms
+Ended: 2026-01-16T14:15:57.222Z

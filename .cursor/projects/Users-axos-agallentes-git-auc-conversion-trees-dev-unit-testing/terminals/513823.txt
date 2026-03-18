@@ -1,0 +1,18 @@
+---
+pid: 4566
+cwd: "/Users/axos-agallentes/git/auc-conversion/.trees/dev-unit-testing"
+command: "GIT_TERMINAL_PROMPT=0 ./scripts/stack create \"fix/pr-stack-worktree\" main"
+started_at: 2026-01-17T16:57:26.726Z
+running_for_seconds: 215   
+---
+[0;34mINFO:[0m Using native script to create branch
+[0;34mINFO:[0m Creating new branch: fix/pr-stack-worktree
+[0;34mINFO:[0m Based on: main
+[0;34mINFO:[0m Fetching latest changes...
+[1;33mWARNING:[0m Local main is 3 commit(s) behind origin/main
+
+---
+exit_code: unknown
+elapsed_ms: 215550
+ended_at: 2026-01-17T17:01:02.276Z
+---

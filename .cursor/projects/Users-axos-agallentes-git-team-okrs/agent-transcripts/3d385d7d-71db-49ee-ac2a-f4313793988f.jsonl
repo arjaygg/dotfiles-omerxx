@@ -1,0 +1,3 @@
+{"role":"user","message":{"content":[{"type":"text","text":"<user_query>\n/Users/axos-agallentes/git/team-okrs/okrs/definitions.md\n</user_query>"}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"Reading `okrs/definitions.md`."}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"Read the OKR definitions file. It covers three objectives with multiple KRs, formulas, and measurement instructions.\n\nWhat would you like to do with it?\n\n- Update or modify specific KRs\n- Track baseline data collection\n- Generate reports or summaries\n- Address open issues\n- Create related documentation\n\nI can also review it for consistency, completeness, or alignment with your tracking system."}]}}

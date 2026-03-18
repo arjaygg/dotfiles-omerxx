@@ -1,0 +1,14 @@
+{
+  "name": "browser_snapshot",
+  "description": "Capture accessibility snapshot of the current page, this is better than screenshot",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "viewId": {
+        "type": "string",
+        "description": "Target browser tab ID. If omitted, uses the last interacted tab."
+      }
+    },
+    "required": []
+  }
+}
