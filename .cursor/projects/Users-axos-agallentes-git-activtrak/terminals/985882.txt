@@ -1,0 +1,13 @@
+---
+pid: 73733
+cwd: "/Users/axos-agallentes/git/activtrak"
+command: "cd tools/mcp-sandbox && npm install --save-dev vitest 2>&1 | tail -5"
+started_at: 2026-03-17T07:06:29.665Z
+running_for_ms: 180075   
+---
+
+---
+exit_code: unknown
+elapsed_ms: 183930
+ended_at: 2026-03-17T07:09:33.595Z
+---

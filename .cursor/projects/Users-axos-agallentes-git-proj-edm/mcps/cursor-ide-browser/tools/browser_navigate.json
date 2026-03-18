@@ -1,0 +1,28 @@
+{
+  "name": "browser_navigate",
+  "description": "Navigate to a URL",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "description": "The URL to navigate to"
+      },
+      "viewId": {
+        "type": "string",
+        "description": "Target browser tab ID. If omitted, uses the last interacted tab."
+      },
+      "position": {
+        "type": "string",
+        "enum": [
+          "active",
+          "side"
+        ],
+        "description": "IMPORTANT: Set to \"side\" if user mentions \"side\", \"beside\", \"side panel\", or \"side by side\". Opens browser in side editor group. Defaults to \"active\" (current editor group)."
+      }
+    },
+    "required": [
+      "url"
+    ]
+  }
+}

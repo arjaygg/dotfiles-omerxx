@@ -1,0 +1,38 @@
+---
+pid: 75172
+cwd: "/Users/axos-agallentes/git/activtrak"
+command: "cd tools/mcp-sandbox && npm test 2>&1"
+started_at: 2026-03-17T07:10:30.543Z
+running_for_ms: 30001    
+---
+
+> activtrak-mcp-sandbox@1.0.0 test
+> node --test test/*.test.mjs
+
+▶ runInSandbox
+  ✔ returns a string from simple code (1.093333ms)
+  ✔ returns empty string when code returns undefined (0.277375ms)
+  ✔ returns empty string when code returns null (0.2405ms)
+  ✔ coerces non-string returns to string (0.233708ms)
+  ✔ throws on syntax errors (1.516166ms)
+  ✔ truncates output exceeding MAX_RETURN_LENGTH (0.309708ms)
+  ✔ does not truncate output at exactly MAX_RETURN_LENGTH (0.256ms)
+  ✔ wires tool functions with hyphen-to-underscore naming (0.367583ms)
+  ✔ denies access to process global (0.312ms)
+  ✔ denies access to require (0.333209ms)
+  ✔ supports await in code (0.278334ms)
+✔ runInSandbox (5.831125ms)
+ℹ tests 11
+ℹ suites 1
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 30068.76125
+
+---
+exit_code: 0
+elapsed_ms: 30342
+ended_at: 2026-03-17T07:11:00.885Z
+---

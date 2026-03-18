@@ -1,0 +1,22 @@
+{
+  "name": "onboarding",
+  "description": "Call this tool if onboarding was not performed yet.\nYou will call this tool at most once per conversation. Returns instructions on how to create the onboarding information.",
+  "arguments": {
+    "type": "object",
+    "properties": {},
+    "title": "applyArguments"
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "result": {
+        "title": "Result",
+        "type": "string"
+      }
+    },
+    "required": [
+      "result"
+    ],
+    "title": "applyOutput"
+  }
+}

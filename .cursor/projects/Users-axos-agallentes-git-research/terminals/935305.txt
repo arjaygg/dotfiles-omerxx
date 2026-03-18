@@ -1,0 +1,14 @@
+---
+pid: 72306
+cwd: "/Users/axos-agallentes/git/research/keymap-insert/migration-strategy-comparison/bench"
+command: "kubectl -n migration-test delete pod bench-reports-reader --ignore-not-found=true"
+started_at: 2026-01-17T15:13:27.822Z
+running_for_seconds: 30    
+---
+pod "bench-reports-reader" deleted from migration-test namespace
+
+---
+exit_code: 0
+elapsed_ms: 30597
+ended_at: 2026-01-17T15:13:58.419Z
+---

@@ -1,0 +1,13 @@
+---
+pid: 82000
+cwd: "/Users/axos-agallentes/git/research/keymap-insert/migration-strategy-comparison/bench"
+command: "kubectl -n migration-test logs -f pod/bench-864d23ce-d8aa-43ec-b54a-c70f66b3586d-sall-nbhgg"
+started_at: 2026-01-17T15:52:36.830Z
+running_for_seconds: 1230  
+---
+
+---
+exit_code: 0
+elapsed_ms: 1235057
+ended_at: 2026-01-17T16:13:11.887Z
+---

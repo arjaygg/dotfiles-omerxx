@@ -1,0 +1,21 @@
+{
+  "name": "list_memories",
+  "description": "List available memories. Any memory can be read using the `read_memory` tool.",
+  "arguments": {
+    "type": "object",
+    "properties": {}
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "result": {
+        "title": "Result",
+        "type": "string"
+      }
+    },
+    "required": [
+      "result"
+    ],
+    "title": "applyOutput"
+  }
+}

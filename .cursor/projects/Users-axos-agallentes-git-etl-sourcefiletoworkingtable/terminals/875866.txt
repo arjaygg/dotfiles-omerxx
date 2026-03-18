@@ -1,0 +1,79 @@
+=== Background Shell 875866 ===
+Command: brew install azure-cli
+Working Directory: /Users/axos-agallentes/git/etl_sourcefiletoworkingtable
+PID: 81388
+Started: 2026-01-14T15:16:08.939Z
+============================================================
+
+✔︎ JSON API formula.jws.json
+✔︎ JSON API cask.jws.json
+==> Fetching downloads for: azure-cli
+✔︎ Bottle Manifest azure-cli (2.82.0)
+Warning: Building python@3.13 from source as the bottle needs:
+- `HOMEBREW_CELLAR=/opt/homebrew/Cellar` (yours is /Users/axos-agallentes/homebrew/Cellar)
+- `HOMEBREW_PREFIX=/opt/homebrew` (yours is /Users/axos-agallentes/homebrew)
+==> Downloading https://raw.githubusercontent.com/Homebrew/homebrew-core/53e7676adcc89d1357abe77cebba39b05ed274a9/Formula/p/python@3.13.rb
+Already downloaded: /Users/axos-agallentes/Library/Caches/Homebrew/downloads/d3b9e3fa227f05bb7631e2f7a397ea6b6dea2ce957afc9b762349803d6e62445--python@3.13.rb
+✔︎ Bottle Manifest libsodium (1.0.21)
+✔︎ Bottle libsodium (1.0.21)
+✔︎ Bottle Manifest ca-certificates (2025-12-02)
+✔︎ Bottle ca-certificates (2025-12-02)
+✔︎ Bottle Manifest readline (8.3.3)
+✔︎ Bottle readline (8.3.3)
+✔︎ Bottle Manifest sqlite (3.51.2)
+✔︎ Bottle sqlite (3.51.2)
+✔︎ Bottle Manifest xz (5.8.2)
+✔︎ Bottle xz (5.8.2)
+✔︎ API Source python@3.13.rb
+✔︎ Resource python@3.13--flit-core
+✔︎ Resource python@3.13--pip
+✔︎ Resource python@3.13--wheel
+✔︎ Patch 3.13-sysconfig.diff
+✔︎ Formula python@3.13 (3.13.11)
+✔︎ Bottle azure-cli (2.82.0)
+==> Installing dependencies for azure-cli: libsodium, ca-certificates, readline, sqlite, xz and python@3.13
+==> Installing azure-cli dependency: libsodium
+==> Pouring libsodium--1.0.21.arm64_tahoe.bottle.tar.gz
+🍺  /Users/axos-agallentes/homebrew/Cellar/libsodium/1.0.21: 84 files, 1MB
+==> Installing azure-cli dependency: ca-certificates
+==> Pouring ca-certificates--2025-12-02.all.bottle.tar.gz
+==> Regenerating CA certificate bundle from keychain, this may take a while...
+🍺  /Users/axos-agallentes/homebrew/Cellar/ca-certificates/2025-12-02: 4 files, 236.4KB
+==> Installing azure-cli dependency: readline
+==> Pouring readline--8.3.3.arm64_tahoe.bottle.tar.gz
+🍺  /Users/axos-agallentes/homebrew/Cellar/readline/8.3.3: 56 files, 2.7MB
+==> Installing azure-cli dependency: sqlite
+==> Pouring sqlite--3.51.2.arm64_tahoe.bottle.tar.gz
+🍺  /Users/axos-agallentes/homebrew/Cellar/sqlite/3.51.2: 13 files, 5.2MB
+==> Installing azure-cli dependency: xz
+==> Pouring xz--5.8.2.arm64_tahoe.bottle.tar.gz
+🍺  /Users/axos-agallentes/homebrew/Cellar/xz/5.8.2: 96 files, 2.7MB
+==> Installing azure-cli dependency: python@3.13
+==> Patching
+==> Applying 3.13-sysconfig.diff
+==> ./configure --enable-ipv6 --datarootdir=/Users/axos-agallentes/homebrew/Cell
+==> make
+==> make altinstall PYTHONAPPSDIR=/Users/axos-agallentes/homebrew/Cellar/python@
+==> make frameworkinstallextras PYTHONAPPSDIR=/Users/axos-agallentes/homebrew/Ce
+==> /Users/axos-agallentes/homebrew/Cellar/python@3.13/3.13.11/bin/python3.13 -m
+==> /private/tmp/pythonA3.13-20260114-83990-8cgxxs/Python-3.13.11/whl_build/bin/
+==> /private/tmp/pythonA3.13-20260114-83990-8cgxxs/Python-3.13.11/whl_build/bin/
+==> /private/tmp/pythonA3.13-20260114-83990-8cgxxs/Python-3.13.11/whl_build/bin/
+==> /private/tmp/pythonA3.13-20260114-83990-8cgxxs/Python-3.13.11/whl_build/bin/
+==> /Users/axos-agallentes/homebrew/Cellar/python@3.13/3.13.11/bin/python3.13 -I
+==> /Users/axos-agallentes/homebrew/Cellar/python@3.13/3.13.11/bin/python3.13 -I
+🍺  /Users/axos-agallentes/homebrew/Cellar/python@3.13/3.13.11: 9,303 files, 218MB, built in 11 minutes 13 seconds
+==> Installing azure-cli
+==> Pouring azure-cli--2.82.0.arm64_tahoe.bottle.tar.gz
+🍺  /Users/axos-agallentes/homebrew/Cellar/azure-cli/2.82.0: 15,837 files, 342.4MB
+==> Running `brew cleanup azure-cli`...
+Disable this behaviour by setting `HOMEBREW_NO_INSTALL_CLEANUP=1`.
+Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
+==> Caveats
+zsh completions have been installed to:
+  /Users/axos-agallentes/homebrew/share/zsh/site-functions
+
+============================================================
+Exited with code: 0
+Elapsed time: 739586ms
+Ended: 2026-01-14T15:16:53.777Z
