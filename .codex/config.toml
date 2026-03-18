@@ -1,0 +1,77 @@
+model = "gpt-5.4"
+model_reasoning_effort = "high"
+personality = "pragmatic"
+[projects."/Users/axos-agallentes/git/setup"]
+trust_level = "trusted"
+
+[projects."/Users/axos-agallentes/.dotfiles"]
+trust_level = "trusted"
+
+[projects."/Users/axos-agallentes/git/FinTrak"]
+trust_level = "trusted"
+
+[projects."/Users/axos-agallentes/git/BMAD-METHOD"]
+trust_level = "trusted"
+
+[projects."/Users/axos-agallentes/git/auc-conversion"]
+trust_level = "trusted"
+
+[projects."/Users/axos-agallentes/git/auc-conversion/.trees/story-4-2-test-coverage"]
+trust_level = "trusted"
+
+[projects."/Users/axos-agallentes/git/auc-discovery"]
+trust_level = "trusted"
+
+[projects."/Users/axos-agallentes/git/team-okrs"]
+trust_level = "trusted"
+
+[projects."/Users/axos-agallentes/git/activtrak"]
+trust_level = "trusted"
+
+[mcp_servers.context7]
+command = "/Users/axos-agallentes/.dotfiles/bin/mcp-context7"
+args = ["--api-key", "ctx7sk-f6a12607-0fdc-482a-bb42-ab79e75a35be"]
+startup_timeout_sec = 90
+
+[mcp_servers.serena]
+startup_timeout_sec = 90
+type = "stdio"
+command = "uvx"
+args = ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server", "--context", "claude-code", "--project", "${PWD}"]
+env = { PATH = "/Users/axos-agallentes/go/bin:/Users/axos-agallentes/Library/Application Support/carapace/bin:/Users/axos-agallentes/.local/share/pnpm:/Users/axos-agallentes/.codeium/windsurf/bin:/Users/axos-agallentes/homebrew/bin:/Users/axos-agallentes/homebrew/Cellar/node/24.9.0_1/bin:/opt/homebrew/opt/ruby/bin:/Users/axos-agallentes/.local/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin" }
+
+[mcp_servers.Ref]
+url = "https://api.ref.tools/mcp"
+http_headers = { "x-ref-api-key" = "ref-e12567ea1d5b4c4bb0c8" }
+startup_timeout_sec = 90
+
+[mcp_servers.exa]
+type = "stdio"
+command = "/Users/axos-agallentes/.dotfiles/bin/mcp-exa"
+args = ["--tools=web_search_exa,deep_search_exa,get_code_context_exa,crawling_exa,company_research_exa,linkedin_search_exa,deep_researcher_start,deep_researcher_check"]
+env = { EXA_API_KEY = "1d49fa71-5a7a-4886-a823-aa085c25d061" }
+startup_timeout_sec = 90
+
+[mcp_servers.sequential-thinking]
+type = "stdio"
+command = "/Users/axos-agallentes/.dotfiles/bin/mcp-sequential-thinking"
+args = []
+startup_timeout_sec = 90
+
+[mcp_servers.qmd]
+type = "stdio"
+command = "/Users/axos-agallentes/.bun/bin/qmd"
+args = ["mcp"]
+startup_timeout_sec = 90
+
+[notice.model_migrations]
+gpt-5-codex = "gpt-5.2-codex"
+"gpt-5.2-codex" = "gpt-5.4"
+"gpt-5.1-codex-mini" = "gpt-5.4"
+"gpt-5.2" = "gpt-5.4"
+
+[features]
+unified_exec = true
+shell_snapshot = true
+multi_agent = true
+prevent_idle_sleep = true

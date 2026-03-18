@@ -39,6 +39,12 @@
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
       "env": {}
+    },
+    "qmd": {
+      "type": "stdio",
+      "command": "/ABSOLUTE/PATH/TO/.bun/bin/qmd",
+      "args": ["mcp"],
+      "env": {}
     }
   }
 }
