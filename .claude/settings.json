@@ -3,7 +3,6 @@
     "USE_BUILTIN_RIPGREP": "0"
   },
   "permissions": {
-    "defaultMode": "dontAsk",
     "allow": [
       "Read(*)",
       "Write(*)",
@@ -23,10 +22,56 @@
       "mcp__qmd__*",
       "mcp__claude-in-chrome__*",
       "mcp__*__*"
+    ],
+    "defaultMode": "dontAsk"
+  },
+  "enableAllProjectMcpServers": true,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.dotfiles/.claude/hooks/pre-tool-gate.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.dotfiles/.claude/hooks/post-tool-handler.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.dotfiles/.claude/hooks/context-monitor.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.dotfiles/.claude/hooks/pre-compact.sh"
+          }
+        ]
+      }
     ]
   },
-  "model": "sonnet",
-  "enableAllProjectMcpServers": true,
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/claude-statusline/statusline.sh"
@@ -42,39 +87,5 @@
     "skill-creator@claude-plugins-official": false
   },
   "alwaysThinkingEnabled": true,
-  "skipDangerousModePermissionPrompt": true,
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash|Read|Edit|Write",
-        "hooks": [
-          { "type": "command", "command": "bash ~/.dotfiles/.claude/hooks/pre-tool-gate.sh" }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          { "type": "command", "command": "bash ~/.dotfiles/.claude/hooks/post-tool-handler.sh" }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          { "type": "command", "command": "bash ~/.dotfiles/.claude/hooks/context-monitor.sh" }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          { "type": "command", "command": "bash ~/.dotfiles/.claude/hooks/pre-compact.sh" }
-        ]
-      }
-    ]
-  }
+  "skipDangerousModePermissionPrompt": true
 }
