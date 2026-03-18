@@ -7,11 +7,13 @@ set -euo pipefail
 CWD=$(pwd)
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M')
 
-# Find active plan file (most recently modified in plans/)
+# Find active plan file: prefer plans/, else docs/plans/ (most recently modified in chosen dir)
 PLAN_FILE=""
 PLAN_SUMMARY=""
-if [[ -d "$CWD/plans" ]]; then
-    PLAN_FILE=$(ls -t "$CWD/plans/"*.md 2>/dev/null | head -1 || echo "")
+if [[ -d "$CWD/plans" ]] && ls "$CWD/plans/"*.md 1>/dev/null 2>&1; then
+    PLAN_FILE=$(ls -t "$CWD/plans/"*.md 2>/dev/null | head -1)
+elif [[ -d "$CWD/docs/plans" ]] && ls "$CWD/docs/plans/"*.md 1>/dev/null 2>&1; then
+    PLAN_FILE=$(ls -t "$CWD/docs/plans/"*.md 2>/dev/null | head -1)
 fi
 if [[ -n "$PLAN_FILE" ]]; then
     PLAN_SUMMARY="Active plan: $PLAN_FILE"
@@ -44,6 +46,7 @@ if plan:
     lines.append(plan)
 if recent:
     lines.append(f'Recently edited files: {recent}')
+lines.append('Retain state from plans/, docs/plans/, and docs/adr/.')
 lines.append('Context is about to be compacted. Resume from this state after compaction.')
 
 print(json.dumps({'type': 'text', 'text': chr(10).join(lines)}))
