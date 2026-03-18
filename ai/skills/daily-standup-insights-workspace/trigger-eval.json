@@ -1,0 +1,22 @@
+[
+  {"query": "can you pull the team standup for today? we use ADO and github", "should_trigger": true},
+  {"query": "give me a quick team pulse for the last 2 days on the AUC project", "should_trigger": true},
+  {"query": "what did the team work on yesterday? want to prep for standup", "should_trigger": true},
+  {"query": "generate a standup report for Axos-Universal-Core", "should_trigger": true},
+  {"query": "show me team activity for the past 48 hours", "should_trigger": true},
+  {"query": "i need a daily status update for my scrum — who worked on what?", "should_trigger": true},
+  {"query": "sprint summary for the AUC area path, last 3 days", "should_trigger": true},
+  {"query": "pull together team insights from ADO + git for our morning standup", "should_trigger": true},
+  {"query": "what's the team been up to? blockers? any ghost activity?", "should_trigger": true},
+  {"query": "need to know which work items moved state in the last day and if there are matching commits", "should_trigger": true},
+  {"query": "can you look at my ADO work items and tell me which ones are assigned to me?", "should_trigger": false},
+  {"query": "help me write a commit message for this bug fix referencing AB#12345", "should_trigger": false},
+  {"query": "create a new ADO work item for the auth service refactor", "should_trigger": false},
+  {"query": "review the PR for the payment module and give me feedback", "should_trigger": false},
+  {"query": "update the state of work item 98765 to In Progress", "should_trigger": false},
+  {"query": "what does the fetch_deltas script do?", "should_trigger": false},
+  {"query": "summarize the changes in my current branch since main", "should_trigger": false},
+  {"query": "i need a status report on the deploy pipeline — it's been failing for 2 hours", "should_trigger": false},
+  {"query": "write me a script to query ADO work items by area path", "should_trigger": false},
+  {"query": "show me the git log for the last week on this repo", "should_trigger": false}
+]
