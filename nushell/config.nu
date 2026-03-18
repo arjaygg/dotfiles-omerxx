@@ -947,9 +947,11 @@ source ~/.zoxide.nu
 source ~/.cache/carapace/init.nu
 source ~/.local/share/atuin/init.nu
 use ~/.cache/starship/init.nu
-use ~/.cache/mise/init.nu
+# Uncomment after generating: mise activate nushell (creates ~/.cache/mise/init.nu)
+# use ~/.cache/mise/init.nu
 
 
 $env.DIRENV_LOG_FORMAT = ""
 
-source ~/.config/nushell/vendor/autoload/wt.nu
+# Uncomment if you have wt.nu (e.g. from wezterm/wt integration)
+# source ~/.config/nushell/vendor/autoload/wt.nu
