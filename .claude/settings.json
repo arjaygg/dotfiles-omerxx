@@ -60,6 +60,14 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          { "type": "command", "command": "bash ~/.dotfiles/.claude/hooks/qmd-sync.sh" }
+        ]
+      }
+    ],
     "PreCompact": [
       {
         "matcher": ".*",
