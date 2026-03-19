@@ -22,8 +22,7 @@
       "mcp__qmd__*",
       "mcp__claude-in-chrome__*",
       "mcp__*__*"
-    ],
-    "defaultMode": "dontAsk"
+    ]
   },
   "enableAllProjectMcpServers": true,
   "hooks": {
@@ -106,6 +105,5 @@
     "skill-creator@claude-plugins-official": false
   },
   "alwaysThinkingEnabled": true,
-  "skipDangerousModePermissionPrompt": true,
   "plansDirectory": "plans"
 }
