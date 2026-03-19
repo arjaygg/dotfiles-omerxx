@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# create-pr.sh - Create a Pull Request in Azure DevOps
+# create-pr.sh - Create a Pull Request in Azure DevOps or GitHub
 # Usage: ./create-pr.sh <source-branch> [target-branch] [title] [--draft]
 
 set -e
@@ -10,8 +10,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/validation.sh"
 source "$SCRIPT_DIR/lib/charcoal-compat.sh"
 
-# Azure DevOps Configuration
-# Try to get from git config, default to hardcoded values
+# Detect forge type (github or azure)
+FORGE=$(detect_forge)
+
+# Azure DevOps Configuration (used only for azure forge)
 ORGANIZATION=$(git config --get azure.organization || echo "https://dev.azure.com/bofaz")
 PROJECT=$(git config --get azure.project || echo "Axos-Universal-Core")
 REMOTE_URL="$(git remote get-url origin 2>/dev/null || true)"
@@ -69,8 +71,13 @@ for arg in "$@"; do
     fi
 done
 
-# Validate prerequisites using library functions
-validate_pr_create_prerequisites "$SOURCE_BRANCH" "$TARGET_BRANCH" || exit 1
+# Validate prerequisites based on forge
+if [ "$FORGE" = "github" ]; then
+    print_info "Detected GitHub repository"
+    validate_github_pr_create_prerequisites "$SOURCE_BRANCH" "$TARGET_BRANCH" || exit 1
+else
+    validate_pr_create_prerequisites "$SOURCE_BRANCH" "$TARGET_BRANCH" || exit 1
+fi
 
 # Require Charcoal for PR stack workflows (single source of truth for relationships)
 if ! charcoal_available; then
@@ -159,66 +166,109 @@ $STORY_REF
 # Create the PR
 print_info "Creating Pull Request..."
 
-AZ_ARGS=(
-    repos pr create
-    --repository "$REPOSITORY"
-    --organization "$ORGANIZATION"
-    --project "$PROJECT"
-    --source-branch "$SOURCE_BRANCH"
-    --target-branch "$TARGET_BRANCH"
-    --title "$TITLE"
-    --description "$DESCRIPTION"
-)
+if [ "$FORGE" = "github" ]; then
+    # Push the branch first (gh pr create requires it)
+    print_info "Pushing branch to origin..."
+    git push -u origin "$SOURCE_BRANCH" || true
 
-if [ "$DRAFT" = true ]; then
-    AZ_ARGS+=(--draft true)
-fi
+    GH_ARGS=(
+        pr create
+        --base "$TARGET_BRANCH"
+        --head "$SOURCE_BRANCH"
+        --title "$TITLE"
+        --body "$DESCRIPTION"
+    )
 
-# Execute command (avoid eval; allow multi-line description safely)
-PR_OUTPUT="$(az "${AZ_ARGS[@]}" 2>&1)"
-
-if [ $? -eq 0 ]; then
-    print_success "Pull Request created successfully!"
-
-    # Extract PR ID and URL
-    PR_ID=$(echo "$PR_OUTPUT" | grep -o '"pullRequestId": [0-9]*' | grep -o '[0-9]*')
-
-    # Build a human-friendly PR URL for the web UI.
-    #
-    # IMPORTANT: Do not grep the first `"url"` from PR_OUTPUT. The JSON contains many `url` fields
-    # (e.g., createdBy.url) and the first one is often an identity API endpoint, not the PR page.
-    PR_URL=""
-
-    # Prefer deriving from the repository's web URL (most reliable across host formats).
-    REPO_WEB_URL="$(az repos pr show \
-        --id "$PR_ID" \
-        --organization "$ORGANIZATION" \
-        --query "repository.webUrl" \
-        -o tsv 2>/dev/null || true)"
-    if [ -n "$REPO_WEB_URL" ]; then
-        PR_URL="${REPO_WEB_URL%/}/pullrequest/$PR_ID"
-    else
-        # Fallback: construct using the configured org/project/repo (dev.azure.com format).
-        PR_URL="${ORGANIZATION%/}/${PROJECT}/_git/${REPOSITORY}/pullrequest/${PR_ID}"
-    fi
-
-    echo ""
-    print_info "PR #$PR_ID created"
-    print_info "URL: $PR_URL"
-    echo ""
-
-    # Show next steps
-    echo -e "${GREEN}Next steps:${NC}"
-    echo "  1. Review the PR in Azure DevOps: $PR_URL"
     if [ "$DRAFT" = true ]; then
-        echo "  2. Mark as ready for review when complete"
-    else
-        echo "  2. Wait for reviews and address feedback"
+        GH_ARGS+=(--draft)
     fi
-    echo "  3. After merge, update dependent PRs:"
-    echo "     ./scripts/pr-stack/update-stack.sh $SOURCE_BRANCH"
+
+    PR_OUTPUT="$(gh "${GH_ARGS[@]}" 2>&1)"
+    EXIT_CODE=$?
+
+    if [ $EXIT_CODE -eq 0 ]; then
+        print_success "Pull Request created successfully!"
+        # gh pr create returns the PR URL directly
+        PR_URL="$PR_OUTPUT"
+        echo ""
+        print_info "URL: $PR_URL"
+        echo ""
+        echo -e "${GREEN}Next steps:${NC}"
+        echo "  1. Review the PR on GitHub: $PR_URL"
+        if [ "$DRAFT" = true ]; then
+            echo "  2. Mark as ready for review when complete"
+        else
+            echo "  2. Wait for reviews and address feedback"
+        fi
+        echo "  3. After merge, update dependent PRs:"
+        echo "     ./scripts/pr-stack/update-stack.sh $SOURCE_BRANCH"
+    else
+        print_error "Failed to create Pull Request"
+        echo "$PR_OUTPUT"
+        exit 1
+    fi
 else
-    print_error "Failed to create Pull Request"
-    echo "$PR_OUTPUT"
-    exit 1
+    AZ_ARGS=(
+        repos pr create
+        --repository "$REPOSITORY"
+        --organization "$ORGANIZATION"
+        --project "$PROJECT"
+        --source-branch "$SOURCE_BRANCH"
+        --target-branch "$TARGET_BRANCH"
+        --title "$TITLE"
+        --description "$DESCRIPTION"
+    )
+
+    if [ "$DRAFT" = true ]; then
+        AZ_ARGS+=(--draft true)
+    fi
+
+    # Execute command (avoid eval; allow multi-line description safely)
+    PR_OUTPUT="$(az "${AZ_ARGS[@]}" 2>&1)"
+
+    if [ $? -eq 0 ]; then
+        print_success "Pull Request created successfully!"
+
+        # Extract PR ID and URL
+        PR_ID=$(echo "$PR_OUTPUT" | grep -o '"pullRequestId": [0-9]*' | grep -o '[0-9]*')
+
+        # Build a human-friendly PR URL for the web UI.
+        #
+        # IMPORTANT: Do not grep the first `"url"` from PR_OUTPUT. The JSON contains many `url` fields
+        # (e.g., createdBy.url) and the first one is often an identity API endpoint, not the PR page.
+        PR_URL=""
+
+        # Prefer deriving from the repository's web URL (most reliable across host formats).
+        REPO_WEB_URL="$(az repos pr show \
+            --id "$PR_ID" \
+            --organization "$ORGANIZATION" \
+            --query "repository.webUrl" \
+            -o tsv 2>/dev/null || true)"
+        if [ -n "$REPO_WEB_URL" ]; then
+            PR_URL="${REPO_WEB_URL%/}/pullrequest/$PR_ID"
+        else
+            # Fallback: construct using the configured org/project/repo (dev.azure.com format).
+            PR_URL="${ORGANIZATION%/}/${PROJECT}/_git/${REPOSITORY}/pullrequest/${PR_ID}"
+        fi
+
+        echo ""
+        print_info "PR #$PR_ID created"
+        print_info "URL: $PR_URL"
+        echo ""
+
+        # Show next steps
+        echo -e "${GREEN}Next steps:${NC}"
+        echo "  1. Review the PR in Azure DevOps: $PR_URL"
+        if [ "$DRAFT" = true ]; then
+            echo "  2. Mark as ready for review when complete"
+        else
+            echo "  2. Wait for reviews and address feedback"
+        fi
+        echo "  3. After merge, update dependent PRs:"
+        echo "     ./scripts/pr-stack/update-stack.sh $SOURCE_BRANCH"
+    else
+        print_error "Failed to create Pull Request"
+        echo "$PR_OUTPUT"
+        exit 1
+    fi
 fi

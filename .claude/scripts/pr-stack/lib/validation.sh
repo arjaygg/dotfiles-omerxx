@@ -124,6 +124,34 @@ validate_remote_branch_exists() {
     return 0
 }
 
+# Detect forge type from git remote URL
+# Returns: "github" or "azure" (default)
+detect_forge() {
+    local remote_url
+    remote_url="$(git remote get-url origin 2>/dev/null || true)"
+    if [[ "$remote_url" == *"github.com"* ]]; then
+        echo "github"
+    else
+        echo "azure"
+    fi
+}
+
+# Validate GitHub CLI is installed and authenticated
+# Returns: 0 if ready, 1 if not
+validate_github_cli() {
+    if ! command -v gh &> /dev/null; then
+        print_error "GitHub CLI (gh) is not installed"
+        print_info "Install with: brew install gh"
+        return 1
+    fi
+    if ! gh auth status &>/dev/null; then
+        print_error "GitHub CLI is not authenticated"
+        print_info "Run: gh auth login"
+        return 1
+    fi
+    return 0
+}
+
 # Validate Azure CLI is installed
 # Returns: 0 if installed, 1 if not
 validate_azure_cli() {
@@ -370,7 +398,7 @@ validate_stack_create_prerequisites() {
     return 0
 }
 
-# Validate prerequisites for creating a PR
+# Validate prerequisites for creating a PR (Azure DevOps)
 # Args: $1 - source branch, $2 - target branch
 # Returns: 0 if all valid, 1 if any fail
 validate_pr_create_prerequisites() {
@@ -379,6 +407,24 @@ validate_pr_create_prerequisites() {
 
     validate_common_prerequisites || return 1
     validate_azure_cli || return 1
+    validate_branch_exists "$source_branch" || return 1
+    validate_branch_exists "$target_branch" || return 1
+
+    # Optional: warn about stack integrity (non-blocking)
+    validate_stack_integrity "$source_branch" || true
+
+    return 0
+}
+
+# Validate prerequisites for creating a GitHub PR
+# Args: $1 - source branch, $2 - target branch
+# Returns: 0 if all valid, 1 if any fail
+validate_github_pr_create_prerequisites() {
+    local source_branch=$1
+    local target_branch=$2
+
+    validate_common_prerequisites || return 1
+    validate_github_cli || return 1
     validate_branch_exists "$source_branch" || return 1
     validate_branch_exists "$target_branch" || return 1
 
@@ -411,6 +457,8 @@ export -f validate_branch_name 2>/dev/null || true
 export -f validate_branch_exists 2>/dev/null || true
 export -f validate_branch_not_exists 2>/dev/null || true
 export -f validate_remote_branch_exists 2>/dev/null || true
+export -f detect_forge 2>/dev/null || true
+export -f validate_github_cli 2>/dev/null || true
 export -f validate_azure_cli 2>/dev/null || true
 export -f is_stacking_active 2>/dev/null || true
 export -f validate_stack_info_exists 2>/dev/null || true
@@ -425,4 +473,5 @@ export -f warn_if_dirty_working_directory 2>/dev/null || true
 export -f validate_common_prerequisites 2>/dev/null || true
 export -f validate_stack_create_prerequisites 2>/dev/null || true
 export -f validate_pr_create_prerequisites 2>/dev/null || true
+export -f validate_github_pr_create_prerequisites 2>/dev/null || true
 export -f validate_stack_update_prerequisites 2>/dev/null || true
