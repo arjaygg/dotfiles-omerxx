@@ -78,6 +78,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.dotfiles/.claude/hooks/session-end.sh"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
