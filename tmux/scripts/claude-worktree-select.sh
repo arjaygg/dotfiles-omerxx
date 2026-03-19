@@ -55,7 +55,7 @@ ls -1 | fzf \
     --height=40% \
     --border \
     --header="Enter: Claude | Alt-C: Cursor Agent | Alt-O: Cursor | Alt-W: Windsurf" \
-    --bind="enter:execute(tmux new-window -c '$TREES_DIR/{}' -n 'claude:{}' bash -l -c \"cd '$TREES_DIR/{}' && echo '📂 Worktree: {}' && echo '🌿 Branch: \\\$(git branch --show-current)' && echo '' && echo 'Starting Claude...' && exec \\\$HOME/.local/bin/claude --dangerously-skip-permissions\")+abort" \
+    --bind="enter:execute(tmux new-window -c '$TREES_DIR/{}' -n 'claude:{}' bash -l -c \"cd '$TREES_DIR/{}' && echo '📂 Worktree: {}' && echo '🌿 Branch: \\\$(git branch --show-current)' && echo '' && echo 'Starting Claude...' && exec \\\$HOME/.local/bin/claude\")+abort" \
     --bind="alt-c:execute(tmux new-window -c '$TREES_DIR/{}' -n 'cursor:{}' bash -l -c \"cd '$TREES_DIR/{}' && echo '📂 Worktree: {}' && echo '🌿 Branch: \\\$(git branch --show-current)' && echo '' && echo 'Starting Cursor Agent...' && exec \\\$HOME/.local/bin/cursor-agent --model gpt-5.2 -f\")+abort" \
     --bind="alt-o:execute($HOME/.dotfiles/tmux/scripts/open-cursor.sh '$TREES_DIR/{}')+abort" \
     --bind="alt-w:execute($HOME/.dotfiles/tmux/scripts/open-windsurf.sh '$TREES_DIR/{}')+abort"
