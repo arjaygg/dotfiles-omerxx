@@ -1,6 +1,6 @@
 ---
 name: stack-pr
-description: Creates a Pull Request in Azure DevOps for the current or specified branch. Handles stacked dependencies automatically. USE THIS SKILL when user says "create PR", "create pull request", "open PR", "submit PR", "create a PR for", or wants to create/open a pull request.
+description: Creates a Pull Request in Azure DevOps or GitHub for the current or specified branch. Automatically detects the forge (GitHub vs Azure DevOps) from the git remote. Handles stacked dependencies automatically. USE THIS SKILL when user says "create PR", "create pull request", "open PR", "submit PR", "create a PR for", or wants to create/open a pull request.
 triggers:
   - create PR
   - create pull request
@@ -18,7 +18,7 @@ triggers:
 
 # Stack PR
 
-Creates a Pull Request in Azure DevOps, correctly handling stacked dependencies.
+Creates a Pull Request in Azure DevOps or GitHub, automatically detecting the forge from the git remote URL and correctly handling stacked dependencies.
 
 ## When to Use
 
