@@ -1,0 +1,70 @@
+# Pre-Compaction & Token/Context Window Management
+
+**User-scope reference.** This doc lives in dotfiles and describes how we manage token usage and context windows across agent workflows (Claude Code, Cursor, and others). It is the single source of truth for pre-compaction behavior and context discipline.
+
+---
+
+## 1. Pre-Compaction vs. Compaction
+
+| | Pre-compaction | Compaction |
+|---|----------------|------------|
+| **When** | Proactive, before hitting the context limit | Reactive, after the limit is reached or triggered |
+| **Goal** | Reduce or structure context so the window is not exhausted | Summarize/discard history so the session can continue |
+| **How** | Tiered loading, request scoping, artifact-driven state, session discipline | Model or tool compresses/summarizes prior turns (e.g. `/compact`) |
+
+Pre-compaction is the primary lever: if state lives in artifacts (`plans/`, `docs/plans/`, `docs/adr/`) and prompts are scoped, compaction becomes a rare fallback and remains lossless because the model can resume from the plan.
+
+---
+
+## 2. Artifact-Driven State
+
+**Principle:** The source of truth for “what we’re doing” is files, not chat history.
+
+- **Plans:** Current task and decisions go in `plans/*.md` or `docs/plans/*.md`.
+- **ADRs:** Non-trivial decisions go in `docs/adr/*.md` when useful.
+- **Compaction:** When context is compacted, the model only needs to read the *current plan* (and optionally recent ADRs) to restore state. Chat history can be summarized or dropped without losing the thread.
+
+This makes compaction **lossless**: orientation is preserved via artifacts.
+
+---
+
+## 3. Prompts & Discipline
+
+- **Request scoping:** Prefer concrete prompts (e.g. “fix `src/db.rs` line 42”) over broad ones (“fix the database bug”). Scoped requests use far fewer tokens and keep the model focused.
+- **Session discipline:** One task per session when practical. When changing domain or after a significant commit, start a new chat.
+- **Compaction as fallback:** Prefer short sessions and artifact checkpoints over repeated compaction cycles. Use compaction (e.g. `/compact`) at most 1–2 times per session; after that, checkpoint to a plan and start a new session.
+- **Kernel files:** Avoid editing kernel files (e.g. `AGENTS.md`, `CLAUDE.md`) mid-session if prompt caching is in use; changes can invalidate the cache.
+
+---
+
+## 4. Hooks (Claude Code, user-scope)
+
+Hooks live under `~/.dotfiles/.claude/hooks/` and run in the **current working directory** (any project).
+
+### PreCompact — `pre-compact.sh`
+
+- **Runs:** Before the context is compacted.
+- **Does:** Finds the active plan in `plans/` or `docs/plans/` (most recently modified), gathers recently modified files, and emits a checkpoint message that Claude Code injects into the conversation.
+- **Message includes:** Working directory, active plan path (and title if available), recently edited files, and a retention hint: retain state from `plans/`, `docs/plans/`, and `docs/adr/`.
+- **Purpose:** After compaction, the model can resume from this checkpoint by reading the referenced plan and artifacts.
+
+### Notification — `context-monitor.sh`
+
+- **Runs:** On Claude Code notifications (context usage updates).
+- **Does:** Parses context-remaining percentage and shows desktop alerts at 30%, 15%, and 5% remaining.
+- **Purpose:** Nudge to checkpoint or compact before the window is exhausted.
+
+---
+
+## 5. IDE-Specific Notes
+
+- **Claude Code:** Full hook lifecycle (PreToolUse, PreCompact, Notification). Pre-compact hook is the main mechanism; context-mode can route large tool outputs out of context.
+- **Cursor:** No PreCompact hook; use artifact-driven discipline and request scoping. Rules in `ai/rules/` (e.g. context-and-compaction) can reinforce the same habits.
+- **Gemini / Codex:** Session discipline and artifact checkpoints apply; project-level docs (e.g. CODEX.md, GEMINI.md) can reference this approach.
+
+---
+
+## 6. Verification
+
+- In any project with `plans/` or `docs/plans/`, trigger compaction (or run until a context notification). Confirm the PreCompact hook runs and the injected message includes the active plan and the retention hint for `plans/`, `docs/plans/`, and `docs/adr/`.
+- See `ai/rules/context-and-compaction.md` for a short guideline linked from this plan.
