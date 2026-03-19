@@ -106,5 +106,6 @@
     "skill-creator@claude-plugins-official": false
   },
   "alwaysThinkingEnabled": true,
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "plansDirectory": "plans"
 }

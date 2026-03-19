@@ -32,6 +32,9 @@ karabiner/automatic_backups/
 # Local tooling state (may contain tokens/pids)
 .osgrep/
 
+# Plans (ephemeral session artifacts)
+plans/
+
 # Accidental/self-referential stow symlinks
 .claude/commands/commands
 .claude/output-styles/output-styles
