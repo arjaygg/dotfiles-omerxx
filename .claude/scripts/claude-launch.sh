@@ -34,7 +34,8 @@ case $BACKEND in
             nohup bash -c "cd ~/.local/share/agent-cli-to-api && uv run agent-cli-to-api cursor-agent" > /tmp/agent-cli-to-api.log 2>&1 &
             sleep 2
         fi
-        export ANTHROPIC_BASE_URL="http://localhost:8320/v1"n        export ANTHROPIC_AUTH_TOKEN="sk-cliproxyapi-default-key"n        ;;
+        export ANTHROPIC_BASE_URL="http://localhost:8320/v1"n        export ANTHROPIC_AUTH_TOKEN="sk-cliproxyapi-default-key"
+        export CLAUDE_CODE_MODEL="claude-3-7-sonnet-20250219"n        ;;
 
     stop)
         echo "Stopping all proxies..."
@@ -52,11 +53,13 @@ case $BACKEND in
         start_proxy gemini.yaml $GEMINI_PORT
         export ANTHROPIC_BASE_URL="http://localhost:$GEMINI_PORT/v1"
         export ANTHROPIC_AUTH_TOKEN="sk-cliproxyapi-default-key"
+        export CLAUDE_CODE_MODEL="claude-3-7-sonnet-20250219"
         ;;
     codex)
         start_proxy codex.yaml $CODEX_PORT
         export ANTHROPIC_BASE_URL="http://localhost:$CODEX_PORT/v1"
         export ANTHROPIC_AUTH_TOKEN="sk-cliproxyapi-default-key"
+        export CLAUDE_CODE_MODEL="claude-3-7-sonnet-20250219"
         ;;
     cursor)
         # Start agent-cli-to-api if needed
@@ -68,6 +71,7 @@ case $BACKEND in
         start_proxy cursor.yaml $CURSOR_PORT
         export ANTHROPIC_BASE_URL="http://localhost:$CURSOR_PORT/v1"
         export ANTHROPIC_AUTH_TOKEN="sk-cliproxyapi-default-key"
+        export CLAUDE_CODE_MODEL="claude-3-7-sonnet-20250219"
         ;;
     native)
         unset ANTHROPIC_BASE_URL
