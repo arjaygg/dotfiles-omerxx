@@ -962,3 +962,4 @@ alias claude-gemini = bash ~/.dotfiles/.claude/scripts/claude-launch.sh gemini
 alias claude-codex = bash ~/.dotfiles/.claude/scripts/claude-launch.sh codex
 alias claude-cursor = bash ~/.dotfiles/.claude/scripts/claude-launch.sh cursor
 alias claude-native = bash ~/.dotfiles/.claude/scripts/claude-launch.sh native
+alias claude-router = bash ~/.dotfiles/.claude/scripts/claude-launch.sh router

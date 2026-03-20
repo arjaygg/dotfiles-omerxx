@@ -22,3 +22,12 @@ This integration allows you to use different backends for Claude Code via CLIPro
 
 Configs are stored in `~/.config/cliproxyapi/`.
 Launch script is at `~/.dotfiles/.claude/scripts/claude-launch.sh`.
+
+## Master Router (Task-Specific Switching)
+
+You can use `claude-router` to start a session that supports all backends at once. Use the `/model` command in Claude Code to switch between them on the fly:
+
+- `/model claude-native`: Use the official Claude Code backend.
+- `/model claude-gemini`: Route tasks to Gemini 2.0 Pro.
+- `/model claude-codex`: Route tasks to Codex (GPT-4o).
+- `/model claude-cursor`: Route tasks to Cursor (GPT-4o via Cursor Agent).

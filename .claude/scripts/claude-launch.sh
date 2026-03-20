@@ -26,6 +26,16 @@ function check_status() {
 }
 
 case $BACKEND in
+    router)
+        start_proxy master.yaml 8320
+        # Also start agent-cli-to-api if needed for Cursor
+        if ! lsof -i :8000 > /dev/null; then
+            echo "Starting agent-cli-to-api for cursor..."
+            nohup bash -c "cd ~/.local/share/agent-cli-to-api && uv run agent-cli-to-api cursor-agent" > /tmp/agent-cli-to-api.log 2>&1 &
+            sleep 2
+        fi
+        export ANTHROPIC_BASE_URL="http://localhost:8320/v1"n        export ANTHROPIC_AUTH_TOKEN="sk-cliproxyapi-default-key"n        ;;
+
     stop)
         echo "Stopping all proxies..."
         pkill -f CLIProxyAPI
