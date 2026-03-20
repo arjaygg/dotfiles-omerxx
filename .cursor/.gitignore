@@ -8,6 +8,10 @@ projects/*/*
 # MCP tool descriptors, resources, prompts
 !projects/*/mcps/
 !projects/*/mcps/**
+projects/*/mcps/user-Ref/
+projects/*/mcps/user-Ref/**
+projects/*/mcps/user-serena/
+projects/*/mcps/user-serena/**
 # Agent transcripts for citation
 !projects/*/agent-transcripts/
 !projects/*/agent-transcripts/**
