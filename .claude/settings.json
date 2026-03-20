@@ -63,8 +63,14 @@
       {
         "matcher": ".*",
         "hooks": [
-          { "type": "command", "command": "bash ~/.dotfiles/.claude/hooks/qmd-sync.sh" },
-          { "type": "command", "command": "bash ~/.dotfiles/.claude/hooks/plans-healthcheck.sh" }
+          {
+            "type": "command",
+            "command": "bash ~/.dotfiles/.claude/hooks/qmd-sync.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.dotfiles/.claude/hooks/plans-healthcheck.sh"
+          }
         ]
       }
     ],
@@ -103,8 +109,9 @@
     "claude-md-management@claude-plugins-official": true,
     "superpowers@claude-plugins-official": false,
     "claude-mem@thedotmack": false,
-    "skill-creator@claude-plugins-official": false
+    "skill-creator@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
-  "plansDirectory": "plans"
+  "plansDirectory": "plans",
+  "skipDangerousModePermissionPrompt": true
 }
