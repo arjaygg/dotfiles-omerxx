@@ -41,3 +41,9 @@ projects/*/*
 # User-level cursor rules
 !rules/
 !rules/**
+
+# Temporarily ignored project dirs (not ready to track)
+projects/Users-axos-agallentes-dotfiles-ai-rules/
+projects/Users-axos-agallentes-dotfiles/
+projects/Users-axos-agallentes-git-CLIProxyAPI/
+projects/Users-axos-agallentes-git-activtrak/
