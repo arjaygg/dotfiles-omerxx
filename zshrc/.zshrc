@@ -85,6 +85,8 @@ alias claude-gemini="~/.dotfiles/.claude/scripts/claude-launch.sh gemini"
 alias claude-codex="~/.dotfiles/.claude/scripts/claude-launch.sh codex"
 alias claude-cursor="~/.dotfiles/.claude/scripts/claude-launch.sh cursor"
 alias claude-native="~/.dotfiles/.claude/scripts/claude-launch.sh native"
+alias claude-router="~/.dotfiles/.claude/scripts/claude-launch.sh router"
+
 
 # Nmap
 alias nm="nmap -sC -sV -oN nmap"
