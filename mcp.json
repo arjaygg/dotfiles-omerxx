@@ -1,12 +1,5 @@
 {
   "mcpServers": {
-    "Ref": {
-      "type": "http",
-      "url": "https://api.ref.tools/mcp",
-      "headers": {
-        "x-ref-api-key": "ref-e12567ea1d5b4c4bb0c8"
-      }
-    },
     "serena": {
       "type": "stdio",
       "command": "uvx",
@@ -16,9 +9,27 @@
         "serena",
         "start-mcp-server",
         "--context",
-        "ide-assistant"
+        "ide-assistant",
+        "--project",
+        "/Users/axos-agallentes/.dotfiles"
       ],
       "env": {}
+    },
+    "exa": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "exa-mcp-server"
+      ],
+      "env": {
+        "EXA_API_KEY": "1d49fa71-5a7a-4886-a823-aa085c25d061",
+        "NODE_EXTRA_CA_CERTS": "/Users/axos-agallentes/.certs/cacerts.pem",
+        "SSL_CERT_FILE": "/Users/axos-agallentes/.certs/cacerts.pem",
+        "REQUESTS_CA_BUNDLE": "/Users/axos-agallentes/.certs/cacerts.pem",
+        "NPM_CONFIG_CAFILE": "/Users/axos-agallentes/.certs/cacerts.pem",
+        "PATH": "/Users/axos-agallentes/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+      }
     }
   }
 }
