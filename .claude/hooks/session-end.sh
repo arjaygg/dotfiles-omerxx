@@ -23,7 +23,27 @@ RECENT_COMMIT=$(git -C "$CWD" log -1 --oneline 2>/dev/null || echo "")
 GIT_BRANCH=$(git -C "$CWD" branch --show-current 2>/dev/null || echo "")
 GIT_STATE=$(git -C "$CWD" status --short 2>/dev/null | head -5 | tr '\n' '; ' | sed 's/; $//')
 
-# Skip writing if nothing meaningful to record
+# Seed skeleton files if ALL THREE artifact files are absent (so next session sees "stale" not "missing")
+if [[ ! -f "$CWD/plans/active-context.md" ]] && \
+   [[ ! -f "$CWD/plans/decisions.md" ]] && \
+   [[ ! -f "$CWD/plans/progress.md" ]]; then
+    python3 - "$CWD" <<'SKELEOF' || true
+import sys, os
+base = sys.argv[1] + "/plans"
+skeletons = {
+    "active-context.md": "# Active Context\n<!-- SKELETON — Claude: update with current session focus (≤30 lines per CLAUDE.md) -->\n",
+    "decisions.md":      "# Decisions\n<!-- SKELETON — Claude: append ADL entries as architectural decisions are made -->\n",
+    "progress.md":       "# Progress\n<!-- SKELETON — Claude: update task state using checkbox format per CLAUDE.md -->\n",
+}
+for fname, content in skeletons.items():
+    path = os.path.join(base, fname)
+    if not os.path.exists(path):
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(content)
+SKELEOF
+fi
+
+# Skip writing handoff if nothing meaningful to record
 if [[ -z "$ACTIVE_CTX" ]] && [[ -z "$PROGRESS" ]]; then
     exit 0
 fi
