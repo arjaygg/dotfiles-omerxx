@@ -85,6 +85,31 @@ detect_os() {
 
 OS_TYPE=$(detect_os)
 
+is_claude_family_model() {
+    local model="$1"
+    case "$model" in
+        ""|"Claude"|"Claude Model"|claude*|Claude*|*Sonnet*|*Opus*|*Haiku*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+resolve_statusline_model_name() {
+    local current_model="$1"
+    local backend="${CLAUDE_STATUSLINE_BACKEND:-}"
+    local backend_model="${CLAUDE_STATUSLINE_BACKEND_MODEL:-}"
+
+    if [[ -n "$backend_model" && "$backend" != "native" ]] && is_claude_family_model "$current_model"; then
+        echo "$backend_model"
+        return
+    fi
+
+    echo "$current_model"
+}
+
 # Platform-specific timestamp parsing function
 parse_iso_timestamp() {
     local timestamp="$1"
@@ -280,6 +305,8 @@ else
         model_name=$(tail -5 "$recent_transcript" 2>/dev/null | head -1 | jq -r '.message.model // "Claude"' 2>/dev/null || echo "Claude")
     fi
 fi
+
+model_name=$(resolve_statusline_model_name "$model_name")
 
 # Intelligent model context limit detection
 detect_model_context_limit() {
@@ -847,6 +874,8 @@ if [[ -z "$model_name" || "$model_name" == "Claude" ]] && [[ -f "$real_transcrip
     fi
 fi
 
+model_name=$(resolve_statusline_model_name "$model_name")
+
 # Format model name for display (shorten if needed)
 model_display="$model_name"
 case "$model_name" in
@@ -888,18 +917,59 @@ case "$model_name" in
         model_display="GPT-3.5"
         model_color="93"  # Bright Yellow for GPT-3.5
         ;;
+    *gpt-5.4*)
+        model_display="gpt-5.4"
+        model_color="31"
+        ;;
+    *gpt-5-codex-mini*)
+        model_display="gpt-5-codex-mini"
+        model_color="31"
+        ;;
+    *gpt-5-codex*)
+        model_display="gpt-5-codex"
+        model_color="31"
+        ;;
+    *gpt-5*)
+        model_display="gpt-5"
+        model_color="31"
+        ;;
 
     # xAI Grok models
     *grok*)
         model_display="Grok"
         model_color="33"  # Yellow for Grok
         ;;
+    # Gemini models
+    *gemini-3.1-pro-preview*)
+        model_display="gemini-3.1-pro-preview"
+        model_color="36"
+        ;;
+    *gemini-3.1-pro*)
+        model_display="gemini-3.1-pro"
+        model_color="36"
+        ;;
+    *gemini-3-flash*)
+        model_display="gemini-3-flash"
+        model_color="36"
+        ;;
+    *gemini-2.0-pro-exp-02-05*)
+        model_display="gemini-2.0-pro-exp-02-05"
+        model_color="36"
+        ;;
+    *gemini-2.0-flash-exp*)
+        model_display="gemini-2.0-flash-exp"
+        model_color="36"
+        ;;
+    *gemini*)
+        model_display="$model_name"
+        model_color="36"
+        ;;
     *)
         # Default to extracting version if present
         if [[ "$model_name" =~ claude-([0-9]+) ]]; then
             model_display="Claude ${BASH_REMATCH[1]}"
         else
-            model_display="Claude"
+            model_display="$model_name"
         fi
         model_color="34"  # Blue for default (changed from white)
         ;;
