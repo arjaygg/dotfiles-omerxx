@@ -11,7 +11,7 @@ CURSOR_PORT=8319
 function start_proxy() {
     local config=$1
     local port=$2
-    if ! lsof -i :$port > /dev/null; then
+    if ! lsof -i :$port > /dev/null 2>&1; then
         echo "Starting CLIProxyAPI with $config on port $port..."
         nohup CLIProxyAPI -config ~/.config/cliproxyapi/$config > /tmp/cliproxy-$port.log 2>&1 &
         sleep 2
@@ -29,13 +29,15 @@ case $BACKEND in
     router)
         start_proxy master.yaml 8320
         # Also start agent-cli-to-api if needed for Cursor
-        if ! lsof -i :8000 > /dev/null; then
+        if ! lsof -i :8005 > /dev/null 2>&1; then
             echo "Starting agent-cli-to-api for cursor..."
-            nohup bash -c "cd ~/.local/share/agent-cli-to-api && uv run agent-cli-to-api cursor-agent" > /tmp/agent-cli-to-api.log 2>&1 &
+            nohup bash -c "cd ~/.local/share/agent-cli-to-api && uv run agent-cli-to-api cursor-agent --port 8005" > /tmp/agent-cli-to-api.log 2>&1 &
             sleep 2
         fi
-        export ANTHROPIC_BASE_URL="http://localhost:8320/v1"n        export ANTHROPIC_AUTH_TOKEN="sk-cliproxyapi-default-key"
-        export CLAUDE_CODE_MODEL="claude-sonnet-4-6"n        ;;
+        export ANTHROPIC_BASE_URL="http://127.0.0.1:8320"
+        export ANTHROPIC_AUTH_TOKEN="sk-cliproxyapi-default-key"
+        export CLAUDE_CODE_MODEL="claude-sonnet-4-6"
+        ;;
 
     stop)
         echo "Stopping all proxies..."
@@ -51,39 +53,47 @@ case $BACKEND in
 
     gemini)
         start_proxy gemini.yaml $GEMINI_PORT
-        export ANTHROPIC_BASE_URL="http://localhost:$GEMINI_PORT/v1"
+        export ANTHROPIC_BASE_URL="http://127.0.0.1:$GEMINI_PORT"
         export ANTHROPIC_AUTH_TOKEN="sk-cliproxyapi-default-key"
-        export CLAUDE_CODE_MODEL="claude-sonnet-4-6"
+        export CLAUDE_CODE_MODEL="claude-3-5-sonnet-20241022"
         ;;
     codex)
         start_proxy codex.yaml $CODEX_PORT
-        export ANTHROPIC_BASE_URL="http://localhost:$CODEX_PORT/v1"
+        export ANTHROPIC_BASE_URL="http://127.0.0.1:$CODEX_PORT"
         export ANTHROPIC_AUTH_TOKEN="sk-cliproxyapi-default-key"
-        export CLAUDE_CODE_MODEL="claude-sonnet-4-6"
+        export CLAUDE_CODE_MODEL="claude-3-5-sonnet-20241022"
         ;;
     cursor)
         # Start agent-cli-to-api if needed
-        if ! lsof -i :8000 > /dev/null; then
+        if ! lsof -i :8005 > /dev/null 2>&1; then
             echo "Starting agent-cli-to-api for cursor..."
-            nohup bash -c "cd ~/.local/share/agent-cli-to-api && uv run agent-cli-to-api cursor-agent" > /tmp/agent-cli-to-api.log 2>&1 &
+            nohup bash -c "cd ~/.local/share/agent-cli-to-api && uv run agent-cli-to-api cursor-agent --port 8005" > /tmp/agent-cli-to-api.log 2>&1 &
             sleep 2
         fi
         start_proxy cursor.yaml $CURSOR_PORT
-        export ANTHROPIC_BASE_URL="http://localhost:$CURSOR_PORT/v1"
+        export ANTHROPIC_BASE_URL="http://127.0.0.1:$CURSOR_PORT"
         export ANTHROPIC_AUTH_TOKEN="sk-cliproxyapi-default-key"
-        export CLAUDE_CODE_MODEL="claude-sonnet-4-6"
+        export CLAUDE_CODE_MODEL="claude-3-5-sonnet-20241022"
         ;;
     native)
         unset ANTHROPIC_BASE_URL
         unset ANTHROPIC_AUTH_TOKEN
+        unset ANTHROPIC_API_KEY
+        unset CLAUDE_CODE_MODEL
         ;;
     *)
         # If no backend specified, use native or default to first arg as claude command
         unset ANTHROPIC_BASE_URL
         unset ANTHROPIC_AUTH_TOKEN
+        unset ANTHROPIC_API_KEY
+        unset CLAUDE_CODE_MODEL
         SHIFT_COUNT=0
         ;;
 esac
 
 shift $SHIFT_COUNT
-exec claude "$@"
+if [ -n "$CLAUDE_CODE_MODEL" ]; then
+    exec claude --model "$CLAUDE_CODE_MODEL" "$@"
+else
+    exec claude "$@"
+fi
