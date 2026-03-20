@@ -80,7 +80,11 @@ export GOPATH="$HOME/go"
 alias v="$HOME/.nix-profile/bin/nvim"
 
 # Claude Code
-alias claude="~/.claude/local/claude"
+alias claude="~/.dotfiles/.claude/scripts/claude-launch.sh native"
+alias claude-gemini="~/.dotfiles/.claude/scripts/claude-launch.sh gemini"
+alias claude-codex="~/.dotfiles/.claude/scripts/claude-launch.sh codex"
+alias claude-cursor="~/.dotfiles/.claude/scripts/claude-launch.sh cursor"
+alias claude-native="~/.dotfiles/.claude/scripts/claude-launch.sh native"
 
 # Nmap
 alias nm="nmap -sC -sV -oN nmap"

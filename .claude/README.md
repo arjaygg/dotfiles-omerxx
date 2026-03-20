@@ -221,3 +221,7 @@ If plugins aren't loading:
 - [Claude Statusline Repository](https://github.com/dwillitzer/claude-statusline)
 - [Creating Custom Commands](https://docs.claude.com/en/docs/claude-code/custom-commands)
 - [Creating Output Styles](https://docs.claude.com/en/docs/claude-code/output-styles)
+
+## Multi-Backend Integration
+
+For details on using Claude Code with multiple backends (Gemini, Codex, Cursor), see [README_MULTI_BACKEND.md](./README_MULTI_BACKEND.md).
