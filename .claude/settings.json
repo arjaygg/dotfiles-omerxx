@@ -63,7 +63,8 @@
       {
         "matcher": ".*",
         "hooks": [
-          { "type": "command", "command": "bash ~/.dotfiles/.claude/hooks/qmd-sync.sh" }
+          { "type": "command", "command": "bash ~/.dotfiles/.claude/hooks/qmd-sync.sh" },
+          { "type": "command", "command": "bash ~/.dotfiles/.claude/hooks/plans-healthcheck.sh" }
         ]
       }
     ],
