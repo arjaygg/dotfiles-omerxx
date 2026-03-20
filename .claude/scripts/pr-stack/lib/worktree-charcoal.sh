@@ -243,7 +243,15 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 
         # Sync trunk from remote before restacking
         print_info "Syncing trunk from remote..."
-        gt repo sync --no-interactive
+        local trunk_branch
+        trunk_branch="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo 'main')"
+        if git worktree list --porcelain 2>/dev/null | grep -q "branch refs/heads/$trunk_branch"; then
+            # trunk is checked out in another worktree — fetch and update the ref directly
+            print_info "Trunk is checked out in another worktree; using git fetch to sync..."
+            git fetch origin "$trunk_branch:$trunk_branch" --update-head-ok
+        else
+            gt repo sync --no-interactive
+        fi
 
         # Run the restack
         gt stack restack
