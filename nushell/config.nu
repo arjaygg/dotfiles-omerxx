@@ -955,3 +955,10 @@ $env.DIRENV_LOG_FORMAT = ""
 
 # Uncomment if you have wt.nu (e.g. from wezterm/wt integration)
 # source ~/.config/nushell/vendor/autoload/wt.nu
+
+# Claude Code Multi-Backend Aliases
+alias claude = bash ~/.dotfiles/.claude/scripts/claude-launch.sh native
+alias claude-gemini = bash ~/.dotfiles/.claude/scripts/claude-launch.sh gemini
+alias claude-codex = bash ~/.dotfiles/.claude/scripts/claude-launch.sh codex
+alias claude-cursor = bash ~/.dotfiles/.claude/scripts/claude-launch.sh cursor
+alias claude-native = bash ~/.dotfiles/.claude/scripts/claude-launch.sh native
