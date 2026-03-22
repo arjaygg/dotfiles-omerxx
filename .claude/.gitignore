@@ -1,9 +1,12 @@
 # Claude Code runtime files (not tracked in dotfiles)
 debug/
+backups/
+cache/
 downloads/
 file-history/
 history.jsonl
 ide/
+policy-limits.json
 projects/
 session-env/
 shell-snapshots/
