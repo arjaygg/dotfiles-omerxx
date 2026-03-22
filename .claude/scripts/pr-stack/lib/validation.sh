@@ -144,7 +144,7 @@ validate_github_cli() {
         print_info "Install with: brew install gh"
         return 1
     fi
-    if ! gh auth status &>/dev/null; then
+    if ! gh auth status 2>&1 | grep -q "✓ Logged in"; then
         print_error "GitHub CLI is not authenticated"
         print_info "Run: gh auth login"
         return 1
