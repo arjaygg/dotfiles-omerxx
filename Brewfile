@@ -52,6 +52,8 @@ brew "git-delta"  # Better git diff
 brew "lazygit"  # Terminal UI for git
 
 # Development tools
+brew "charcoal"
+brew "uv"
 brew "go"
 brew "node"
 brew "python@3.13"

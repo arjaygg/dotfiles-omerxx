@@ -37,13 +37,26 @@
     "sequential-thinking": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
       "env": {}
     },
     "qmd": {
       "type": "stdio",
       "command": "/ABSOLUTE/PATH/TO/.bun/bin/qmd",
-      "args": ["mcp"],
+      "args": [
+        "mcp"
+      ],
+      "env": {}
+    },
+    "notebooklm": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "notebooklm-mcp-cli"
+      ],
       "env": {}
     }
   }
