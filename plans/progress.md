@@ -1,0 +1,29 @@
+# Progress Tracker: pctx Integration
+
+- [x] **Phase 0: Workspace Isolation & Documentation**
+  - [x] Create stack branch and worktree `feat/pctx-integration`
+  - [x] Document decision in `decisions/0001-use-pctx-as-mcp-gateway.md`
+- [x] **Phase 1: Creation of Specialized Subagents (AI-Agnostic Implementation)**
+  - [x] Create `mcp_config_manager` subagent at `.claude/agents/mcp_config_manager.md`
+  - [x] Create `mcp_config_manager` subagent for Gemini CLI (`.gemini/agents/mcp_config_manager.md`)
+  - [x] Create `mcp_config_manager` equivalent for Cursor (`.cursor/skills-cursor/mcp_config_manager.md`)
+  - [x] Create `mcp_config_manager` equivalent for Windsurf (`.windsurf/mcp_config_manager.md`)
+  - [x] Create `mcp_config_manager` subagent for OpenCode (`opencode/agent/mcp_config_manager.md`)
+- [x] **Phase 2: Gateway Installation & Configuration**
+  - [x] Consolidate MCP server configs into `pctx.json`
+  - [x] Resolve installation of `pctx` globally (Built from source for Darwin x64 and installed to `~/bin/pctx`).
+- [ ] **Phase 3: Agent Integration & Cleanup**
+  - [x] Add project-level `pctx` adapters for Claude Code (`.mcp.json`), Cursor (`.cursor/mcp.json`), and Gemini (`.gemini/mcp.json`)
+  - [x] Update local `.windsurf/mcp_config.json` inside the worktree
+  - [x] Update local `mcp.json` inside the worktree
+  - [x] Migrate `.codex/config.toml` to the same `pctx` entrypoint used by the other agents
+  - [x] Align the `mcp_config_manager` templates across Claude, Cursor, Gemini, Windsurf, and OpenCode to the working `pctx mcp start --stdio -c pctx.json` invocation
+  - [x] Finish repo-tracked agent config cleanup in this worktree before merge
+  - [x] Document post-merge cleanup for live machine-global MCP registrations that are not sourced from tracked dotfiles
+- [x] **Phase 4: Hub Alignment & Skill Integration**
+  - [x] Create `ai/skills/pctx-code-mode/SKILL.md`
+- [ ] **Verification**
+  - [x] Verify `pctx mcp list -c pctx.json` connects to `serena`, `exa`, and `sequential-thinking`
+  - [x] Verify `claude mcp list` connects successfully to the project-level `pctx` server definition
+  - [x] Test end-to-end integration from this worktree and run a "Code Mode" TS script to verify behavior
+  - [ ] After merge, validate live/global agent state on the machine has been converged to the repo-managed `pctx` setup
