@@ -1,10 +1,13 @@
 {
   "mcpServers": {
-    "notebooklm": {
-      "type": "stdio",
-      "command": "uvx",
+    "pctx": {
+      "command": "pctx",
       "args": [
-        "notebooklm-mcp-cli"
+        "mcp",
+        "start",
+        "--stdio",
+        "-c",
+        "pctx.json"
       ],
       "env": {}
     }
