@@ -1,35 +1,11 @@
 {
   "mcpServers": {
-    "serena": {
-      "type": "stdio",
-      "command": "uvx",
+    "pctx": {
+      "command": "pctx",
       "args": [
-        "--from",
-        "git+https://github.com/oraios/serena",
-        "serena",
-        "start-mcp-server",
-        "--context",
-        "ide-assistant",
-        "--project",
-        "/Users/axos-agallentes/.dotfiles"
+        "mcp"
       ],
       "env": {}
-    },
-    "exa": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "exa-mcp-server"
-      ],
-      "env": {
-        "EXA_API_KEY": "1d49fa71-5a7a-4886-a823-aa085c25d061",
-        "NODE_EXTRA_CA_CERTS": "/Users/axos-agallentes/.certs/cacerts.pem",
-        "SSL_CERT_FILE": "/Users/axos-agallentes/.certs/cacerts.pem",
-        "REQUESTS_CA_BUNDLE": "/Users/axos-agallentes/.certs/cacerts.pem",
-        "NPM_CONFIG_CAFILE": "/Users/axos-agallentes/.certs/cacerts.pem",
-        "PATH": "/Users/axos-agallentes/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-      }
     }
   }
 }
