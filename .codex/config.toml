@@ -28,6 +28,9 @@ trust_level = "trusted"
 [projects."/Users/axos-agallentes/git/activtrak"]
 trust_level = "trusted"
 
+[projects."/Users/agallentes/.dotfiles"]
+trust_level = "trusted"
+
 [mcp_servers.context7]
 command = "/Users/axos-agallentes/.dotfiles/bin/mcp-context7"
 args = ["--api-key", "ctx7sk-f6a12607-0fdc-482a-bb42-ab79e75a35be"]
