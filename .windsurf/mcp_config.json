@@ -66,6 +66,14 @@
         "mcp"
       ],
       "env": {}
+    },
+    "notebooklm": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "notebooklm-mcp-cli"
+      ],
+      "env": {}
     }
   }
 }

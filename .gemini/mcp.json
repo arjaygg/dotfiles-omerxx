@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "notebooklm": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "notebooklm-mcp-cli"
+      ],
+      "env": {}
+    }
+  }
+}
