@@ -3,7 +3,11 @@
     "pctx": {
       "command": "pctx",
       "args": [
-        "mcp"
+        "mcp",
+        "start",
+        "--stdio",
+        "-c",
+        "pctx.json"
       ],
       "env": {}
     },
