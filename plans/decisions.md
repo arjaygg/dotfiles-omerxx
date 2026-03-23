@@ -29,3 +29,10 @@ Convention documented in `docs/decision-records.md`.
 ## ADL-004 — validate-agent-guidance.sh as structural guardrail
 
 `.claude/scripts/validate-agent-guidance.sh` checks that all required files exist and that adapters correctly import shared guidance. Run before merging guidance changes.
+
+---
+
+## ADL-005 — Universal constitution loading from ai/rules/
+
+Tool priority, batching, Serena convention, developer guidelines, and session discipline live in `ai/rules/` and are loaded user-globally by Claude and Gemini via `@` imports. Codex loads `agent-user-global.md` only (known gap). AGENTS.md no longer owns tool priority content — it references `ai/rules/tool-priority.md`.
+Durable record: `decisions/0003-universal-constitution-loading.md`

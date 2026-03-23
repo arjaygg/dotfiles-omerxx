@@ -60,11 +60,16 @@ This repository uses:
 
 ### User-Global Defaults
 
-Machine-wide defaults live in `ai/rules/agent-user-global.md` and are loaded through tool-specific adapters:
+Machine-wide defaults live in `ai/rules/` and are loaded through tool-specific adapters:
 
-- Claude: `~/.claude/CLAUDE.md`
-- Gemini: `~/.gemini/GEMINI.md`
-- Codex: `model_instructions_file` in `~/.codex/config.toml`
+| File | Scope | Loaded by |
+|---|---|---|
+| `agent-user-global.md` | All agents | Claude, Gemini, Codex |
+| `tool-priority.md` | Claude, Gemini | Claude, Gemini (`@` imports) |
+| `global-developer-guidelines.md` | Claude, Gemini | Claude, Gemini (`@` imports) |
+| `context-and-compaction.md` | Claude only | Claude (`@` import) |
+
+**Codex note**: Codex loads only `agent-user-global.md` via `model_instructions_file`. Tool priority and developer guidelines are a known gap for Codex in non-dotfiles projects.
 
 ### Agent Memory
 
@@ -74,7 +79,7 @@ Memory is helpful context. It is not the authoritative place to store repo polic
 
 ### Claude Code
 
-- User-global layer: `.claude/CLAUDE.md`
+- User-global layer: `.claude/CLAUDE.md` — imports `agent-user-global.md`, `tool-priority.md`, `global-developer-guidelines.md`, `context-and-compaction.md`
 - Project layer: `CLAUDE.md`
 - Neutral project guide: `AGENTS.md`
 - Enforcement: `.claude/settings.json` and `.claude/hooks/`
@@ -83,7 +88,7 @@ Memory is helpful context. It is not the authoritative place to store repo polic
 
 ### Gemini CLI
 
-- User-global layer: `.gemini/GEMINI.md`
+- User-global layer: `.gemini/GEMINI.md` — imports `agent-user-global.md`, `tool-priority.md`, `global-developer-guidelines.md`
 - Project discovery: `AGENTS.md` via `context.fileName`
 - Enforcement and config: `.gemini/settings.json`, `.gemini/mcp.json`
 
@@ -91,7 +96,7 @@ Memory is helpful context. It is not the authoritative place to store repo polic
 
 ### Codex
 
-- User-global layer: `model_instructions_file` in `.codex/config.toml`
+- User-global layer: `model_instructions_file` in `.codex/config.toml` → `agent-user-global.md` only
 - Project discovery: `AGENTS.md`
 - MCP and runtime config: `.codex/config.toml`
 
