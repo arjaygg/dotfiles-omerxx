@@ -27,8 +27,12 @@ All checks pass:
 bash .claude/scripts/validate-agent-guidance.sh  → 14 PASS, 0 FAIL
 ```
 
+### Verified
+
+- **`@../ai/rules/agent-user-global.md` works** (2026-03-23): Claude Code resolves `@` relative paths from the real path after following symlinks. `~/.claude/CLAUDE.md` → `~/.dotfiles/.claude/CLAUDE.md`, so `../ai/rules/` correctly resolves to `~/.dotfiles/ai/rules/agent-user-global.md`.
+- **Codex `~/` expansion**: pending test.
+
 ### Next Steps
 
+- Test Codex `model_instructions_file = "~/.dotfiles/..."` in a live Codex session
 - Open PR for `feat/unified-agent-guidance` → `main`
-- After merge: verify live adapter imports resolve correctly on machine
-- Consider adding `.codex/config.toml` `model_instructions_file` symlink check to validation script
