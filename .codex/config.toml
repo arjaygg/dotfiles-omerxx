@@ -34,7 +34,7 @@ trust_level = "trusted"
 [mcp_servers.pctx]
 type = "stdio"
 command = "pctx"
-args = ["mcp", "start", "--stdio", "-c", "pctx.json"]
+args = ["mcp", "start", "--stdio", "-c", "/Users/agallentes/.config/pctx/pctx.json"]
 startup_timeout_sec = 90
 
 [notice.model_migrations]

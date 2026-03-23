@@ -33,6 +33,11 @@
       "name": "sequential-thinking",
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    {
+      "name": "notebooklm",
+      "command": "uvx",
+      "args": ["--from", "notebooklm-mcp-cli", "notebooklm-mcp"]
     }
   ],
   "logger": {
