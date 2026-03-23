@@ -36,6 +36,9 @@ trust_level = "trusted"
 [projects."/Users/agallentes/git/quotio"]
 trust_level = "trusted"
 
+[projects."/Users/agallentes/git"]
+trust_level = "trusted"
+
 [mcp_servers.pctx]
 type = "stdio"
 command = "pctx"
