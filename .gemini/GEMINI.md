@@ -1,49 +1,14 @@
-## Tool Priority and Workflow
+# Gemini User Instructions
 
-### Tool Priority Stack
+This file is the user-global Gemini entrypoint for this machine.
 
-Use tools in this order — stop at the first that satisfies your need:
+@../ai/rules/agent-user-global.md
 
-```
-DIRECTORY LISTING:
-  1st: pctx Serena.listDir      — gitignore-aware, project-scoped
-  2nd: Native glob              — flexible patterns
-  ✗    Shell ls/find            — avoid
+## Gemini-Specific Notes
 
-SEARCHING CODE:
-  1st: pctx Serena.findSymbol        — LSP-backed, precise
-  2nd: pctx Serena.searchForPattern  — project-scoped, gitignore-aware
-  3rd: Native ripgrep               — flexible regex
-  ✗    Shell grep                   — avoid; no gitignore
-
-READING FILES:
-  1st: pctx Serena.getSymbolsOverview — structure without reading file
-  2nd: Targeted read with range       — once location known
-  ✗    Full file read                 — only when entire content needed
-
-BATCH / MULTI-STEP:
-  1st: pctx execute_typescript   — ONE call for multiple Serena ops
-  ✗    Sequential calls          — always check if batchable first
-```
-
-### Batching Rule
-
-Before any tool call accessing the project, ask: "What else will I need in the next 3 steps?" If 2+ Serena operations → batch into ONE `execute_typescript`.
-
-### Branch Workflow
-
-Never commit directly to `main`. Always create a feature branch first.
-
-### MCP Config Sources (TWO — both must be aligned)
-
-- `~/.gemini/mcp.json` — dedicated MCP file
-- `~/.gemini/settings.json` — also supports `mcpServers`
-
-Both must contain only the `pctx` gateway entry. Check both when validating.
-
-### Serena API Convention
-
-All methods use **camelCase**: `listDir`, `searchForPattern`, `findSymbol`, `getSymbolsOverview`, `listMemories`, `initialInstructions`.
+- Project-specific guidance should come from each repository via `AGENTS.md` and related project docs.
+- Gemini configuration is split across `~/.gemini/mcp.json` and `~/.gemini/settings.json`; both must stay aligned.
+- Keep durable policy out of the "Gemini Added Memories" section below.
 
 ---
 

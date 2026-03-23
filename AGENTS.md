@@ -161,7 +161,7 @@ All agent configs (`~/.cursor/mcp.json`, `~/.gemini/*`, `~/.codex/config.toml`, 
 ## MCP Gateway
 
 All MCP traffic routes through `pctx`:
-- **Gateway config:** `/Users/agallentes/.config/pctx/pctx.json`
+- **Gateway config:** `~/.config/pctx/pctx.json`
 - **Servers:** serena, exa, sequential-thinking, notebooklm, markitdown
 - **Serena context:** `--context claude-code` (19 of 43 tools — LSP intelligence only, no file mutation)
 
