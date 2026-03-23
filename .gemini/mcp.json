@@ -7,7 +7,7 @@
         "start",
         "--stdio",
         "-c",
-        "pctx.json"
+        "/Users/agallentes/.config/pctx/pctx.json"
       ],
       "env": {}
     }
