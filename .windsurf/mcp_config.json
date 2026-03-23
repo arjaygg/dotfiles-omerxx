@@ -7,15 +7,7 @@
         "start",
         "--stdio",
         "-c",
-        "pctx.json"
-      ],
-      "env": {}
-    },
-    "notebooklm": {
-      "type": "stdio",
-      "command": "uvx",
-      "args": [
-        "notebooklm-mcp-cli"
+        "/Users/agallentes/.config/pctx/pctx.json"
       ],
       "env": {}
     }
