@@ -43,3 +43,27 @@ When injecting `pctx` into an agent's config, use the following standard schema:
 - Merge existing `mcpServers` carefully. Do not lose environment variables.
 - Remove the individual servers (like `context7`, `directory-tree`, `filesystem`) from the agent configs once they are securely placed into the central `pctx` config (`~/.config/pctx/mcp.json`).
 - Ensure valid JSON syntax after editing.
+
+## Per-Agent Validation Checklist
+
+When validating that an agent is correctly using pctx, check ALL config sources for
+that agent — some agents have multiple files that can define mcpServers:
+
+### Claude Code
+- [ ] `~/.mcp.json` (project-level) → should have pctx only
+- [ ] `~/.claude/settings.json` (user-level) → should NOT have redundant MCP servers
+
+### Cursor
+- [ ] `~/.cursor/mcp.json` → should be a symlink to dotfiles; pctx only
+
+### Windsurf
+- [ ] `~/.windsurf/mcp_config.json` → should be a symlink to dotfiles; pctx only
+
+### Gemini CLI ⚠️ TWO SOURCES — both must be checked and aligned
+- [ ] `~/.gemini/mcp.json` → dedicated MCP file; should have pctx only
+- [ ] `~/.gemini/settings.json` → user settings file; **also supports mcpServers**;
+      must have pctx and NOT have stale standalone servers
+
+### Codex
+- [ ] `~/.codex/config.toml` → `[mcp_servers.pctx]` section must be present;
+      should be a symlink to dotfiles
