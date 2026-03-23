@@ -13,10 +13,12 @@ Keep these files in `plans/` during active sessions (see behavioral rules in `~/
 | File | Purpose | When to update |
 |---|---|---|
 | `plans/active-context.md` | Current focus, recent changes, next steps, key learnings | Whenever focus shifts or something significant is discovered |
-| `plans/decisions.md` | Architectural choices + root causes found (append-only ADL log) | When making an architectural choice or finding a root cause |
+| `plans/decisions.md` | Concise decision index for active work (append-only ADL log) | When making an architectural choice or finding a root cause |
 | `plans/progress.md` | Task state in checkbox format | As tasks progress |
 
 These are ephemeral per-session artifacts, not permanent documentation. The `qmd` MCP server indexes `plans/` for semantic search — decisions and context are automatically searchable.
+
+Durable decisions belong in `decisions/`. Keep the concise entry in `plans/decisions.md` and link to the long-form record when promoted. See `docs/decision-records.md` for the canonical convention.
 
 ### Layer 2 — PreCompact hook (`pre-compact.sh`)
 
@@ -28,7 +30,7 @@ Fires before `/compact` (manual or auto). Injects an enriched checkpoint contain
 - Recent decisions from `plans/decisions.md`
 - Task state from `plans/progress.md`
 - Recently edited files
-- Retention hint for `plans/`, `docs/plans/`, and `docs/adr/`
+- Retention hint for `plans/`, `docs/plans/`, and `decisions/`
 
 ### Layer 3 — Session handoff (`session-end.sh`)
 
@@ -36,7 +38,7 @@ Fires on `Stop` event (end of turn). If `plans/` exists and artifact files are p
 
 ## Artifact-driven state
 
-- Keep current task and decisions in **plans/** or **docs/plans/** (and non-trivial decisions in **docs/adr/** when useful).
+- Keep current task and decisions in **plans/** or **docs/plans/**. Promote durable or non-trivial decisions to **decisions/**.
 - Chat history is ephemeral; compaction is lossless if the model can resume from the plan.
 
 ## Request scoping
