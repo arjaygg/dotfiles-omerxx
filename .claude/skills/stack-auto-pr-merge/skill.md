@@ -45,7 +45,7 @@ Create a PR with these changes and auto-merge it to {base_branch}:
 ## Workflow Steps
 
 1. Create isolated worktree:
-   cd /Users/axos-agallentes/git/auc-conversion
+   cd $(git rev-parse --show-toplevel)
    ~/.dotfiles/.claude/scripts/stack create {branch_name} {base_branch} --worktree
 
 2. Change to worktree directory:
@@ -70,7 +70,7 @@ Create a PR with these changes and auto-merge it to {base_branch}:
    az repos pr update --id <pr-id> --status completed --organization "https://dev.azure.com/bofaz"
 
 9. Return to original directory and update current branch (if requested):
-   cd /Users/axos-agallentes/git/auc-conversion
+   cd $(git rev-parse --show-toplevel)
    git checkout {current_branch}
    git pull origin {base_branch}
 
