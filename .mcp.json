@@ -10,6 +10,13 @@
         "/Users/agallentes/.config/pctx/pctx.json"
       ],
       "env": {}
+    },
+    "context-mode": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "context-mode"
+      ]
     }
   }
 }
