@@ -21,7 +21,7 @@ PROGRESS=""
 # Recent git commit
 RECENT_COMMIT=$(git -C "$CWD" log -1 --oneline 2>/dev/null || echo "")
 GIT_BRANCH=$(git -C "$CWD" branch --show-current 2>/dev/null || echo "")
-GIT_STATE=$(git -C "$CWD" status --short 2>/dev/null | head -5 | tr '\n' '; ' | sed 's/; $//')
+GIT_STATE=$(git -C "$CWD" status --short 2>/dev/null | head -5 | tr '\n' '; ' | sed 's/; $//' || true)
 
 # Seed skeleton files if ALL THREE artifact files are absent (so next session sees "stale" not "missing")
 if [[ ! -f "$CWD/plans/active-context.md" ]] && \
