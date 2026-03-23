@@ -24,3 +24,5 @@ plans/
 
 # Plugin marketplaces (downloaded content, like node_modules)
 plugins/marketplaces/
+paste-cache/
+stats-cache.json
