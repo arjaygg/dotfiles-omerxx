@@ -13,6 +13,10 @@ shell-snapshots/
 statsig/
 todos/
 *.log
+mcp-needs-auth-cache.json
+sessions/
+tasks/
+settings.json.backup.*
 
 # Prevent accidental nested Claude config/state (e.g. running setup in the wrong place)
 .claude/
