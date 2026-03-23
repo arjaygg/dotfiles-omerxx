@@ -57,6 +57,9 @@ require_symlink_target() {
 
 require_file "$repo_root/AGENTS.md"
 require_file "$global_rules"
+require_file "$repo_root/ai/rules/tool-priority.md"
+require_file "$repo_root/ai/rules/global-developer-guidelines.md"
+require_file "$repo_root/ai/rules/context-and-compaction.md"
 require_file "$repo_root/CLAUDE.md"
 require_file "$repo_root/.claude/CLAUDE.md"
 require_file "$repo_root/.gemini/GEMINI.md"
@@ -64,11 +67,17 @@ require_file "$repo_root/.codex/config.toml"
 require_file "$repo_root/docs/agent-configuration-architecture.md"
 
 require_contains "$repo_root/CLAUDE.md" "@AGENTS.md" "CLAUDE.md imports AGENTS.md"
-require_contains "$repo_root/.claude/CLAUDE.md" "@../ai/rules/agent-user-global.md" ".claude/CLAUDE.md imports global rules (relative path)"
-require_contains "$repo_root/.gemini/GEMINI.md" "@../ai/rules/agent-user-global.md" ".gemini/GEMINI.md imports global rules (relative path)"
+require_contains "$repo_root/.claude/CLAUDE.md" "@../ai/rules/agent-user-global.md" ".claude/CLAUDE.md imports agent-user-global.md"
+require_contains "$repo_root/.claude/CLAUDE.md" "@../ai/rules/tool-priority.md" ".claude/CLAUDE.md imports tool-priority.md"
+require_contains "$repo_root/.claude/CLAUDE.md" "@../ai/rules/global-developer-guidelines.md" ".claude/CLAUDE.md imports global-developer-guidelines.md"
+require_contains "$repo_root/.claude/CLAUDE.md" "@../ai/rules/context-and-compaction.md" ".claude/CLAUDE.md imports context-and-compaction.md"
+require_contains "$repo_root/.gemini/GEMINI.md" "@../ai/rules/agent-user-global.md" ".gemini/GEMINI.md imports agent-user-global.md"
+require_contains "$repo_root/.gemini/GEMINI.md" "@../ai/rules/tool-priority.md" ".gemini/GEMINI.md imports tool-priority.md"
+require_contains "$repo_root/.gemini/GEMINI.md" "@../ai/rules/global-developer-guidelines.md" ".gemini/GEMINI.md imports global-developer-guidelines.md"
 require_contains "$repo_root/.gemini/settings.json" "\"fileName\": [" ".gemini/settings.json configures context.fileName"
 require_contains "$repo_root/.gemini/settings.json" "\"AGENTS.md\"" ".gemini/settings.json includes AGENTS.md"
 require_contains "$repo_root/.codex/config.toml" "model_instructions_file = \"~/.dotfiles/ai/rules/agent-user-global.md\"" ".codex/config.toml points to global rules"
+require_contains "$repo_root/ai/rules/tool-priority.md" "Tool Priority" "tool-priority.md has content"
 
 if [ "$repo_root" = "$live_root" ]; then
   if [ -d "$HOME/.claude" ] || [ -L "$HOME/.claude" ]; then
