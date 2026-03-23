@@ -39,26 +39,24 @@ This makes compaction **lossless**: orientation is preserved via artifacts.
 
 ## 4. Hooks (Claude Code, user-scope)
 
-Hooks live under `~/.dotfiles/.claude/hooks/` and run in the **current working directory** (any project).
+The system is powered by 7 integrated hooks in `~/.dotfiles/.claude/hooks/`:
 
-### PreCompact — `pre-compact.sh`
+### Artifact & Session Lifecycle
+- **UserPromptSubmit** (`plans-healthcheck.sh`): Fires at session start. Validates that artifact files (`plans/`) are present and updated today. Checks for missing binary dependencies (`qmd`, `rtk`).
+- **UserPromptSubmit** (`qmd-sync.sh`): Silently updates the `qmd` semantic index on every prompt submission.
+- **PreCompact** (`pre-compact.sh`): Injects an enriched checkpoint (git state, active plan, decisions, progress, topics) before context compaction, ensuring the process is lossless.
+- **Stop** (`session-end.sh`): Writes `plans/session-handoff.md` at the end of each turn if artifacts are present.
 
-- **Runs:** Before the context is compacted.
-- **Does:** Finds the active plan in `plans/` or `docs/plans/` (most recently modified), gathers recently modified files, and emits a checkpoint message that Claude Code injects into the conversation.
-- **Message includes:** Working directory, active plan path (and title if available), recently edited files, and a retention hint: retain state from `plans/`, `docs/plans/`, and `docs/adr/`.
-- **Purpose:** After compaction, the model can resume from this checkpoint by reading the referenced plan and artifacts.
-
-### Notification — `context-monitor.sh`
-
-- **Runs:** On Claude Code notifications (context usage updates).
-- **Does:** Parses context-remaining percentage and shows desktop alerts at 30%, 15%, and 5% remaining.
-- **Purpose:** Nudge to checkpoint or compact before the window is exhausted.
+### Content & Token Management
+- **PreToolUse** (`pre-tool-gate.sh`): Safeguard that blocks large lock file reads and enforces tool discipline (e.g., using `Read` instead of `cat`).
+- **PostToolUse** (`post-tool-handler.sh`): Intercepts large Bash output (>300 lines) and compacts it. This is the implementation of "context-mode routing."
+- **Notification** (`context-monitor.sh`): Real-time desktop alerts (macOS) at 30%, 15%, and 5% context remaining.
 
 ---
 
 ## 5. IDE-Specific Notes
 
-- **Claude Code:** Full hook lifecycle (PreToolUse, PreCompact, Notification). Pre-compact hook is the main mechanism; context-mode can route large tool outputs out of context.
+- **Claude Code:** Full 7-hook lifecycle. "Context-mode" is implemented via `post-tool-handler.sh` and `pre-tool-gate.sh`.
 - **Cursor:** No PreCompact hook; use artifact-driven discipline and request scoping. Rules in `ai/rules/` (e.g. context-and-compaction) can reinforce the same habits.
 - **Gemini / Codex:** Session discipline and artifact checkpoints apply; project-level docs (e.g. CODEX.md, GEMINI.md) can reference this approach.
 

@@ -1,6 +1,6 @@
 # Context & Compaction (User-Scope)
 
-Short guideline for token and context-window management. Full design: **docs/plans/2026-03-18-pre-compaction-token-context-management.md**.
+Short guideline for token and context-window management. Full design: **plans/2026-03-18-pre-compaction-token-context-management.md**.
 
 ## Three-layer preservation system
 
@@ -52,6 +52,12 @@ Fires on `Stop` event (end of turn). If `plans/` exists and artifact files are p
 
 ## Hooks (Claude Code)
 
-- **PreCompact** (`pre-compact.sh`): Injects enriched checkpoint before compaction (git state, artifact files, transcript topics, recent files, retention hint).
-- **Stop** (`session-end.sh`): Writes `plans/session-handoff.md` at the end of each turn if artifact files are populated.
-- **context-monitor.sh**: Alerts at 30%, 15%, and 5% context remaining.
+The system is powered by 7 integrated hooks in `~/.dotfiles/.claude/hooks/`:
+
+- **PreToolUse** (`pre-tool-gate.sh`): Enforces tool discipline. Blocks lock file reads, warns on large reads, and prevents using Bash for operations where dedicated tools (Read/Grep/Glob) exist.
+- **PostToolUse** (`post-tool-handler.sh`): Compacts Bash output >300 lines to save context. Provides batching reminders after `pctx execute_typescript` calls.
+- **UserPromptSubmit** (`plans-healthcheck.sh`): Session start healthcheck. Warns on missing/stale artifact files and missing binary dependencies (`qmd`, `rtk`).
+- **UserPromptSubmit** (`qmd-sync.sh`): Silently keeps the `qmd` semantic search index current for the workspace.
+- **PreCompact** (`pre-compact.sh`): Injects an enriched checkpoint (git state, active plan, decisions, progress, topics) before context compaction to make it lossless.
+- **Stop** (`session-end.sh`): Handoff generator. Writes `plans/session-handoff.md` at turn end so the next session can resume state.
+- **Notification** (`context-monitor.sh`): Real-time usage alerts. Fires macOS desktop notifications at 30%, 15%, and 5% context remaining.
