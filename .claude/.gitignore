@@ -17,6 +17,7 @@ mcp-needs-auth-cache.json
 sessions/
 tasks/
 settings.json.backup.*
+plans/
 
 # Prevent accidental nested Claude config/state (e.g. running setup in the wrong place)
 .claude/
