@@ -1,7 +1,7 @@
 personality = "pragmatic"
 model = "gpt-5.4"
 model_reasoning_effort = "medium"
-model_instructions_file = "/Users/agallentes/.dotfiles/ai/rules/agent-user-global.md"
+model_instructions_file = "~/.dotfiles/ai/rules/agent-user-global.md"
 project_doc_fallback_filenames = ["AGENTS.md"]
 [projects."/Users/axos-agallentes/git/setup"]
 trust_level = "trusted"

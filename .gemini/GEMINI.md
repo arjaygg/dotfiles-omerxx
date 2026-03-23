@@ -2,7 +2,7 @@
 
 This file is the user-global Gemini entrypoint for this machine.
 
-@/Users/agallentes/.dotfiles/ai/rules/agent-user-global.md
+@../ai/rules/agent-user-global.md
 
 ## Gemini-Specific Notes
 

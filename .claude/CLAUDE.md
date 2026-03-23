@@ -2,7 +2,7 @@
 
 This file is the user-global Claude entrypoint for this machine.
 
-@/Users/agallentes/.dotfiles/ai/rules/agent-user-global.md
+@../ai/rules/agent-user-global.md
 
 ## Claude-Specific Notes
 

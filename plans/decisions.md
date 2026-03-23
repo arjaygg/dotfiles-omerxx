@@ -1,0 +1,31 @@
+# Active Decisions Log
+
+Session-friendly ADL for in-flight work. Promote to `decisions/` when a decision is cross-cutting or long-lived.
+
+---
+
+## ADL-001 — Use pctx as MCP gateway
+
+All agents route through `pctx mcp start --stdio -c ~/.config/pctx/pctx.json`.
+Durable record: `decisions/0001-use-pctx-as-mcp-gateway.md`
+
+---
+
+## ADL-002 — Separate agent guidance from dotfiles distribution
+
+Shared behavioral policy lives in `AGENTS.md`, `ai/rules/agent-user-global.md`, `docs/`, `decisions/`, `plans/`.
+Tool-specific files (`.claude/CLAUDE.md`, `.gemini/GEMINI.md`, `.codex/AGENT.md`) are thin adapters that import the shared guidance.
+Durable record: `decisions/0002-separate-agent-guidance-from-dotfiles-distribution.md`
+
+---
+
+## ADL-003 — Canonical decision record convention
+
+Short active decisions live here. Durable decisions go in `decisions/NNNN-title.md`.
+Convention documented in `docs/decision-records.md`.
+
+---
+
+## ADL-004 — validate-agent-guidance.sh as structural guardrail
+
+`.claude/scripts/validate-agent-guidance.sh` checks that all required files exist and that adapters correctly import shared guidance. Run before merging guidance changes.

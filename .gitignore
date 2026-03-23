@@ -32,8 +32,8 @@ karabiner/automatic_backups/
 # Local tooling state (may contain tokens/pids)
 .osgrep/
 
-# Plans (ephemeral session artifacts)
-plans/
+# Plans (only session handoff is ephemeral)
+plans/session-handoff.md
 
 # Accidental/self-referential stow symlinks
 .claude/commands/commands

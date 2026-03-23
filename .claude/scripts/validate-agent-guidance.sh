@@ -64,11 +64,11 @@ require_file "$repo_root/.codex/config.toml"
 require_file "$repo_root/docs/agent-configuration-architecture.md"
 
 require_contains "$repo_root/CLAUDE.md" "@AGENTS.md" "CLAUDE.md imports AGENTS.md"
-require_contains "$repo_root/.claude/CLAUDE.md" "@$configured_global_rules" ".claude/CLAUDE.md imports global rules"
-require_contains "$repo_root/.gemini/GEMINI.md" "@$configured_global_rules" ".gemini/GEMINI.md imports global rules"
+require_contains "$repo_root/.claude/CLAUDE.md" "@../ai/rules/agent-user-global.md" ".claude/CLAUDE.md imports global rules (relative path)"
+require_contains "$repo_root/.gemini/GEMINI.md" "@../ai/rules/agent-user-global.md" ".gemini/GEMINI.md imports global rules (relative path)"
 require_contains "$repo_root/.gemini/settings.json" "\"fileName\": [" ".gemini/settings.json configures context.fileName"
 require_contains "$repo_root/.gemini/settings.json" "\"AGENTS.md\"" ".gemini/settings.json includes AGENTS.md"
-require_contains "$repo_root/.codex/config.toml" "model_instructions_file = \"$configured_global_rules\"" ".codex/config.toml points to global rules"
+require_contains "$repo_root/.codex/config.toml" "model_instructions_file = \"~/.dotfiles/ai/rules/agent-user-global.md\"" ".codex/config.toml points to global rules"
 
 if [ "$repo_root" = "$live_root" ]; then
   if [ -d "$HOME/.claude" ] || [ -L "$HOME/.claude" ]; then
