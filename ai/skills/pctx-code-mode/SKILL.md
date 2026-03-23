@@ -1,6 +1,6 @@
 ---
 name: pctx-code-mode
-description: Instructs the agent to use pctx Code Mode to execute a TypeScript script within a secure Deno sandbox for complex workflows, rather than making multiple sequential tool calls.
+description: Use pctx Code Mode to batch multiple Serena/MCP operations into a single TypeScript script instead of making sequential tool calls. Trigger when 2+ file operations, agent config checks, directory listings, or data processing steps are needed in one request.
 triggers:
   - process data
   - batch process
@@ -8,43 +8,124 @@ triggers:
   - complex extraction
   - bulk data
   - use pctx
+  - multiple files
+  - read several
+  - check all agents
+  - explore the project
+  - list and read
+  - gather information
+  - collect data from
 ---
 
 # pctx Code Mode
 
-You have access to the `pctx` MCP gateway. Instead of making sequential tool calls (like reading 20 files one by one, or paginating through an API), you must write a Deno-compatible TypeScript script and execute it via `pctx`.
+You have access to the `pctx` MCP gateway. Instead of making sequential tool calls
+(like reading 20 files one by one, or checking each agent config separately), write a
+single Deno-compatible TypeScript script and execute it via `mcp__pctx__execute_typescript`.
 
-## When to Use
-- You need to loop over multiple files or API endpoints.
-- You need to perform complex data extraction or transformation.
-- You are hitting context limits by dumping raw data into the chat.
+## Batching Decision Rule
 
-## Instructions
-1. **Understand the Goal:** Determine what data needs to be fetched or processed.
-2. **Write the Script:** Create a TypeScript file (e.g., `script.ts`). Use the `pctx` provided MCP tools within the script.
-3. **Execute via pctx:** Use the `pctx` MCP server to run the script. `pctx` will execute it in a secure sandbox and return only the final results.
+> Before any tool call that accesses the project, ask: "What else will I need in the
+> next 3 steps?" If 2+ Serena operations are planned → batch them into ONE
+> `execute_typescript`. If 2+ Read/Grep/Glob ops are independent → fire them in parallel.
+> Never make a sequential Serena call when a batch would work.
 
-### Example Script (`task.ts`)
-```typescript
-import { mcp } from "pctx";
+## Tool Priority Stack
 
-async function main() {
-  // Example of calling an upstream MCP tool through pctx
-  const files = await mcp.callTool("filesystem", "list_directory", { path: "./docs" });
-  
-  let summary = "";
-  for (const file of files.entries) {
-     if (file.name.endsWith(".md")) {
-        const content = await mcp.callTool("filesystem", "read_file", { path: `./docs/${file.name}` });
-        // Process content...
-        summary += `\nProcessed ${file.name}`;
-     }
-  }
-  
-  console.log("Final Summary:", summary);
-}
+Use tools in this order — stop at the first that satisfies your need:
 
-main();
+```
+DIRECTORY LISTING:
+  1st: Serena.listDir           — gitignore-aware, project-scoped, recursive
+  2nd: Glob                     — flexible patterns, fast
+  ✗    Bash ls                  — never; raw filesystem noise
+
+SEARCHING CODE:
+  1st: Serena.findSymbol        — LSP-backed, zero false positives from comments
+  2nd: Serena.searchForPattern  — project-scoped, gitignore-aware, LSP context
+  3rd: Grep tool                — flexible regex, ripgrep-backed, gitignore-aware
+  ✗    Bash grep/rg             — never; no gitignore, token waste
+
+FINDING FILES:
+  1st: Serena.findFile          — LSP-aware, project-scoped
+  2nd: Glob                     — pattern-based, fast
+  ✗    Bash find                — never; no project awareness
+
+READING FILES (stop as soon as you have what you need):
+  1st: Serena.getSymbolsOverview    — understand structure WITHOUT reading the file
+  2nd: Grep / Serena.searchForPattern — find the specific section first
+  3rd: Read (with limit/offset)     — targeted read once you know the location
+  4th: Read (full file)             — only when entire content is truly needed
+  ✗    Bash cat/head/tail           — never; use Read tool
+
+CODE EDITING:
+  1st: Serena.replaceSymbolBody / insertAfterSymbol — symbol-aware, precise
+  2nd: Edit tool                    — line-based when symbol bounds are unknown
+  ✗    Bash sed/awk                 — never for code edits
+
+BATCH / MULTI-STEP:
+  1st: pctx execute_typescript      — combine multiple Serena ops in ONE call
+  ✗    Multiple sequential calls    — always check if batchable first
 ```
 
-4. **Review Output:** The output of the script will be returned to your context. Use it to answer the user's request.
+## Serena API Naming Convention
+
+All Serena methods use **camelCase**. Common methods:
+
+| camelCase (correct) | snake_case (WRONG) |
+|---|---|
+| `Serena.listDir(...)` | ~~`Serena.list_dir`~~ |
+| `Serena.searchForPattern(...)` | ~~`Serena.search_for_pattern`~~ |
+| `Serena.findFile(...)` | ~~`Serena.find_file`~~ |
+| `Serena.findSymbol(...)` | ~~`Serena.find_symbol`~~ |
+| `Serena.getSymbolsOverview(...)` | ~~`Serena.get_symbols_overview`~~ |
+| `Serena.listMemories()` | ~~`Serena.list_memories`~~ |
+| `Serena.initialInstructions()` | ~~`Serena.initial_instructions`~~ |
+| `Serena.readMemory(...)` | ~~`Serena.read_memory`~~ |
+| `Serena.writeMemory(...)` | ~~`Serena.write_memory`~~ |
+
+**Always call `mcp__pctx__list_functions` at the start of a new session to confirm
+current signatures before writing execute_typescript scripts.**
+
+## When to Use
+
+- You need to loop over multiple files or directories
+- You need to check 2+ agent configs in one go
+- You need to perform data extraction or transformation across files
+- You are hitting context limits by dumping raw file contents into chat
+- Any request that implies 2+ file/MCP operations
+
+## How to Write Scripts
+
+Scripts run in a Deno sandbox. All registered SDK namespaces (`Serena`, `Exa`, etc.)
+are available globally — no imports needed.
+
+```typescript
+async function run() {
+  // Batch multiple operations in parallel where possible
+  const [topDirs, memories] = await Promise.all([
+    Serena.listDir({ relative_path: ".", recursive: false }),
+    Serena.listMemories(),
+  ]);
+
+  // Search for patterns across the project
+  const results = await Serena.searchForPattern({
+    pattern: "mcpServers",
+    relative_path: ".",
+  });
+
+  // Return only what you need — filter in the script, not in chat
+  return {
+    dirs: topDirs,
+    memories: memories,
+    searchResults: results,
+  };
+}
+```
+
+**Rules:**
+- MUST define a `run()` function — it is called automatically
+- Use `await` for every async call
+- Return only the data you need (filter/map before returning)
+- Use `Promise.all()` to parallelize independent operations
+- Do NOT call `JSON.parse()` on results — they are already objects

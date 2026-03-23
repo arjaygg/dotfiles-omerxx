@@ -1,17 +1,40 @@
 # Active Context
-We are currently integrating `pctx` (Port of Context) as the centralized MCP gateway to enable "Code Mode" (running Deno-compatible TypeScript scripts for complex multi-step tool calls).
 
-We have successfully:
-1.  **AI-Agnostic Subagents:** Created the `mcp_config_manager` subagent across all supported platforms (Claude Code, Gemini CLI, Cursor, Windsurf, OpenCode) to handle configuration migrations safely.
-2.  **Built pctx from Source:** Resolved the Darwin x64 installation blocker by successfully building `pctx` v0.6.0 from source and installing it to `~/bin/pctx`.
-3.  **Gateway Configuration:** Initialized and configured `pctx.json` with the primary upstream MCP servers (`serena`, `exa`, `sequential-thinking`).
-4.  **Cross-Agent Adapter Alignment:** Migrated the repo-managed MCP entrypoints for Claude Code (`.mcp.json`), Cursor (`.cursor/mcp.json`), Gemini (`.gemini/mcp.json`), Windsurf (`.windsurf/mcp_config.json`), the generic workspace adapter (`mcp.json`), and Codex (`.codex/config.toml`) to the same working invocation: `pctx mcp start --stdio -c pctx.json`.
-5.  **Migration Template Alignment:** Updated the `mcp_config_manager` templates across Claude, Cursor, Gemini, Windsurf, and OpenCode so future migrations use the same working `pctx` entrypoint.
-6.  **Gateway Verification:** Confirmed `pctx mcp list -c pctx.json` successfully connects to `serena`, `exa`, and `sequential-thinking`, and verified via `claude mcp list` that the project-level `pctx` definition connects successfully.
-7.  **Code Mode Verification:** Used the official `pctx-client` against a local `pctx start` session server and successfully executed a real TypeScript program that looped over multiple directories via `Serena.listDir`, returning structured results from Code Mode.
+## Current Focus: AI Agent Behavior Improvement (2026-03-23)
 
-Execution rule for the remainder of this plan:
-- Repo-tracked config changes must be completed and verified in this worktree before merge.
-- Live machine-global MCP registrations that are not sourced from tracked dotfiles are post-merge rollout work, not pre-merge branch blockers.
+Following a 2-hour session audit (`5f651a5e`), we identified systematic inefficiency patterns across Claude Code's own behavior and the pctx agent configuration. The audit found:
 
-Next, we will converge the live host state after this branch is merged by removing or replacing any remaining machine-global MCP registrations that still bypass the repo-managed `pctx` setup.
+- 47 Bash calls for file ops (vs 0 Serena, 0 Grep, 2 Glob)
+- No tool priority guidance anywhere in the project
+- CLAUDE.md missing (no per-session behavioral guidance)
+- Gemini settings.json had 6 stale MCP servers (not pctx)
+- Cursor and Windsurf configs were unlinked regular files
+- Codex config was unlinked and diverged from dotfiles
+- Serena onboarding never run → empty `.serena/memories/`
+- pctx SKILL.md had wrong example code and narrow triggers
+
+### Completed This Session
+
+1. **Agent config convergence**: All 5 agents (Claude Code, Gemini, Codex, Cursor, Windsurf) now route through pctx gateway. Cursor and Windsurf symlinks created.
+2. **Gemini dual-source fix**: Replaced 6 stale servers in `~/.gemini/settings.json` with pctx.
+3. **markitdown added**: `markitdown-mcp` added to `/Users/agallentes/.config/pctx/pctx.json`.
+4. **setup.sh**: Added Codex and Windsurf symlink blocks (were missing).
+5. **Codex sync**: `.codex/config.toml` synced from live.
+6. **pctx permissions**: Added `mcp__pctx__list_functions` and `mcp__pctx__get_function_details` to `settings.local.json`.
+7. **pre-tool-gate.sh**: Added Bash-native guard (cat/grep/find) and git-main guard.
+8. **post-tool-handler.sh**: Added batching reminder after pctx calls.
+9. **pctx-code-mode SKILL.md**: Complete rewrite — correct API, tool priority stack, batching decision rule, Serena camelCase table.
+10. **mcp_config_manager**: Added Gemini dual-file validation checklist.
+11. **CLAUDE.md**: Created at repo root with tool priority, batching, branch workflow, Serena convention, project structure.
+12. **decisions.md**: Populated with ADL-001 through ADL-004.
+13. **AGENT.md / GEMINI.md**: Created Codex instructions; updated Gemini instructions.
+
+### Branch
+
+All changes on `feat/pctx-agent-convergence` (stacked on main).
+
+### Next After Merge
+
+- Run `Serena.onboarding()` to populate `.serena/memories/` with project knowledge.
+- Replace `pctx.json` at dotfiles root with symlink → `~/.config/pctx/pctx.json`.
+- Apply live Codex symlink: `ln -sf ~/.dotfiles/.codex/config.toml ~/.codex/config.toml`.
