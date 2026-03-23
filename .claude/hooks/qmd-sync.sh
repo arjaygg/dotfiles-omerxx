@@ -4,8 +4,7 @@
 set -euo pipefail
 
 if command -v qmd &>/dev/null; then
-  qmd update --quiet 2>/dev/null || true
-  qmd embed  --quiet 2>/dev/null || true
+  (qmd update --quiet 2>/dev/null && qmd embed --quiet 2>/dev/null) &
 fi
 
 exit 0

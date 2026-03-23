@@ -7,6 +7,49 @@ set -euo pipefail
 CWD=$(pwd)
 TODAY=$(date '+%Y-%m-%d')
 
+# Binary dependency checks (global) — cached in /tmp for 1 hour to avoid per-prompt overhead
+CACHE_FILE="/tmp/.claude-binary-check-$(id -u)"
+NOW=$(date '+%s')
+CACHE_TTL=3600
+
+MISSING_BINARIES=()
+
+# Use cache if fresh enough
+if [[ -f "$CACHE_FILE" ]]; then
+    CACHE_AGE=$(( NOW - $(date -r "$CACHE_FILE" '+%s' 2>/dev/null || echo 0) ))
+    if [[ $CACHE_AGE -lt $CACHE_TTL ]]; then
+        # Read cached missing list; skip re-check
+        CACHED=$(cat "$CACHE_FILE")
+        [[ -n "$CACHED" ]] && read -ra MISSING_BINARIES <<< "$CACHED"
+    fi
+fi
+
+# Cache miss or expired — run checks
+if [[ ! -f "$CACHE_FILE" ]] || [[ $CACHE_AGE -ge $CACHE_TTL ]]; then
+    REQUIRED_BINARIES=("qmd" "rtk")
+    for bin in "${REQUIRED_BINARIES[@]}"; do
+        if ! command -v "$bin" &> /dev/null; then
+            MISSING_BINARIES+=("$bin")
+        fi
+    done
+    # Write result to cache (space-separated missing names, or empty)
+    echo "${MISSING_BINARIES[*]:-}" > "$CACHE_FILE"
+fi
+
+if [[ ${#MISSING_BINARIES[@]} -gt 0 ]]; then
+    python3 - "${MISSING_BINARIES[*]}" <<'PYEOF'
+import sys
+missing = sys.argv[1].split()
+print("[SETUP HEALTH] Missing required tools:")
+for m in missing:
+    if m == "qmd":
+        print("  - qmd  (semantic search sync)  → not a standard package; source unknown — check dotfiles setup docs")
+    elif m == "rtk":
+        print("  - rtk  (Cursor shell compress) → brew tap rtk-ai/rtk && brew install rtk")
+PYEOF
+    echo ""
+fi
+
 # Opt-in: only run if plans/ directory exists
 [[ -d "$CWD/plans" ]] || exit 0
 
