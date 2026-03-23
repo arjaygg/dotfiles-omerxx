@@ -6,6 +6,21 @@ set -euo pipefail
 
 INPUT=$(cat)
 
+# --- context-mode evaluation ---
+if [[ "${CONTEXT_EVAL_MODE:-baseline}" == "context-mode" ]]; then
+    # Try to locate the context-mode hook script
+    CONTEXT_MODE_HOOK=$(find ~/.npm/_npx -path "*/node_modules/context-mode/hooks/posttooluse.mjs" 2>/dev/null | head -n 1 || true)
+
+    if [[ -z "$CONTEXT_MODE_HOOK" ]] || [[ ! -f "$CONTEXT_MODE_HOOK" ]]; then
+        CONTEXT_MODE_HOOK="$(npm root -g 2>/dev/null)/context-mode/hooks/posttooluse.mjs"
+    fi
+
+    if [[ -f "$CONTEXT_MODE_HOOK" ]]; then
+        # Let context-mode capture the event for its session snapshot
+        echo "$INPUT" | node "$CONTEXT_MODE_HOOK" >/dev/null 2>&1 || true
+    fi
+fi
+
 # Extract stdout from tool result
 OUTPUT=$(echo "$INPUT" | python3 -c "
 import sys, json
@@ -33,8 +48,13 @@ if [[ "$LINE_COUNT" -gt 300 ]]; then
     TAIL=$(echo "$OUTPUT" | tail -40)
     OMITTED=$(( LINE_COUNT - 80 ))
 
-    COMPACTED=$(printf '%s\n\n... %d lines omitted (use grep/search to find specific content) ...\n\n%s' \
-        "$HEAD" "$OMITTED" "$TAIL")
+    if [[ "${CONTEXT_EVAL_MODE:-baseline}" == "context-mode" ]]; then
+        COMPACTED=$(printf '%s\n\n... %d lines omitted (use grep/search to find specific content) ...\n\n%s\n\n[CONTEXT-MODE TRIAL]: Output truncated. If you need the full data, consider using `ctx_batch_execute` or similar context-mode tools to process it securely within the sandbox.' \
+            "$HEAD" "$OMITTED" "$TAIL")
+    else
+        COMPACTED=$(printf '%s\n\n... %d lines omitted (use grep/search to find specific content) ...\n\n%s' \
+            "$HEAD" "$OMITTED" "$TAIL")
+    fi
 
     # Emit compacted version back to Claude Code
     python3 -c "
