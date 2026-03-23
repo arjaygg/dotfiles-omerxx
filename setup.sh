@@ -26,6 +26,14 @@ for item in ~/.dotfiles/.gemini/*; do
     fi
 done
 
+# Codex setup
+mkdir -p ~/.codex
+ln -sf ~/.dotfiles/.codex/config.toml ~/.codex/config.toml
+
+# Windsurf setup
+mkdir -p ~/.windsurf
+ln -sf ~/.dotfiles/.windsurf/mcp_config.json ~/.windsurf/mcp_config.json
+
 # Cleanup legacy files if they exist in root
 rm -rf ~/.dotfiles/daily-standup-insights 2>/dev/null
 rm -rf ~/.dotfiles/daily-standup-insights.skill 2>/dev/null

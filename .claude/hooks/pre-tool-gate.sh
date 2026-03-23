@@ -43,6 +43,45 @@ except:
     fi
 fi
 
+# --- Warn when using Bash instead of a dedicated native tool ---
+if [[ "$TOOL_NAME" == "Bash" ]]; then
+    CMD=$(echo "$INPUT" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print(d.get('command', '').lstrip())
+except:
+    print('')
+" 2>/dev/null || echo "")
+
+    # Block: cat → use Read tool
+    if [[ "$CMD" == cat\ * ]]; then
+        echo "WARNING: Use the Read tool instead of 'cat'. It's token-efficient, reviewable, and supports limit/offset." >&2
+        exit 2
+    fi
+
+    # Block: grep (but not git grep) → use Grep tool or Serena.searchForPattern
+    if [[ "$CMD" == grep\ * || "$CMD" == grep\ -* ]] && [[ "$CMD" != *"git grep"* ]]; then
+        echo "WARNING: Use the Grep tool (ripgrep-backed, gitignore-aware) or Serena.searchForPattern instead of 'grep'." >&2
+        exit 2
+    fi
+
+    # Block: find . → use Glob or Serena.findFile
+    if [[ "$CMD" == find\ .* || "$CMD" == find\ /* ]]; then
+        echo "WARNING: Use the Glob tool or Serena.findFile instead of 'find'. They are project-aware and faster." >&2
+        exit 2
+    fi
+
+    # Block: git commit on main branch
+    if [[ "$CMD" == git\ commit* ]]; then
+        CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+        if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
+            echo "WARNING: You are about to commit directly to '$CURRENT_BRANCH'. Create a feature branch first: stack create <name> $CURRENT_BRANCH" >&2
+            exit 2
+        fi
+    fi
+fi
+
 # --- Warn when editing kernel files mid-session ---
 KERNEL_FILES=("CLAUDE.md" "RTK.md" ".claude/settings.json")
 for kernel in "${KERNEL_FILES[@]}"; do

@@ -44,4 +44,10 @@ print(json.dumps({'type': 'text', 'text': compacted}))
 " "$COMPACTED"
 fi
 
+# --- Batching reminder after pctx execute_typescript ---
+TOOL_NAME="${CLAUDE_TOOL_NAME:-}"
+if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then
+    echo "BATCH CHECK: Was this the only Serena/MCP operation needed this turn? If 2+ ops are coming, combine them into one execute_typescript call." >&2
+fi
+
 exit 0

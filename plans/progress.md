@@ -2,7 +2,7 @@
 
 - [x] **Phase 0: Workspace Isolation & Documentation**
   - [x] Create stack branch and worktree `feat/pctx-integration`
-  - [x] Document decision in `decisions/0001-use-pctx-as-mcp-gateway.md`
+  - [x] Document gateway decision in `plans/decisions.md` and in `decisions/0001-use-pctx-as-mcp-gateway.md`
 - [x] **Phase 1: Creation of Specialized Subagents (AI-Agnostic Implementation)**
   - [x] Create `mcp_config_manager` subagent at `.claude/agents/mcp_config_manager.md`
   - [x] Create `mcp_config_manager` subagent for Gemini CLI (`.gemini/agents/mcp_config_manager.md`)
