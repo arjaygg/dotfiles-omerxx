@@ -2,7 +2,7 @@
   "selectedAuthType": "oauth-personal",
   "mcpServers": {
     "pctx": {
-      "command": "pctx",
+      "command": "/Users/axos-agallentes/homebrew/bin/pctx",
       "args": [
         "mcp",
         "start",

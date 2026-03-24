@@ -41,7 +41,7 @@ trust_level = "trusted"
 
 [mcp_servers.pctx]
 type = "stdio"
-command = "pctx"
+command = "/Users/axos-agallentes/homebrew/bin/pctx"
 args = ["mcp", "start", "--stdio", "-c", "/Users/axos-agallentes/.config/pctx/pctx.json"]
 startup_timeout_sec = 90
 
