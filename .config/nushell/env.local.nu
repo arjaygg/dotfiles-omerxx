@@ -1,0 +1,1 @@
+$env.EXA_API_KEY = "1d49fa71-5a7a-4886-a823-aa085c25d061"
