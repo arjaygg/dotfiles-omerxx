@@ -1,0 +1,28 @@
+{
+  "name": "list_memories",
+  "description": "Lists available memories, optionally filtered by topic.",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "topic": {
+        "default": "",
+        "title": "Topic",
+        "type": "string"
+      }
+    },
+    "title": "applyArguments"
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "result": {
+        "title": "Result",
+        "type": "string"
+      }
+    },
+    "required": [
+      "result"
+    ],
+    "title": "applyOutput"
+  }
+}

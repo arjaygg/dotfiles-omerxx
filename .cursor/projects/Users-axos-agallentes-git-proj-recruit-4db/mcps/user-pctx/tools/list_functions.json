@@ -1,0 +1,8 @@
+{
+  "name": "list_functions",
+  "description": "List all available SDK functions organized by namespace.\n\nReturns function signatures showing structure without full type details.",
+  "arguments": {
+    "type": "object",
+    "properties": {}
+  }
+}
