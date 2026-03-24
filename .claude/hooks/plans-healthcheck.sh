@@ -50,6 +50,28 @@ PYEOF
     echo ""
 fi
 
+PCTX_WARNINGS=()
+if ! command -v "pctx" &> /dev/null; then
+    PCTX_WARNINGS+=("pctx binary not found in PATH (npm i -g @portofcontext/pctx)")
+fi
+if [[ ! -r "$HOME/.config/pctx/pctx.json" ]]; then
+    PCTX_WARNINGS+=("~/.config/pctx/pctx.json is missing or unreadable")
+else
+    for srv in "serena" "exa" "sequential-thinking" "notebooklm" "markitdown"; do
+        if ! grep -q "\"$srv\"" "$HOME/.config/pctx/pctx.json"; then
+            PCTX_WARNINGS+=("Server '$srv' not found in pctx.json")
+        fi
+    done
+fi
+
+if [[ ${#PCTX_WARNINGS[@]} -gt 0 ]]; then
+    echo "[PCTX HEALTH] Advisory - Gateway configuration issues:"
+    for warn in "${PCTX_WARNINGS[@]}"; do
+        echo "  - $warn"
+    done
+    echo ""
+fi
+
 # Opt-in: only run if plans/ directory exists
 [[ -d "$CWD/plans" ]] || exit 0
 

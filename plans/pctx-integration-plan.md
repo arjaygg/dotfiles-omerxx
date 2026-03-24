@@ -87,3 +87,23 @@ This plan leverages native concurrency and specialized delegation to ensure effi
   - Remove any stale direct MCP registrations or app-managed overrides that still point at standalone upstreams instead of `pctx`.
   - Re-run a simple cross-agent smoke test after merge to confirm each target agent resolves `pctx` successfully from the merged dotfiles state.
 - **Rollback:** In the event of latency or instability, remove the `pctx` entry from the agent configurations and restore the legacy individual MCP definitions using the `mcp_config_manager`.
+
+## 7. Failure Taxonomy & Triage Flow
+
+When investigating `pctx` or MCP failures, refer to this taxonomy and triage flow to rapidly isolate issues:
+
+1. **pctx gateway unavailable or silent failures:**
+   - **Symptom:** AI agents fail to route tools or tool calls time out.
+   - **Triage:** Check the richer `pretty` or `json` logs in `pctx` instead of the compact logs. Verify `~/.config/pctx/pctx.json` is readable and structurally valid.
+
+2. **Missing downstream MCP servers:**
+   - **Symptom:** Specific tool namespaces (e.g., `Serena`, `Exa`) are unavailable in the session.
+   - **Triage:** Ensure the required servers (`serena`, `exa`, `sequential-thinking`, `notebooklm`, `markitdown`) are present in `pctx.json`.
+
+3. **Plugin noise and startup clutter:**
+   - **Symptom:** "plugin-not-found" warnings cluster in the logs.
+   - **Triage:** Clear out stale, legacy plugin declarations from `~/.claude/settings.json`.
+
+4. **Skill loading failures:**
+   - **Symptom:** Skills fail to load with parse errors.
+   - **Triage:** Check for unquoted scalars or malformed YAML frontmatter in `SKILL.md` documents.

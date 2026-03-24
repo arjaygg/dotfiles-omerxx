@@ -129,16 +129,7 @@
     "type": "command",
     "command": "bash ~/.claude/claude-statusline/statusline.sh"
   },
-  "enabledPlugins": {
-    "document-skills@anthropic-agent-skills": false,
-    "osgrep@osgrep": false,
-    "gopls-lsp@claude-plugins-official": true,
-    "gopls@claude-code-lsps": true,
-    "claude-md-management@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": false,
-    "claude-mem@thedotmack": false,
-    "skill-creator@claude-plugins-official": true
-  },
+  "enabledPlugins": {},
   "extraKnownMarketplaces": {},
   "alwaysThinkingEnabled": true,
   "plansDirectory": "plans",
