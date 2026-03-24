@@ -8,18 +8,6 @@ projects/*/*
 # MCP tool descriptors, resources, prompts
 !projects/*/mcps/
 !projects/*/mcps/**
-# Agent transcripts for citation
-!projects/*/agent-transcripts/
-!projects/*/agent-transcripts/**
-# Terminal output files
-!projects/*/terminals/
-!projects/*/terminals/**
-# Conversation notes (shared scratchpad)
-!projects/*/agent-notes/
-!projects/*/agent-notes/**
-# Large tool output files
-!projects/*/agent-tools/
-!projects/*/agent-tools/**
 # Plugin cache (rules, skills, agents)
 !plugins/
 !plugins/**
@@ -35,9 +23,6 @@ projects/*/*
 # User's plan files
 !plans/
 !plans/**
-# Subagent state/transcripts
-!subagents/
-!subagents/**
 # User-level cursor rules
 !rules/
 !rules/**
