@@ -28,7 +28,7 @@ When injecting `pctx` into an agent's config, use the following standard schema:
   "mcpServers": {
     "pctx": {
       "command": "pctx",
-      "args": ["mcp", "start", "--stdio", "-c", "/Users/agallentes/.config/pctx/pctx.json"],
+      "args": ["mcp", "start", "--stdio", "-c", "/Users/axos-agallentes/.config/pctx/pctx.json"],
       "env": {}
     }
   }
