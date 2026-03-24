@@ -5,9 +5,6 @@
 projects/*
 !projects/*/
 projects/*/*
-# MCP tool descriptors, resources, prompts
-!projects/*/mcps/
-!projects/*/mcps/**
 # Plugin cache (rules, skills, agents)
 !plugins/
 !plugins/**
