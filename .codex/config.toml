@@ -30,19 +30,19 @@ trust_level = "trusted"
 [projects."/Users/axos-agallentes/git/activtrak"]
 trust_level = "trusted"
 
-[projects."/Users/agallentes/.dotfiles"]
+[projects."/Users/axos-agallentes/.dotfiles"]
 trust_level = "trusted"
 
-[projects."/Users/agallentes/git/quotio"]
+[projects."/Users/axos-agallentes/git/quotio"]
 trust_level = "trusted"
 
-[projects."/Users/agallentes/git"]
+[projects."/Users/axos-agallentes/git"]
 trust_level = "trusted"
 
 [mcp_servers.pctx]
 type = "stdio"
 command = "pctx"
-args = ["mcp", "start", "--stdio", "-c", "/Users/agallentes/.config/pctx/pctx.json"]
+args = ["mcp", "start", "--stdio", "-c", "/Users/axos-agallentes/.config/pctx/pctx.json"]
 startup_timeout_sec = 90
 
 [notice.model_migrations]
