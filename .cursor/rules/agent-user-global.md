@@ -1,0 +1,1 @@
+/Users/axos-agallentes/.dotfiles/ai/rules/agent-user-global.md
