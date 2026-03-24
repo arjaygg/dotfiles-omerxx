@@ -3,37 +3,40 @@ model = "gpt-5.4"
 model_reasoning_effort = "medium"
 model_instructions_file = "~/.dotfiles/ai/rules/agent-user-global.md"
 project_doc_fallback_filenames = ["AGENTS.md"]
-[projects."/Users/axos-agallentes/git/setup"]
+[projects."~/git/setup"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes/.dotfiles"]
+[projects."~/.dotfiles"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes/git/FinTrak"]
+[projects."~/git/FinTrak"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes/git/BMAD-METHOD"]
+[projects."~/git/BMAD-METHOD"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes/git/auc-conversion"]
+[projects."~/git/auc-conversion"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes/git/auc-conversion/.trees/story-4-2-test-coverage"]
+[projects."~/git/auc-conversion/.trees/story-4-2-test-coverage"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes/git/auc-discovery"]
+[projects."~/git/auc-discovery"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes/git/team-okrs"]
+[projects."~/git/team-okrs"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes/git/activtrak"]
+[projects."~/git/activtrak"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes/.dotfiles"]
+[projects."~/git/quotio"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes/git/quotio"]
+[projects."~/git"]
+trust_level = "trusted"
+
+[projects."/Users/axos-agallentes"]
 trust_level = "trusted"
 
 [projects."/Users/axos-agallentes/git"]
@@ -41,8 +44,8 @@ trust_level = "trusted"
 
 [mcp_servers.pctx]
 type = "stdio"
-command = "/Users/axos-agallentes/homebrew/bin/pctx"
-args = ["mcp", "start", "--stdio", "-c", "/Users/axos-agallentes/.config/pctx/pctx.json"]
+command = "~/homebrew/bin/pctx"
+args = ["mcp", "start", "--stdio", "-c", "~/.config/pctx/pctx.json"]
 startup_timeout_sec = 90
 
 [notice.model_migrations]
