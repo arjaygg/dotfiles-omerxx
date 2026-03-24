@@ -4,39 +4,35 @@
 # point back to the Unified AI Hub (ai/skills/).
 # GNU Stow mirrors this structure into your Home directory automatically.
 
+# Ensure directories exist for stow to link into if they aren't already managed
+mkdir -p ~/.config/pctx
+mkdir -p ~/.cursor
+mkdir -p ~/.claude
+mkdir -p ~/.gemini
+mkdir -p ~/.codex
+mkdir -p ~/.windsurf
+
+# Run Stow to link everything from the dotfiles root to the home directory
 stow .
 
-# Specific tool setup (for things Stow can't easily handle)
-mkdir -p ~/.cursor
-ln -sf ~/.dotfiles/.cursor/Library ~/.cursor/Library
+# Specific tool setup (for things Stow might need help with or additional setup)
 
-# Claude Code global settings (Stow handles the directory structure)
+# Cursor Library link (if not already handled by stow)
+if [ ! -L ~/.cursor/Library ]; then
+    ln -sf ~/.dotfiles/.cursor/Library ~/.cursor/Library
+fi
 
-# Install NotebookLM MCP tool
-uv tool install notebooklm-mcp-cli
-mkdir -p ~/.claude
-ln -sf ~/.dotfiles/.claude/settings.json ~/.claude/settings.json
-
-# Gemini setup - dynamically symlink tracked config directories/files
-mkdir -p ~/.gemini
-for item in ~/.dotfiles/.gemini/*; do
-    if [ -e "$item" ]; then
-        base_item=$(basename "$item")
-        ln -sf "$item" ~/.gemini/"$base_item"
-    fi
-done
-
-# Codex setup
-mkdir -p ~/.codex
-ln -sf ~/.dotfiles/.codex/config.toml ~/.codex/config.toml
-
-# Windsurf setup
-mkdir -p ~/.windsurf
-ln -sf ~/.dotfiles/.windsurf/mcp_config.json ~/.windsurf/mcp_config.json
+# Install NotebookLM MCP tool (idempotent)
+if ! command -v notebooklm-mcp &> /dev/null; then
+    uv tool install notebooklm-mcp-cli
+fi
 
 # Claude Code skill symlinks (relative paths, tool-agnostic)
+mkdir -p ~/.dotfiles/.claude/skills
 ln -sf ../../ai/skills/pctx-code-mode ~/.dotfiles/.claude/skills/pctx-code-mode
 
 # Cleanup legacy files if they exist in root
 rm -rf ~/.dotfiles/daily-standup-insights 2>/dev/null
 rm -rf ~/.dotfiles/daily-standup-insights.skill 2>/dev/null
+
+echo "Setup complete. All configurations linked via GNU Stow."
