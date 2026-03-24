@@ -35,3 +35,11 @@ When working in a dotfiles repository:
 - Distinguish between shared project guidance and tool-specific installation files.
 - Treat files under `.claude/`, `.gemini/`, `.codex/`, and similar directories as configuration distribution artifacts unless the file is clearly a project guidance entrypoint.
 - Preserve symlink-based setup expectations.
+
+## AI Agent Primitives Configuration
+
+This machine uses a unified AI configuration strategy where common primitives are managed centrally in `~/.dotfiles/ai` and symlinked to each agent's configuration directory.
+
+- **Centralized Source:** `~/.dotfiles/ai/`
+- **Linked Agents:** Claude Code, Gemini CLI, Codex, Cursor, Windsurf.
+- **Maintenance:** Any changes to rules, skills, commands, or styles should be made in `~/.dotfiles/ai/` and will be automatically reflected across all tools.
