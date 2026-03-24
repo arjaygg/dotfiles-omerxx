@@ -1,15 +1,14 @@
 {
   "mcpServers": {
     "pctx": {
-      "command": "pctx",
+      "command": "/Users/axos-agallentes/homebrew/bin/pctx",
       "args": [
         "mcp",
         "start",
         "--stdio",
         "-c",
         "/Users/axos-agallentes/.config/pctx/pctx.json"
-      ],
-      "env": {}
+      ]
     }
   }
 }
