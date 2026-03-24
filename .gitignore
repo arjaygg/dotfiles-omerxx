@@ -25,7 +25,8 @@ karabiner/automatic_backups/
 .cursor/skills-cursor/
 .cursor/unified_repo_list.json
 
-# MCP local config (may contain API keys / machine-specific paths)
+# Local configurations (do not commit secrets or machine-specific paths)
+.config/
 .mcp.json
 .mcp.local.json
 
