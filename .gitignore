@@ -27,6 +27,7 @@ karabiner/automatic_backups/
 
 # Local configurations (do not commit secrets or machine-specific paths)
 .config/
+!.config/pctx/
 .mcp.json
 .mcp.local.json
 
