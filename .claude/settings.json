@@ -1,109 +1,14 @@
 {
-  "env": {
-    "USE_BUILTIN_RIPGREP": "0"
-  },
-  "permissions": {
-    "allow": [
-      "Read(*)",
-      "Write(*)",
-      "Edit(*)",
-      "Glob(*)",
-      "Grep(*)",
-      "Bash(*)",
-      "WebFetch(*)",
-      "WebSearch(*)",
-      "TaskCreate(*)",
-      "TaskGet(*)",
-      "TaskList(*)",
-      "TaskOutput(*)",
-      "TaskStop(*)",
-      "TaskUpdate(*)",
-      "mcp__serena__*",
-      "mcp__qmd__*",
-      "mcp__claude-in-chrome__*",
-      "mcp__*__*"
-    ]
-  },
-  "enableAllProjectMcpServers": true,
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash|Read|Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/pre-tool-gate.sh\"'"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/post-tool-handler.sh\"'"
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/context-monitor.sh\"'"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/qmd-sync.sh\"'"
-          },
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/plans-healthcheck.sh\"'"
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/pre-compact.sh\"'"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/session-end.sh\"'"
-          }
-        ]
-      }
-    ]
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "bash ~/.claude/claude-statusline/statusline.sh"
-  },
-  "enabledPlugins": {},
-  "extraKnownMarketplaces": {},
-  "alwaysThinkingEnabled": true,
-  "plansDirectory": "plans",
-  "skipDangerousModePermissionPrompt": true
+  "mcpServers": {
+    "pctx": {
+      "command": "pctx",
+      "args": [
+        "mcp",
+        "start",
+        "--stdio",
+        "-c",
+        "${env:HOME}/.config/pctx/pctx.json"
+      ]
+    }
+  }
 }
