@@ -1,7 +1,6 @@
 {
   "env": {
-    "USE_BUILTIN_RIPGREP": "0",
-    "CONTEXT_EVAL_MODE": "context-mode"
+    "USE_BUILTIN_RIPGREP": "0"
   },
   "permissions": {
     "allow": [
@@ -33,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); bash \"$ROOT/.claude/hooks/pre-tool-gate.sh\"'"
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/pre-tool-gate.sh\"'"
           }
         ]
       }
@@ -44,11 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); bash \"$ROOT/.claude/hooks/post-tool-handler.sh\"'"
-          },
-          {
-            "type": "command",
-            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); cat | bash \"$ROOT/.claude/scripts/context-eval-log.sh\" post-bash'"
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/post-tool-handler.sh\"'"
           }
         ]
       }
@@ -59,22 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); bash \"$ROOT/.claude/hooks/context-monitor.sh\"'"
-          },
-          {
-            "type": "command",
-            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); cat | bash \"$ROOT/.claude/scripts/context-eval-log.sh\" notification'"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); cat | bash \"$ROOT/.claude/scripts/context-eval-log.sh\" session-start'"
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/context-monitor.sh\"'"
           }
         ]
       }
@@ -85,11 +65,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); bash \"$ROOT/.claude/hooks/qmd-sync.sh\"'"
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/qmd-sync.sh\"'"
           },
           {
             "type": "command",
-            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); bash \"$ROOT/.claude/hooks/plans-healthcheck.sh\"'"
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/plans-healthcheck.sh\"'"
           }
         ]
       }
@@ -100,11 +80,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); bash \"$ROOT/.claude/hooks/pre-compact.sh\"'"
-          },
-          {
-            "type": "command",
-            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); cat | bash \"$ROOT/.claude/scripts/context-eval-log.sh\" pre-compact'"
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/pre-compact.sh\"'"
           }
         ]
       }
@@ -115,11 +91,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); bash \"$ROOT/.claude/hooks/session-end.sh\"'"
-          },
-          {
-            "type": "command",
-            "command": "bash -lc 'ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); cat | bash \"$ROOT/.claude/scripts/context-eval-log.sh\" stop'"
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/session-end.sh\"'"
           }
         ]
       }

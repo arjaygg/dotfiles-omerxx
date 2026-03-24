@@ -13,6 +13,15 @@ NOW=$(date '+%s')
 CACHE_TTL=3600
 
 MISSING_BINARIES=()
+CACHE_AGE=0
+
+# Binaries that can be auto-installed in the background
+# format: "binary:install-command"
+declare -A BINARY_AUTO_INSTALL=(
+    ["qmd"]="npm install -g @tobilu/qmd"
+    ["rtk"]="brew tap rtk-ai/rtk && brew install rtk"
+)
+REQUIRED_BINARIES=("qmd" "rtk")
 
 # Use cache if fresh enough
 if [[ -f "$CACHE_FILE" ]]; then
@@ -24,12 +33,16 @@ if [[ -f "$CACHE_FILE" ]]; then
     fi
 fi
 
-# Cache miss or expired — run checks
+# Cache miss or expired — run checks and trigger background installs
 if [[ ! -f "$CACHE_FILE" ]] || [[ $CACHE_AGE -ge $CACHE_TTL ]]; then
-    REQUIRED_BINARIES=("qmd" "rtk")
     for bin in "${REQUIRED_BINARIES[@]}"; do
         if ! command -v "$bin" &> /dev/null; then
             MISSING_BINARIES+=("$bin")
+            # Trigger silent background install if a command is defined
+            install_cmd="${BINARY_AUTO_INSTALL[$bin]:-}"
+            if [[ -n "$install_cmd" ]]; then
+                (eval "$install_cmd" &>/dev/null) &
+            fi
         fi
     done
     # Write result to cache (space-separated missing names, or empty)
@@ -37,16 +50,14 @@ if [[ ! -f "$CACHE_FILE" ]] || [[ $CACHE_AGE -ge $CACHE_TTL ]]; then
 fi
 
 if [[ ${#MISSING_BINARIES[@]} -gt 0 ]]; then
-    python3 - "${MISSING_BINARIES[*]}" <<'PYEOF'
-import sys
-missing = sys.argv[1].split()
-print("[SETUP HEALTH] Missing required tools:")
-for m in missing:
-    if m == "qmd":
-        print("  - qmd  (semantic search sync)  → not a standard package; source unknown — check dotfiles setup docs")
-    elif m == "rtk":
-        print("  - rtk  (Cursor shell compress) → brew tap rtk-ai/rtk && brew install rtk")
-PYEOF
+    echo "[SETUP HEALTH] Missing required tools (installing in background):"
+    for m in "${MISSING_BINARIES[@]}"; do
+        case "$m" in
+            qmd) echo "  - qmd  (semantic search sync)  → auto-installing: npm install -g @tobilu/qmd" ;;
+            rtk) echo "  - rtk  (Cursor shell compress) → auto-installing: brew tap rtk-ai/rtk && brew install rtk" ;;
+            *)   echo "  - $m  → install manually" ;;
+        esac
+    done
     echo ""
 fi
 
