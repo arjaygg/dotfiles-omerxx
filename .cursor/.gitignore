@@ -5,6 +5,14 @@
 projects/*
 !projects/*/
 projects/*/*
+# MCP tool descriptors, resources, prompts
+!projects/*/mcps/
+!projects/*/mcps/**
+mcp-cache.json
+mcp-approvals.json
+.workspace-trusted
+worker.log
+repo.json
 # Plugin cache (rules, skills, agents)
 !plugins/
 !plugins/**
@@ -20,6 +28,9 @@ projects/*/*
 # User's plan files
 !plans/
 !plans/**
+# Subagent state/transcripts
+!subagents/
+!subagents/**
 # User-level cursor rules
 !rules/
 !rules/**
