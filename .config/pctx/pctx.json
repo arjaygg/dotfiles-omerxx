@@ -5,14 +5,13 @@
   "servers": [
     {
       "name": "serena",
-      "command": "serena",
+      "command": "serena_wrapper.sh",
       "args": [
-        "start-mcp-server",
         "--context",
         "claude-code",
         "--project-from-cwd",
-        "--open-web-dashboard",
-        "False"
+        "--log-level",
+        "ERROR"
       ]
     },
     {
@@ -63,11 +62,21 @@
     {
       "name": "voice-mode",
       "command": "voice-mode"
+    },
+    {
+      "name": "notebooklm",
+      "command": "notebooklm-mcp",
+      "args": []
+    },
+    {
+      "name": "markitdown",
+      "command": "markitdown-mcp",
+      "args": []
     }
   ],
   "logger": {
-    "enabled": true,
-    "level": "info",
+    "enabled": false,
+    "level": "error",
     "format": "compact",
     "colors": true
   }
