@@ -30,6 +30,7 @@ fi
 # Claude Code skill symlinks (relative paths, tool-agnostic)
 mkdir -p ~/.dotfiles/.claude/skills
 ln -sf ../../ai/skills/pctx-code-mode ~/.dotfiles/.claude/skills/pctx-code-mode
+ln -sf ../../ai/skills/autoresearch ~/.dotfiles/.claude/skills/autoresearch
 
 # Cleanup legacy files if they exist in root
 rm -rf ~/.dotfiles/daily-standup-insights 2>/dev/null
