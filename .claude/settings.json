@@ -75,7 +75,7 @@
       "Edit(~/.gnupg/**)",
       "Write(~/.gnupg/**)"
     ],
-    "defaultMode": "auto"
+    "defaultMode": "auto-edit"
   },
   "enableAllProjectMcpServers": true,
   "hooks": {
@@ -273,5 +273,6 @@
         "${env:HOME}/.config/pctx/pctx.json"
       ]
     }
-  }
+  },
+  "model": "opus[1m]"
 }
