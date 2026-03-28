@@ -8,11 +8,18 @@ projects/*/*
 # MCP tool descriptors, resources, prompts
 !projects/*/mcps/
 !projects/*/mcps/**
-mcp-cache.json
-mcp-approvals.json
-.workspace-trusted
-worker.log
-repo.json
+# Agent transcripts for citation
+!projects/*/agent-transcripts/
+!projects/*/agent-transcripts/**
+# Terminal output files
+!projects/*/terminals/
+!projects/*/terminals/**
+# Conversation notes (shared scratchpad)
+!projects/*/agent-notes/
+!projects/*/agent-notes/**
+# Large tool output files
+!projects/*/agent-tools/
+!projects/*/agent-tools/**
 # Plugin cache (rules, skills, agents)
 !plugins/
 !plugins/**
