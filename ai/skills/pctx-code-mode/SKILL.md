@@ -129,3 +129,21 @@ async function run() {
 - Return only the data you need (filter/map before returning)
 - Use `Promise.all()` to parallelize independent operations
 - Do NOT call `JSON.parse()` on results — they are already objects
+
+**Anti-patterns that break namespace injection (`Serena` will be `undefined` at runtime):**
+
+```typescript
+// ❌ WRONG — bare top-level await (TS1378 compile error)
+const result = await Serena.listDir({ relative_path: ".", recursive: false });
+
+// ❌ WRONG — IIFE (executes before namespace injection; Serena is undefined)
+(async () => {
+  const result = await Serena.listDir({ relative_path: ".", recursive: false });
+})();
+
+// ✅ CORRECT — define run(); the sandbox injects all namespaces before calling it
+async function run() {
+  const result = await Serena.listDir({ relative_path: ".", recursive: false });
+  return result;
+}
+```
