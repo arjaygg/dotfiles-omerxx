@@ -23,10 +23,46 @@
       "mcp__claude-in-chrome__*",
       "mcp__*__*"
     ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(sudo rm *)",
+      "Bash(curl * | bash)",
+      "Bash(curl * | sh)",
+      "Bash(wget * -O- | sh)",
+      "mcp__notebooklm__notebookDelete(*)",
+      "mcp__notebooklm__sourceDelete(*)",
+      "mcp__notebooklm__studioDelete(*)"
+    ],
     "defaultMode": "auto"
   },
   "enableAllProjectMcpServers": true,
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/session-init.sh\"'"
+          },
+          {
+            "type": "command",
+            "command": "/Users/axos-agallentes/homebrew/bin/node /Users/axos-agallentes/homebrew/lib/node_modules/context-mode/hooks/sessionstart.mjs"
+          }
+        ]
+      }
+    ],
+    "InstructionsLoaded": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/instructions-loaded.sh\"'"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash|Read|Edit|Write",
@@ -127,17 +163,6 @@
           }
         ]
       }
-    ],
-    "SessionStart": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/axos-agallentes/homebrew/bin/node /Users/axos-agallentes/homebrew/lib/node_modules/context-mode/hooks/sessionstart.mjs"
-          }
-        ]
-      }
     ]
   },
   "statusLine": {
@@ -148,7 +173,6 @@
   "extraKnownMarketplaces": {},
   "alwaysThinkingEnabled": true,
   "plansDirectory": "plans",
-  "skipDangerousModePermissionPrompt": true,
   "autoMode": {
     "environment": [
       "Organization: Axos Financial / Axos Bank. Primary use: software development.",
