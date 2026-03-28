@@ -74,6 +74,15 @@
         ]
       },
       {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/check-agent-parallelism.sh\"'"
+          }
+        ]
+      },
+      {
         "matcher": "Bash|WebFetch",
         "hooks": [
           {
@@ -125,6 +134,10 @@
           {
             "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/plans-healthcheck.sh\"'"
+          },
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/prompt-parallelism-hint.sh\"'"
           },
           {
             "type": "command",
