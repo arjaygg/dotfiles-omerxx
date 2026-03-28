@@ -169,5 +169,6 @@
         "${env:HOME}/.config/pctx/pctx.json"
       ]
     }
-  }
+  },
+  "model": "haiku"
 }
