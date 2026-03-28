@@ -9,7 +9,8 @@ Always use tools in this order. Stop at the first that satisfies your need. **Ne
 ```
 DIRECTORY LISTING:
   1st: Serena.listDir           — gitignore-aware, project-scoped, recursive
-  2nd: Glob                     — flexible patterns, fast
+  2nd: lean-ctx ctx_tree        — AST skeleton tree (map mode, 14 languages); use for unfamiliar territory
+  3rd: Glob                     — flexible patterns, fast
   ✗    Bash ls / find           — never; raw filesystem noise
 
 SEARCHING CODE:
@@ -26,8 +27,9 @@ FINDING FILES:
 READING FILES (stop as soon as you have what you need):
   1st: Serena.getSymbolsOverview    — understand structure WITHOUT reading file
   2nd: Grep / Serena.searchForPattern — find the specific section first
-  3rd: Read (with limit/offset)     — targeted read once you know the location
-  4th: Read (full file)             — only when entire content is truly needed
+  3rd: lean-ctx ctx_read            — large files, repeated access (SessionCache hit = ~13 tokens)
+  4th: Read (with limit/offset)     — targeted read once you know the location
+  5th: Read (full file)             — only when entire content is truly needed
   ✗    Bash cat/head/tail           — never; use Read tool
 
 CODE EDITING:
@@ -35,8 +37,14 @@ CODE EDITING:
   2nd: Edit tool                    — line-based when symbol bounds are unknown
   ✗    Bash sed/awk                 — never for code edits
 
+SHELL OUTPUT (complex commands with large expected output):
+  Default: native Bash (auto-compressed by rtk hook) — correct for all standard dev commands
+  Option:  lean-ctx ctx_shell — semantic compression with CEP Compliance Score
+  Note: Use ctx_shell only for log tailing, build output, or other high-volume commands
+        where semantic preservation matters more than speed.
+
 BATCH / MULTI-STEP:
-  1st: pctx execute_typescript      — combine multiple Serena ops in ONE call
+  1st: pctx execute_typescript      — combine multiple Serena + lean-ctx ops in ONE call
   ✗    Multiple sequential calls    — always check if batchable first
 ```
 
