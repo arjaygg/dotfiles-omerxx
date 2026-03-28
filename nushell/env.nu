@@ -96,6 +96,7 @@ path add "/opt/homebrew/bin"
 path add "/opt/homebrew/sbin"
 path add ($env.HOME | path join ".turso")
 path add ($env.HOME | path join ".local/share/mise/shims")
+path add ($env.HOME | path join ".cargo/bin")
 path add "/Users/omerxx/.local/bin"
 
 
