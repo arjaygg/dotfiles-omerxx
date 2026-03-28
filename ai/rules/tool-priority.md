@@ -2,6 +2,17 @@
 
 These rules apply to every project on this machine where pctx/Serena is configured.
 
+## Session Init (REQUIRED before first project access)
+
+Run these two steps before any Read / Grep / Glob / Serena call on project files:
+
+1. `mcp__pctx__list_functions` → confirm current Serena/lean-ctx method signatures; write result to `plans/pctx-functions.md`
+2. `Serena.initialInstructions()` → load project-specific rules and active context
+
+**Skip only if `plans/pctx-functions.md` already exists and was written today.**
+
+---
+
 ## Tool Priority
 
 Always use tools in this order. Stop at the first that satisfies your need. **Never use Bash for operations that have a dedicated tool.**
