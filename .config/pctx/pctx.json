@@ -5,7 +5,7 @@
   "servers": [
     {
       "name": "serena",
-      "command": "serena_wrapper.sh",
+      "command": "/Users/axos-agallentes/.local/bin/serena_wrapper.sh",
       "args": [
         "--context",
         "claude-code",
