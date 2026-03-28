@@ -60,7 +60,7 @@ fi
 sanitize_name() {
     local raw="$1"
     echo "$raw" \
-        | sed -E 's|^(feature|feat|bugfix|fix|hotfix|release|chore)/||' \
+        | sed -E 's#^(feature|feat|bugfix|fix|hotfix|release|chore)/##' \
         | tr '[:upper:]' '[:lower:]' \
         | sed -E 's/[ _]/-/g' \
         | sed -E 's/[^a-z0-9.-]//g' \
