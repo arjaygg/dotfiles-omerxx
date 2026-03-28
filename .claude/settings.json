@@ -3,7 +3,6 @@
     "USE_BUILTIN_RIPGREP": "0"
   },
   "permissions": {
-    "defaultMode": "auto",
     "allow": [
       "Read(*)",
       "Write(*)",
@@ -23,16 +22,8 @@
       "mcp__qmd__*",
       "mcp__claude-in-chrome__*",
       "mcp__*__*"
-    ]
-  },
-  "autoMode": {
-    "environment": [
-      "Organization: Axos Financial / Axos Bank. Primary use: software development.",
-      "Source control: dev.azure.com/bofaz and bofaz.visualstudio.com — all repos and projects under these organizations.",
-      "Key projects: Axos-Universal-Core, Axos Clearing, Axos Core Services, Axos-Crypto-Core, AAS, AxPay, AxTrader, Stock Lending Services.",
-      "Azure DevOps CLI org: https://dev.azure.com/bofaz. PR creation org: https://bofaz.visualstudio.com.",
-      "Local development: macOS, git worktrees under .trees/, homebrew at /Users/axos-agallentes/homebrew/."
-    ]
+    ],
+    "defaultMode": "auto"
   },
   "enableAllProjectMcpServers": true,
   "hooks": {
@@ -158,6 +149,15 @@
   "alwaysThinkingEnabled": true,
   "plansDirectory": "plans",
   "skipDangerousModePermissionPrompt": true,
+  "autoMode": {
+    "environment": [
+      "Organization: Axos Financial / Axos Bank. Primary use: software development.",
+      "Source control: dev.azure.com/bofaz and bofaz.visualstudio.com — all repos and projects under these organizations.",
+      "Key projects: Axos-Universal-Core, Axos Clearing, Axos Core Services, Axos-Crypto-Core, AAS, AxPay, AxTrader, Stock Lending Services.",
+      "Azure DevOps CLI org: https://dev.azure.com/bofaz. PR creation org: https://bofaz.visualstudio.com.",
+      "Local development: macOS, git worktrees under .trees/, homebrew at /Users/axos-agallentes/homebrew/."
+    ]
+  },
   "mcpServers": {
     "pctx": {
       "command": "pctx",
@@ -169,6 +169,5 @@
         "${env:HOME}/.config/pctx/pctx.json"
       ]
     }
-  },
-  "model": "haiku"
+  }
 }
