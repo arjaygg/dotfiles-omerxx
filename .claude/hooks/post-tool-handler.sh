@@ -47,16 +47,18 @@ if [[ "$LINE_COUNT" -gt 300 ]]; then
     COMPACTED=$(printf '%s\n\n... %d lines omitted (use grep/search to find specific content) ...\n\n%s' \
         "$HEAD" "$OMITTED" "$TAIL")
 
-    # Emit compacted version back to Claude Code
-    python3 -c "
+    # Emit compacted version via stdin (avoids shell arg injection with quotes/$vars/newlines)
+    echo "$COMPACTED" | python3 -c "
 import sys, json
-compacted = sys.argv[1]
-print(json.dumps({'type': 'text', 'text': compacted}))
-" "$COMPACTED"
+text = sys.stdin.read()
+print(json.dumps({'type': 'text', 'text': text}))
+"
 fi
 
-# --- Batching reminder after pctx execute_typescript ---
-if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then
+# --- Batching reminder after pctx execute_typescript (max once per session) ---
+REMINDER_FLAG="/tmp/.claude-pctx-reminder-$(id -u)"
+if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]] && [[ ! -f "$REMINDER_FLAG" ]]; then
+    touch "$REMINDER_FLAG"
     echo "BATCH CHECK: Was this the only Serena/MCP operation needed this turn? If 2+ ops are coming, combine them into one execute_typescript call." >&2
 fi
 

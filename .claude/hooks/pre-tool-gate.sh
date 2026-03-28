@@ -58,6 +58,12 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
         exit 2
     fi
 
+    # Block: rg (ripgrep) → use Grep tool (same reason as grep)
+    if [[ "$CMD" == rg\ * || "$CMD" == rg\ -* ]]; then
+        echo "WARNING: Use the Grep tool instead of 'rg'. It is gitignore-aware and token-efficient." >&2
+        exit 2
+    fi
+
     # Block: find . → use Glob or Serena.findFile
     if [[ "$CMD" == find\ .* || "$CMD" == find\ /* ]]; then
         echo "WARNING: Use the Glob tool or Serena.findFile instead of 'find'. They are project-aware and faster." >&2
@@ -93,10 +99,21 @@ for kernel in "${KERNEL_FILES[@]}"; do
 done
 
 # --- Hyper-atomic: block Edit/Write when state is blocked/overgrown ---
+# Atomic state is cached for 8s to avoid running the script on every keystroke edit.
 if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]]; then
     _ATOMIC_HOOKS=$(git config --local core.hooksPath 2>/dev/null || echo "")
     if [[ "$_ATOMIC_HOOKS" == "$HOME/.dotfiles/git/hooks" ]]; then
-        _ATOMIC_STATE=$("$HOME/.dotfiles/scripts/ai/atomic-status.sh" 2>/dev/null || echo "in_progress")
+        _ATOMIC_CACHE="/tmp/.claude-atomic-state-$(id -u)"
+        _ATOMIC_TTL=8
+        _ATOMIC_STATE="in_progress"
+        if [[ -f "$_ATOMIC_CACHE" ]]; then
+            _CACHE_AGE=$(( $(date '+%s') - $(date -r "$_ATOMIC_CACHE" '+%s' 2>/dev/null || echo 0) ))
+            [[ $_CACHE_AGE -lt $_ATOMIC_TTL ]] && _ATOMIC_STATE=$(cat "$_ATOMIC_CACHE")
+        fi
+        if [[ "$_ATOMIC_STATE" == "in_progress" ]] || ! [[ -f "$_ATOMIC_CACHE" ]] || [[ $_CACHE_AGE -ge $_ATOMIC_TTL ]]; then
+            _ATOMIC_STATE=$("$HOME/.dotfiles/scripts/ai/atomic-status.sh" 2>/dev/null || echo "in_progress")
+            echo "$_ATOMIC_STATE" > "$_ATOMIC_CACHE"
+        fi
         case "$_ATOMIC_STATE" in
             blocked)
                 echo "BLOCKED: Mixed concerns detected in staged files (state: blocked)." >&2
