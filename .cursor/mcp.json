@@ -1,15 +1,3 @@
 {
-  "mcpServers": {
-    "pctx": {
-      "type": "stdio",
-      "command": "pctx",
-      "args": [
-        "mcp",
-        "start",
-        "--stdio",
-        "-c",
-        "${env:HOME}/.config/pctx/pctx.json"
-      ]
-    }
-  }
+  "mcpServers": {}
 }
