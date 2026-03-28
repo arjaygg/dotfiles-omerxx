@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Stop hook: write plans/session-handoff.md for the next session
 # Fires when Claude finishes a turn (approximates session end)
+#
+# Guard: only rewrites handoff when content has meaningfully changed since
+# the last write, preventing redundant overwrites on every single turn.
 
 set -euo pipefail
 
@@ -17,6 +20,13 @@ ACTIVE_CTX=""
 
 PROGRESS=""
 [[ -f "$CWD/plans/progress.md" ]] && PROGRESS=$(cat "$CWD/plans/progress.md")
+
+# --- Change-guard: skip write if artifact content hasn't changed since last handoff ---
+CONTENT_HASH=$(printf '%s\n%s' "$ACTIVE_CTX" "$PROGRESS" | md5 2>/dev/null || printf '%s\n%s' "$ACTIVE_CTX" "$PROGRESS" | md5sum 2>/dev/null | cut -d' ' -f1)
+HASH_FILE="/tmp/.claude-handoff-hash-$(id -u)-$(echo "$CWD" | md5 2>/dev/null || echo "$CWD" | md5sum 2>/dev/null | cut -d' ' -f1)"
+if [[ -f "$HASH_FILE" ]] && [[ "$(cat "$HASH_FILE")" == "$CONTENT_HASH" ]] && [[ -f "$HANDOFF" ]]; then
+    exit 0  # Content unchanged since last write — skip
+fi
 
 # Recent git commit
 RECENT_COMMIT=$(git -C "$CWD" log -1 --oneline 2>/dev/null || echo "")
@@ -93,5 +103,8 @@ lines.append('*Written by session-end.sh hook. Delete when no longer relevant.*'
 with open(handoff_path, 'w', encoding='utf-8') as f:
     f.write('\n'.join(lines) + '\n')
 PYEOF
+
+# Record content hash so next turn can skip if unchanged
+echo "$CONTENT_HASH" > "$HASH_FILE"
 
 exit 0

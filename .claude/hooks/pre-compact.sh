@@ -126,19 +126,24 @@ PYEOF
 fi
 
 # --- Recently edited files ---
-# Use git's index for the reference file; handle worktrees (where .git is a file)
-GIT_INDEX=""
-if [[ -f "$CWD/.git/index" ]]; then
-    GIT_INDEX="$CWD/.git/index"
+# Prefer session-start timestamp (written by session-init.sh at SessionStart).
+# This accurately tracks files touched THIS session, not since the last git op.
+# Falls back to git index if the timestamp file is absent (e.g., older sessions).
+SESSION_START_FILE="/tmp/.claude-session-start-$(id -u)"
+REFERENCE_FILE=""
+if [[ -f "$SESSION_START_FILE" ]]; then
+    REFERENCE_FILE="$SESSION_START_FILE"
+elif [[ -f "$CWD/.git/index" ]]; then
+    REFERENCE_FILE="$CWD/.git/index"
 elif [[ -f "$CWD/.git" ]]; then
     # git worktree: .git is a file pointing to the actual gitdir
     GITDIR=$(git -C "$CWD" rev-parse --git-dir 2>/dev/null || echo "")
-    [[ -n "$GITDIR" ]] && [[ -f "$GITDIR/index" ]] && GIT_INDEX="$GITDIR/index"
+    [[ -n "$GITDIR" ]] && [[ -f "$GITDIR/index" ]] && REFERENCE_FILE="$GITDIR/index"
 fi
 
 RECENT_FILES=""
-if [[ -n "$GIT_INDEX" ]]; then
-    RECENT_FILES=$(find "$CWD" -newer "$GIT_INDEX" -type f \
+if [[ -n "$REFERENCE_FILE" ]]; then
+    RECENT_FILES=$(find "$CWD" -newer "$REFERENCE_FILE" -type f \
         ! -path '*/.git/*' \
         ! -path '*/node_modules/*' \
         ! -path '*/target/*' \

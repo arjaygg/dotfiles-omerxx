@@ -68,11 +68,28 @@ fi
 if [[ ! -r "$HOME/.config/pctx/pctx.json" ]]; then
     PCTX_WARNINGS+=("~/.config/pctx/pctx.json is missing or unreadable")
 else
-    for srv in "serena" "exa" "sequential-thinking" "notebooklm" "markitdown" "lean-ctx"; do
-        if ! grep -q "\"$srv\"" "$HOME/.config/pctx/pctx.json"; then
-            PCTX_WARNINGS+=("Server '$srv' not found in pctx.json")
-        fi
-    done
+    # Use python3 for proper JSON lookup (avoids false positives from substring grep matches)
+    # pctx.json uses {"servers": [{"name": "serena"}, ...]} structure
+    MISSING_SERVERS=$(python3 -c "
+import json
+try:
+    with open('$HOME/.config/pctx/pctx.json') as f:
+        d = json.load(f)
+    raw = d.get('servers', [])
+    # Support both list-of-objects and dict-of-objects formats
+    if isinstance(raw, list):
+        names = {s.get('name','') for s in raw if isinstance(s, dict)}
+    else:
+        names = set(raw.keys())
+    required = ['serena', 'exa', 'sequential-thinking', 'notebooklm', 'markitdown', 'lean-ctx']
+    missing = [s for s in required if s not in names]
+    print('\n'.join(missing))
+except Exception as e:
+    print(f'parse-error: {e}')
+" 2>/dev/null || echo "")
+    while IFS= read -r srv; do
+        [[ -n "$srv" ]] && PCTX_WARNINGS+=("Server '$srv' not found in pctx.json")
+    done <<< "$MISSING_SERVERS"
 fi
 
 if [[ ${#PCTX_WARNINGS[@]} -gt 0 ]]; then
