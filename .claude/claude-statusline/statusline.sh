@@ -85,15 +85,17 @@ detect_os() {
 
 OS_TYPE=$(detect_os)
 
-is_claude_family_model() {
+is_claude_client_alias() {
     local model="$1"
     case "$model" in
-        ""|"Claude"|"Claude Model"|claude*|Claude*|*Sonnet*|*Opus*|*Haiku*)
-            return 0
-            ;;
+        ""|"Claude"|"Claude Model")
+            return 0 ;;
+        claude-[0-9]*-sonnet-[0-9]*|claude-[0-9]*-opus-[0-9]*|claude-[0-9]*-haiku-[0-9]*)
+            return 0 ;;
+        claude-sonnet-[0-9]*|claude-opus-[0-9]*|claude-haiku-[0-9]*)
+            return 0 ;;
         *)
-            return 1
-            ;;
+            return 1 ;;
     esac
 }
 
@@ -102,7 +104,7 @@ resolve_statusline_model_name() {
     local backend="${CLAUDE_STATUSLINE_BACKEND:-}"
     local backend_model="${CLAUDE_STATUSLINE_BACKEND_MODEL:-}"
 
-    if [[ -n "$backend_model" && "$backend" != "native" ]] && is_claude_family_model "$current_model"; then
+    if [[ -n "$backend_model" && "$backend" != "native" ]] && is_claude_client_alias "$current_model"; then
         echo "$backend_model"
         return
     fi
@@ -879,6 +881,19 @@ model_name=$(resolve_statusline_model_name "$model_name")
 # Format model name for display (shorten if needed)
 model_display="$model_name"
 case "$model_name" in
+    # Cursor upstream models (match before generic Claude patterns)
+    claude-4.6-opus-high|claude-4.6-opus*)
+        model_display="claude-4.6-opus-high"
+        model_color="35"  # Magenta for Opus
+        ;;
+    claude-4.6-sonnet-medium|claude-4.6-sonnet*)
+        model_display="claude-4.6-sonnet-medium"
+        model_color="34"  # Blue for Sonnet
+        ;;
+    "Opus 4.5 Thinking")
+        model_display="Opus 4.5 Thinking"
+        model_color="35"  # Magenta for Opus
+        ;;
     *opus*|*Opus*)
         model_display="Opus"
         model_color="35"  # Magenta for Opus
