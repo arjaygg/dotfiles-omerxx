@@ -1,0 +1,44 @@
+# .claude-atomic.yaml — Dotfiles subsystem override for atomic-status.sh
+# This file customizes hyper-atomic commit enforcement for the dotfiles repo.
+# Delete this file to use generic detection defaults.
+#
+# Subsystem keys are arbitrary labels. A commit touching 3+ distinct subsystems
+# is considered "blocked" (mixed concerns). Paths are prefix-matched.
+
+subsystems:
+  ai-config:
+    - "ai/"
+    - ".claude/"
+    - ".gemini/"
+    - ".codex/"
+    - ".cursor/"
+    - ".windsurf/"
+  shell:
+    - "zshrc/"
+    - "nushell/"
+  editor:
+    - "nvim/"
+  tools:
+    - "bat/"
+    - "fd/"
+    - "gh/"
+    - "atuin/"
+    - "ghostty/"
+    - "karabiner/"
+    - "hammerspoon/"
+    - "aerospace/"
+    - "kindavim/"
+  infra:
+    - "setup.sh"
+    - "Brewfile"
+    - "scripts/"
+    - "git/"
+  docs:
+    - "decisions/"
+    - "docs/"
+    - "plans/"
+
+thresholds:
+  max_files: 10
+  max_subsystems: 3
+  max_diff_lines: 500
