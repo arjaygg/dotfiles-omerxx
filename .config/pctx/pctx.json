@@ -72,6 +72,12 @@
       "name": "markitdown",
       "command": "markitdown-mcp",
       "args": []
+    },
+    {
+      "name": "lean-ctx",
+      "command": "/Users/axos-agallentes/.cargo/bin/lean-ctx",
+      "args": ["mcp", "--stdio"],
+      "env": { "LEAN_CTX_CACHE_TTL": "300" }
     }
   ],
   "logger": {
