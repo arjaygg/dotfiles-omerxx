@@ -110,7 +110,7 @@ async function run() {
 
   // Search for patterns across the project
   const results = await Serena.searchForPattern({
-    pattern: "mcpServers",
+    substring_pattern: "mcpServers",
     relative_path: ".",
   });
 
