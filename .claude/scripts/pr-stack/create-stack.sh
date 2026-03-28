@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 # create-stack.sh - Create a new branch in the PR stack
-# Usage: ./create-stack.sh <new-branch-name> [base-branch] [commit-message] [--worktree]
+# Usage: ./create-stack.sh <new-branch-name> [base-branch] [commit-message] [--no-worktree]
+# Worktrees are created by default. Pass --no-worktree to skip.
 
 set -e
 
@@ -14,30 +15,35 @@ source "$_CREATE_STACK_DIR/lib/worktree-charcoal.sh"
 # Functions
 print_usage() {
     echo -e "${BLUE}Usage:${NC}"
-    echo "  ./create-stack.sh <new-branch-name> [base-branch] [commit-message] [--worktree]"
+    echo "  ./create-stack.sh <new-branch-name> [base-branch] [commit-message] [--no-worktree]"
     echo ""
     echo -e "${BLUE}Arguments:${NC}"
     echo "  new-branch-name    Name of the new branch to create (required)"
     echo "  base-branch        Branch to base the new branch on (default: main)"
     echo "  commit-message     Initial commit message (optional)"
-    echo "  --worktree, -w     Create a git worktree for this branch"
+    echo "  --worktree, -w     Create a git worktree (default: enabled)"
+    echo "  --no-worktree      Skip worktree creation"
     echo ""
     echo -e "${BLUE}Examples:${NC}"
     echo "  ./create-stack.sh feature/new-api main"
-    echo "  ./create-stack.sh feature/ui feature/api --worktree"
+    echo "  ./create-stack.sh feature/ui feature/api --no-worktree"
 }
 
 # Parse arguments
 NEW_BRANCH=""
 BASE_BRANCH=""
 COMMIT_MESSAGE=""
-CREATE_WORKTREE=false
+CREATE_WORKTREE=true
 POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --worktree|-w)
             CREATE_WORKTREE=true
+            shift
+            ;;
+        --no-worktree)
+            CREATE_WORKTREE=false
             shift
             ;;
         -h|--help)
