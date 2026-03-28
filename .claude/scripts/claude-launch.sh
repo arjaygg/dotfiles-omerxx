@@ -78,9 +78,22 @@ function start_agent_bridge() {
             nohup bash -c "cd ~/.local/share/agent-cli-to-api && CODEX_PRESET=gemini-cloudcode GEMINI_MODEL=${model} uv run agent-cli-to-api gemini --port $AGENT_PORT" > /tmp/agent-cli-to-api.log 2>&1 &
         else
             echo "Starting agent-cli-to-api for Cursor Agent..."
+            # CURSOR_AGENT_MODEL is a fallback when the request payload has no model.
+            # When an explicit --model override is given we set it; otherwise leave empty.
+            #
+            # CODEX_ALLOW_CLIENT_MODEL_OVERRIDE lets agent-cli-to-api honour the per-request
+            # model that CLIProxyAPI writes after applying model-routing rules + alias
+            # resolution. Without it, forced CODEX_PROVIDER=cursor-agent causes the gateway
+            # to ignore the payload model and default to CURSOR_AGENT_MODEL / "auto".
+            local model_env=""
+            if [ -n "$override" ]; then
+                model_env="$model"
+            fi
+            
             nohup env \
                 CODEX_PROVIDER=cursor-agent \
-                CURSOR_AGENT_MODEL="${model}" \
+                CODEX_ALLOW_CLIENT_MODEL_OVERRIDE=1 \
+                CURSOR_AGENT_MODEL="${model_env}" \
                 CURSOR_AGENT_DISABLE_INDEXING=1 \
                 CURSOR_AGENT_EXTRA_ARGS="${CURSOR_AGENT_EXTRA_ARGS:---endpoint https://api2.cursor.sh --http-version 2}" \
                 bash -lc "cd ~/.local/share/agent-cli-to-api && uv run agent-cli-to-api cursor-agent --port $AGENT_PORT" \
@@ -105,6 +118,9 @@ function normalize_model_override() {
             ;;
         gemini-3-flash-preview|gemini-flash-preview|flash)
             echo "claude-3-5-sonnet-20241022"
+            ;;
+        "Opus 4.5 Thinking"|opus-thinking|opus)
+            echo "claude-3-opus-20240229"
             ;;
         *)
             echo "$1"
@@ -133,6 +149,9 @@ function cursor_model_for_override() {
             ;;
         claude-3-5-sonnet-20241022|gemini-3-flash-preview|gemini-3-flash|gemini-flash-preview|flash)
             echo "gemini-3-flash"
+            ;;
+        claude-3-opus-20240229|"Opus 4.5 Thinking"|opus-thinking|opus)
+            echo "Opus 4.5 Thinking"
             ;;
         *)
             echo ""
