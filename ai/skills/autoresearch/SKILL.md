@@ -123,7 +123,7 @@ to low-quality changes that are likely to be reverted.
 ```typescript
 async function run() {
   const [scopeFiles, overview] = await Promise.all([
-    Serena.searchForPattern({ pattern: ".", relative_path: "<scope-dir>" }),
+    Serena.searchForPattern({ substring_pattern: ".", relative_path: "<scope-dir>" }),
     Serena.getSymbolsOverview({ relative_path: "<scope-dir>" }),
   ]);
   return { scopeFiles, overview };
@@ -436,7 +436,7 @@ async function run() {
   const [structure, patterns] = await Promise.all([
     Serena.getSymbolsOverview({ relative_path: "pkg/app/worker" }),
     Serena.searchForPattern({
-      pattern: "func Test",
+      substring_pattern: "func Test",
       relative_path: "pkg/app/worker",
     }),
   ]);
