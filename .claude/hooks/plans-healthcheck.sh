@@ -152,4 +152,14 @@ if has_handoff:
 print("\n".join(lines))
 PYEOF
 
+# --- [HOOKS HEALTH] Hyper-atomic commit hooks ---
+if git rev-parse --show-toplevel &>/dev/null 2>&1; then
+    HOOKS_PATH=$(git config --local core.hooksPath 2>/dev/null || echo "")
+    EXPECTED="$HOME/.dotfiles/git/hooks"
+    if [[ "$HOOKS_PATH" != "$EXPECTED" ]]; then
+        echo "[HOOKS HEALTH] Hyper-atomic commit hooks not installed in this repo."
+        echo "  Action: Run /hyper-commit-setup to enable atomic commit enforcement."
+    fi
+fi
+
 exit 0
