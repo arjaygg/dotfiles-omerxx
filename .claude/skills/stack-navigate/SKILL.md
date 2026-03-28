@@ -105,9 +105,36 @@ stack up
 # 3. Use alias: stup (if configured)
 ```
 
+## Worktree Session Handoff (EnterWorktree / ExitWorktree)
+
+When the current Claude Code session was entered via `EnterWorktree`, navigating to
+a different worktree requires a session handoff so Claude Code's CWD follows you.
+
+**Pattern — navigate up (to parent branch):**
+1. Call `ExitWorktree({action: "keep"})` to leave the current worktree session
+2. Run `$HOME/.dotfiles/.claude/scripts/stack up` to determine the parent path
+3. Call `EnterWorktree({name: "<parent-sanitized-name>"})` to enter the parent worktree
+
+**Pattern — navigate down (to child branch):**
+1. Call `ExitWorktree({action: "keep"})` to leave the current worktree session
+2. Run `$HOME/.dotfiles/.claude/scripts/stack down` to determine the child path
+3. Call `EnterWorktree({name: "<child-sanitized-name>"})` to enter the child worktree
+
+> The sanitized name is the branch name with the type prefix stripped:
+> `feature/user-auth` → `"user-auth"`, `fix/bug` → `"bug"`
+
+> **Note on bug #36205:** Until the EnterWorktree/WorktreeCreate hook bug is fixed,
+> `EnterWorktree` creates a session in `.claude/worktrees/` (not `.trees/`). The
+> `.trees/<name>` worktree remains the authoritative location for git operations.
+> For full isolation, open a new Claude Code session: `claude` from `.trees/<name>`.
+
+**If you're NOT in an EnterWorktree session** (normal Claude Code session):
+- Just run the navigation commands and `eval` the output in your terminal
+- No ExitWorktree/EnterWorktree needed
+
 ## Related Skills
 
-- **stack-create**: Create branches with worktrees
+- **stack-create**: Create branches with worktrees + automatic EnterWorktree session entry
 - **stack-status**: View stack with worktree locations
 - **stack-pr**: Create PRs from worktrees
 - **stack-update**: Update and sync worktrees

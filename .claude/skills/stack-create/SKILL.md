@@ -1,6 +1,6 @@
 ---
 name: stack-create
-description: Creates a new stacked branch for PR stacking workflows with full Charcoal integration. Supports worktrees for parallel development. USE THIS SKILL when user says "create worktree", "create branch on top of", "stack a branch", "worktree and branch", or mentions parallel development with git worktrees. Maintains Charcoal's navigation and restacking capabilities.
+description: Creates a new stacked branch for PR stacking workflows with full Charcoal integration. Worktrees are created by default. USE THIS SKILL when user says "create worktree", "create branch on top of", "stack a branch", "worktree and branch", or mentions parallel development with git worktrees. Maintains Charcoal's navigation and restacking capabilities.
 triggers:
   - create worktree
   - create branch on top of
@@ -14,7 +14,7 @@ triggers:
 
 # Stack Create
 
-Creates a new stacked branch with optional worktree for PR stacking workflows. Now with full Charcoal integration for worktrees!
+Creates a new stacked branch with a worktree (default) for PR stacking workflows, with full Charcoal integration and Claude Code session context switching via EnterWorktree/ExitWorktree.
 
 ## When to Use
 
@@ -28,56 +28,85 @@ Creates a new stacked branch with optional worktree for PR stacking workflows. N
 - "create worktree and branch"
 - Any mention of "worktree" combined with "create" or "branch"
 
-Use this skill when the user wants to:
-- Create a new branch that builds on another branch (not just main)
-- Start a PR stacking workflow
-- Create a feature branch with a specific base branch
-- Set up parallel development with git worktrees
-- Use Charcoal's navigation (up/down) and restacking across worktrees
+## Key Feature: Default Worktrees + EnterWorktree Session Integration
 
-## Key Feature: Charcoal + Worktrees
-
-**NEW:** Worktrees are now fully integrated with Charcoal! You get:
-- ✅ Parallel development in separate directories
+Worktrees are created by **default** (no flag needed). You also get:
+- ✅ Parallel development in separate `.trees/` directories
 - ✅ Charcoal navigation (`stack up/down`) that's worktree-aware
 - ✅ Automatic restacking with `stack restack`
 - ✅ Visual stack display with worktree locations
-- ✅ All Charcoal features work seamlessly with worktrees
+- ✅ Claude Code session automatically switches into the worktree via `EnterWorktree`
 
 ## Instructions
 
 1. Parse the user's request to identify:
    - `branch-name`: The name for the new branch (required)
    - `base-branch`: The branch to base on (default: current branch or main)
-   - `worktree`: Boolean, whether to create a worktree (explicit request or implied by context)
+   - `no-worktree`: Pass `--no-worktree` only if user explicitly says they don't want a worktree
 
-2. Determine if worktree is needed:
-   - If user explicitly asks for "worktree" or "parallel development" -> Set `worktree=true`
-   - If user wants to work on multiple branches simultaneously -> Recommend worktrees
-   - If user asks for "branch" only -> Create without worktree (can add later)
-
-3. Execute the unified stack CLI:
+2. Execute the unified stack CLI (**worktree is created by default**):
    ```bash
-   $HOME/.dotfiles/.claude/scripts/stack create <branch-name> [base-branch] [--worktree]
+   $HOME/.dotfiles/.claude/scripts/stack create <branch-name> [base-branch]
    ```
 
-   This will automatically:
-   - Create the branch (and worktree if requested)
-   - Handle config copying for worktrees (IDE settings, MCP configs, .env)
-   - Track branch in Charcoal (enables navigation and restacking)
-   - Sync metadata for PR stacking
-   - Enable worktree-aware Charcoal commands
+   To skip worktree creation:
+   ```bash
+   $HOME/.dotfiles/.claude/scripts/stack create <branch-name> [base-branch] --no-worktree
+   ```
 
-4. Report the result to the user, including:
-   - Branch created successfully
-   - Worktree path (if applicable)
-   - Base branch it's built on
-   - Charcoal tracking status
-   - Next steps (navigation commands, development workflow)
+   This automatically:
+   - Creates the branch and worktree at `.trees/<sanitized-name>`
+   - Copies configs (MCP paths updated, .vscode, .serena copied)
+   - Tracks branch in Charcoal (navigation and restacking)
+   - Enables worktree-aware Charcoal commands
+
+3. **Enter the worktree session** (call after confirming worktree was created):
+   Derive the `name` from the branch by stripping the type prefix:
+   - `feature/user-auth` → name = `"user-auth"`
+   - `fix/cursor-issue` → name = `"cursor-issue"`
+   - `chore/cleanup` → name = `"cleanup"`
+
+   Call:
+   ```
+   EnterWorktree({name: "<sanitized-name>"})
+   ```
+
+   > **Note on bug #36205:** The in-session `EnterWorktree` tool currently ignores
+   > `WorktreeCreate` hooks and creates a separate branch in `.claude/worktrees/`
+   > rather than entering `.trees/<name>`. The WorktreeCreate hook is configured and
+   > will take effect once the bug is resolved. Until then, `EnterWorktree` still
+   > shifts the Claude Code session CWD. **The authoritative worktree for git
+   > operations is always `.trees/<name>`.**
+   >
+   > For full isolation today: open a new Claude Code session from the worktree:
+   > `claude` from `.trees/<name>`, or `claude --worktree <name>` from the repo root
+   > (this path uses the hook correctly).
+
+4. Inform the user:
+   - Branch and worktree created
+   - Worktree path: `.trees/<sanitized-name>`
+   - Claude Code session entered (with bug caveat if relevant)
+   - How to exit when done: `ExitWorktree({action: "keep"})`
+
+## Opting out of worktrees
+
+If the user explicitly does NOT want a worktree:
+```bash
+$HOME/.dotfiles/.claude/scripts/stack create <branch-name> [base-branch] --no-worktree
+```
+Do **not** call `EnterWorktree` in this case.
+
+## Session Exit
+
+When the user is done working in the worktree, call:
+```
+ExitWorktree({action: "keep"})
+```
+This returns the Claude Code session CWD to the main repo. The worktree and branch are preserved.
 
 ## Worktree Management
 
-If user needs to add worktree to existing branch:
+Add worktree to existing branch:
 ```bash
 $HOME/.dotfiles/.claude/scripts/stack worktree-add <branch-name>
 ```
@@ -87,7 +116,7 @@ List all worktrees:
 $HOME/.dotfiles/.claude/scripts/stack worktree-list
 ```
 
-Remove a worktree:
+Remove a worktree (refuses if dirty):
 ```bash
 $HOME/.dotfiles/.claude/scripts/stack worktree-remove <path>
 ```
@@ -102,52 +131,27 @@ When using worktrees with Charcoal:
 
 ## Examples
 
-User: "Create a new stacked branch for user authentication with a worktree"
-Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/user-auth main --worktree`
-Result: Branch + worktree created, tracked in Charcoal
+User: "Create a new stacked branch for user authentication"
+Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/user-auth main`
+Then: `EnterWorktree({name: "user-auth"})`
+Result: Branch + worktree at `.trees/user-auth`, Claude session context switched
 
 User: "Create stacked worktrees for API, UI, and polish"
 Actions:
 ```bash
-$HOME/.dotfiles/.claude/scripts/stack create feature/api main --worktree
-$HOME/.dotfiles/.claude/scripts/stack create feature/ui feature/api --worktree
-$HOME/.dotfiles/.claude/scripts/stack create feature/polish feature/ui --worktree
+$HOME/.dotfiles/.claude/scripts/stack create feature/api main
+$HOME/.dotfiles/.claude/scripts/stack create feature/ui feature/api
+$HOME/.dotfiles/.claude/scripts/stack create feature/polish feature/ui
 ```
-Result: Three worktrees for parallel development, all tracked in Charcoal stack
+Then enter each: `EnterWorktree({name: "api"})` etc.
 
-User: "Stack a new branch called feature/ui on top of feature/backend"
-Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/ui feature/backend`
-Result: Branch created without worktree, can add later with `worktree-add`
-
-User: "Add a worktree for my existing feature/api branch"
-Action: `$HOME/.dotfiles/.claude/scripts/stack worktree-add feature/api`
-Result: Worktree created for existing branch, Charcoal navigation still works
-
-## Workflow Example
-
-```bash
-# Setup parallel development
-stack create feature/database main --worktree
-stack create feature/api feature/database --worktree
-stack create feature/ui feature/api --worktree
-
-# Work in parallel (3 terminal windows)
-cd .trees/database  # Terminal 1
-cd .trees/api       # Terminal 2
-cd .trees/ui        # Terminal 3
-
-# Navigate using Charcoal (from any terminal)
-stack up            # Goes to parent worktree
-stack down          # Goes to child worktree
-stack status        # Shows stack with worktree info
-
-# After making changes to database, restack everything
-stack restack       # Rebases api and ui, syncs all worktrees
-```
+User: "Stack a new branch without a worktree"
+Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/ui feature/backend --no-worktree`
+(No EnterWorktree call)
 
 ## Related Skills
 
-- **stack-navigate**: Move between branches (worktree-aware)
+- **stack-navigate**: Move between branches (worktree-aware), with EnterWorktree/ExitWorktree session handoff
 - **stack-status**: View stack hierarchy with worktree info
 - **stack-pr**: Create Azure DevOps PR
 - **stack-update**: Update after merge (syncs worktrees)

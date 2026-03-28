@@ -221,6 +221,28 @@
           }
         ]
       }
+    ],
+    "WorktreeCreate": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/worktree-create.sh\"'"
+          }
+        ]
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/worktree-remove.sh\"'"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
