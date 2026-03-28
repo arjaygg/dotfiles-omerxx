@@ -36,6 +36,13 @@ Fires before `/compact` (manual or auto). Injects an enriched checkpoint contain
 
 Fires on `Stop` event (end of turn). If `plans/` exists and artifact files are populated, writes `plans/session-handoff.md` for the next session to discover.
 
+## lean-ctx integration notes
+
+lean-ctx is integrated as a pctx upstream (see `decisions/0004-lean-ctx-pctx-upstream.md`):
+- **`ctx_read`** provides SessionCache-backed file reads (~13 tokens on cache hit) — complements Grep and Read, does not replace them.
+- **`ctx_tree`** provides AST skeleton trees for map-mode exploration — use before Serena.getSymbolsOverview when territory is unfamiliar.
+- **lean-ctx CCP is explicitly NOT activated** — the 3-layer system below is the sole session continuity mechanism. Do not run `lean-ctx init` without `--agent` flag.
+
 ## Artifact-driven state
 
 - Keep current task and decisions in **plans/** or **docs/plans/**. Promote durable or non-trivial decisions to **decisions/**.
