@@ -68,7 +68,7 @@ fi
 if [[ ! -r "$HOME/.config/pctx/pctx.json" ]]; then
     PCTX_WARNINGS+=("~/.config/pctx/pctx.json is missing or unreadable")
 else
-    for srv in "serena" "exa" "sequential-thinking" "notebooklm" "markitdown"; do
+    for srv in "serena" "exa" "sequential-thinking" "notebooklm" "markitdown" "lean-ctx"; do
         if ! grep -q "\"$srv\"" "$HOME/.config/pctx/pctx.json"; then
             PCTX_WARNINGS+=("Server '$srv' not found in pctx.json")
         fi
