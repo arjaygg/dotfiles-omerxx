@@ -247,7 +247,8 @@
     "command": "bash ~/.claude/claude-statusline/statusline.sh"
   },
   "enabledPlugins": {
-    "skill-creator@claude-plugins-official": true
+    "skill-creator@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {},
   "alwaysThinkingEnabled": true,

@@ -44,6 +44,14 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" && -f "$FILE_PATH" ]]; then
     fi
 fi
 
+# --- Warn when reading a .go file without limit/offset (symbol-lookup violation) ---
+# Reading a whole .go file is almost always unnecessary — Serena.getSymbolsOverview
+# gives the structure without flooding the context window.
+if [[ "$TOOL_NAME" == "Read" && "$FILE_PATH" == *.go && -z "$LIMIT" ]]; then
+    echo "WARNING: Reading entire .go file '$FILE_PATH' without limit/offset. Prefer Serena.getSymbolsOverview to understand structure, then Read with limit/offset for the specific symbol." >&2
+    exit 2
+fi
+
 # --- Warn when using Bash instead of a dedicated native tool ---
 if [[ "$TOOL_NAME" == "Bash" ]]; then
     # Block: cat → use Read tool
