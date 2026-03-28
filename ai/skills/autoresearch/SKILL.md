@@ -1,25 +1,17 @@
 ---
 name: autoresearch
 description: >
-  Autonomous modify-verify-keep/discard iteration loop (Karpathy autoresearch pattern).
-  Iteratively improves any artifact with a measurable metric: test coverage, build time,
-  bundle size, failing tests, security findings, response latency, prompt eval pass rates.
-  Full custom skill — worktree isolated, ADO-integrated, pctx/Serena-aware, Axos-safe.
-triggers:
-  - /autoresearch
-  - autoresearch
-  - improve test coverage
-  - iteratively improve
-  - autonomous loop
-  - run overnight
-  - optimize iteratively
-  - fix all failing tests
-  - keep improving until
-  - run experiments
-  - autoresearch:fix
-  - autoresearch:security
-  - autoresearch:learn
-  - autoresearch:scenario
+  Implements the Karpathy autoresearch pattern: an autonomous modify → verify → keep/discard
+  loop that iteratively improves any artifact with a measurable metric. Use this skill
+  whenever the user wants to improve something repeatedly until a goal is hit — test
+  coverage, build time, bundle size, failing tests, security findings, latency, prompt
+  eval pass rates. Invoke proactively when the user says "fix all failing tests", "optimize
+  until X", "run overnight", "keep improving", "make all tests pass", "reduce build time",
+  "run experiments", or whenever a bounded loop of modify→verify→keep/discard would help.
+  Offers five modes: /autoresearch (metric optimization), /autoresearch:fix (drive a count
+  to zero), /autoresearch:security (read-only STRIDE+OWASP audit), /autoresearch:learn
+  (doc generation loop), /autoresearch:scenario (edge case discovery). Worktree-isolated,
+  ADO-integrated, pctx/Serena-aware, Axos-safe.
 ---
 
 # Autoresearch Skill
@@ -46,23 +38,31 @@ Route to the appropriate section below based on invocation.
 
 ## SAFETY RULES (apply to ALL modes)
 
-These rules are non-negotiable:
+These constraints exist to make the loop predictable and reversible. Follow them even when
+a hypothesis looks very promising — the whole value of the pattern is that each experiment
+is independently verifiable and cleanly undoable.
 
-1. **Scope is sacred**: ONLY modify files matching the declared `Scope` pattern. Reject any
-   hypothesis that touches files outside scope, no matter how promising.
-2. **Never touch**: `.env`, `*.secret`, `*credential*`, `*password*`, `*.pem`, `*.key`,
-   `*.pfx`, `*.p12`, `appsettings.Production.*`, `appsettings.Staging.*`. The
-   `pre-tool-gate.sh` hook enforces this but this skill must also enforce it.
-3. **Bounded by default**: Default `Iterations: 10`. Never run unbounded without explicit
-   `Iterations: unlimited` from the user.
-4. **Worktree isolation**: Run all experiments in `.trees/<goal-slug>/` unless user explicitly
-   opts out with `Worktree: false`.
-5. **Guard is a hard gate**: A result that improves the metric but fails the guard is ALWAYS
-   discarded. Never propose relaxing the guard.
-6. **Immutable eval**: If a Verify or Guard command is a script/file, never modify it.
-   The eval harness is the trust anchor.
-7. **Git before verify**: ALWAYS commit before running the verify command. This enables
-   clean `git reset --hard HEAD~1` on failure.
+1. **Scope is the contract**: Only modify files matching the declared `Scope` pattern.
+   Any hypothesis that requires touching out-of-scope files is a sign the scope was
+   defined too narrowly — surface this to the user rather than silently expanding it.
+2. **Sensitive files are off-limits**: Do not touch `.env`, `*.secret`, `*credential*`,
+   `*password*`, `*.pem`, `*.key`, `*.pfx`, `*.p12`, `appsettings.Production.*`,
+   `appsettings.Staging.*`. The `pre-tool-gate.sh` hook enforces this at the tool level,
+   but the skill should refuse these hypotheses before even reaching a tool call.
+3. **Bounded by default**: Default `Iterations: 10`. Do not run unbounded without explicit
+   `Iterations: unlimited` from the user. Unbounded loops can run for hours; the user
+   should make that choice deliberately.
+4. **Worktree isolation**: Run all experiments in `.trees/<goal-slug>/` unless the user
+   explicitly opts out with `Worktree: false`. This keeps the main branch clean and makes
+   it easy to abandon a failed run without cleanup.
+5. **Guard is a hard gate**: A result that improves the metric but fails the guard is
+   discarded — the guard exists to prevent regressions that look like wins. Do not propose
+   relaxing the guard; if it keeps blocking, surface the pattern to the user.
+6. **Immutable eval**: If a Verify or Guard command is a script or file, do not modify it.
+   The eval harness is the trust anchor — if it changes, you can't compare iterations.
+7. **Commit before verify**: Commit the change before running the verify command. This is
+   what makes `git reset --hard HEAD~1` a clean undo — without the commit, a failed verify
+   leaves the worktree in a dirty state that's harder to recover from.
 
 ---
 
@@ -114,8 +114,11 @@ Execute this loop up to `Iterations` times (or until `Goal` metric is reached):
 
 Using pctx/Serena (batch via `mcp__pctx__execute_typescript`):
 - Read `autoresearch-results.tsv` for history of what worked and what failed
-- Identify scope files that exist and their current state via `Serena.listDir`
+- Identify scope files and their current state via `Serena.listDir`
 - Look for patterns: what hypotheses were tried? What was untried?
+
+Batching these reads matters here — forming a hypothesis without full scope context leads
+to low-quality changes that are likely to be reverted.
 
 ```typescript
 async function run() {
@@ -127,8 +130,8 @@ async function run() {
 }
 ```
 
-Do NOT read the results.tsv via Read tool — use Bash only when necessary to avoid context
-window pollution. Query it with grep/awk if you need specific rows.
+Avoid reading results.tsv with the Read tool — it can grow large and pollute the context
+window with raw data you only need a slice of. Query specific rows with grep/awk instead.
 
 #### Step 2 — IDEATE
 
@@ -162,8 +165,9 @@ git add <scope-files>
 git commit -m "autoresearch(iter-N): <hypothesis description>"
 ```
 
-This commit point enables `git reset --hard HEAD~1` for clean revert. The commit message
-must describe the hypothesis so the results log is human-readable.
+Committing before verification is what makes the loop safe to interrupt at any point —
+each experiment is an atomic unit in git. The commit message should describe the hypothesis
+so the results log is human-readable without needing to diff each commit.
 
 #### Step 5 — RUN VERIFY
 
