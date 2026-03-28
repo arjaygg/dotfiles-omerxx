@@ -84,7 +84,7 @@ fi
 # Skip warning in worktrees (.trees/) or on non-main/master branches — safe to edit there.
 _CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
 _IN_WORKTREE=0
-[[ "$FILE_PATH" == *"/.trees/"* ]] && _IN_WORKTREE=1
+[[ "$FILE_PATH" =~ (^|/)\.trees/ ]] && _IN_WORKTREE=1
 KERNEL_FILES=("CLAUDE.md" "RTK.md" ".claude/settings.json")
 for kernel in "${KERNEL_FILES[@]}"; do
     if [[ "$FILE_PATH" == *"$kernel" && "$TOOL_NAME" == "Edit" ]]; then
