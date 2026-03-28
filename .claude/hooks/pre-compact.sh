@@ -63,7 +63,14 @@ DECISIONS=""
 [[ -f "$CWD/plans/decisions.md" ]] && DECISIONS=$(tail -20 "$CWD/plans/decisions.md")
 
 PROGRESS=""
-[[ -f "$CWD/plans/progress.md" ]] && PROGRESS=$(cat "$CWD/plans/progress.md")
+if [[ -f "$CWD/plans/progress.md" ]]; then
+    # Only inject In Progress and Blocked sections (skip Done/Pending to save tokens)
+    PROGRESS=$(awk '
+        /^## (In Progress|Blocked)/ { printing=1 }
+        /^## (Done|Pending|Completed)/ { printing=0 }
+        printing { print }
+    ' "$CWD/plans/progress.md" | head -15)
+fi
 
 # --- Recent topics from transcript ---
 TOPICS=""
