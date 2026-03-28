@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Hyper-atomic commit-msg dispatcher.
+# Installed via: git config core.hooksPath ~/.dotfiles/git/hooks
+set -euo pipefail
+
+bash "$HOME/.dotfiles/git/hooks/enforce-commit-body.sh" "$1" || exit 1

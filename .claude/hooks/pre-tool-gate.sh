@@ -83,4 +83,40 @@ for kernel in "${KERNEL_FILES[@]}"; do
     fi
 done
 
+# --- Hyper-atomic: block Edit/Write when state is blocked/overgrown ---
+if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]]; then
+    _ATOMIC_HOOKS=$(git config --local core.hooksPath 2>/dev/null || echo "")
+    if [[ "$_ATOMIC_HOOKS" == "$HOME/.dotfiles/git/hooks" ]]; then
+        _ATOMIC_STATE=$("$HOME/.dotfiles/scripts/ai/atomic-status.sh" 2>/dev/null || echo "in_progress")
+        case "$_ATOMIC_STATE" in
+            blocked)
+                echo "BLOCKED: Mixed concerns detected in staged files (state: blocked)." >&2
+                echo "  Commit or checkpoint current work before editing more files." >&2
+                echo "  Run: ~/.dotfiles/scripts/ai/atomic-status.sh  to diagnose." >&2
+                exit 1
+                ;;
+            overgrown)
+                echo "WARNING: Working tree is overgrown (state: overgrown)." >&2
+                echo "  Consider committing a subset before continuing." >&2
+                echo "  Run: ~/.dotfiles/scripts/ai/commit.sh -m 'subject' -m 'why'" >&2
+                exit 2
+                ;;
+            ready_to_commit)
+                echo "WARNING: Changes are ready to commit (state: ready_to_commit)." >&2
+                echo "  Run: ~/.dotfiles/scripts/ai/commit.sh -m 'subject' -m 'why'" >&2
+                exit 2
+                ;;
+        esac
+    fi
+fi
+
+# --- Block raw git commit when hyper-atomic hooks are installed ---
+if [[ "$TOOL_NAME" == "Bash" && "$CMD" == git\ commit* ]]; then
+    _ATOMIC_HOOKS=$(git config --local core.hooksPath 2>/dev/null || echo "")
+    if [[ "$_ATOMIC_HOOKS" == "$HOME/.dotfiles/git/hooks" ]]; then
+        echo "BLOCKED: Use '~/.dotfiles/scripts/ai/commit.sh -m \"subject\" -m \"why\"' instead of raw git commit." >&2
+        exit 1
+    fi
+fi
+
 exit 0

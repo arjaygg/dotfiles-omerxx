@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Hyper-atomic pre-commit dispatcher.
+# Installed via: git config core.hooksPath ~/.dotfiles/git/hooks
+# To activate in a repo: /hyper-commit-setup
+set -euo pipefail
+
+DIR="$HOME/.dotfiles/git/hooks"
+
+bash "$DIR/protect-main.sh"      || exit 1
+bash "$DIR/detect-private-key.sh" || exit 1
+bash "$DIR/check-large-files.sh"  || exit 1
+bash "$DIR/check-atomicity.sh"    || exit 1
