@@ -73,10 +73,7 @@
       "Write(~/.aws/*)",
       "Read(~/.gnupg/**)",
       "Edit(~/.gnupg/**)",
-      "Write(~/.gnupg/**)",
-      "mcp__notebooklm__notebookDelete(*)",
-      "mcp__notebooklm__sourceDelete(*)",
-      "mcp__notebooklm__studioDelete(*)"
+      "Write(~/.gnupg/**)"
     ],
     "defaultMode": "auto"
   },
@@ -249,7 +246,9 @@
     "type": "command",
     "command": "bash ~/.claude/claude-statusline/statusline.sh"
   },
-  "enabledPlugins": {},
+  "enabledPlugins": {
+    "skill-creator@claude-plugins-official": true
+  },
   "extraKnownMarketplaces": {},
   "alwaysThinkingEnabled": true,
   "plansDirectory": "plans",
