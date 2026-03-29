@@ -197,6 +197,10 @@
           {
             "type": "command",
             "command": "/Users/axos-agallentes/homebrew/bin/node /Users/axos-agallentes/homebrew/lib/node_modules/context-mode/hooks/userpromptsubmit.mjs"
+          },
+          {
+            "type": "command",
+            "command": "bash -lc '$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh activity-start'"
           }
         ]
       }
@@ -239,6 +243,10 @@
           {
             "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/worktree-create.sh\"'"
+          },
+          {
+            "type": "command",
+            "command": "bash -lc '$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh worktree-enter'"
           }
         ]
       }
@@ -250,6 +258,10 @@
           {
             "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/worktree-remove.sh\"'"
+          },
+          {
+            "type": "command",
+            "command": "bash -lc '$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh worktree-exit'"
           }
         ]
       }

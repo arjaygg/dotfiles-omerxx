@@ -37,6 +37,25 @@ tmux display-popup -E -w 80% -h 60% "$HOME/.dotfiles/tmux/scripts/claude-worktre
 tmux send-keys -t 2 "npm run build" Enter
 ```
 
+### 4. Query Claude tmux State
+**Use Case:** Check if Claude is active and what it's working on in the current tmux pane.
+**Action:**
+```bash
+# Check Claude status in current pane
+tmux display-message -p '#{@claude_status}'  # "working" or "idle"
+tmux display-message -p '#{@claude_project}' # project name
+tmux display-message -p '#{@claude_branch}'  # current branch
+tmux display-message -p '#{@claude_worktree}' # worktree name (if in worktree)
+```
+
+### 5. Refresh Window Context
+**Use Case:** Force refresh the tmux window name after a branch switch or context change.
+**Action:**
+```bash
+~/.dotfiles/tmux/scripts/claude-tmux-bridge.sh session-start
+```
+
 ## Instructions for Agent
 1. When asked to "open" a file for the user, use the tmux `send-keys` command to open it in their Neovim session (assuming they have it open in an adjacent pane).
 2. If interacting with subagents or background tasks, direct the output or command to a specific tmux pane so the user can monitor it.
+3. The claude-tmux-bridge automatically manages window names and status. Use the bridge's `session-start` action to force a refresh if the window name gets out of sync.
