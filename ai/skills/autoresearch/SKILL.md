@@ -1,553 +1,309 @@
 ---
 name: autoresearch
 description: >
-  Implements the Karpathy autoresearch pattern: an autonomous modify → verify → keep/discard
-  loop that iteratively improves any artifact with a measurable metric. Use this skill
-  whenever the user wants to improve something repeatedly until a goal is hit — test
-  coverage, build time, bundle size, failing tests, security findings, latency, prompt
-  eval pass rates. Invoke proactively when the user says "fix all failing tests", "optimize
-  until X", "run overnight", "keep improving", "make all tests pass", "reduce build time",
-  "run experiments", or whenever a bounded loop of modify→verify→keep/discard would help.
-  Offers five modes: /autoresearch (metric optimization), /autoresearch:fix (drive a count
-  to zero), /autoresearch:security (read-only STRIDE+OWASP audit), /autoresearch:learn
-  (doc generation loop), /autoresearch:scenario (edge case discovery). Worktree-isolated,
-  ADO-integrated, pctx/Serena-aware, Axos-safe.
+  Axos adapter for the autoresearch plugin (uditgoenka/autoresearch v1.8.2).
+  Adds worktree isolation, GitHub Enterprise integration, agent roles (QA/Dev/Architect/TL),
+  plan-driven orchestration, bounded defaults (10 iterations), sensitive-file deny-list,
+  and domain templates on top of the upstream autonomous loop. Use this skill whenever
+  the user wants to iteratively improve something with a measurable metric — test coverage,
+  build time, failing tests, security findings, latency, prompt eval pass rates. Invoke
+  proactively when the user says "fix all failing tests", "optimize until X", "run overnight",
+  "keep improving", "make all tests pass", "reduce build time", "increase coverage",
+  "run experiments", "autoresearch", or whenever a bounded modify→verify→keep/discard loop
+  would help. Also triggers for multi-agent plan execution, stacked worktree orchestration,
+  and role-based development workflows (QA writes tests, Dev implements, TL gates).
+version: adapter-1.0.0
+upstream: uditgoenka/autoresearch@1.8.2
 ---
 
-# Autoresearch Skill
+# Autoresearch — Axos Adapter
 
-Implements the Karpathy autoresearch pattern: an autonomous modify → verify → keep/discard
-loop that iteratively improves any artifact with a parseable metric. Each kept improvement
-becomes the new baseline so gains compound. Experiments run in git-isolated worktrees.
+Wraps the upstream [autoresearch plugin](https://github.com/uditgoenka/autoresearch) with
+safety, isolation, and workflow layers. The core loop logic lives in the plugin's reference
+files — this adapter adds what the plugin lacks.
+
+**What the plugin provides**: 9-step autonomous loop, crash recovery, guard system, bounded
+iteration, results logging, 9 subcommands.
+
+**What this adapter adds**: Worktree isolation, GitHub integration, agent roles, plan context
+injection, bounded defaults, sensitive-file deny-list, domain templates, orchestration support.
 
 ---
 
-## Subcommand Routing
+## Subcommands
 
-| Invocation | Mode | Description |
+| Subcommand | Purpose | Load |
 |---|---|---|
-| `/autoresearch` | **optimize** | Iterative metric optimization (main loop) |
-| `/autoresearch:fix` | **fix** | Drive failing count to zero (tests, lint, build) |
-| `/autoresearch:security` | **security** | Read-only STRIDE + OWASP threat analysis |
-| `/autoresearch:learn` | **learn** | Documentation / artifact generation loop |
-| `/autoresearch:scenario` | **scenario** | Edge case discovery across 12 scenario dimensions |
+| `/autoresearch` | Autonomous metric optimization | `references/autonomous-loop-protocol.md` |
+| `/autoresearch:plan` | Goal → verified config wizard | `references/plan-workflow.md` |
+| `/autoresearch:fix` | Drive failing count to zero | `references/fix-workflow.md` |
+| `/autoresearch:debug` | Scientific bug-hunting loop | `references/debug-workflow.md` |
+| `/autoresearch:security` | STRIDE + OWASP audit | `references/security-workflow.md` |
+| `/autoresearch:ship` | Universal shipping workflow | `references/ship-workflow.md` |
+| `/autoresearch:scenario` | Edge case discovery | `references/scenario-workflow.md` |
+| `/autoresearch:predict` | Multi-persona swarm analysis | `references/predict-workflow.md` |
+| `/autoresearch:learn` | Documentation generation | `references/learn-workflow.md` |
 
-Route to the appropriate section below based on invocation.
-
----
-
-## SAFETY RULES (apply to ALL modes)
-
-These constraints exist to make the loop predictable and reversible. Follow them even when
-a hypothesis looks very promising — the whole value of the pattern is that each experiment
-is independently verifiable and cleanly undoable.
-
-1. **Scope is the contract**: Only modify files matching the declared `Scope` pattern.
-   Any hypothesis that requires touching out-of-scope files is a sign the scope was
-   defined too narrowly — surface this to the user rather than silently expanding it.
-2. **Sensitive files are off-limits**: Do not touch `.env`, `*.secret`, `*credential*`,
-   `*password*`, `*.pem`, `*.key`, `*.pfx`, `*.p12`, `appsettings.Production.*`,
-   `appsettings.Staging.*`. The `pre-tool-gate.sh` hook enforces this at the tool level,
-   but the skill should refuse these hypotheses before even reaching a tool call.
-3. **Bounded by default**: Default `Iterations: 10`. Do not run unbounded without explicit
-   `Iterations: unlimited` from the user. Unbounded loops can run for hours; the user
-   should make that choice deliberately.
-4. **Worktree isolation**: Run all experiments in `.trees/<goal-slug>/` unless the user
-   explicitly opts out with `Worktree: false`. This keeps the main branch clean and makes
-   it easy to abandon a failed run without cleanup.
-5. **Guard is a hard gate**: A result that improves the metric but fails the guard is
-   discarded — the guard exists to prevent regressions that look like wins. Do not propose
-   relaxing the guard; if it keeps blocking, surface the pattern to the user.
-6. **Immutable eval**: If a Verify or Guard command is a script or file, do not modify it.
-   The eval harness is the trust anchor — if it changes, you can't compare iterations.
-7. **Commit before verify**: Commit the change before running the verify command. This is
-   what makes `git reset --hard HEAD~1` a clean undo — without the commit, a failed verify
-   leaves the worktree in a dirty state that's harder to recover from.
+For every invocation, also load `references/core-principles.md` and `references/results-logging.md`.
 
 ---
 
-## MODE: optimize (main `/autoresearch`)
+## Enhanced Setup Fields
 
-### Setup Gate
-
-Before starting the loop, collect all required fields. If the user's invocation includes
-them inline, skip prompting. Otherwise, interactively ask for missing ones.
-
-**Required fields:**
-
-| Field | Description | Example |
-|---|---|---|
-| `Goal` | What to achieve | "Increase test coverage to 90%" |
-| `Scope` | File patterns agent may modify | `tests/**/*.cs` |
-| `Metric` | Name of the number being tracked | "Line coverage percentage" |
-| `Direction` | `higher` or `lower` | `higher` |
-| `Verify` | Shell command that outputs the metric as a bare number on stdout | `dotnet test ... \| grep "Line" \| awk '...'` |
-
-**Optional fields:**
+These fields extend the plugin's standard setup gate. The plugin collects Goal, Scope, Metric,
+Direction, Verify, Guard, and Iterations. This adapter adds:
 
 | Field | Default | Description |
 |---|---|---|
-| `Guard` | none | Must-exit-0 command; failure reverts the experiment |
-| `Iterations` | 10 | Max loop iterations; use `unlimited` for unbounded |
-| `Worktree` | true | Run in `.trees/<goal-slug>/`; `false` to use current branch |
-| `TimeoutPerIter` | none | Max seconds per verify run (kills runaway experiments) |
+| `Base` | main | Branch to create worktree from. Supports stacked branches (e.g., `feat/phase-0-baseline`). |
+| `Role` | — | Agent role: QA, Dev, Architect, TL. Injects role-specific scope and metric constraints. |
+| `PlanContext` | — | Structured plan excerpt (test names, file paths, acceptance criteria) that constrains hypotheses. |
+| `Worktree` | true | Run in `.trees/<goal-slug>/`. Set `false` to use current branch. |
+| `Template` | auto | Domain template name, or `auto` for keyword detection from Goal. |
 
-**Setup validation:**
-1. Run the Verify command once to establish the **baseline metric**. If it fails, stop and
-   help the user fix it before starting.
-2. If `Worktree: true` (default), create the isolated worktree now:
-   ```bash
-   $HOME/.dotfiles/.claude/scripts/stack create feat/autoresearch-<goal-slug> main
-   ```
-   All subsequent work happens in `.trees/<goal-slug>/`.
-3. Confirm: "Baseline: `<metric>`. Starting optimization loop. Goal: `<goal>`."
-4. Create `autoresearch-results.tsv` in the worktree root with header:
-   ```
-   iteration	status	metric_before	metric_after	delta	description	commit_sha	timestamp
-   ```
+If the user omits `Iterations`, inject `Iterations: 10`. Unbounded loops require explicit
+`Iterations: unlimited` — this prevents accidental multi-hour token burn.
 
-### The 9-Step Loop
+---
 
-Execute this loop up to `Iterations` times (or until `Goal` metric is reached):
+## Safety Overlay
 
-#### Step 1 — READ STATE
+These rules apply to ALL modes, ALL subcommands, without exception.
 
-Using pctx/Serena (batch via `mcp__pctx__execute_typescript`):
-- Read `autoresearch-results.tsv` for history of what worked and what failed
-- Identify scope files and their current state via `Serena.listDir`
-- Look for patterns: what hypotheses were tried? What was untried?
+### Sensitive File Deny-List
 
-Batching these reads matters here — forming a hypothesis without full scope context leads
-to low-quality changes that are likely to be reverted.
+Refuse any hypothesis that touches these patterns — check BEFORE making tool calls:
 
-```typescript
-async function run() {
-  const [scopeFiles, overview] = await Promise.all([
-    Serena.searchForPattern({ substring_pattern: ".", relative_path: "<scope-dir>" }),
-    Serena.getSymbolsOverview({ relative_path: "<scope-dir>" }),
-  ]);
-  return { scopeFiles, overview };
-}
-```
+`.env`, `*.secret`, `*credential*`, `*password*`, `*.pem`, `*.key`, `*.pfx`, `*.p12`,
+`appsettings.Production.*`, `appsettings.Staging.*`
 
-Avoid reading results.tsv with the Read tool — it can grow large and pollute the context
-window with raw data you only need a slice of. Query specific rows with grep/awk instead.
+The `pre-tool-gate.sh` hook enforces this at the tool level as defense-in-depth, but the
+skill should catch these earlier to avoid wasted iterations.
 
-#### Step 2 — IDEATE
+### Scope Contract
 
-Form one focused hypothesis based on:
-- What's the most impactful untested/unoptimized area?
-- What failed before? (avoid repeating failed approaches)
-- What worked? (build on successful patterns)
+- Only modify files matching the declared `Scope` pattern.
+- If a hypothesis requires out-of-scope files, surface this to the user — never expand silently.
+- Never modify Verify or Guard commands/scripts. The eval harness is the trust anchor; if it
+  changes, iterations become incomparable.
 
-The hypothesis must be:
-- **Focused**: one change at a time
-- **Reversible**: expressible as a git diff
-- **Within scope**: only touches declared Scope files
-- **Testable**: the Verify command will measure its effect
+### Commit Before Verify
 
-Write out the hypothesis explicitly before modifying anything:
-> "Hypothesis #N: Adding tests for `<method>` will increase coverage from `<before>` to
-> approximately `<estimate>` because `<reasoning>`."
+Always commit changes before running verification. This is what makes `git reset --hard HEAD~1`
+a clean undo. Without the commit, a failed verify leaves dirty state.
 
-#### Step 3 — MODIFY
+---
 
-Make exactly the changes dictated by the hypothesis. Use:
-- `Serena.replaceSymbolBody` / `Serena.insertAfterSymbol` for symbol-aware edits
-- `Edit` tool for line-based changes when symbol bounds are unclear
+## Pre-Loop Wrapper
 
-Keep changes minimal and focused on the hypothesis. Do not refactor surrounding code.
+Execute these steps BEFORE delegating to the plugin's autonomous loop:
 
-#### Step 4 — GIT COMMIT (before verification)
+### 1. Worktree Isolation
+
+If `Worktree: true` (default):
 
 ```bash
-git add <scope-files>
-git commit -m "autoresearch(iter-N): <hypothesis description>"
+$HOME/.dotfiles/.claude/scripts/stack create feat/autoresearch-<goal-slug> <Base>
 ```
 
-Committing before verification is what makes the loop safe to interrupt at any point —
-each experiment is an atomic unit in git. The commit message should describe the hypothesis
-so the results log is human-readable without needing to diff each commit.
+- `<goal-slug>` = kebab-case of the Goal (max 5 words, lowercase, hyphens)
+- `<Base>` = the Base field (defaults to `main`, supports any branch for stacking)
+- All subsequent loop iterations happen inside `.trees/<goal-slug>/`
+- On `Ctrl+C` interrupt: the worktree is safe to inspect, resume, or remove
 
-#### Step 5 — RUN VERIFY
+### 2. Template Loading
 
-Execute the Verify command. If `TimeoutPerIter` is set, kill after that many seconds.
+If `Template` is specified or `auto` matches Goal keywords (see lookup table below),
+load pre-filled field values from `templates/<name>.md`. Show the pre-filled config to
+the user and let them override any field before proceeding.
 
-Capture:
-- Exit code
-- Full stdout/stderr (for crash diagnosis)
-- The metric value on stdout's last non-empty line (or parse per the Verify spec)
+### 3. Baseline Validation
 
-If the command outputs multiple lines, parse the metric from the expected format. If
-parsing fails, treat as crash (go to Step 7).
+Run the Verify command once to establish the baseline metric. If it fails (non-zero exit
+or unparseable output), stop and help the user fix the command before starting the loop.
 
-#### Step 6 — EXTRACT METRIC
+### 4. Results File
 
-Parse the metric value as a float. Compare against `metric_before` (the value before
-this iteration's modify step — from the previous iteration's `metric_after`, or baseline).
+Create `autoresearch-results.tsv` in the worktree root:
 
-Calculate `delta = metric_after - metric_before`.
-
-#### Step 7 — CRASH DETECTION
-
-If the verify command crashed (non-zero exit AND metric extraction failed):
-
-1. Read the error output. Try to fix the issue (e.g., syntax error in modified file).
-2. If fixable in ≤3 attempts: fix → re-run Verify → continue to Step 8.
-3. If not fixable after 3 attempts:
-   - `git reset --hard HEAD~1` (revert the change)
-   - Log: `status=crash`, `metric_after=—`
-   - Increment crash counter. If >3 crashes in a row, stop and report to user.
-   - Go to Step 9.
-
-#### Step 8 — DECIDE
-
-**Case A: Metric improved** (`direction=higher`: delta > 0; `direction=lower`: delta < 0)
-
-- If `Guard` is defined: run the Guard command.
-  - Guard passes (exit 0): **KEEP**. The commit stays.
-    - If guard failed on fix attempt: try to fix (≤2 rework attempts), then discard.
-  - Guard fails: **DISCARD**. `git reset --hard HEAD~1`. Log `status=discard-guard`.
-- If no `Guard`: **KEEP**. The commit stays.
-
-**Case B: Metric same or worse**
-
-- `git reset --hard HEAD~1`
-- Log `status=discard`
-
-**KEEP path**: Update `metric_before` to `metric_after` for next iteration.
-
-**Check goal**: If `Goal` is a target metric (e.g., "90%") and it's been reached → stop
-the loop early, print summary, and exit.
-
-#### Step 9 — LOG & REPEAT
-
-Append to `autoresearch-results.tsv`:
 ```
-<N>	<status>	<metric_before>	<metric_after>	<delta>	<hypothesis_short>	<sha_or_dash>	<ISO8601_timestamp>
+# metric_direction: <higher_is_better|lower_is_better>
+iteration	status	metric_before	metric_after	delta	description	commit_sha	timestamp
+0	baseline	—	<baseline_value>	—	initial measurement	<sha>	<ISO8601>
 ```
 
-Status values: `keep`, `discard`, `discard-guard`, `crash`
+---
 
-Print one-line status: `[iter N] <status>: <metric_before> → <metric_after> (<+/- delta>)`
+## Agent Role System
 
-Increment iteration counter. If `N < Iterations` and goal not met → go to Step 1.
+When `Role:` is specified, these constraints layer on top of the standard loop behavior.
+Roles encode the Red-Green-Refactor discipline from test-first development.
 
-### Post-Loop Summary
+### QA (Red Phase)
+
+Write failing tests. The goal is test existence and compilation, not passing.
+
+- **Scope**: Test files only. Never modify source code.
+- **Metric**: Test count (compiling test signatures) or coverage %.
+- **Verify**: Test compilation check (tests exist, even if they fail).
+- **PlanContext**: Specific test names and signatures to implement.
+- **Behavior**: Each iteration adds one test. The test SHOULD fail (it tests unimplemented behavior).
+
+### Dev (Green Phase)
+
+Make failing tests pass. The goal is zero failures.
+
+- **Scope**: Source code only. Never modify test files.
+- **Metric**: Failing test count. Direction: lower. Target: 0.
+- **Verify**: Test runner counting failures.
+- **Guard**: Build compiles successfully.
+- **PlanContext**: Which specific tests must pass.
+- **Behavior**: Each iteration fixes one failing test. Stop when all pass.
+
+### Architect
+
+Structural analysis, fitness functions, documentation.
+
+- **Typical subcommands**: `/autoresearch:learn`, `/autoresearch:security`, `/autoresearch:predict`
+- **Scope**: Broad (whole module or package). Read-heavy, write-light.
+- **PlanContext**: Architectural constraints, dependency rules, fitness function definitions.
+
+### TL — Tech Lead (Quality Gate)
+
+Mutation testing, coverage thresholds, quality verification.
+
+- **Verify**: Quality gate script output (mutation kill rate %, coverage %).
+- **Guard**: All existing tests pass.
+- **Behavior**: Runs after Dev phase. Validates that tests are meaningful, not just passing.
+
+---
+
+## Plan Context Injection
+
+When `PlanContext:` is provided, it constrains the hypothesis space in Step 2 (Ideate)
+of the autonomous loop. The agent implements what the plan specifies rather than freestyling.
+
+**How it works**:
+- The plan context is injected as read-only reference material during ideation
+- Each iteration should implement the next unfinished item from the plan
+- The agent tracks which plan items are done via the results TSV
+- Never modify the plan itself
+
+**Format** — structured markdown:
+```markdown
+PlanContext:
+  - TestRun_PrioritizesChunksOverNewProcessLogs (worker.go:128-140)
+  - TestRun_AtCapacity_ReturnsEarlyWithNoWork (worker.go:168-172)
+  - TestRun_StartsAndStopsHeartbeat (worker.go:185-194)
+```
+
+Each item becomes one iteration's hypothesis. This turns a plan into a mechanical execution.
+
+---
+
+## Core Loop Delegation
+
+After the pre-loop wrapper completes, delegate to the plugin's reference files.
+The adapter does NOT reimplement the loop — it wraps it.
+
+Load the appropriate reference file based on the subcommand:
+
+- `/autoresearch` → Read `references/autonomous-loop-protocol.md`, follow its 8-phase protocol
+- `/autoresearch:<cmd>` → Read `references/<cmd>-workflow.md`, follow its protocol
+
+**pctx/Serena integration** — In Step 1 (READ STATE), batch scope understanding:
+
+```typescript
+// Via mcp__pctx__execute_typescript — ONE call, not sequential
+const [scopeFiles, overview] = await Promise.all([
+  Serena.searchForPattern({ substring_pattern: ".", relative_path: "<scope-dir>" }),
+  Serena.getSymbolsOverview({ relative_path: "<scope-dir>" }),
+]);
+return { scopeFiles, overview };
+```
+
+**Context window management** — For loops beyond 5 iterations, avoid dumping full verify
+output into context. Summarize results, or route verbose output through context-mode sandbox.
+Query results.tsv with grep, not full file reads.
+
+---
+
+## Post-Loop Wrapper
 
 After the loop ends (iterations exhausted, goal met, or user interrupt):
 
-1. Print final summary table from results.tsv
-2. Report: X kept, Y discarded, Z crashes. Net improvement: `<baseline>` → `<final>`.
-3. If `Worktree: true`: remind user that all kept changes are committed in
-   `.trees/<goal-slug>/`. To merge: `$HOME/.dotfiles/.claude/scripts/stack-pr` or
-   review with `git log` in the worktree.
-4. Offer to post the summary as an ADO PR comment if the user is working on a PR:
-   ```bash
-   az repos pr update --id <PR_ID> \
-     --description "$(cat autoresearch-results.tsv | column -t)" \
-     --organization "https://dev.azure.com/bofaz"
-   ```
+### 1. Results Summary
+
+Print a summary table from `autoresearch-results.tsv`:
+- Total: X kept, Y discarded, Z crashes
+- Net improvement: `<baseline>` → `<final>` (`<direction>`)
+- Best iteration: #N with delta of `<value>`
+
+### 2. GitHub Integration
+
+Detect forge from `git remote get-url origin`. If GitHub:
+
+- **Existing PR**: Offer to post results as a PR comment:
+  ```bash
+  gh pr comment <PR_ID> --body "## Autoresearch Results\n<summary>"
+  ```
+- **New PR from worktree**: Offer to create via `gh pr create` or `/stack-pr`
+- **Never auto-execute** — always show the command and wait for user approval
+
+### 3. Worktree Guidance
+
+- Remind: all kept changes are committed in `.trees/<goal-slug>/`
+- Offer: create PR, merge to parent branch, or continue iterating with more iterations
+
+### 4. Phase Completion Signal
+
+For orchestrated multi-agent scenarios, output:
+```
+[PHASE_COMPLETE] goal=<goal> metric_start=<baseline> metric_end=<final> status=<success|partial|failed> worktree=<path>
+```
+
+This allows a coordinator to parse completion and trigger the next phase.
 
 ---
 
-## MODE: fix (`/autoresearch:fix`)
+## Orchestration Support
 
-**Purpose**: Drive a count-based metric (failing tests, lint errors, build errors) to zero.
+For multi-agent lean dev plan execution (stacked worktrees, parallel subagents, agent roles):
 
-**Simplified Setup Gate:**
+- Each autoresearch invocation is one phase/task — the coordinator manages sequencing
+- Results go to worktree-local `autoresearch-results.tsv` (no shared state between worktrees)
+- Multiple instances can run concurrently in different worktrees without conflict
+- The coordinator creates stacked worktrees via `/stack-create`, then invokes autoresearch
+  in each with the appropriate `Role:`, `Base:`, and `PlanContext:`
+- Phase dependencies are enforced by the coordinator, not by this skill
 
-Required fields:
-- `Target`: What to make pass (e.g., "Make all tests pass", "Fix all lint errors")
-- `Scope`: Files the agent may modify (source files AND/OR test files)
-- `Iterations`: Default 10
-
-The skill auto-derives:
-- `Metric`: Failing count (parsed from verify output)
-- `Direction`: lower (target: 0)
-- `Verify`: auto-suggested based on file extensions in scope:
-  - `.cs` files → `dotnet test --no-build 2>&1 | grep -c "Failed\|Error" || echo 0`
-  - `.go` files → `go test ./... 2>&1 | grep -c "FAIL" || echo 0`
-  - `.ts/.js` files → `npx jest 2>&1 | grep -c "FAIL" || echo 0`
-  - Custom: ask user
-
-**Loop behavior**: Same 9-step loop as optimize mode, but:
-- Step 2 (Ideate): Focus on reading error messages from the last verify run to form the fix hypothesis
-- Step 8: Success = `metric_after == 0`. Stop immediately when all failures cleared.
-- Crash recovery is more aggressive (3→5 fix attempts before giving up on a crash)
-
-**Format**:
-```
-/autoresearch:fix
-Target: <what to make pass>
-Scope: <files>
-[Verify: <custom command>]
-[Iterations: N]
-```
-
----
-
-## MODE: security (`/autoresearch:security`)
-
-**Purpose**: Read-only comprehensive security analysis. No file modifications. No commits.
-
-**Dimensions** (iterate through each, producing findings):
-
-1. **STRIDE Threat Model**: For each component in scope, identify:
-   - Spoofing (identity verification)
-   - Tampering (data integrity)
-   - Repudiation (audit trails)
-   - Information Disclosure (data exposure)
-   - Denial of Service (availability)
-   - Elevation of Privilege (authorization bypass)
-
-2. **OWASP Top 10** scan against scope files:
-   A01 Broken Access Control, A02 Cryptographic Failures, A03 Injection,
-   A04 Insecure Design, A05 Security Misconfiguration, A06 Vulnerable Components,
-   A07 Identification and Authentication Failures, A08 Software and Data Integrity Failures,
-   A09 Security Logging and Monitoring Failures, A10 Server-Side Request Forgery
-
-3. **Red-team (4 personas)**:
-   - External attacker (unauthenticated, internet-facing)
-   - Insider threat (authenticated employee, misuse of legitimate access)
-   - Compliance auditor (PCI-DSS, SOC2, GDPR angle — financial data context)
-   - Pentester (automated scanning, common exploit patterns)
-
-4. **Dependency review**: Flag any dependencies in scope files that are known-vulnerable
-   or have suspicious patterns (evaluate, don't confirm — no internet access)
-
-**Output format**:
-
-```markdown
-# Security Audit Report — <scope> — <date>
-
-## Summary
-- Critical: N | High: N | Medium: N | Low: N | Info: N
-
-## Findings
-
-### [CRITICAL] <Finding Title>
-**Category**: <STRIDE / OWASP ID> | **Persona**: <persona>
-**Location**: `<file>:<line>`
-**Description**: <what the vulnerability is>
-**Impact**: <what an attacker can do>
-**Recommendation**: <specific fix>
-
-[... repeat for each finding ...]
-
-## Methodology
-[Brief note on what was analyzed and how]
-```
-
-Save the report to `security-audit-<date>.md` in the current directory.
-
-**Format**:
-```
-/autoresearch:security
-Scope: <files or glob>
-[Depth: quick|standard|thorough]   # default: standard
-```
-
----
-
-## MODE: learn (`/autoresearch:learn`)
-
-**Purpose**: Generate and validate documentation, XML doc comments, or other artifacts
-in an iterative keep/discard loop with validation as the metric.
-
-**Loop variation**:
-- `Verify` = validation script (e.g., XML well-formed check, doc coverage count)
-- `Metric` = artifact count passing validation
-- `Direction` = higher
-- No Guard by default (output-only, no regression risk)
-- Each iteration: generate one artifact unit → validate → keep if valid → log → next
-
-**Format**:
-```
-/autoresearch:learn
-Scope: <source files to document>
-Output: <output directory>
-[Format: xml-doc|markdown|openapi]   # default: inferred from scope
-[Iterations: N]
-```
-
-**Iteration behavior**:
-- Step 2 (Ideate): Pick the next undocumented public symbol (use Serena.getSymbolsOverview)
-- Step 3 (Modify): Write the documentation to the Output directory
-- Step 5 (Verify): Validate the generated file (well-formed, complete, references valid)
-- Step 8 (Decide): Keep if valid, discard and try different format if invalid
-
----
-
-## MODE: scenario (`/autoresearch:scenario`)
-
-**Purpose**: Systematically discover edge cases, failure modes, and test scenarios for a
-feature or flow by iterating through 12 scenario dimensions.
-
-**No file modifications** — produces a scenario report file only.
-
-**12 Scenario Dimensions** (iterate through each):
-
-1. **Happy path**: Normal successful execution
-2. **Error path**: Common failure conditions with graceful handling
-3. **Edge case**: Boundary values, empty inputs, max/min, exact limits
-4. **Abuse**: Malicious or unexpected user behavior, attempted exploits
-5. **Scale**: High volume, many records, concurrent users, rate limits
-6. **Concurrent**: Simultaneous operations, race conditions, double-submission
-7. **Temporal**: Timing edge cases, timezone boundaries, DST, year boundaries, deadlines
-8. **Data variation**: Unusual characters, encoding, NULL/empty/whitespace, very long values
-9. **Permission**: Insufficient permissions, cross-tenant access, role boundaries
-10. **Integration**: External service failure, partial failure, timeout, retry storms
-11. **Recovery**: Crash mid-operation, partial write, idempotency, retry after failure
-12. **State transition**: Invalid state machine transitions, stale state, eventual consistency
-
-For each dimension, generate N scenarios (default 2 per dimension = 24 total). Each
-scenario entry in the results file includes:
-
-```
-dimension    scenario_id    title    severity    affected_file    description    test_hint
-```
-
-**Severity levels**: Critical / High / Medium / Low / Info
-
-**Output file**: `scenario/<YYMMDD-HHMM>-<slug>/scenario-results.tsv`
-
-**Format**:
-```
-/autoresearch:scenario
-Scenario: <feature or flow to analyze>
-Scope: <relevant source files>
-[Dimensions: comma-separated list]   # default: all 12
-[Iterations: N]                      # scenarios per dimension; default: 2
-```
-
----
-
-## Integration Points
-
-### pctx/Serena (code understanding before modifying)
-
-Always use `mcp__pctx__execute_typescript` to batch-read the scope before forming
-hypotheses. This prevents low-quality hypotheses based on partial context.
-
-Example batch read for Go files:
-```typescript
-async function run() {
-  const [structure, patterns] = await Promise.all([
-    Serena.getSymbolsOverview({ relative_path: "pkg/app/worker" }),
-    Serena.searchForPattern({
-      substring_pattern: "func Test",
-      relative_path: "pkg/app/worker",
-    }),
-  ]);
-  return { structure, existingTests: patterns };
-}
-```
-
-### Worktree Isolation (via stack-create skill)
-
-Default: create an isolated worktree before the loop starts.
+**Example — Coordinator creates a stacked PR pipeline**:
 ```bash
-$HOME/.dotfiles/.claude/scripts/stack create feat/autoresearch-<goal-slug> main
+# Phase 0: baseline tests (targets main)
+/stack-create feat/phase-0-baseline main
+# Phase 1: fitness functions (stacked on Phase 0)
+/stack-create feat/phase-1-fitness feat/phase-0-baseline
+# Phase 2 stories as individual stack entries
+/stack-create feat/story-1.3-shutdown feat/phase-1-fitness
 ```
 
-All experiments, commits, and reverts happen inside `.trees/<goal-slug>/`. The main
-branch is never touched. If the user Ctrl+C's mid-loop:
-1. The current uncommitted changes are in the worktree
-2. The worktree itself is safe to inspect or resume
-3. Committed-but-discarded experiments were already reverted via `git reset`
-4. `autoresearch-results.tsv` has the full audit trail
-
-### ADO Integration
-
-After the loop, if the user provides a PR ID:
-```bash
-# Post summary as PR comment
-az repos pr update \
-  --id <PR_ID> \
-  --description "Autoresearch summary: <N> improvements kept, <baseline> → <final>" \
-  --organization "https://dev.azure.com/bofaz"
-```
-
-For detailed reporting, write to a wiki page or PR thread comment using:
-```bash
-az devops wiki page create \
-  --path "autoresearch/<date>-<goal>" \
-  --content "$(cat autoresearch-results.tsv)" \
-  --organization "https://dev.azure.com/bofaz" \
-  --project "Axos-Universal-Core"
-```
-
-### Context Window Management
-
-Long loops produce large output. Route verify command output to the sandbox:
-- Use `mcp__plugin_context-mode_context-mode__ctx_execute` to run verify commands
-  when output is expected to be large (build logs, test runs)
-- Use `rtk` prefix for all Bash commands (hook handles this automatically)
-- Never dump full build logs into chat — extract only the metric line
+Then for each worktree, invoke autoresearch with the matching Role and PlanContext.
 
 ---
 
-## Quick Reference Examples
+## Domain Template Lookup
 
-### Example 1: Increase .NET test coverage overnight
-```
-/autoresearch
-Goal: Increase line coverage to 90%
-Scope: tests/**/*.cs
-Metric: Line coverage percentage
-Direction: higher
-Verify: dotnet test --collect:"XPlat Code Coverage" --results-directory ./coverage && reportgenerator -reports:./coverage/**/coverage.cobertura.xml -targetdir:./coverage/report -reporttypes:TextSummary && grep "Line coverage" ./coverage/report/Summary.txt | awk -F'[:%]' '{print $2}' | tr -d ' '
-Guard: dotnet build --no-restore && dotnet test --no-build --filter "Category!=Integration"
-Iterations: 20
-```
+When `Template:` is set, or `auto` matches Goal keywords, load from `templates/`:
 
-### Example 2: Fix all failing Go tests
-```
-/autoresearch:fix
-Target: Make all tests pass
-Scope: pkg/app/worker/worker.go, pkg/app/worker/worker_test.go
-Iterations: 10
-```
+| Template | Trigger Keywords | File |
+|---|---|---|
+| coverage | "test coverage", "increase coverage" | `templates/coverage.md` |
+| test-fix | "fix tests", "make tests pass" | `templates/test-fix.md` |
+| security-audit | "security audit", "vulnerability" | `templates/security-audit.md` |
+| performance | "latency", "throughput", "performance" | `templates/performance.md` |
+| build-optimization | "build time", "compilation" | `templates/build-optimization.md` |
+| lean-dev-phase | "phase", "plan execution", "lean dev" | `templates/lean-dev-phase.md` |
+| mutation-gate | "mutation testing", "quality gate" | `templates/mutation-gate.md` |
 
-### Example 3: Security audit before merging auth PR
-```
-/autoresearch:security
-Scope: src/Auth/**/*.cs, src/Middleware/AuthMiddleware.cs
-Depth: thorough
-```
-
-### Example 4: Reduce build time
-```
-/autoresearch
-Goal: Reduce build time below 180 seconds
-Scope: *.csproj, Directory.Build.props
-Metric: Build time in seconds
-Direction: lower
-Verify: time dotnet build --no-restore 2>&1 | grep real | awk '{print $2}' | sed 's/m/*60+/;s/s//' | bc
-Guard: dotnet test --no-build
-Iterations: 15
-```
-
-### Example 5: Edge case discovery for transfer feature
-```
-/autoresearch:scenario
-Scenario: User initiates a wire transfer between two Axos accounts
-Scope: src/Services/TransferService.cs, src/Models/Transfer.cs
-Iterations: 2
-```
-
----
-
-## Error Handling Reference
-
-| Condition | Action |
-|---|---|
-| Verify command not found | Stop. Help user fix the command. |
-| Baseline metric parse fails | Stop. Show raw output. Help user fix parsing. |
-| Crash 1-3 in a row | Try to fix. Log crash. Continue. |
-| Crash 4+ consecutive | Stop. Report. Suggest user inspect scope files. |
-| Guard fails on keep | Try rework ≤2 times. Then discard. |
-| Scope violation detected | Refuse hypothesis. Ideate new one without mentioning the skipped file. |
-| Worktree creation fails | Warn user. Offer to run without worktree isolation (risk: experiments on current branch). |
-| User Ctrl+C mid-loop | Commit is already in worktree (Step 4 ran before verify). Print current state. |
+On match: load the template, show pre-filled values, let user confirm or override.
+On no match: proceed with standard interactive setup from the plugin.
