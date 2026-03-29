@@ -1,21 +1,36 @@
 #!/usr/bin/env bash
 # Canonical bounded-stop path for incomplete but verified work.
-# Stages all changes and commits as chore(checkpoint) with --no-verify.
-# Usage: checkpoint.sh ["message"]
+# Stages all changes and commits as type(checkpoint) with --no-verify.
+# Usage: checkpoint.sh [--type <type>] ["message"]
+#   --type <type>  Commit type (default: chore). E.g., refactor, feat, fix.
 set -euo pipefail
 
-MSG="chore(checkpoint): bounded incomplete work"
+COMMIT_TYPE="chore"
+CUSTOM_MSG=""
 
-if [[ $# -gt 0 ]]; then
-    if [[ "$1" == "-m" && -n "${2:-}" ]]; then
-        MSG="chore(checkpoint): $2
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --type)
+            COMMIT_TYPE="${2:-chore}"
+            shift 2
+            ;;
+        -m)
+            CUSTOM_MSG="${2:-}"
+            shift 2
+            ;;
+        *)
+            CUSTOM_MSG="$*"
+            break
+            ;;
+    esac
+done
+
+if [[ -n "$CUSTOM_MSG" ]]; then
+    MSG="${COMMIT_TYPE}(checkpoint): $CUSTOM_MSG
 
 bounded incomplete work"
-    else
-        MSG="chore(checkpoint): $*
-
-bounded incomplete work"
-    fi
+else
+    MSG="${COMMIT_TYPE}(checkpoint): bounded incomplete work"
 fi
 
 # Stage everything

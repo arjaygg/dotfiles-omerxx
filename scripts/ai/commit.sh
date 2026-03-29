@@ -87,3 +87,19 @@ fi
 # --- Commit ---
 git commit -F "$MSG_FILE"
 echo "✅ Commit successful."
+
+# --- Write intent file for drift detection ---
+_REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+if [[ -n "$_REPO_ROOT" ]]; then
+    _INTENT_FILE="$_REPO_ROOT/.claude-atomic-intent"
+    # Extract type and scope from subject: type(scope): desc
+    _COMMIT_TYPE=$(echo "$SUBJECT" | sed -n 's/^\([a-z]*\).*/\1/p')
+    _COMMIT_SCOPE=$(echo "$SUBJECT" | sed -n 's/^[a-z]*(\([^)]*\)).*/\1/p')
+    _COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    cat > "$_INTENT_FILE" <<INTENT
+LAST_COMMIT_TYPE=$_COMMIT_TYPE
+LAST_COMMIT_SCOPE=$_COMMIT_SCOPE
+LAST_COMMIT_HASH=$_COMMIT_HASH
+LAST_COMMIT_TIME=$(date '+%s')
+INTENT
+fi
