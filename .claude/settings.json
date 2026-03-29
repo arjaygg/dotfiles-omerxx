@@ -78,7 +78,7 @@
       "Edit(~/.gnupg/**)",
       "Write(~/.gnupg/**)"
     ],
-    "defaultMode": "acceptEdits"
+    "defaultMode": "allowAll"
   },
   "model": "opus[1m]",
   "enableAllProjectMcpServers": true,
