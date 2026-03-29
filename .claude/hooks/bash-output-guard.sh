@@ -5,6 +5,10 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/hook-metrics.sh" 2>/dev/null || true
+_HOOK_NAME="bash-output-guard"
+
 INPUT=$(cat)
 
 # Extract output text and command from tool response
@@ -35,6 +39,7 @@ except:
 # --- Skip known short-output commands ---
 # git status, git branch, git log (short), make targets, etc.
 if [[ "$CMD" == git\ status* || "$CMD" == git\ branch* || "$CMD" == git\ diff\ --stat* || "$CMD" == git\ log\ --oneline* || "$CMD" == ls* || "$CMD" == pwd* || "$CMD" == which* || "$CMD" == echo* ]]; then
+    hook_metric "$_HOOK_NAME" "Bash" 0 2>/dev/null || true
     exit 0
 fi
 
@@ -44,10 +49,13 @@ if [[ "$LINE_COUNT" -gt 200 ]]; then
     echo "  For data-heavy commands, use context-mode MCP tools:" >&2
     echo "    mcp__context-mode__ctx_batch_execute — runs commands + auto-indexes output" >&2
     echo "    mcp__context-mode__ctx_execute — processes data in sandbox" >&2
+    hook_metric "$_HOOK_NAME" "Bash" 2 2>/dev/null || true
     exit 2
 elif [[ "$LINE_COUNT" -gt 50 ]]; then
     echo "OUTPUT HINT: Bash produced $LINE_COUNT lines. For commands with large output, consider context-mode MCP tools to keep raw data out of context." >&2
+    hook_metric "$_HOOK_NAME" "Bash" 2 2>/dev/null || true
     exit 2
 fi
 
+hook_metric "$_HOOK_NAME" "Bash" 0 2>/dev/null || true
 exit 0
