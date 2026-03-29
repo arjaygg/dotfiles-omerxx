@@ -1,8 +1,19 @@
 #!/usr/bin/env bash
-# Pre-commit: block staged files larger than 500KB.
+# Pre-commit: block staged files larger than MAX_KB (default 500KB).
+# Configurable via .claude-atomic.yaml:
+#   limits:
+#     max_file_size_kb: 1024
 set -euo pipefail
 
 MAX_KB=500
+
+# Load per-repo override if .claude-atomic.yaml exists
+_REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+_OVERRIDE_FILE="$_REPO_ROOT/.claude-atomic.yaml"
+if [[ -f "$_OVERRIDE_FILE" ]]; then
+    _custom_kb=$(grep -E '^\s+max_file_size_kb:' "$_OVERRIDE_FILE" 2>/dev/null | head -1 | awk '{print $2}' || true)
+    [[ -n "$_custom_kb" ]] && MAX_KB="$_custom_kb"
+fi
 MAX_BYTES=$(( MAX_KB * 1024 ))
 STAGED=$(git diff --cached --name-only 2>/dev/null || true)
 

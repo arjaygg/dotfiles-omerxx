@@ -15,4 +15,12 @@ if ! perl -0777 -ne 'exit 1 unless /^.+\n\n.+/s' "$COMMIT_MSG_FILE"; then
     exit 1
 fi
 
+# Body quality: minimum 10 meaningful characters (after stripping trailers)
+BODY=$(sed -n '/^$/,$ p' "$COMMIT_MSG_FILE" | sed '1d' | grep -v '^Co-authored-by:' | grep -v '^Signed-off-by:' | tr -d '[:space:]')
+if [[ ${#BODY} -lt 10 ]]; then
+    echo "⛔ git-hook: Commit body is too short (${#BODY} chars, min 10)." >&2
+    echo "   Write a meaningful explanation of WHY this change is needed." >&2
+    exit 1
+fi
+
 exit 0

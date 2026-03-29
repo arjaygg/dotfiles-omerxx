@@ -106,13 +106,22 @@ for kernel in "${KERNEL_FILES[@]}"; do
     fi
 done
 
+# --- Worktree-aware atomic cache path ---
+_repo_root_raw=$(git rev-parse --show-toplevel 2>/dev/null || echo "unknown")
+_REPO_HASH=$(printf '%s' "$_repo_root_raw" | md5 -q 2>/dev/null || printf '%s' "$_repo_root_raw" | md5sum 2>/dev/null | cut -d' ' -f1)
+_ATOMIC_CACHE="/tmp/.claude-atomic-state-$(id -u)-${_REPO_HASH}"
+
+# --- Invalidate atomic cache on git add ---
+if [[ "$TOOL_NAME" == "Bash" && "$CMD" == git\ add* ]]; then
+    rm -f "$_ATOMIC_CACHE" 2>/dev/null || true
+fi
+
 # --- Hyper-atomic: block Edit/Write when state is blocked/overgrown ---
-# Atomic state is cached for 8s to avoid running the script on every keystroke edit.
+# Atomic state is cached for 4s to avoid running the script on every keystroke edit.
 if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]]; then
     _ATOMIC_HOOKS=$(git config --local core.hooksPath 2>/dev/null || echo "")
     if [[ "$_ATOMIC_HOOKS" == "$HOME/.dotfiles/git/hooks" ]]; then
-        _ATOMIC_CACHE="/tmp/.claude-atomic-state-$(id -u)"
-        _ATOMIC_TTL=8
+        _ATOMIC_TTL=4
         _ATOMIC_STATE="in_progress"
         if [[ -f "$_ATOMIC_CACHE" ]]; then
             _CACHE_AGE=$(( $(date '+%s') - $(date -r "$_ATOMIC_CACHE" '+%s' 2>/dev/null || echo 0) ))
@@ -125,12 +134,15 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]]; then
         case "$_ATOMIC_STATE" in
             blocked)
                 echo "BLOCKED: Mixed concerns detected in staged files (state: blocked)." >&2
+                _DIAG=$("$HOME/.dotfiles/scripts/ai/atomic-status.sh" --verbose 2>&1 1>/dev/null || true)
+                [[ -n "$_DIAG" ]] && echo "$_DIAG" | sed 's/^/  /' >&2
                 echo "  Commit or checkpoint current work before editing more files." >&2
-                echo "  Run: ~/.dotfiles/scripts/ai/atomic-status.sh  to diagnose." >&2
                 exit 1
                 ;;
             overgrown)
                 echo "WARNING: Working tree is overgrown (state: overgrown)." >&2
+                _DIAG=$("$HOME/.dotfiles/scripts/ai/atomic-status.sh" --verbose 2>&1 1>/dev/null || true)
+                [[ -n "$_DIAG" ]] && echo "$_DIAG" | sed 's/^/  /' >&2
                 echo "  Consider committing a subset before continuing." >&2
                 echo "  Run: ~/.dotfiles/scripts/ai/commit.sh -m 'subject' -m 'why'" >&2
                 exit 2
