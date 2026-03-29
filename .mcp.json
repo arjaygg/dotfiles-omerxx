@@ -18,13 +18,6 @@
         "context-mode"
       ]
     },
-    "sequential-thinking": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
-      ]
-    },
     "voice-mode": {
       "command": "voice-mode",
       "args": []
@@ -32,6 +25,20 @@
     "notebooklm": {
       "command": "notebooklm-mcp",
       "args": []
+    },
+    "exa": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "exa-mcp-server",
+        "--tools=web_search_exa,deep_search_exa,get_code_context_exa,crawling_exa,company_research_exa,linkedin_search_exa,deep_researcher_start,deep_researcher_check"
+      ]
+    },
+    "qmd": {
+      "command": "qmd",
+      "args": [
+        "mcp"
+      ]
     }
   }
 }
