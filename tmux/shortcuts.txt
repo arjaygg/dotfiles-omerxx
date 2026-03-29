@@ -13,6 +13,7 @@
 │ Ctrl-A + r          → Rename window                                         │
 │ Ctrl-A + S          → Choose session                                        │
 │ Ctrl-A + o          → SessionX (fuzzy session switcher)                     │
+│ Ctrl-A + T          → Move window to another session (fzf picker)           │
 └──────────────────────────────────────────────────────────────────────────────┘
 
 ┌─ PANES ─────────────────────────────────────────────────────────────────────┐

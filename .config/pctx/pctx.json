@@ -27,14 +27,6 @@
       }
     },
     {
-      "name": "sequential-thinking",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
-      ]
-    },
-    {
       "name": "qmd",
       "command": "qmd",
       "args": [
@@ -47,26 +39,9 @@
       "auth": {
         "type": "headers",
         "headers": {
-          "x-ref-api-key": "ref-e12567ea1d5b4c4bb0c8"
+          "x-ref-api-key": "${env:REF_API_KEY}"
         }
       }
-    },
-    {
-      "name": "context-mode",
-      "command": "npx",
-      "args": [
-        "-y",
-        "context-mode"
-      ]
-    },
-    {
-      "name": "voice-mode",
-      "command": "voice-mode"
-    },
-    {
-      "name": "notebooklm",
-      "command": "notebooklm-mcp",
-      "args": []
     },
     {
       "name": "markitdown",

@@ -119,3 +119,4 @@ mkdir ~/.cache/carapace
 carapace _carapace nushell | save --force ~/.cache/carapace/init.nu
 
 $env.EDITOR = "nvim"
+$env.REF_API_KEY = "ref-e12567ea1d5b4c4bb0c8"
