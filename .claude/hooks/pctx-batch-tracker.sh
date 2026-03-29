@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# PostToolUse: Track sequential Serena/pctx MCP calls and suggest batching
+# Matcher: mcp__serena__.*|mcp__pctx__.*
+# Exit: 0 = pass, 2 = warn
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/hook-metrics.sh" 2>/dev/null || true
+_HOOK_NAME="pctx-batch-tracker"
+_EXIT_CODE=$(hook_exit_code "$_HOOK_NAME" 2>/dev/null || echo 2)
+
+INPUT=$(cat)
+
+TOOL_NAME=$(echo "$INPUT" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print(d.get('tool_name', ''))
+except:
+    print('')
+" 2>/dev/null || echo "")
+
+SESSION_ID=$(echo "$INPUT" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print(d.get('session_id', 'default'))
+except:
+    print('default')
+" 2>/dev/null || echo "default")
+
+# --- If this IS a pctx execute_typescript call, reset the counter (batched path) ---
+if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then
+    TRACKER="/tmp/.claude-serena-calls-$(id -u)-${SESSION_ID}"
+    rm -f "$TRACKER" 2>/dev/null || true
+    hook_metric "$_HOOK_NAME" "$TOOL_NAME" 0 2>/dev/null || true
+    exit 0
+fi
+
+# --- Track the call ---
+TRACKER="/tmp/.claude-serena-calls-$(id -u)-${SESSION_ID}"
+NOW=$(date '+%s')
+
+# Append timestamp
+echo "$NOW $TOOL_NAME" >> "$TRACKER"
+
+# Prune entries older than 60 seconds
+if [[ -f "$TRACKER" ]]; then
+    CUTOFF=$((NOW - 60))
+    TEMP=$(mktemp)
+    awk -v cutoff="$CUTOFF" '$1 >= cutoff' "$TRACKER" > "$TEMP" 2>/dev/null && mv "$TEMP" "$TRACKER" || rm -f "$TEMP"
+fi
+
+# Count recent calls
+COUNT=0
+[[ -f "$TRACKER" ]] && COUNT=$(wc -l < "$TRACKER" | tr -d ' ')
+
+if [[ "$COUNT" -ge 2 ]]; then
+    echo "BATCH HINT: You've made $COUNT sequential Serena/pctx MCP calls in the last 60s." >&2
+    echo "  Consider batching into one pctx execute_typescript call with Promise.all()." >&2
+    echo "  See: pctx-unified-rules.md §2 'Batching & Code Mode'" >&2
+    # Reset after warning to avoid repeated noise
+    rm -f "$TRACKER" 2>/dev/null || true
+    hook_metric "$_HOOK_NAME" "$TOOL_NAME" "$_EXIT_CODE" 2>/dev/null || true
+    exit "$_EXIT_CODE"
+fi
+
+hook_metric "$_HOOK_NAME" "$TOOL_NAME" 0 2>/dev/null || true
+exit 0

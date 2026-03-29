@@ -403,6 +403,25 @@ copy_worktree_configs() {
             print_info "Copied $dir"
         fi
     done
+
+    # Strip project-level permissions from copied .claude/settings.json
+    # Global ~/.claude/settings.json has the correct broad permissions + deny list.
+    # Project-level permissions cause prompting in worktrees when they contain
+    # narrow allow-lists that don't cover all tool patterns.
+    local wt_settings="$worktree_path/.claude/settings.json"
+    if [ -f "$wt_settings" ] && command -v python3 &>/dev/null; then
+        python3 -c "
+import json, sys
+with open('$wt_settings') as f:
+    d = json.load(f)
+if 'permissions' in d:
+    del d['permissions']
+    with open('$wt_settings', 'w') as f:
+        json.dump(d, f, indent=2)
+        f.write('\n')
+    print('Stripped permissions from .claude/settings.json', file=sys.stderr)
+" 2>&1 | while read -r line; do print_info "$line"; done || true
+    fi
     
     # Copy and update MCP configs
     if [ -f .mcp.json ]; then
