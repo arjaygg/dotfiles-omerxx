@@ -158,6 +158,15 @@
         ]
       },
       {
+        "matcher": "TaskUpdate",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/post-task-fence.sh\"'"
+          }
+        ]
+      },
+      {
         "matcher": ".*",
         "hooks": [
           {
