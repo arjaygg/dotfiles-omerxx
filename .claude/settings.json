@@ -282,6 +282,21 @@
         "-c",
         "${env:HOME}/.config/pctx/pctx.json"
       ]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "voice-mode": {
+      "command": "voice-mode",
+      "args": []
+    },
+    "notebooklm": {
+      "command": "notebooklm-mcp",
+      "args": []
     }
   }
 }
