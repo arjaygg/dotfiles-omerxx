@@ -36,4 +36,10 @@ ln -sf ../../ai/skills/autoresearch ~/.dotfiles/.claude/skills/autoresearch
 rm -rf ~/.dotfiles/daily-standup-insights 2>/dev/null
 rm -rf ~/.dotfiles/daily-standup-insights.skill 2>/dev/null
 
+# Catppuccin custom module for Claude tmux integration
+if [ -d "$HOME/.tmux/plugins/catppuccin-tmux/custom" ]; then
+    ln -sf "$HOME/.dotfiles/tmux/scripts/catppuccin-claude.sh" \
+           "$HOME/.tmux/plugins/catppuccin-tmux/custom/claude.sh"
+fi
+
 echo "Setup complete. All configurations linked via GNU Stow."
