@@ -25,3 +25,20 @@ The primitives are linked granularly from this directory into the agent-specific
 
 - **Source:** `~/.dotfiles/ai/`
 - **Link Strategy:** Granular symlinking of individual files and directories.
+
+### Cursor Auto-Loading
+
+**Cursor** has automatic rule loading configured through `~/.cursor/rules.md`, which aggregates all dotfiles AI rules into user-level context for every session.
+
+**Setup:**
+1. Rules are symlinked: `~/.cursor/rules/` → `~/.dotfiles/ai/rules/`
+2. Aggregator file `~/.cursor/rules.md` imports all rules using `@path` syntax
+3. Cursor automatically loads `rules.md` as user-level context in each session
+
+**Active Rules:**
+- **Tool Priority Stack**: Serena/pctx integration, lean-ctx methods, batching requirements
+- **User-Global Defaults**: Concise communication, git safety, file discipline
+- **Developer Guidelines**: Git worktree management, parallel development patterns
+- **Context Management**: Session artifacts, compaction rules
+
+**Verification:** Start a new Cursor session to activate the updated rule set. The sophisticated tool priority stack (Serena.listDir, execute_typescript batching, etc.) will be enforced automatically.
