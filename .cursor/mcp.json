@@ -4,18 +4,18 @@
       "url": "http://127.0.0.1:8787/mcp"
     },
     "sequential-thinking": {
-      "command": "npx",
+      "command": "/Users/axos-agallentes/homebrew/bin/npx",
       "args": [
         "-y",
         "@modelcontextprotocol/server-sequential-thinking"
       ]
     },
     "voice-mode": {
-      "command": "voice-mode",
+      "command": "/Users/axos-agallentes/.local/bin/voice-mode",
       "args": []
     },
     "notebooklm": {
-      "command": "notebooklm-mcp",
+      "command": "/Users/axos-agallentes/.local/bin/notebooklm-mcp",
       "args": []
     }
   }
