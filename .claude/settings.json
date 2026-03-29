@@ -6,8 +6,11 @@
   "permissions": {
     "allow": [
       "Read(*)",
+      "Read(/Users/axos-agallentes/.dotfiles/**)",
       "Write(*)",
+      "Write(/Users/axos-agallentes/.dotfiles/**)",
       "Edit(*)",
+      "Edit(/Users/axos-agallentes/.dotfiles/**)",
       "Glob(*)",
       "Grep(*)",
       "Bash(*)",
@@ -266,7 +269,7 @@
   "autoMode": {
     "environment": [
       "Organization: Axos Financial / Axos Bank. Primary use: software development.",
-      "Source control: dev.azure.com/bofaz and bofaz.visualstudio.com — all repos and projects under these organizations.",
+      "Source control: dev.azure.com/bofaz and bofaz.visualstudio.com \u2014 all repos and projects under these organizations.",
       "Key projects: Axos-Universal-Core, Axos Clearing, Axos Core Services, Axos-Crypto-Core, AAS, AxPay, AxTrader, Stock Lending Services.",
       "Azure DevOps CLI org: https://dev.azure.com/bofaz. PR creation org: https://bofaz.visualstudio.com.",
       "Local development: macOS, git worktrees under .trees/, homebrew at /Users/axos-agallentes/homebrew/."
