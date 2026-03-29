@@ -2,6 +2,8 @@
 
 These rules apply to every project on this machine where `pctx` (and its upstream servers like `Serena`) is configured.
 
+> **Precedence:** In pctx-enabled projects, these rules supersede `agent-user-global.md` for tool selection (stricter: "Never" vs "Prefer").
+
 ## 1. Tool Priority Stack
 Always use tools in this order. Stop at the first that satisfies your need. **Never use Bash for operations that have a dedicated tool.**
 

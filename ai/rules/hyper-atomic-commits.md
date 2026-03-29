@@ -2,6 +2,8 @@
 
 These rules enforce hyper-atomic commit discipline for AI coding agents. They apply in any git repo where `core.hooksPath` is set to `~/.dotfiles/git/hooks`.
 
+> **Precedence:** When active, these rules supersede `global-developer-guidelines.md` for commit operations (stricter: wrapper scripts required instead of raw git).
+
 ## Activation Check
 
 Before applying these rules, verify hooks are installed:
