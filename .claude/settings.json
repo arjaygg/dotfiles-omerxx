@@ -75,8 +75,9 @@
       "Edit(~/.gnupg/**)",
       "Write(~/.gnupg/**)"
     ],
-    "defaultMode": "auto-edit"
+    "defaultMode": "acceptEdits"
   },
+  "model": "opus[1m]",
   "enableAllProjectMcpServers": true,
   "hooks": {
     "SessionStart": [
@@ -112,6 +113,15 @@
           {
             "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/pre-tool-gate.sh\"'"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$HOME/.dotfiles/.claude/hooks/ts/plan-naming-enforcer-working.ts\""
           }
         ]
       },
@@ -252,7 +262,7 @@
   },
   "extraKnownMarketplaces": {},
   "alwaysThinkingEnabled": true,
-  "plansDirectory": "plans",
+  "plansDirectory": "./plans",
   "autoMode": {
     "environment": [
       "Organization: Axos Financial / Axos Bank. Primary use: software development.",
@@ -273,6 +283,5 @@
         "${env:HOME}/.config/pctx/pctx.json"
       ]
     }
-  },
-  "model": "opus[1m]"
+  }
 }
