@@ -19,4 +19,7 @@ Before the first project file access (Read/Grep/Glob/Serena), you MUST:
 Skip this ONLY if plans/pctx-functions.md already exists and was written today.
 EOF
 
+# Update tmux window name with Claude session context
+"$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh" session-start &
+
 exit 0
