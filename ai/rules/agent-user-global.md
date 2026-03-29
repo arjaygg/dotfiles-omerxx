@@ -43,3 +43,44 @@ This machine uses a unified AI configuration strategy where common primitives ar
 - **Centralized Source:** `~/.dotfiles/ai/`
 - **Linked Agents:** Claude Code, Gemini CLI, Codex, Cursor, Windsurf.
 - **Maintenance:** Any changes to rules, skills, commands, or styles should be made in `~/.dotfiles/ai/` and will be automatically reflected across all tools.
+
+## Git Worktree Conventions
+
+Worktrees live at `.trees/<description>/` with branch names `<type>/<description>`.
+
+### Supported branch types
+- `feature/` or `feat/`, `bugfix/` or `fix/`, `hotfix/`, `release/`, `chore/`
+
+### Determine branch type from intent
+- **feature/feat**: add, implement, create, build, new feature
+- **bugfix/fix**: bug, fix, resolve, repair, correct
+- **hotfix**: urgent, critical, security, emergency
+- **release**: release, version, v1.0, v2.0
+- **chore**: docs, cleanup, update dependencies
+
+If unclear, default to `feature/`.
+
+### Branch naming rules
+- Use lowercase letters, numbers, and hyphens only (dots allowed for release versions)
+- No consecutive, leading, or trailing hyphens or dots
+- Use hyphens to separate words (e.g., `feature/add-user-login`)
+
+### When asked to "create a worktree"
+1. Sanitize the description (lowercase, spaces→hyphens, strip special chars, collapse hyphens, trim).
+2. Ensure `.trees/` exists.
+3. Create: `git worktree add -b "<type>/<description>" ".trees/<description>" <base-branch>`
+4. Copy essential config files (`.env`, `.vscode/`, `.claude/`, `.serena/`, `.mcp.json`, `.cursor/mcp.json`) — update `--project` paths to point to worktree.
+5. Print next steps: `cd .trees/<description>`, `git status`, `git branch --show-current`
+
+### When asked to "remove a worktree"
+- Verify clean state first (`git -C <path> status --short`).
+- Do NOT remove if uncommitted changes unless explicitly told to proceed.
+- Remove with `git worktree remove <path>`, optionally delete branch.
+
+## Unified AI Hub Structure
+
+All AI primitives are managed in the `ai/` directory:
+- **Skills**: `ai/skills/`
+- **Commands**: `ai/commands/`
+- **Styles**: `ai/output-styles/`
+- **Rules**: `ai/rules/`

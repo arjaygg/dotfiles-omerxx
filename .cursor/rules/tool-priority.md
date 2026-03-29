@@ -1,1 +1,1 @@
-/Users/axos-agallentes/.dotfiles/ai/rules/tool-priority.md
+/Users/axos-agallentes/.dotfiles/ai/rules/pctx-unified-rules.md
