@@ -88,20 +88,22 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
     fi
 fi
 
-# --- Warn when editing kernel files mid-session ---
-# Skip warning in worktrees (.trees/) or on non-main/master branches — safe to edit there.
+# --- Advise when editing kernel files mid-session (cache invalidation risk) ---
+# Skip in worktrees (.trees/), on feature branches, or outside git repos (branch check N/A).
+# Advisory only (exit 0 + stdout) — model sees the caution but tool proceeds.
 _CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
 _IN_WORKTREE=0
 [[ "$FILE_PATH" =~ (^|/)\.trees/ ]] && _IN_WORKTREE=1
+_IN_GIT_REPO=0
+git rev-parse --is-inside-work-tree &>/dev/null && _IN_GIT_REPO=1
 KERNEL_FILES=("CLAUDE.md" "RTK.md" ".claude/settings.json")
 for kernel in "${KERNEL_FILES[@]}"; do
     if [[ "$FILE_PATH" == *"$kernel" && "$TOOL_NAME" == "Edit" ]]; then
-        if [[ "$_IN_WORKTREE" -eq 1 || ( "$_CURRENT_BRANCH" != "main" && "$_CURRENT_BRANCH" != "master" && -n "$_CURRENT_BRANCH" ) ]]; then
-            # Worktree or feature branch — safe, allow without warning
+        if [[ "$_IN_WORKTREE" -eq 1 || "$_IN_GIT_REPO" -eq 0 || ( "$_CURRENT_BRANCH" != "main" && "$_CURRENT_BRANCH" != "master" && -n "$_CURRENT_BRANCH" ) ]]; then
             :
         else
-            echo "WARNING: Editing $kernel mid-session invalidates the LLM prompt cache. Proceed only if necessary." >&2
-            exit 2
+            echo "CAUTION: Editing $kernel mid-session invalidates the LLM prompt cache. Proceed only if necessary."
+            exit 0
         fi
     fi
 done
