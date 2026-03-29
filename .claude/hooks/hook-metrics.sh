@@ -15,6 +15,30 @@
 set -euo pipefail
 
 METRICS_DB="${HOME}/.local/share/claude-hooks/metrics.db"
+HOOK_CONFIG="${HOME}/.dotfiles/.claude/hooks/hook-config.yaml"
+
+# Read enforcement level for a hook: "warn" (default), "block", or "off"
+hook_enforcement_level() {
+    local hook_name="$1"
+    local level="warn"  # default
+    if [[ -f "$HOOK_CONFIG" ]]; then
+        local val
+        val=$(grep "^${hook_name}:" "$HOOK_CONFIG" 2>/dev/null | awk '{print $2}' | tr -d '[:space:]')
+        [[ -n "$val" ]] && level="$val"
+    fi
+    echo "$level"
+}
+
+# Map enforcement level to exit code: "block"→1, "warn"→2, "off"→0
+hook_exit_code() {
+    local level
+    level=$(hook_enforcement_level "$1")
+    case "$level" in
+        block) echo 1 ;;
+        off)   echo 0 ;;
+        *)     echo 2 ;;
+    esac
+}
 
 _ensure_db() {
     local db_dir
