@@ -30,5 +30,6 @@
   "terminal.integrated.shellIntegration.enabled": false,
   "terminal.integrated.fontSize": 19,
   "cursor.openai.baseUrl": "http://127.0.0.1:8319/v1",
-  "python.defaultInterpreterPath": "/Users/axos-agallentes/homebrew/opt/python@3.14/bin/python3"
+  "python.defaultInterpreterPath": "/Users/axos-agallentes/homebrew/opt/python@3.14/bin/python3",
+  "typescript.tsdk": "/Users/axos-agallentes/homebrew/lib/node_modules/typescript/lib"
 }
