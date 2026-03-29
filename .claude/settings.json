@@ -147,6 +147,15 @@
         ]
       },
       {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/edit-without-read.sh\"'"
+          }
+        ]
+      },
+      {
         "matcher": "Bash|WebFetch",
         "hooks": [
           {
@@ -190,6 +199,15 @@
           {
             "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/bash-output-guard.sh\"'"
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/read-tracker.sh\"'"
           }
         ]
       },
