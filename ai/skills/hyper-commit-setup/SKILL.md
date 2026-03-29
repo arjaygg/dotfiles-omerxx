@@ -121,3 +121,14 @@ To remove: git config --unset core.hooksPath
 - `core.hooksPath` is set locally per repo (`.git/config`) — other repos are unaffected
 - The Claude gate in `pre-tool-gate.sh` only activates in repos that have hooks installed
 - To undo: `git config --unset core.hooksPath`
+
+## IDE Compatibility
+
+The hyper-atomic system works across all AI coding agents:
+
+- **Git hooks (Layer 1):** Fully portable — fires for any agent or human that runs `git commit`. Works in Claude Code, Cursor, Codex, Gemini CLI, and manual terminal use.
+- **Canonical scripts (Layer 2):** Plain bash scripts callable from any agent's shell.
+- **PreToolUse gate (Layer 3, Claude Code only):** The `pre-tool-gate.sh` hook proactively blocks edits when state is `blocked`/`overgrown`. This is a Claude Code-specific `PreToolUse` hook registered in `~/.dotfiles/.claude/settings.json`.
+- **Behavioral rule (Layer 4, all agents):** The shared rule at `~/.dotfiles/ai/rules/hyper-atomic-commits.md` replicates the gate's intent as agent instructions. Symlinked into `~/.cursor/rules/` and available to any agent that reads rules from `~/.dotfiles/ai/rules/`.
+
+Agents without `PreToolUse` hooks (Cursor, Codex, Gemini) rely on Layer 1 (git hooks catch bad commits) + Layer 4 (the rule tells the agent how to self-enforce). Claude Code gets all four layers.
