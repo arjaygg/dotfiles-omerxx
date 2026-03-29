@@ -5,6 +5,10 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/hook-metrics.sh" 2>/dev/null || true
+_HOOK_NAME="pctx-batch-tracker"
+
 INPUT=$(cat)
 
 TOOL_NAME=$(echo "$INPUT" | python3 -c "
@@ -29,6 +33,7 @@ except:
 if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then
     TRACKER="/tmp/.claude-serena-calls-$(id -u)-${SESSION_ID}"
     rm -f "$TRACKER" 2>/dev/null || true
+    hook_metric "$_HOOK_NAME" "$TOOL_NAME" 0 2>/dev/null || true
     exit 0
 fi
 
@@ -56,7 +61,9 @@ if [[ "$COUNT" -ge 2 ]]; then
     echo "  See: pctx-unified-rules.md §2 'Batching & Code Mode'" >&2
     # Reset after warning to avoid repeated noise
     rm -f "$TRACKER" 2>/dev/null || true
+    hook_metric "$_HOOK_NAME" "$TOOL_NAME" 2 2>/dev/null || true
     exit 2
 fi
 
+hook_metric "$_HOOK_NAME" "$TOOL_NAME" 0 2>/dev/null || true
 exit 0
