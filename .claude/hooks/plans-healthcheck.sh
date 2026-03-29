@@ -19,7 +19,7 @@ CACHE_AGE=0
 # format: "binary:install-command"
 declare -A BINARY_AUTO_INSTALL=(
     ["qmd"]="npm install -g @tobilu/qmd"
-    ["rtk"]="brew tap rtk-ai/rtk && brew install rtk"
+    ["rtk"]="brew install rtk"
 )
 REQUIRED_BINARIES=("qmd" "rtk")
 
@@ -54,7 +54,7 @@ if [[ ${#MISSING_BINARIES[@]} -gt 0 ]]; then
     for m in "${MISSING_BINARIES[@]}"; do
         case "$m" in
             qmd) echo "  - qmd  (semantic search sync)  → auto-installing: npm install -g @tobilu/qmd" ;;
-            rtk) echo "  - rtk  (Cursor shell compress) → auto-installing: brew tap rtk-ai/rtk && brew install rtk" ;;
+            rtk) echo "  - rtk  (token optimizer)       → auto-installing: brew install rtk" ;;
             *)   echo "  - $m  → install manually" ;;
         esac
     done
