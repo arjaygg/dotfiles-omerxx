@@ -1,0 +1,8 @@
+# Hook enforcement levels: "warn" (exit 2), "block" (exit 1), "off" (exit 0)
+# After burn-in, graduate hooks from "warn" to "block" based on metrics data.
+# Run: hook-metrics.sh compliance — to see trigger rates before promoting.
+
+serena-tool-priority: warn
+pctx-batch-tracker: warn
+bash-output-guard: warn
+edit-without-read: warn
