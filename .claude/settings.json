@@ -250,6 +250,10 @@
           },
           {
             "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/plan-todowrite-reminder.sh\"'"
+          },
+          {
+            "type": "command",
             "command": "/Users/axos-agallentes/homebrew/bin/node /Users/axos-agallentes/homebrew/lib/node_modules/context-mode/hooks/userpromptsubmit.mjs"
           },
           {
