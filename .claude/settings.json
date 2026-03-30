@@ -156,6 +156,15 @@
         ]
       },
       {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/plan-scope-gate.sh\"'"
+          }
+        ]
+      },
+      {
         "matcher": "Bash|WebFetch",
         "hooks": [
           {
@@ -247,6 +256,10 @@
           {
             "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/prompt-parallelism-hint.sh\"'"
+          },
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/plan-todowrite-reminder.sh\"'"
           },
           {
             "type": "command",
