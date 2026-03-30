@@ -217,59 +217,16 @@ if [ "$CREATE_WORKTREE" = true ]; then
 
         # 3. Copy MCP configs (often gitignored) with updated paths
 
-        # 3a. Generate worktree-local pctx.json so Serena targets this worktree
-        #     instead of resolving --project-from-cwd to the main repo.
-        GLOBAL_PCTX_CONFIG="$HOME/.config/pctx/pctx.json"
-        if [ -f "$GLOBAL_PCTX_CONFIG" ]; then
-            mkdir -p "$WORKTREE_PATH/.config"
-            # Replace --project-from-cwd with --project <worktree-abs-path>
-            sed 's|"--project-from-cwd"|"--project", "'"$WORKTREE_ABS_PATH"'"|g' \
-                "$GLOBAL_PCTX_CONFIG" > "$WORKTREE_PATH/.config/pctx.json"
-            print_info "Generated worktree-local pctx.json (Serena → $WORKTREE_ABS_PATH)"
-        fi
 
-        # 3b. .mcp.json — copy, update --project paths, and override pctx to use local config
+        # 3a. pctx — user-scope settings.json handles pctx with --project-from-cwd.
+        #     Stdio mode inherits session CWD (the worktree), so no local override needed.
+        #     DO NOT generate .config/pctx.json — hardcoded paths cause stale-config bugs
+        #     when other worktree sessions pick up the wrong pctx instance.
+
+        # 3b. .mcp.json — copy and update --project paths (Serena, etc.)
         if [ -f .mcp.json ]; then
-            # Copy and update direct --project paths
             sed "s|\"--project\", \"[^\"]*\"|\"--project\", \"$WORKTREE_ABS_PATH\"|g" .mcp.json > "$WORKTREE_PATH/.mcp.json"
-
-            # If a local pctx.json was generated, override the pctx args to use it
-            if [ -f "$WORKTREE_PATH/.config/pctx.json" ]; then
-                # Use python/jq to inject the pctx override into .mcp.json
-                if command -v jq >/dev/null 2>&1; then
-                    PCTX_BIN="$(command -v pctx 2>/dev/null || echo "$HOME/homebrew/bin/pctx")"
-                    jq --arg pctx_bin "$PCTX_BIN" \
-                       --arg pctx_cfg "$WORKTREE_ABS_PATH/.config/pctx.json" \
-                       '.mcpServers.pctx = {
-                          "command": $pctx_bin,
-                          "args": ["mcp", "start", "--stdio", "-c", $pctx_cfg],
-                          "env": {}
-                        }' "$WORKTREE_PATH/.mcp.json" > "$WORKTREE_PATH/.mcp.json.tmp" \
-                    && mv "$WORKTREE_PATH/.mcp.json.tmp" "$WORKTREE_PATH/.mcp.json"
-                    print_info "Injected pctx override into .mcp.json"
-                else
-                    print_warning "jq not found — pctx override not injected into .mcp.json"
-                    print_warning "Serena may resolve to main repo instead of worktree"
-                fi
-            fi
             print_info "Copied and updated .mcp.json"
-        elif [ -f "$WORKTREE_PATH/.config/pctx.json" ]; then
-            # No project .mcp.json exists, but we have a local pctx config.
-            # Create a minimal .mcp.json with the pctx override so it takes
-            # precedence over the global ~/.mcp.json entry.
-            PCTX_BIN="$(command -v pctx 2>/dev/null || echo "$HOME/homebrew/bin/pctx")"
-            cat > "$WORKTREE_PATH/.mcp.json" <<MCPEOF
-{
-  "mcpServers": {
-    "pctx": {
-      "command": "$PCTX_BIN",
-      "args": ["mcp", "start", "--stdio", "-c", "$WORKTREE_ABS_PATH/.config/pctx.json"],
-      "env": {}
-    }
-  }
-}
-MCPEOF
-            print_info "Created .mcp.json with pctx override (no project .mcp.json found)"
         fi
 
         # 3c. .cursor/mcp.json
