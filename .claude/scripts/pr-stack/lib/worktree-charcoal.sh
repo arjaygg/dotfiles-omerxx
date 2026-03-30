@@ -385,54 +385,11 @@ wt_add_for_branch() {
 # Args: $1 - worktree path
 copy_worktree_configs() {
     local worktree_path=$1
-    local worktree_abs_path
-    worktree_abs_path="$(cd "$worktree_path" && pwd)"
-    
-    print_info "Copying configurations..."
-    
-    # Copy .env if gitignored
+
+    # Copy .env if gitignored (secrets won't exist in new worktrees otherwise)
     if [ -f .env ] && git check-ignore -q .env 2>/dev/null; then
         cp .env "$worktree_path/.env"
         print_info "Copied .env"
-    fi
-    
-    # Copy untracked IDE directories
-    for dir in ".vscode" ".claude" ".serena" ".cursor"; do
-        if [ -d "$dir" ] && ! git ls-tree -d HEAD "$dir" >/dev/null 2>&1; then
-            cp -r "$dir" "$worktree_path/$dir"
-            print_info "Copied $dir"
-        fi
-    done
-
-    # Strip project-level permissions from copied .claude/settings.json
-    # Global ~/.claude/settings.json has the correct broad permissions + deny list.
-    # Project-level permissions cause prompting in worktrees when they contain
-    # narrow allow-lists that don't cover all tool patterns.
-    local wt_settings="$worktree_path/.claude/settings.json"
-    if [ -f "$wt_settings" ] && command -v python3 &>/dev/null; then
-        python3 -c "
-import json, sys
-with open('$wt_settings') as f:
-    d = json.load(f)
-if 'permissions' in d:
-    del d['permissions']
-    with open('$wt_settings', 'w') as f:
-        json.dump(d, f, indent=2)
-        f.write('\n')
-    print('Stripped permissions from .claude/settings.json', file=sys.stderr)
-" 2>&1 | while read -r line; do print_info "$line"; done || true
-    fi
-    
-    # Copy and update MCP configs
-    if [ -f .mcp.json ]; then
-        sed "s|\"--project\", \"[^\"]*\"|\"--project\", \"$worktree_abs_path\"|g" .mcp.json > "$worktree_path/.mcp.json"
-        print_info "Copied .mcp.json"
-    fi
-    
-    if [ -f .cursor/mcp.json ]; then
-        mkdir -p "$worktree_path/.cursor"
-        sed "s|\"--project\", \"[^\"]*\"|\"--project\", \"$worktree_abs_path\"|g" .cursor/mcp.json > "$worktree_path/.cursor/mcp.json"
-        print_info "Copied .cursor/mcp.json"
     fi
 }
 
