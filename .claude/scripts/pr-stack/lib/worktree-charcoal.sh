@@ -423,11 +423,6 @@ if 'permissions' in d:
 " 2>&1 | while read -r line; do print_info "$line"; done || true
     fi
     
-    if [ -f .cursor/mcp.json ]; then
-        mkdir -p "$worktree_path/.cursor"
-        sed "s|\"--project\", \"[^\"]*\"|\"--project\", \"$worktree_abs_path\"|g" .cursor/mcp.json > "$worktree_path/.cursor/mcp.json"
-        print_info "Copied .cursor/mcp.json"
-    fi
 }
 
 # Show stack with worktree information
