@@ -18,6 +18,8 @@ Always use tools in this order. Stop at the first that satisfies your need. **Ne
 ## 2. Batching & Code Mode
 Use `pctx execute_typescript` when 2+ operations are planned or when data processing should happen in the sandbox.
 
+> **MCP tool name:** `mcp__pctx__execute_typescript` (call this directly when batching)
+
 ### Batching Decision Rule
 > Before any tool call, ask: **"What else will I need in the next 3 steps?"**
 > - If 2+ Serena operations are planned → write ONE `execute_typescript`.
