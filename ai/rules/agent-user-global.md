@@ -77,6 +77,36 @@ If unclear, default to `feature/`.
 - Do NOT remove if uncommitted changes unless explicitly told to proceed.
 - Remove with `git worktree remove <path>`, optionally delete branch.
 
+## Plan Documents
+
+When working from a dated plan file (`plans/YYYY-MM-DD-<context>.md`):
+
+1. Add `plan: plans/YYYY-MM-DD-<context>.md` to `plans/active-context.md` at session start.
+2. Add `step: N of M` and `focus: <current step title>` to `plans/active-context.md`.
+3. Each `## Step N` in the plan must declare `**Files:**` and `**Accepts:**` fields.
+4. Use `TodoWrite` to convert plan steps to an ordered task list before executing. Do NOT use `TaskCreate` — that spawns background agents, not a checklist.
+5. Check off `progress.md` checkboxes when each `TodoWrite` item is completed.
+6. Do not begin Step N+1 until Step N's `**Accepts:**` criteria are met.
+
+**Structured step format:**
+```markdown
+## Step N — <title>
+**Files:** `path/to/file.ts`
+**Accepts:** <done criteria — human-readable completion signal>
+- [ ] checkbox item
+```
+
+**active-context.md pointer fields:**
+```markdown
+plan: plans/2026-03-30-my-feature.md
+step: 2 of 5
+focus: write migration
+```
+
+Hooks resolve the active plan at runtime via `grep "^plan:" plans/active-context.md`. The `@plans/active-context.md` include in CLAUDE.md is evaluated once at session start and provides cross-session continuity only.
+
+---
+
 ## Unified AI Hub Structure
 
 All AI primitives are managed in the `ai/` directory:
