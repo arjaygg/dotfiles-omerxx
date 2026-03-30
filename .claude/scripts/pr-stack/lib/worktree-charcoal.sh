@@ -423,12 +423,6 @@ if 'permissions' in d:
 " 2>&1 | while read -r line; do print_info "$line"; done || true
     fi
     
-    # Copy and update MCP configs
-    if [ -f .mcp.json ]; then
-        sed "s|\"--project\", \"[^\"]*\"|\"--project\", \"$worktree_abs_path\"|g" .mcp.json > "$worktree_path/.mcp.json"
-        print_info "Copied .mcp.json"
-    fi
-    
     if [ -f .cursor/mcp.json ]; then
         mkdir -p "$worktree_path/.cursor"
         sed "s|\"--project\", \"[^\"]*\"|\"--project\", \"$worktree_abs_path\"|g" .cursor/mcp.json > "$worktree_path/.cursor/mcp.json"
