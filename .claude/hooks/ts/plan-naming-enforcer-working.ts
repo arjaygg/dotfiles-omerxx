@@ -7,7 +7,7 @@ const config = {
   datePattern: /^\d{4}-\d{2}-\d{2}-.+\.md$/,
   randomPattern: /^[a-z]+-[a-z]+-[a-z]+\.md$/i,
   systemFiles: ['active-context', 'decisions', 'progress', 'session-handoff'],
-  enforceMode: 'warn' as const // 'warn' | 'block'
+  enforceMode: 'block' as const // 'warn' | 'block'
 };
 
 function getCurrentDate(): string {
