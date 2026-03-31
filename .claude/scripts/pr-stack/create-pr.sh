@@ -33,8 +33,7 @@ _ensure_gh_account() {
     local active_account
     active_account=$(gh api user --jq '.login' 2>/dev/null || echo "")
     if [ -n "$active_account" ] && [ "$active_account" != "$target_account" ]; then
-        print_info "Switching GH account: $active_account → $target_account"
-        gh auth switch --user "$target_account" 2>/dev/null || true
+        gh auth switch --user "$target_account" > /dev/null 2>&1 || true
     fi
 }
 
