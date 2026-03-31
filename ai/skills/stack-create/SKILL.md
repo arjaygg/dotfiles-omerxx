@@ -28,14 +28,14 @@ Creates a new stacked branch with a worktree (default) for PR stacking workflows
 - "create worktree and branch"
 - Any mention of "worktree" combined with "create" or "branch"
 
-## Key Feature: Default Worktrees + EnterWorktree Session Integration
+## Key Feature: Default Worktrees + tmux Session Integration
 
 Worktrees are created by **default** (no flag needed). You also get:
 - ✅ Parallel development in separate `.trees/` directories
 - ✅ Charcoal navigation (`stack up/down`) that's worktree-aware
 - ✅ Automatic restacking with `stack restack`
 - ✅ Visual stack display with worktree locations
-- ✅ Claude Code session automatically switches into the worktree via `EnterWorktree`
+- ✅ New Claude Code session opened in a tmux window inside the worktree
 
 ## Instructions
 
@@ -118,8 +118,8 @@ Worktrees are created by **default** (no flag needed). You also get:
 5. Inform the user:
    - Branch and worktree created at `.trees/<sanitized-name>`
    - Handoff written to `.trees/<sanitized-name>/plans/session-handoff.md`
-   - New Claude session opened in tmux window `dev:<sanitized-name>`
-   - They can switch to it with: `tmux select-window -t "dev:<sanitized-name>"`
+   - New Claude session opened in tmux window `<sanitized-name>` (in the current tmux session)
+   - They can switch to it with: `tmux select-window -t "$TMUX_SESSION:<sanitized-name>"`
 
 ## Opting out of worktrees
 
@@ -168,15 +168,15 @@ $HOME/.dotfiles/.claude/scripts/stack create feature/api main
 $HOME/.dotfiles/.claude/scripts/stack create feature/ui feature/api
 $HOME/.dotfiles/.claude/scripts/stack create feature/polish feature/ui
 ```
-Then write handoffs and open tmux windows for each: `dev:api`, `dev:ui`, `dev:polish`
+Then write handoffs and open tmux windows for each: `api`, `ui`, `polish` (in current tmux session)
 
 User: "Stack a new branch without a worktree"
 Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/ui feature/backend --no-worktree`
-(No EnterWorktree call)
+(No tmux session opened)
 
 ## Related Skills
 
-- **stack-navigate**: Move between branches (worktree-aware), with EnterWorktree/ExitWorktree session handoff
+- **stack-navigate**: Move between branches (worktree-aware) via tmux
 - **stack-status**: View stack hierarchy with worktree info
-- **stack-pr**: Create Azure DevOps PR
+- **stack-pr**: Create PR (auto-detects GitHub vs Azure DevOps)
 - **stack-update**: Update after merge (syncs worktrees)
