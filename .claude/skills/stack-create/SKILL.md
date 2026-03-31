@@ -82,7 +82,20 @@ Worktrees are created by **default** (no flag needed). You also get:
    > `claude` from `.trees/<name>`, or `claude --worktree <name>` from the repo root
    > (this path uses the hook correctly).
 
-4. Inform the user:
+4. **Write a session handoff stub** so `/session-next` can discover this worktree even before a Claude session is started in it:
+   ```bash
+   mkdir -p .trees/<sanitized-name>/plans
+   # Write stub — session-next uses this to surface the worktree in the queue
+   cat > .trees/<sanitized-name>/plans/session-handoff.md << 'EOF'
+   # Session Handoff
+   status: pending
+   branch: <full-branch-name>
+   created_at: <today's date>
+   EOF
+   ```
+   Only write if the worktree was actually created (skip for `--no-worktree`).
+
+5. Inform the user:
    - Branch and worktree created
    - Worktree path: `.trees/<sanitized-name>`
    - Claude Code session entered (with bug caveat if relevant)

@@ -82,6 +82,7 @@ import sys
 
 lines = [
     f'# Session Handoff — {timestamp}',
+    'status: pending',
     '',
     f'**Branch:** {branch}' if branch else '',
     f'**Uncommitted:** {git_state}' if git_state else '',
