@@ -79,10 +79,10 @@ fi
 if [[ "$TOOL_NAME" == "Glob" && -n "$PATTERN" ]]; then
     # Targeted search: pattern is a specific filename (not a broad wildcard sweep)
     # e.g. "**/worker.go" or "*/routes.go" — not "**/*.go" or "src/**"
-    if [[ "$PATTERN" =~ /[a-zA-Z0-9_-]+\.[a-zA-Z]+$ && ! "$PATTERN" =~ \*\.[a-zA-Z]+$ ]]; then
+    if [[ "$PATTERN" =~ /[a-zA-Z0-9_-]+\.[a-zA-Z]+$ && ! "$PATTERN" =~ \*\.[a-zA-Z]+$ && ! "$PATTERN" =~ ^\*\* ]]; then
         FILENAME="${PATTERN##*/}"
         echo "HINT: For finding '$FILENAME', Serena.findFile('$FILENAME') searches the project index and is often faster."
-        hook_metric "$_HOOK_NAME" "$TOOL_NAME" "$_EXIT_CODE" 2>/dev/null || true; exit "$_EXIT_CODE"
+        hook_metric "$_HOOK_NAME" "$TOOL_NAME" 0 2>/dev/null || true; exit 0
     fi
 fi
 
