@@ -76,7 +76,17 @@
       "Write(~/.aws/*)",
       "Read(~/.gnupg/**)",
       "Edit(~/.gnupg/**)",
-      "Write(~/.gnupg/**)"
+      "Write(~/.gnupg/**)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(rg *)",
+      "Read(**/package-lock.json)",
+      "Read(**/yarn.lock)",
+      "Read(**/Cargo.lock)",
+      "Read(**/pnpm-lock.yaml)",
+      "Read(**/composer.lock)",
+      "Read(**/Gemfile.lock)"
     ],
     "defaultMode": "acceptEdits"
   },
@@ -308,6 +318,15 @@
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/feedback-capture.sh\"'"
           }
         ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/todo-gate.sh\"'"
+          }
+        ]
       }
     ],
     "WorktreeCreate": [
@@ -356,7 +375,7 @@
   "autoMode": {
     "environment": [
       "Organization: Axos Financial / Axos Bank. Primary use: software development.",
-      "Source control: dev.azure.com/bofaz and bofaz.visualstudio.com — all repos and projects under these organizations.",
+      "Source control: dev.azure.com/bofaz and bofaz.visualstudio.com \u2014 all repos and projects under these organizations.",
       "Key projects: Axos-Universal-Core, Axos Clearing, Axos Core Services, Axos-Crypto-Core, AAS, AxPay, AxTrader, Stock Lending Services.",
       "Azure DevOps CLI org: https://dev.azure.com/bofaz. PR creation org: https://bofaz.visualstudio.com.",
       "Local development: macOS, git worktrees under .trees/, homebrew at /Users/axos-agallentes/homebrew/."
@@ -388,5 +407,6 @@
       "command": "notebooklm-mcp",
       "args": []
     }
-  }
+  },
+  "model": "opus[1m]"
 }

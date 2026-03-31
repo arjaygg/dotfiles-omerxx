@@ -12,3 +12,4 @@ bash-output-guard: block
 bash-tool-gate: block
 edit-without-read: warn
 duplicate-session-check: warn   # warn = active, off = disabled
+todo-gate: warn                 # warn = advisory (burn-in), block = enforced stop prevention
