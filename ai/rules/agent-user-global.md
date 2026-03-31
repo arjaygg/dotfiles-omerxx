@@ -105,6 +105,23 @@ focus: write migration
 
 Hooks resolve the active plan at runtime via `grep "^plan:" plans/active-context.md`. The `@plans/active-context.md` include in CLAUDE.md is evaluated once at session start and provides cross-session continuity only.
 
+## TodoWrite Mandate
+
+For any task requiring **3 or more distinct steps**, you MUST:
+
+1. Create a `TodoWrite` list **before** beginning execution
+2. Mark each item `in_progress` when starting it, `completed` when done
+3. Do NOT stop until ALL items show `status: completed`
+
+This applies whether or not a formal plan file is active.
+
+**Do NOT use `TaskCreate`** for step tracking — it spawns background agents, not a checklist.
+
+Heuristics for "3+ step tasks":
+- Editing more than one file
+- Any request phrased as "do X, then Y" or "X and also Y"
+- Any implementation task (feature, fix, refactor, migration)
+
 ---
 
 ## Unified AI Hub Structure
