@@ -41,6 +41,24 @@ Run `~/.dotfiles/scripts/ai/atomic-status.sh` to get the current state. There ar
 - **max_subsystems:** 3 distinct subsystem categories
 - **max_diff_lines:** 300 added+removed lines
 
+## Task Tracking Integration (TodoWrite → Fence)
+
+The `post-task-fence.sh` hook fires on every **`TaskUpdate`** event — which is emitted by the built-in `TodoWrite` task tracker when items are marked `completed`. This is the bridge between task tracking and the commit fence.
+
+**Use `TodoWrite` for in-session step tracking, NOT `Edit(plans/progress.md)`:**
+
+| Tool | Triggers fence? | Persists across sessions? |
+|---|---|---|
+| `TodoWrite` (mark `completed`) | **Yes** → `TaskUpdate` → `post-task-fence.sh` | No — ephemeral |
+| `Edit(plans/progress.md)` | **No** — bypasses hook chain entirely | Yes — in git |
+
+Using only `Edit(progress.md)` silently disables the fence. Uncommitted changes accumulate between tasks with no reminder.
+
+**Correct workflow:**
+1. Create `TodoWrite` list at session start
+2. Mark items `in_progress` → `completed` as tasks finish (this fires the fence)
+3. Mirror final state to `progress.md` at commit boundaries (for cross-session resume)
+
 ## When to Check State
 
 Run `atomic-status.sh`:

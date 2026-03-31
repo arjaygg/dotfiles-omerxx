@@ -59,7 +59,7 @@ COUNT=0
 if [[ "$COUNT" -ge 2 ]]; then
     echo "BATCH HINT: You've made $COUNT sequential Serena/pctx MCP calls in the last 60s." >&2
     echo "  Consider batching into one pctx execute_typescript call with Promise.all()." >&2
-    echo "  See: pctx-unified-rules.md §2 'Batching & Code Mode'" >&2
+    echo "  See: tool-priority.md §2 'Batching & Code Mode'" >&2
     # Reset after warning to avoid repeated noise
     rm -f "$TRACKER" 2>/dev/null || true
     hook_metric "$_HOOK_NAME" "$TOOL_NAME" "$_EXIT_CODE" 2>/dev/null || true

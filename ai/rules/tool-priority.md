@@ -1,4 +1,4 @@
-# pctx Unified Rules: Tool Priority, Batching, and Best Practices
+# Tool Priority, Batching, and Best Practices
 
 These rules apply to every project on this machine where `pctx` (and its upstream servers like `Serena`) is configured.
 
@@ -42,4 +42,4 @@ All Serena methods use **camelCase**.
 Run `mcp__pctx__list_functions` before the first project access in a session. Write results to `plans/pctx-functions.md` and check its timestamp (TTL: 1 day).
 
 ---
-*Maintained at: `/Users/axos-agallentes/.dotfiles/ai/rules/pctx-unified-rules.md`*
+*Maintained at: `/Users/axos-agallentes/.dotfiles/ai/rules/tool-priority.md`*
