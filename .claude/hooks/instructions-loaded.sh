@@ -28,7 +28,7 @@ try:
         names = {s.get('name','') for s in raw if isinstance(s, dict)}
     else:
         names = set(raw.keys())
-    required = ['serena', 'exa', 'sequential-thinking', 'lean-ctx']
+    required = ['serena', 'exa', 'markitdown', 'lean-ctx']
     missing = [s for s in required if s not in names]
     print(','.join(missing))
 except:

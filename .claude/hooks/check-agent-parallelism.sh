@@ -21,11 +21,9 @@ BULLET_ITEMS=$(echo "$prompt" | grep -cE '^\s*[-•]\s+[A-Z]' || true)
 
 if [[ "$NUMBERED_ITEMS" -ge 3 || "$BULLET_ITEMS" -ge 3 ]]; then
   count=$(echo "$prompt" | grep -oiE '([0-9]+) (files?|modules?|services?|items?)' | head -1)
-
-  echo "BLOCKED: This Agent call appears to involve multiple independent sub-tasks${count:+ ($count)}." >&2
-  echo "Use TaskCreate for parallel execution instead." >&2
-  echo "If tasks are truly sequential or dependent, rephrase your prompt to make that explicit." >&2
-  exit 2
+  _reason="BLOCKED: This Agent call appears to involve multiple independent sub-tasks${count:+ ($count)}. Use TaskCreate for parallel execution instead. If tasks are truly sequential or dependent, rephrase your prompt to make that explicit."
+  python3 -c "import json,sys; print(json.dumps({'decision':'block','reason':sys.argv[1]}))" "$_reason"
+  exit 0
 fi
 
 exit 0

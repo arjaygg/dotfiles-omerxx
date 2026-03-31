@@ -85,16 +85,9 @@ except:
     # Test command that failed + output looks rtk-compressed (has [lean-ctx:] tag or very short)
     if [[ "$EXIT_CODE" != "0" ]] && echo "$CMD" | grep -qiE '(go test|pytest|npm test|npx jest|dotnet test|cargo test)'; then
         if echo "$OUTPUT" | grep -q '\[lean-ctx:' || [[ "$LINE_COUNT" -lt 10 ]]; then
-            echo "RTK_DIAGNOSTIC_HINT: Test failed but output was compressed by rtk. To see full error details, re-run with: rtk proxy $CMD" >&2
+            echo "RTK_DIAGNOSTIC_HINT: Test failed but output was compressed by rtk. To see full error details, re-run with: rtk proxy $CMD"
         fi
     fi
-fi
-
-# --- Batching reminder after pctx execute_typescript (max once per session) ---
-REMINDER_FLAG="/tmp/.claude-pctx-reminder-$(id -u)"
-if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]] && [[ ! -f "$REMINDER_FLAG" ]]; then
-    touch "$REMINDER_FLAG"
-    echo "BATCH CHECK: Was this the only Serena/MCP operation needed this turn? If 2+ ops are coming, combine them into one execute_typescript call." >&2
 fi
 
 exit 0
