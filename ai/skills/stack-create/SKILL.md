@@ -168,15 +168,15 @@ $HOME/.dotfiles/.claude/scripts/stack create feature/api main
 $HOME/.dotfiles/.claude/scripts/stack create feature/ui feature/api
 $HOME/.dotfiles/.claude/scripts/stack create feature/polish feature/ui
 ```
-Then write handoffs and open tmux windows for each: `dev:api`, `dev:ui`, `dev:polish`
+Then write handoffs and open tmux windows for each: `api`, `ui`, `polish` (in current tmux session)
 
 User: "Stack a new branch without a worktree"
 Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/ui feature/backend --no-worktree`
-(No EnterWorktree call)
+(No tmux session opened)
 
 ## Related Skills
 
-- **stack-navigate**: Move between branches (worktree-aware), with EnterWorktree/ExitWorktree session handoff
+- **stack-navigate**: Move between branches (worktree-aware) via tmux
 - **stack-status**: View stack hierarchy with worktree info
-- **stack-pr**: Create Azure DevOps PR
+- **stack-pr**: Create PR (auto-detects GitHub vs Azure DevOps)
 - **stack-update**: Update after merge (syncs worktrees)
