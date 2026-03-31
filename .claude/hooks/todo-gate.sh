@@ -104,10 +104,9 @@ print(json.dumps({'decision': 'block', 'reason': reason}))
 " "$REASON"
     exit 0
 else
-    # warn: print to stderr so user sees it, but allow stop
-    echo "" >&2
-    echo "TODO-GATE [warn]: $COUNT incomplete todo(s) remain:" >&2
-    echo "$ITEMS" >&2
-    echo "Upgrade to 'block' in hook-config.yaml when ready to enforce." >&2
+    # Advisory: stdout so model sees it, exit 0 so stop proceeds
+    echo ""
+    echo "TODO-GATE: $COUNT incomplete todo(s) remain:"
+    echo "$ITEMS"
     exit 0
 fi
