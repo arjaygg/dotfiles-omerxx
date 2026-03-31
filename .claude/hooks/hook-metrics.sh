@@ -29,15 +29,36 @@ hook_enforcement_level() {
     echo "$level"
 }
 
-# Map enforcement level to exit code: "block"→1, "warn"→2, "off"→0
+# Map enforcement level to exit code.
+# Per Claude Code docs: exit 2 = block (stderr shown to Claude); exit 1 = non-blocking (tool proceeds).
+# "warn" is advisory-only: hint printed to stdout, tool is not halted.
+#   block → 2  (actually blocks; Claude sees stderr as reason)
+#   warn  → 0  (advisory only; stdout hint, tool proceeds)
+#   off   → 0  (disabled)
 hook_exit_code() {
     local level
     level=$(hook_enforcement_level "$1")
     case "$level" in
-        block) echo 1 ;;
+        block) echo 2 ;;
         off)   echo 0 ;;
-        *)     echo 2 ;;
+        *)     echo 0 ;;
     esac
+}
+
+# Emit a JSON structured block decision and exit 0.
+# Preferred over exit 2 + stderr: Claude always sees the reason regardless of
+# deny-list interaction order.
+# Usage: hook_block "hook-name" "tool-name" "Human-readable reason"
+hook_block() {
+    local hook_name="$1"
+    local tool_name="$2"
+    local reason="$3"
+    hook_metric "$hook_name" "$tool_name" 2 2>/dev/null || true
+    python3 -c "
+import json, sys
+print(json.dumps({'decision': 'block', 'reason': sys.argv[1]}))
+" "$reason"
+    exit 0
 }
 
 _ensure_db() {
@@ -81,8 +102,8 @@ SELECT
     hook_name AS hook,
     COUNT(*) AS total,
     SUM(CASE WHEN exit_code = 0 THEN 1 ELSE 0 END) AS pass,
-    SUM(CASE WHEN exit_code = 2 THEN 1 ELSE 0 END) AS warn,
-    SUM(CASE WHEN exit_code = 1 THEN 1 ELSE 0 END) AS block,
+    SUM(CASE WHEN exit_code = 0 THEN 1 ELSE 0 END) AS warn,
+    SUM(CASE WHEN exit_code = 2 THEN 1 ELSE 0 END) AS block,
     ROUND(100.0 * SUM(CASE WHEN exit_code = 0 THEN 1 ELSE 0 END) / COUNT(*), 1) AS pass_pct
 FROM hook_events
 WHERE timestamp >= datetime('now', '-7 days', 'localtime')
@@ -109,9 +130,9 @@ cmd_compliance() {
     sqlite3 -header -column "$METRICS_DB" <<'SQL'
 SELECT
     hook_name AS hook,
-    SUM(CASE WHEN exit_code = 2 THEN 1 ELSE 0 END) AS warnings,
-    SUM(CASE WHEN exit_code = 1 THEN 1 ELSE 0 END) AS blocks,
-    ROUND(100.0 * SUM(CASE WHEN exit_code IN (1,2) THEN 1 ELSE 0 END) / COUNT(*), 1) AS trigger_rate_pct
+    SUM(CASE WHEN exit_code = 0 THEN 1 ELSE 0 END) AS warnings,
+    SUM(CASE WHEN exit_code = 2 THEN 1 ELSE 0 END) AS blocks,
+    ROUND(100.0 * SUM(CASE WHEN exit_code IN (0,2) THEN 1 ELSE 0 END) / COUNT(*), 1) AS trigger_rate_pct
 FROM hook_events
 WHERE timestamp >= datetime('now', '-7 days', 'localtime')
 GROUP BY hook_name

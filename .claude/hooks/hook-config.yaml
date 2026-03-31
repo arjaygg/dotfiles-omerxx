@@ -1,6 +1,7 @@
-# Hook enforcement levels: "warn" (exit 2), "block" (exit 1), "off" (exit 0)
+# Hook enforcement levels: "block" (exit 2, JSON reason shown to Claude), "warn" (exit 0, advisory stdout hint), "off" (disabled)
 # After burn-in, graduate hooks from "warn" to "block" based on metrics data.
 # Run: hook-metrics.sh compliance — to see trigger rates before promoting.
+# Note: historical metrics.db entries with exit_code=1 are stale (pre-2026-03-31). Run: hook-metrics.sh reset
 #
 # Graduated 2026-03-31 based on session analysis:
 #   - Bash at 41% of tool calls (target <20%), pctx at <1% (target >10%)
