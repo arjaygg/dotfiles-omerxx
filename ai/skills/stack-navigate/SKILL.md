@@ -105,36 +105,51 @@ stack up
 # 3. Use alias: stup (if configured)
 ```
 
-## Worktree Session Handoff (EnterWorktree / ExitWorktree)
+## Worktree Session Handoff (tmux-based)
 
-When the current Claude Code session was entered via `EnterWorktree`, navigating to
-a different worktree requires a session handoff so Claude Code's CWD follows you.
+When navigating to a different worktree, use tmux to switch or open a session there.
+Never use `EnterWorktree`/`ExitWorktree` — use the tmux approach instead.
 
-**Pattern — navigate up (to parent branch):**
-1. Call `ExitWorktree({action: "keep"})` to leave the current worktree session
-2. Run `$HOME/.dotfiles/.claude/scripts/stack up` to determine the parent path
-3. Call `EnterWorktree({name: "<parent-sanitized-name>"})` to enter the parent worktree
+**Pattern — navigate to a worktree:**
 
-**Pattern — navigate down (to child branch):**
-1. Call `ExitWorktree({action: "keep"})` to leave the current worktree session
-2. Run `$HOME/.dotfiles/.claude/scripts/stack down` to determine the child path
-3. Call `EnterWorktree({name: "<child-sanitized-name>"})` to enter the child worktree
+1. Run the navigation command to get the target path:
+   ```bash
+   TARGET_PATH=$($HOME/.dotfiles/.claude/scripts/stack up)   # or stack down
+   # TARGET_PATH will be something like: cd /path/to/.trees/parent
+   # Extract the actual path:
+   WORKTREE_PATH=$(echo "$TARGET_PATH" | sed 's/^cd //')
+   WINDOW_NAME=$(basename "$WORKTREE_PATH")
+   ```
+
+2. Detect the current tmux session:
+   ```bash
+   TMUX_SESSION=$(tmux display-message -p '#S')
+   ```
+
+3. Check if a window for that worktree already exists:
+   ```bash
+   if tmux list-windows -t "$TMUX_SESSION" -F '#{window_name}' | grep -q "^$WINDOW_NAME$"; then
+     # Switch to existing window
+     tmux select-window -t "$TMUX_SESSION:$WINDOW_NAME"
+   else
+     # Open a new window with claude
+     tmux new-window -t "$TMUX_SESSION" -n "$WINDOW_NAME"
+     sleep 0.3
+     tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "cd $WORKTREE_PATH && claude" Enter
+   fi
+   ```
 
 > The sanitized name is the branch name with the type prefix stripped:
 > `feature/user-auth` → `"user-auth"`, `fix/bug` → `"bug"`
 
-> **Note on bug #36205:** Until the EnterWorktree/WorktreeCreate hook bug is fixed,
-> `EnterWorktree` creates a session in `.claude/worktrees/` (not `.trees/`). The
-> `.trees/<name>` worktree remains the authoritative location for git operations.
-> For full isolation, open a new Claude Code session: `claude` from `.trees/<name>`.
-
-**If you're NOT in an EnterWorktree session** (normal Claude Code session):
-- Just run the navigation commands and `eval` the output in your terminal
-- No ExitWorktree/EnterWorktree needed
+**If not inside tmux:** Just run the navigation command and `eval` its output:
+```bash
+eval $($HOME/.dotfiles/.claude/scripts/stack up)
+```
 
 ## Related Skills
 
-- **stack-create**: Create branches with worktrees + automatic EnterWorktree session entry
+- **stack-create**: Create branches with worktrees + automatic tmux session in new window
 - **stack-status**: View stack with worktree locations
 - **stack-pr**: Create PRs from worktrees
 - **stack-update**: Update and sync worktrees

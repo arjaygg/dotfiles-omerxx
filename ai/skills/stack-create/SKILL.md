@@ -91,6 +91,7 @@ Worktrees are created by **default** (no flag needed). You also get:
    # Capture current session context (empty string if files don't exist)
    ACTIVE_CONTEXT=$([ -f plans/active-context.md ] && cat plans/active-context.md || echo "*(none)*")
    PROGRESS=$([ -f plans/progress.md ] && cat plans/progress.md || echo "*(none)*")
+   DECISIONS=$([ -f plans/decisions.md ] && cat plans/decisions.md || echo "*(none)*")
 
    cat > .trees/<sanitized-name>/plans/session-handoff.md << EOF
    # Session Handoff
@@ -105,6 +106,9 @@ Worktrees are created by **default** (no flag needed). You also get:
 
    ### progress.md
    $PROGRESS
+
+   ### decisions.md
+   $DECISIONS
    EOF
    ```
    Only write if the worktree was actually created (skip for `--no-worktree`).
