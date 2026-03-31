@@ -120,56 +120,11 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|Read|Edit|Write",
+        "matcher": "Bash|Read|Edit|Write|Grep|Glob|Agent",
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/pre-tool-gate.sh\"'"
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun \"$HOME/.dotfiles/.claude/hooks/ts/plan-naming-enforcer-working.ts\""
-          }
-        ]
-      },
-      {
-        "matcher": "Agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/check-agent-parallelism.sh\"'"
-          }
-        ]
-      },
-      {
-        "matcher": "Grep|Glob|Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/serena-tool-priority.sh\"'"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/edit-without-read.sh\"'"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/plan-scope-gate.sh\"'"
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/pre-tool-gate-v2.sh\"'"
           }
         ]
       },
@@ -185,47 +140,11 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash|Agent",
+        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/post-tool-handler.sh\"'"
-          }
-        ]
-      },
-      {
-        "matcher": "TaskUpdate",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/post-task-fence.sh\"'"
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__serena__.*|mcp__pctx__.*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/pctx-batch-tracker.sh\"'"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/bash-output-guard.sh\"'"
-          }
-        ]
-      },
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/read-tracker.sh\"'"
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/post-tool-analytics.sh\"'"
           }
         ]
       },
