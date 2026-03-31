@@ -14,7 +14,7 @@ triggers:
 
 # Stack Create
 
-Creates a new stacked branch with a worktree (default) for PR stacking workflows, with full Charcoal integration and Claude Code session context switching via EnterWorktree/ExitWorktree.
+Creates a new stacked branch with a worktree (default) for PR stacking workflows, with full Charcoal integration. Automatically writes a rich session handoff and opens a new Claude Code session in the worktree via tmux.
 
 ## When to Use
 
@@ -60,46 +60,62 @@ Worktrees are created by **default** (no flag needed). You also get:
    - Tracks branch in Charcoal (navigation and restacking)
    - Enables worktree-aware Charcoal commands
 
-3. **Enter the worktree session** (call after confirming worktree was created):
+3. **Open a new Claude Code session in the worktree** (after confirming worktree was created):
    Derive the `name` from the branch by stripping the type prefix:
    - `feature/user-auth` → name = `"user-auth"`
    - `fix/cursor-issue` → name = `"cursor-issue"`
    - `chore/cleanup` → name = `"cleanup"`
 
-   Call:
-   ```
-   EnterWorktree({name: "<sanitized-name>"})
+   Use tmux to open a new window in the current session and start Claude there.
+   Detect the current session name at runtime — never hardcode it:
+   ```bash
+   WORKTREE_PATH="$(pwd)/.trees/<sanitized-name>"
+   WINDOW_NAME="<sanitized-name>"
+   TMUX_SESSION=$(tmux display-message -p '#S')
+   tmux new-window -t "$TMUX_SESSION" -n "$WINDOW_NAME"
+   sleep 0.3
+   tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "cd $WORKTREE_PATH && claude" Enter
    ```
 
-   > **Note on bug #36205:** The in-session `EnterWorktree` tool currently ignores
-   > `WorktreeCreate` hooks and creates a separate branch in `.claude/worktrees/`
-   > rather than entering `.trees/<name>`. The WorktreeCreate hook is configured and
-   > will take effect once the bug is resolved. Until then, `EnterWorktree` still
-   > shifts the Claude Code session CWD. **The authoritative worktree for git
-   > operations is always `.trees/<name>`.**
-   >
-   > For full isolation today: open a new Claude Code session from the worktree:
-   > `claude` from `.trees/<name>`, or `claude --worktree <name>` from the repo root
-   > (this path uses the hook correctly).
+   If `$TMUX` is unset (not inside tmux), skip the tmux commands and instead inform
+   the user to open a new terminal and run `cd .trees/<sanitized-name> && claude`.
 
-4. **Write a session handoff stub** so `/session-next` can discover this worktree even before a Claude session is started in it:
+   This gives the new session a properly isolated CWD — the new Claude instance will
+   start fresh in the worktree and pick up `plans/session-handoff.md` automatically.
+
+4. **Write a rich session handoff** before opening the new session, so the new Claude
+   instance starts with context from the current session:
    ```bash
    mkdir -p .trees/<sanitized-name>/plans
-   # Write stub — session-next uses this to surface the worktree in the queue
-   cat > .trees/<sanitized-name>/plans/session-handoff.md << 'EOF'
+
+   # Capture current session context (empty string if files don't exist)
+   ACTIVE_CONTEXT=$([ -f plans/active-context.md ] && cat plans/active-context.md || echo "*(none)*")
+   PROGRESS=$([ -f plans/progress.md ] && cat plans/progress.md || echo "*(none)*")
+
+   cat > .trees/<sanitized-name>/plans/session-handoff.md << EOF
    # Session Handoff
    status: pending
    branch: <full-branch-name>
-   created_at: <today's date>
+   created_at: $(date +%Y-%m-%d)
+
+   ## Context from parent session
+
+   ### active-context.md
+   $ACTIVE_CONTEXT
+
+   ### progress.md
+   $PROGRESS
    EOF
    ```
    Only write if the worktree was actually created (skip for `--no-worktree`).
+   Write the handoff **before** running the tmux command in step 3 so the file is
+   present when Claude starts.
 
 5. Inform the user:
-   - Branch and worktree created
-   - Worktree path: `.trees/<sanitized-name>`
-   - Claude Code session entered (with bug caveat if relevant)
-   - How to exit when done: `ExitWorktree({action: "keep"})`
+   - Branch and worktree created at `.trees/<sanitized-name>`
+   - Handoff written to `.trees/<sanitized-name>/plans/session-handoff.md`
+   - New Claude session opened in tmux window `dev:<sanitized-name>`
+   - They can switch to it with: `tmux select-window -t "dev:<sanitized-name>"`
 
 ## Opting out of worktrees
 
@@ -107,15 +123,7 @@ If the user explicitly does NOT want a worktree:
 ```bash
 $HOME/.dotfiles/.claude/scripts/stack create <branch-name> [base-branch] --no-worktree
 ```
-Do **not** call `EnterWorktree` in this case.
-
-## Session Exit
-
-When the user is done working in the worktree, call:
-```
-ExitWorktree({action: "keep"})
-```
-This returns the Claude Code session CWD to the main repo. The worktree and branch are preserved.
+Do **not** write a handoff or open a tmux session in this case.
 
 ## Worktree Management
 
@@ -146,8 +154,8 @@ When using worktrees with Charcoal:
 
 User: "Create a new stacked branch for user authentication"
 Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/user-auth main`
-Then: `EnterWorktree({name: "user-auth"})`
-Result: Branch + worktree at `.trees/user-auth`, Claude session context switched
+Then: write handoff to `.trees/user-auth/plans/session-handoff.md`, open tmux window `dev:user-auth` with `cd .trees/user-auth && claude`
+Result: Branch + worktree at `.trees/user-auth`, new Claude session ready in tmux
 
 User: "Create stacked worktrees for API, UI, and polish"
 Actions:
@@ -156,7 +164,7 @@ $HOME/.dotfiles/.claude/scripts/stack create feature/api main
 $HOME/.dotfiles/.claude/scripts/stack create feature/ui feature/api
 $HOME/.dotfiles/.claude/scripts/stack create feature/polish feature/ui
 ```
-Then enter each: `EnterWorktree({name: "api"})` etc.
+Then write handoffs and open tmux windows for each: `dev:api`, `dev:ui`, `dev:polish`
 
 User: "Stack a new branch without a worktree"
 Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/ui feature/backend --no-worktree`
