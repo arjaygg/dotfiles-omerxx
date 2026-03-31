@@ -53,12 +53,12 @@ if [[ "$TOOL_NAME" == "Grep" && -n "$PATTERN" ]]; then
     # Symbol-like patterns: func/class/type/struct/interface followed by a name,
     # or a bare PascalCase/camelCase identifier (likely a symbol lookup)
     if [[ "$PATTERN" =~ ^(func|class|type|struct|interface|def|fn)\s*\\?s ]]; then
-        echo "HINT: For symbol lookups, Serena.findSymbol is more precise than Grep and returns structural context." >&2
+        echo "HINT: For symbol lookups, Serena.findSymbol is more precise than Grep and returns structural context."
         hook_metric "$_HOOK_NAME" "$TOOL_NAME" "$_EXIT_CODE" 2>/dev/null || true; exit "$_EXIT_CODE"
     fi
     # PascalCase identifier (e.g. "HandleRequest", "WorkerPool") — likely a symbol
     if [[ "$PATTERN" =~ ^[A-Z][a-zA-Z0-9]+$ ]]; then
-        echo "HINT: '$PATTERN' looks like a symbol name. Consider Serena.findSymbol('$PATTERN') for structural results." >&2
+        echo "HINT: '$PATTERN' looks like a symbol name. Consider Serena.findSymbol('$PATTERN') for structural results."
         hook_metric "$_HOOK_NAME" "$TOOL_NAME" "$_EXIT_CODE" 2>/dev/null || true; exit "$_EXIT_CODE"
     fi
 fi
@@ -70,7 +70,7 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" && -z "$LIMIT" ]]; then
         exit 0  # pre-tool-gate.sh handles this
     fi
     if ! is_non_code "$FILE_PATH" && [[ -f "$FILE_PATH" ]]; then
-        echo "HINT: Consider Serena.getSymbolsOverview for '$FILE_PATH' to see structure first, then Read with limit/offset for specific symbols." >&2
+        echo "HINT: Consider Serena.getSymbolsOverview for '$FILE_PATH' to see structure first, then Read with limit/offset for specific symbols."
         hook_metric "$_HOOK_NAME" "$TOOL_NAME" "$_EXIT_CODE" 2>/dev/null || true; exit "$_EXIT_CODE"
     fi
 fi
@@ -81,7 +81,7 @@ if [[ "$TOOL_NAME" == "Glob" && -n "$PATTERN" ]]; then
     # e.g. "**/worker.go" or "*/routes.go" — not "**/*.go" or "src/**"
     if [[ "$PATTERN" =~ /[a-zA-Z0-9_-]+\.[a-zA-Z]+$ && ! "$PATTERN" =~ \*\.[a-zA-Z]+$ ]]; then
         FILENAME="${PATTERN##*/}"
-        echo "HINT: For finding '$FILENAME', Serena.findFile('$FILENAME') searches the project index and is often faster." >&2
+        echo "HINT: For finding '$FILENAME', Serena.findFile('$FILENAME') searches the project index and is often faster."
         hook_metric "$_HOOK_NAME" "$TOOL_NAME" "$_EXIT_CODE" 2>/dev/null || true; exit "$_EXIT_CODE"
     fi
 fi
