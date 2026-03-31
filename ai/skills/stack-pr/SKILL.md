@@ -32,34 +32,49 @@ Use this skill when the user wants to:
 
 1. Identify parameters:
    - `branch`: Source branch (default: current)
-   - `target`: Target branch (default: inferred from stack or main)
-   - `title`: PR title (optional)
+   - `target`: Target branch (default: inferred from Charcoal stack or `main`)
+   - `title`: PR title (optional — auto-generated from branch name if omitted)
    - `draft`: Whether to create as draft (optional)
 
-2. Ensure Charcoal is available (required for stack target inference):
-   - Install: `brew install danerwilliams/tap/charcoal`
-   - Initialize in the repo: `$HOME/.dotfiles/.claude/scripts/stack init`
-
-3. Execute the PR creation script:
+2. **Account detection** — determine which GH account to use:
    ```bash
-   $HOME/.dotfiles/.claude/scripts/stack pr <branch> [target] [title]
+   REMOTE_ORG=$(git remote get-url origin | sed 's|.*github\.com[/:]||;s|/.*||')
+   ACTIVE=$(gh api user --jq '.login' 2>/dev/null)
+   TARGET_ACCOUNT=$( [ "$REMOTE_ORG" = "arjaygg" ] && echo "arjaygg" || echo "Arjay-Gallentes_axosEnt" )
+   [ "$ACTIVE" != "$TARGET_ACCOUNT" ] && gh auth switch --user "$TARGET_ACCOUNT"
    ```
 
-   This will:
-   - Push the branch if needed
-   - Create PR in Azure DevOps
-   - Link dependencies in description
-   - Add "Stacked PR" metadata
+3. **Preflight** — ensure credential helper is registered:
+   ```bash
+   gh auth setup-git
+   ```
 
-4. Return the PR URL to the user.
+4. **Push and create PR** using `gh` CLI directly:
+   ```bash
+   BRANCH=$(git branch --show-current)
+   TARGET=$(gt log --short 2>/dev/null | awk 'NR==2{print $1}' || echo "main")
+   git push -u origin "$BRANCH"
+   gh pr create --base "$TARGET" --head "$BRANCH" --title "<title>" --body "<body>"
+   ```
+   For draft: add `--draft`
+
+5. Return the PR URL to the user.
 
 ## Examples
 
 User: "Create a PR for this feature"
-Action: `$HOME/.dotfiles/.claude/scripts/stack pr $(git branch --show-current)`
-
-User: "Create a stacked PR for feature/login-ui"
-Action: `$HOME/.dotfiles/.claude/scripts/stack pr feature/login-ui`
+```bash
+gh auth setup-git
+git push -u origin $(git branch --show-current)
+gh pr create --base main --fill
+```
 
 User: "Submit this as a draft"
-Action: `$HOME/.dotfiles/.claude/scripts/stack pr $(git branch --show-current) --draft`
+```bash
+gh pr create --base main --fill --draft
+```
+
+User: "Create a stacked PR for feature/login-ui on top of feature/api"
+```bash
+gh pr create --base feature/api --head feature/login-ui --fill
+```
