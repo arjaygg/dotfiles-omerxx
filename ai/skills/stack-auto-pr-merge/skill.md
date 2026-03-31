@@ -63,7 +63,7 @@ Create a PR with these changes and auto-merge it to {base_branch}:
 
 3. Make the changes described above using Edit/Write tools
 
-4. Commit changes (stage only modified files explicitly — never use git add .):
+4. Commit changes (stage only the files you modified — explicit paths, not `git add -A`):
    git add <specific-file1> <specific-file2>
    git commit -m "{commit_message}"
 
@@ -110,7 +110,7 @@ This skill uses **isolated worktrees** for complete non-blocking operation:
 - ✅ Your current workspace never touched
 - ✅ Multiple auto-merges can run in parallel
 - ✅ Automatic cleanup after merge
-- ✅ Uses existing `stack create --worktree` and `stack pr` commands
+- ✅ Uses existing `stack create` and `stack pr` commands
 - ✅ Runs in background via Task tool with `run_in_background=True`
 
 ## Safety Features
