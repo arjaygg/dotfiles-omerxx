@@ -1,6 +1,16 @@
 ---
 name: stack-auto-pr-merge
 description: Fully automated stack branch creation, PR, approval, and merge with optional stack update
+triggers:
+  - auto merge
+  - auto-merge
+  - automate PR
+  - background PR
+  - auto PR
+  - automated merge
+  - merge automatically
+  - hands-free PR
+  - background merge
 ---
 
 # Stack Auto PR Merge
@@ -46,36 +56,38 @@ Create a PR with these changes and auto-merge it to {base_branch}:
 
 1. Create isolated worktree:
    cd $(git rev-parse --show-toplevel)
-   ~/.dotfiles/.claude/scripts/stack create {branch_name} {base_branch} --worktree
+   ~/.dotfiles/.claude/scripts/stack create {branch_name} {base_branch}
 
 2. Change to worktree directory:
    cd .trees/{branch_name_without_prefix}/
 
 3. Make the changes described above using Edit/Write tools
 
-4. Commit changes:
-   git add .
+4. Commit changes (stage only the files you modified — explicit paths, not `git add -A`):
+   git add <specific-file1> <specific-file2>
    git commit -m "{commit_message}"
 
 5. Push to remote:
    git push origin {branch_name}
 
-6. Create PR using stack pr command:
+6. Create PR using stack pr command (auto-detects GitHub vs Azure DevOps):
    ~/.dotfiles/.claude/scripts/stack pr
 
-7. Auto-approve the PR:
-   az repos pr set-vote --id <pr-id> --vote approve --organization "https://dev.azure.com/bofaz"
+7. **GitHub**: Use gh CLI to approve and merge:
+   gh pr merge <pr-number> --squash --auto
 
-8. Complete the merge:
-   az repos pr update --id <pr-id> --status completed --organization "https://dev.azure.com/bofaz"
+   **Azure DevOps**: Use az CLI to approve and merge:
+   FORGE_ORG=$(git remote get-url origin | grep -oP 'dev\.azure\.com/[^/]+' | head -1)
+   az repos pr set-vote --id <pr-id> --vote approve --organization "https://$FORGE_ORG"
+   az repos pr update --id <pr-id> --status completed --organization "https://$FORGE_ORG"
 
-9. Return to original directory and update current branch (if requested):
+8. Return to original directory and update current branch (if requested):
    cd $(git rev-parse --show-toplevel)
    git checkout {current_branch}
    git pull origin {base_branch}
 
-10. Clean up worktree:
-    git worktree remove .trees/{branch_name_without_prefix}/
+9. Clean up worktree:
+   git worktree remove .trees/{branch_name_without_prefix}/
 
 ## Expected Outcome
 - PR created and merged to {base_branch}
@@ -98,7 +110,7 @@ This skill uses **isolated worktrees** for complete non-blocking operation:
 - ✅ Your current workspace never touched
 - ✅ Multiple auto-merges can run in parallel
 - ✅ Automatic cleanup after merge
-- ✅ Uses existing `stack create --worktree` and `stack pr` commands
+- ✅ Uses existing `stack create` and `stack pr` commands
 - ✅ Runs in background via Task tool with `run_in_background=True`
 
 ## Safety Features

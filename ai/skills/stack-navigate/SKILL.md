@@ -33,7 +33,7 @@ Use this skill when the user wants to:
 
 ## Key Feature: Worktree-Aware Navigation
 
-**NEW:** Navigation is now worktree-aware! The commands will:
+Navigation is worktree-aware. The commands will:
 - ✅ Detect if parent/child branch has a worktree
 - ✅ Output `cd` command to navigate to the worktree
 - ✅ Fall back to checkout if no worktree exists
