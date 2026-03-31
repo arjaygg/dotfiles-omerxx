@@ -31,6 +31,19 @@ fi
 mkdir -p ~/.dotfiles/.claude/skills
 ln -sf ../../ai/skills/pctx-code-mode ~/.dotfiles/.claude/skills/pctx-code-mode
 ln -sf ../../ai/skills/autoresearch ~/.dotfiles/.claude/skills/autoresearch
+ln -sf ../../ai/skills/explore ~/.dotfiles/.claude/skills/explore
+
+# Codex skill symlinks (absolute paths — codex resolves from ~/.codex/skills/)
+mkdir -p ~/.codex/skills
+ln -sf ~/.dotfiles/ai/skills/pctx-code-mode ~/.codex/skills/pctx-code-mode
+ln -sf ~/.dotfiles/ai/skills/explore ~/.codex/skills/explore
+
+# Cursor skill symlinks (absolute paths — cursor resolves from ~/.cursor/skills/)
+mkdir -p ~/.cursor/skills
+ln -sf ~/.dotfiles/ai/skills/pctx-code-mode ~/.cursor/skills/pctx-code-mode
+ln -sf ~/.dotfiles/ai/skills/explore ~/.cursor/skills/explore
+
+# Gemini: covered via ~/.gemini/skills/ai -> ~/.dotfiles/ai/skills (stow-managed)
 
 # Cleanup legacy files if they exist in root
 rm -rf ~/.dotfiles/daily-standup-insights 2>/dev/null

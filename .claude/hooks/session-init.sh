@@ -8,6 +8,9 @@ set -euo pipefail
 TIMESTAMP_FILE="/tmp/.claude-session-start-$(id -u)"
 date '+%s' > "$TIMESTAMP_FILE"
 
+# Warn if a substantial session already ran in this directory recently
+bash "$HOME/.dotfiles/.claude/hooks/duplicate-session-check.sh" || true
+
 # Kill stale pctx processes from other worktrees to prevent cross-contamination.
 # Each stdio pctx session inherits its CWD, so a process started in worktree A
 # must not serve worktree B. Only kill processes with hardcoded worktree paths.

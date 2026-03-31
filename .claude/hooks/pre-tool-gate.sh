@@ -52,30 +52,59 @@ if [[ "$TOOL_NAME" == "Read" && "$FILE_PATH" == *.go && -z "$LIMIT" ]]; then
     exit 2
 fi
 
-# --- Warn when using Bash instead of a dedicated native tool ---
-if [[ "$TOOL_NAME" == "Bash" ]]; then
+# --- Block/Warn when using Bash instead of a dedicated native tool ---
+# Uses configurable enforcement from hook-config.yaml via hook-metrics.sh
+# NOTE: source + setup done at top level to match other hooks (serena-tool-priority, etc.)
+_BGATE_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_BGATE_SCRIPT_DIR}/hook-metrics.sh" 2>/dev/null || true
+_BGATE_HOOK_NAME="bash-tool-gate"
+_BGATE_EXIT_CODE=$(hook_exit_code "$_BGATE_HOOK_NAME" 2>/dev/null || echo 2)
+
+if [[ "$TOOL_NAME" == "Bash" && "$_BGATE_EXIT_CODE" -ne 0 ]]; then
+    _bgate_label() {
+        [[ "$_BGATE_EXIT_CODE" -eq 1 ]] && echo "BLOCKED" || echo "WARNING"
+    }
+
     # Block: cat → use Read tool
     if [[ "$CMD" == cat\ * ]]; then
-        echo "WARNING: Use the Read tool instead of 'cat'. It's token-efficient, reviewable, and supports limit/offset." >&2
-        exit 2
+        echo "$(_bgate_label): Use the Read tool instead of 'cat'. It's token-efficient, reviewable, and supports limit/offset." >&2
+        hook_metric "$_BGATE_HOOK_NAME" "Bash" "$_BGATE_EXIT_CODE" 2>/dev/null || true
+        exit "$_BGATE_EXIT_CODE"
+    fi
+
+    # Block: head/tail → use Read tool with limit/offset
+    if [[ "$CMD" == head\ * || "$CMD" == tail\ * ]]; then
+        echo "$(_bgate_label): Use the Read tool with limit/offset instead of 'head'/'tail'." >&2
+        hook_metric "$_BGATE_HOOK_NAME" "Bash" "$_BGATE_EXIT_CODE" 2>/dev/null || true
+        exit "$_BGATE_EXIT_CODE"
     fi
 
     # Block: grep (but not git grep) → use Grep tool or Serena.searchForPattern
-    if [[ "$CMD" == grep\ * || "$CMD" == grep\ -* ]] && [[ "$CMD" != *"git grep"* ]]; then
-        echo "WARNING: Use the Grep tool (ripgrep-backed, gitignore-aware) or Serena.searchForPattern instead of 'grep'." >&2
-        exit 2
+    if [[ ( "$CMD" == grep\ * || "$CMD" == grep\ -* ) && "$CMD" != *"git grep"* ]]; then
+        echo "$(_bgate_label): Use the Grep tool (ripgrep-backed, gitignore-aware) or Serena.searchForPattern instead of 'grep'." >&2
+        hook_metric "$_BGATE_HOOK_NAME" "Bash" "$_BGATE_EXIT_CODE" 2>/dev/null || true
+        exit "$_BGATE_EXIT_CODE"
     fi
 
-    # Block: rg (ripgrep) → use Grep tool (same reason as grep)
+    # Block: rg → use Grep tool
     if [[ "$CMD" == rg\ * || "$CMD" == rg\ -* ]]; then
-        echo "WARNING: Use the Grep tool instead of 'rg'. It is gitignore-aware and token-efficient." >&2
-        exit 2
+        echo "$(_bgate_label): Use the Grep tool instead of 'rg'. It is gitignore-aware and token-efficient." >&2
+        hook_metric "$_BGATE_HOOK_NAME" "Bash" "$_BGATE_EXIT_CODE" 2>/dev/null || true
+        exit "$_BGATE_EXIT_CODE"
     fi
 
-    # Block: find . → use Glob or Serena.findFile
+    # Block: find → use Glob or Serena.findFile
     if [[ "$CMD" == find\ .* || "$CMD" == find\ /* ]]; then
-        echo "WARNING: Use the Glob tool or Serena.findFile instead of 'find'. They are project-aware and faster." >&2
-        exit 2
+        echo "$(_bgate_label): Use the Glob tool or Serena.findFile instead of 'find'. They are project-aware and faster." >&2
+        hook_metric "$_BGATE_HOOK_NAME" "Bash" "$_BGATE_EXIT_CODE" 2>/dev/null || true
+        exit "$_BGATE_EXIT_CODE"
+    fi
+
+    # Block: plain ls (not ls -l* which is used for symlink inspection)
+    if [[ ( "$CMD" == ls\ * || "$CMD" == "ls" ) && "$CMD" != ls\ -l* ]]; then
+        echo "$(_bgate_label): Use Glob or Serena.listDir instead of 'ls'. They are structured and token-efficient." >&2
+        hook_metric "$_BGATE_HOOK_NAME" "Bash" "$_BGATE_EXIT_CODE" 2>/dev/null || true
+        exit "$_BGATE_EXIT_CODE"
     fi
 
     # Block: git commit on main branch

@@ -1,8 +1,14 @@
 # Hook enforcement levels: "warn" (exit 2), "block" (exit 1), "off" (exit 0)
 # After burn-in, graduate hooks from "warn" to "block" based on metrics data.
 # Run: hook-metrics.sh compliance — to see trigger rates before promoting.
+#
+# Graduated 2026-03-31 based on session analysis:
+#   - Bash at 41% of tool calls (target <20%), pctx at <1% (target >10%)
+#   - Warnings were being ignored — promoting to block for enforcement
 
-serena-tool-priority: warn
+serena-tool-priority: block
 pctx-batch-tracker: warn
-bash-output-guard: warn
+bash-output-guard: block
+bash-tool-gate: block
 edit-without-read: warn
+duplicate-session-check: warn   # warn = active, off = disabled
