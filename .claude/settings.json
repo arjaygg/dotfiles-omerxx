@@ -1,7 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
-    "USE_BUILTIN_RIPGREP": "0"
+    "USE_BUILTIN_RIPGREP": "0",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
     "allow": [
@@ -133,7 +134,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"$HOME/.dotfiles/.claude/hooks/ts/plan-naming-enforcer-working.ts\""
+            "command": "bash -lc 'bun \"$HOME/.dotfiles/.claude/hooks/ts/plan-naming-enforcer-working.ts\"'"
           }
         ]
       },
