@@ -8,9 +8,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/hook-metrics.sh" 2>/dev/null || true
 _HOOK_NAME="edit-without-read"
-_EXIT_CODE=$(hook_exit_code "$_HOOK_NAME" 2>/dev/null || echo 2)
+_LEVEL=$(hook_enforcement_level "$_HOOK_NAME" 2>/dev/null || echo "warn")
 
-[[ "$_EXIT_CODE" -eq 0 ]] && exit 0
+[[ "$_LEVEL" == "off" ]] && exit 0
 
 INPUT=$(cat)
 
@@ -41,7 +41,7 @@ if [[ -f "$READ_LOG" ]] && grep -qF "$FILE_PATH" "$READ_LOG" 2>/dev/null; then
     exit 0
 fi
 
-# File not in read log — warn
-echo "HINT: Editing '$FILE_PATH' without reading it first. Consider using Read (or Serena.getSymbolsOverview) to understand the file before editing." >&2
-hook_metric "$_HOOK_NAME" "$TOOL_NAME" "$_EXIT_CODE" 2>/dev/null || true
-exit "$_EXIT_CODE"
+# File not in read log — advisory hint (stdout, tool proceeds)
+echo "HINT: Editing '$FILE_PATH' without reading it first. Consider using Read (or Serena.getSymbolsOverview) to understand the file before editing."
+hook_metric "$_HOOK_NAME" "$TOOL_NAME" 0 2>/dev/null || true
+exit 0
