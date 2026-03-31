@@ -28,12 +28,12 @@ Use this skill when the user wants to:
 - Check which PRs are merged/open
 - Understand branch dependencies
 - Visualize the tree structure
-- **NEW:** See which branches have worktrees
-- **NEW:** Find worktree locations
+- See which branches have worktrees
+- Find worktree locations
 
 ## Key Feature: Worktree Information
 
-**NEW:** Status now shows worktree locations! The display includes:
+Status shows worktree locations. The display includes:
 - ✅ Visual tree of branches (via Charcoal)
 - ✅ Worktree locations marked with `[WT: path]`
 - ✅ PR status for each branch
