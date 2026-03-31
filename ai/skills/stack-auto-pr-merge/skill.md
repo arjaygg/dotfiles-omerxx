@@ -68,18 +68,20 @@ Create a PR with these changes and auto-merge it to {base_branch}:
    git commit -m "{commit_message}"
 
 5. Push to remote:
-   git push origin {branch_name}
+   git push -u origin {branch_name}
 
-6. Create PR using stack pr command (auto-detects GitHub vs Azure DevOps):
-   ~/.dotfiles/.claude/scripts/stack pr
+6. Create PR using gh CLI directly:
+   # Ensure correct account is active
+   REMOTE_ORG=$(git remote get-url origin | sed 's|.*github\.com[/:]||;s|/.*||')
+   ACTIVE=$(gh api user --jq '.login' 2>/dev/null)
+   TARGET_ACCOUNT=$( [ "$REMOTE_ORG" = "arjaygg" ] && echo "arjaygg" || echo "Arjay-Gallentes_axosEnt" )
+   [ "$ACTIVE" != "$TARGET_ACCOUNT" ] && gh auth switch --user "$TARGET_ACCOUNT"
+   gh auth setup-git
+   PR_URL=$(gh pr create --base {base_branch} --head {branch_name} --title "{commit_message}" --body "Auto-merged via stack workflow")
+   PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
 
-7. **GitHub**: Use gh CLI to approve and merge:
-   gh pr merge <pr-number> --squash --auto
-
-   **Azure DevOps**: Use az CLI to approve and merge:
-   FORGE_ORG=$(git remote get-url origin | grep -oP 'dev\.azure\.com/[^/]+' | head -1)
-   az repos pr set-vote --id <pr-id> --vote approve --organization "https://$FORGE_ORG"
-   az repos pr update --id <pr-id> --status completed --organization "https://$FORGE_ORG"
+7. Merge using gh CLI (try auto first, fall back to admin squash):
+   gh pr merge "$PR_NUMBER" --squash --auto 2>/dev/null || gh pr merge "$PR_NUMBER" --squash --admin
 
 8. Return to original directory and update current branch (if requested):
    cd $(git rev-parse --show-toplevel)
