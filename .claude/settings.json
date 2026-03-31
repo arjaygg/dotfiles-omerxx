@@ -302,6 +302,10 @@
           {
             "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/plan-completion-check.sh\"'"
+          },
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/feedback-capture.sh\"'"
           }
         ]
       }
@@ -348,6 +352,7 @@
   "extraKnownMarketplaces": {},
   "alwaysThinkingEnabled": true,
   "plansDirectory": "./plans",
+  "skipDangerousModePermissionPrompt": true,
   "autoMode": {
     "environment": [
       "Organization: Axos Financial / Axos Bank. Primary use: software development.",
