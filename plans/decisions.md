@@ -36,3 +36,12 @@ Convention documented in `docs/decision-records.md`.
 
 Tool priority, batching, Serena convention, developer guidelines, and session discipline live in `ai/rules/` and are loaded user-globally by Claude and Gemini via `@` imports. Codex loads `agent-user-global.md` only (known gap). AGENTS.md no longer owns tool priority content — it references `ai/rules/tool-priority.md`.
 Durable record: `decisions/0003-universal-constitution-loading.md`
+
+---
+
+## ADL-006 — Hook output channel: stdout for Claude, stderr for terminal-only
+
+2026-03-31 — Hook validation revealed that blocking/warning hooks must write to stdout
+(not stderr) for Claude to see the reason. Stderr is terminal-only.
+Hooks using `>&2` when they block/warn are silently broken.
+See `plans/2026-03-31-hook-validation-report.md` for full findings.
