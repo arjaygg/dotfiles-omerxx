@@ -28,7 +28,19 @@ if [[ "$CWD" == */.trees/* ]]; then
 fi
 
 # Inject mandatory session-init instruction so Claude sees it at session start
-cat <<'EOF'
+# Serena.initialInstructions() is only needed when a .serena/ config dir is present.
+HAS_SERENA=false
+dir="$(pwd)"
+while [[ "$dir" != "/" ]]; do
+    if [[ -d "$dir/.serena" ]]; then
+        HAS_SERENA=true
+        break
+    fi
+    dir="$(dirname "$dir")"
+done
+
+if $HAS_SERENA; then
+    cat <<'EOF'
 [SESSION INIT REQUIRED]
 Before the first project file access (Read/Grep/Glob/Serena), you MUST:
   1. Call mcp__pctx__list_functions — confirm current Serena/lean-ctx signatures
@@ -37,6 +49,17 @@ Before the first project file access (Read/Grep/Glob/Serena), you MUST:
 
 Skip this ONLY if plans/pctx-functions.md already exists and was written today.
 EOF
+else
+    cat <<'EOF'
+[SESSION INIT REQUIRED]
+Before the first project file access (Read/Grep/Glob/Serena), you MUST:
+  1. Call mcp__pctx__list_functions — confirm current Serena/lean-ctx signatures
+  2. Write the result to plans/pctx-functions.md (create plans/ if missing)
+
+Skip step 3 (Serena.initialInstructions) — no .serena/ config found in this directory tree.
+Skip this ONLY if plans/pctx-functions.md already exists and was written today.
+EOF
+fi
 
 # Update tmux window name with Claude session context
 "$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh" session-start &
