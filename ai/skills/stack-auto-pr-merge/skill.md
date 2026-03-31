@@ -75,7 +75,7 @@ Create a PR with these changes and auto-merge it to {base_branch}:
    REMOTE_ORG=$(git remote get-url origin | sed 's|.*github\.com[/:]||;s|/.*||')
    ACTIVE=$(gh api user --jq '.login' 2>/dev/null)
    TARGET_ACCOUNT=$( [ "$REMOTE_ORG" = "arjaygg" ] && echo "arjaygg" || echo "Arjay-Gallentes_axosEnt" )
-   [ "$ACTIVE" != "$TARGET_ACCOUNT" ] && gh auth switch --user "$TARGET_ACCOUNT"
+   [ "$ACTIVE" != "$TARGET_ACCOUNT" ] && gh auth switch --user "$TARGET_ACCOUNT" > /dev/null 2>&1 || true
    gh auth setup-git
    PR_URL=$(gh pr create --base {base_branch} --head {branch_name} --title "{commit_message}" --body "Auto-merged via stack workflow")
    PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')

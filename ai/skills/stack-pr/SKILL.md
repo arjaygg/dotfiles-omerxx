@@ -41,7 +41,7 @@ Use this skill when the user wants to:
    REMOTE_ORG=$(git remote get-url origin | sed 's|.*github\.com[/:]||;s|/.*||')
    ACTIVE=$(gh api user --jq '.login' 2>/dev/null)
    TARGET_ACCOUNT=$( [ "$REMOTE_ORG" = "arjaygg" ] && echo "arjaygg" || echo "Arjay-Gallentes_axosEnt" )
-   [ "$ACTIVE" != "$TARGET_ACCOUNT" ] && gh auth switch --user "$TARGET_ACCOUNT"
+   [ "$ACTIVE" != "$TARGET_ACCOUNT" ] && gh auth switch --user "$TARGET_ACCOUNT" > /dev/null 2>&1 || true
    ```
 
 3. **Preflight** — ensure credential helper is registered:
