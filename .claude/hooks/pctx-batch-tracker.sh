@@ -57,13 +57,13 @@ COUNT=0
 [[ -f "$TRACKER" ]] && COUNT=$(wc -l < "$TRACKER" | tr -d ' ')
 
 if [[ "$COUNT" -ge 2 ]]; then
-    echo "BATCH HINT: You've made $COUNT sequential Serena/pctx MCP calls in the last 60s." >&2
-    echo "  Consider batching into one pctx execute_typescript call with Promise.all()." >&2
-    echo "  See: tool-priority.md §2 'Batching & Code Mode'" >&2
+    echo "BATCH HINT: You've made $COUNT sequential Serena/pctx MCP calls in the last 60s."
+    echo "  Consider batching into one pctx execute_typescript call with Promise.all()."
+    echo "  See: tool-priority.md §2 'Batching & Code Mode'"
     # Reset after warning to avoid repeated noise
     rm -f "$TRACKER" 2>/dev/null || true
-    hook_metric "$_HOOK_NAME" "$TOOL_NAME" "$_EXIT_CODE" 2>/dev/null || true
-    exit "$_EXIT_CODE"
+    hook_metric "$_HOOK_NAME" "$TOOL_NAME" 0 2>/dev/null || true
+    exit 0
 fi
 
 hook_metric "$_HOOK_NAME" "$TOOL_NAME" 0 2>/dev/null || true

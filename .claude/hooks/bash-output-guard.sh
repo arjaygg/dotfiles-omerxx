@@ -8,10 +8,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/hook-metrics.sh" 2>/dev/null || true
 _HOOK_NAME="bash-output-guard"
-_EXIT_CODE=$(hook_exit_code "$_HOOK_NAME" 2>/dev/null || echo 2)
+_LEVEL=$(hook_enforcement_level "$_HOOK_NAME" 2>/dev/null || echo "warn")
 
 # If enforcement is "off", skip all checks
-[[ "$_EXIT_CODE" -eq 0 ]] && exit 0
+[[ "$_LEVEL" == "off" ]] && exit 0
 
 INPUT=$(cat)
 
@@ -47,18 +47,18 @@ if [[ "$CMD" == git\ status* || "$CMD" == git\ branch* || "$CMD" == git\ diff\ -
     exit 0
 fi
 
-# --- Warn on large output ---
+# --- Warn on large output (stdout — PostToolUse adds to Claude's context) ---
 if [[ "$LINE_COUNT" -gt 200 ]]; then
-    echo "OUTPUT WARNING: Bash produced $LINE_COUNT lines — significant context consumption." >&2
-    echo "  For data-heavy commands, use context-mode MCP tools:" >&2
-    echo "    mcp__context-mode__ctx_batch_execute — runs commands + auto-indexes output" >&2
-    echo "    mcp__context-mode__ctx_execute — processes data in sandbox" >&2
-    hook_metric "$_HOOK_NAME" "Bash" "$_EXIT_CODE" 2>/dev/null || true
-    exit "$_EXIT_CODE"
+    echo "OUTPUT WARNING: Bash produced $LINE_COUNT lines — significant context consumption."
+    echo "  For data-heavy commands, use context-mode MCP tools:"
+    echo "    mcp__context-mode__ctx_batch_execute — runs commands + auto-indexes output"
+    echo "    mcp__context-mode__ctx_execute — processes data in sandbox"
+    hook_metric "$_HOOK_NAME" "Bash" 0 2>/dev/null || true
+    exit 0
 elif [[ "$LINE_COUNT" -gt 50 ]]; then
-    echo "OUTPUT HINT: Bash produced $LINE_COUNT lines. For commands with large output, consider context-mode MCP tools to keep raw data out of context." >&2
-    hook_metric "$_HOOK_NAME" "Bash" "$_EXIT_CODE" 2>/dev/null || true
-    exit "$_EXIT_CODE"
+    echo "OUTPUT HINT: Bash produced $LINE_COUNT lines. For commands with large output, consider context-mode MCP tools to keep raw data out of context."
+    hook_metric "$_HOOK_NAME" "Bash" 0 2>/dev/null || true
+    exit 0
 fi
 
 hook_metric "$_HOOK_NAME" "Bash" 0 2>/dev/null || true

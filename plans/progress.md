@@ -1,29 +1,23 @@
-# Progress Tracker: pctx Integration
+# Progress: Hook Correctness Fixes
 
-- [x] **Phase 0: Workspace Isolation & Documentation**
-  - [x] Create stack branch and worktree `feat/pctx-integration`
-  - [x] Document gateway decision in `plans/decisions.md` and in `decisions/0001-use-pctx-as-mcp-gateway.md`
-- [x] **Phase 1: Creation of Specialized Subagents (AI-Agnostic Implementation)**
-  - [x] Create `mcp_config_manager` subagent at `.claude/agents/mcp_config_manager.md`
-  - [x] Create `mcp_config_manager` subagent for Gemini CLI (`.gemini/agents/mcp_config_manager.md`)
-  - [x] Create `mcp_config_manager` equivalent for Cursor (`.cursor/skills-cursor/mcp_config_manager.md`)
-  - [x] Create `mcp_config_manager` equivalent for Windsurf (`.windsurf/mcp_config_manager.md`)
-  - [x] Create `mcp_config_manager` subagent for OpenCode (`opencode/agent/mcp_config_manager.md`)
-- [x] **Phase 2: Gateway Installation & Configuration**
-  - [x] Consolidate MCP server configs into user-scoped `/Users/axos-agallentes/.config/pctx/pctx.json`
-  - [x] Resolve installation of `pctx` globally (Built from source for Darwin x64 and installed to `~/bin/pctx`).
-- [x] **Phase 3: Agent Integration & Cleanup**
-  - [x] Add project-level `pctx` adapters for Claude Code (`.mcp.json`), Cursor (`.cursor/mcp.json`), and Gemini (`.gemini/mcp.json`)
-  - [x] Update local `.windsurf/mcp_config.json` inside the worktree
-  - [x] Update local `mcp.json` inside the worktree
-  - [x] Migrate `.codex/config.toml` to the same `pctx` entrypoint used by the other agents
-  - [x] Align the `mcp_config_manager` templates across Claude, Cursor, Gemini, Windsurf, and OpenCode to the working `pctx mcp start --stdio -c /Users/axos-agallentes/.config/pctx/pctx.json` invocation
-  - [x] Finish repo-tracked agent config cleanup in this worktree before merge
-  - [x] Document post-merge cleanup for live machine-global MCP registrations that are not sourced from tracked dotfiles
-- [x] **Phase 4: Hub Alignment & Skill Integration**
-  - [x] Create `ai/skills/pctx-code-mode/SKILL.md`
-- [x] **Verification**
-  - [x] Verify `pctx mcp list -c /Users/axos-agallentes/.config/pctx/pctx.json` connects to `serena`, `exa`, and `sequential-thinking`
-  - [x] Verify `claude mcp list` connects successfully to the project-level `pctx` server definition
-  - [x] Test end-to-end integration from this worktree and run a "Code Mode" TS script to verify behavior
-  - [x] After merge, validate live/global agent state on the machine has been converged to the repo-managed `pctx` setup (2026-03-23: removed direct `serena` registration from Claude local/user scopes, updated live `~/.codex/config.toml` to `pctx` only, and re-verified `pctx` + Claude project MCP connectivity)
+## Done
+- [x] Validate all 26 hooks via autoresearch (6 bugs found)
+- [x] Web research on hook output channel semantics + JSON block pattern
+- [x] Create implementation plan (`plans/tranquil-floating-scone.md`)
+- [x] Step 1: Fix hook_exit_code() inversion + add hook_block() in hook-metrics.sh
+- [x] Step 2: Migrate PreToolUse blocking hooks to JSON structured output
+  - [x] pre-tool-gate.sh
+  - [x] check-agent-parallelism.sh
+  - [x] plan-scope-gate.sh
+  - [x] edit-without-read.sh
+- [x] Step 3: Fix PostToolUse hooks — stderr → stdout, exit 2 → exit 0
+  - [x] bash-output-guard.sh
+  - [x] pctx-batch-tracker.sh
+  - [x] post-task-fence.sh
+  - [x] post-tool-handler.sh (+ remove dead BATCH CHECK block)
+- [x] Step 4: Fix plans-healthcheck.sh HOOKS HEALTH gate + instructions-loaded.sh server list + serena-tool-priority.sh regex
+- [x] Step 5: Smoke-test all key paths, commit (84e771d), push branch
+- [x] hook-config.yaml: update comments to corrected semantics
+
+## In Progress
+- [ ] Step 7: Open validation session in a fresh Claude Code instance to exercise hooks end-to-end

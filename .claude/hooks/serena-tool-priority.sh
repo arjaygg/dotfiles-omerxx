@@ -52,7 +52,7 @@ is_non_code() {
 if [[ "$TOOL_NAME" == "Grep" && -n "$PATTERN" ]]; then
     # Symbol-like patterns: func/class/type/struct/interface followed by a name,
     # or a bare PascalCase/camelCase identifier (likely a symbol lookup)
-    if [[ "$PATTERN" =~ ^(func|class|type|struct|interface|def|fn)\s*\\?s ]]; then
+    if [[ "$PATTERN" =~ ^(func|class|type|struct|interface|def|fn)[[:space:]]+[A-Za-z] ]]; then
         echo "HINT: For symbol lookups, Serena.findSymbol is more precise than Grep and returns structural context."
         hook_metric "$_HOOK_NAME" "$TOOL_NAME" "$_EXIT_CODE" 2>/dev/null || true; exit "$_EXIT_CODE"
     fi

@@ -24,10 +24,10 @@ STEP=$(echo "$STATE" | jq -r '.step_title // "unknown step"')
 [ -z "$EXPECTED" ] && exit 0
 
 if ! echo "$EXPECTED" | grep -qF "$FILE"; then
-  echo "BLOCKED: '$FILE' is not in scope for current step: '$STEP'" >&2
-  echo "Expected files: $(echo "$EXPECTED" | tr '\n' ' ')" >&2
-  echo "To add a file to scope: update plans/plan-state.json expected_files[]" >&2
-  exit 2
+  _expected_list=$(echo "$EXPECTED" | tr '\n' ' ')
+  python3 -c "import json,sys; print(json.dumps({'decision':'block','reason':sys.argv[1]}))" \
+    "BLOCKED: '$FILE' is not in scope for current step: '$STEP'. Expected files: $_expected_list. To add a file to scope: update plans/plan-state.json expected_files[]"
+  exit 0
 fi
 
 exit 0
