@@ -134,7 +134,7 @@
         ]
       },
       {
-        "matcher": "Bash|WebFetch",
+        "matcher": "WebFetch",
         "hooks": [
           {
             "type": "command",
@@ -349,6 +349,5 @@
       "command": "notebooklm-mcp",
       "args": []
     }
-  },
-  "model": "opus[1m]"
+  }
 }
