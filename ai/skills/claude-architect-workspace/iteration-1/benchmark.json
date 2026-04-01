@@ -1,0 +1,177 @@
+{
+  "metadata": {
+    "skill_name": "claude-architect",
+    "skill_path": "/Users/axos-agallentes/.dotfiles/ai/skills/claude-architect",
+    "executor_model": "claude-sonnet-4-6",
+    "timestamp": "2026-04-01T00:00:00Z",
+    "evals_run": ["eval-primitive-selection", "eval-skill-creation", "eval-hook-blocking"],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": 1,
+      "eval_name": "eval-primitive-selection",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 90.0,
+        "tokens": 31210,
+        "tool_calls": 18,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Recommends a hook (not a skill)", "passed": true, "evidence": "Opens with 'You need a HOOK, not a skill'"},
+        {"text": "Explains why hook is better", "passed": true, "evidence": "Lifecycle vs invocable explanation + Why not a skill section"},
+        {"text": "Specifies PostToolUse event", "passed": true, "evidence": "Explicit with 3-point justification"},
+        {"text": "Provides concrete hook script", "passed": true, "evidence": "read-auditor.sh written to outputs/"},
+        {"text": "Provides settings.json snippet", "passed": true, "evidence": "Inline snippet + settings-snippet.json file"}
+      ]
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "eval-primitive-selection",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 75.8,
+        "tokens": 36330,
+        "tool_calls": 15,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Recommends a hook (not a skill)", "passed": true, "evidence": "'Use a PostToolUse hook on the Read matcher'"},
+        {"text": "Explains why hook is better", "passed": true, "evidence": "5-criterion comparison table"},
+        {"text": "Specifies PostToolUse event", "passed": true, "evidence": "Explicit throughout"},
+        {"text": "Provides concrete hook script", "passed": true, "evidence": "read-audit.sh with session ID tracking"},
+        {"text": "Provides settings.json snippet", "passed": true, "evidence": "settings-snippet.json with coexistence note"}
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "eval-skill-creation",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 68.4,
+        "tokens": 20116,
+        "tool_calls": 8,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Valid YAML frontmatter", "passed": true, "evidence": "name, description, version, 10 triggers present"},
+        {"text": "Description includes trigger phrases", "passed": true, "evidence": "'Use this whenever...' — explicitly pushy"},
+        {"text": "Instructions cover all 3 checks", "passed": true, "evidence": "Checks 1-3 named with severity and field paths"},
+        {"text": "Concrete findings report template", "passed": true, "evidence": "Full template with severity table and per-finding blocks"},
+        {"text": "Symlink step mentioned", "passed": true, "evidence": "Symlink command in response.md"}
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "eval-skill-creation",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 62.3,
+        "tokens": 19352,
+        "tool_calls": 6,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Valid YAML frontmatter", "passed": true, "evidence": "frontmatter present with name, description, triggers"},
+        {"text": "Description includes trigger phrases", "passed": true, "evidence": "Trigger-aware description present"},
+        {"text": "Instructions cover all 3 checks", "passed": true, "evidence": "All 3 checks with CRITICAL/HIGH/MEDIUM severities"},
+        {"text": "Concrete findings report template", "passed": true, "evidence": "Per-category sections and summary block"},
+        {"text": "Symlink step mentioned", "passed": false, "evidence": "No symlink step in agent output — creation workflow not in scope without skill"}
+      ]
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "eval-hook-blocking",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 46.4,
+        "tokens": 18804,
+        "tool_calls": 6,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Chooses hook over skill", "passed": true, "evidence": "Hook-only approach; enforcement justification"},
+        {"text": "PreToolUse (not PostToolUse)", "passed": true, "evidence": "Explicit 'Event: PreToolUse (not PostToolUse)' section"},
+        {"text": "Script checks git push main/master", "passed": true, "evidence": "Regex git push\\b.*\\b(main|master)\\b with match examples"},
+        {"text": "Non-zero exit to block", "passed": true, "evidence": "exit 2 with BLOCKED message"},
+        {"text": "exit 0 on non-matching paths", "passed": true, "evidence": "'Safety: Exit 0 on All Non-Matching Paths' section"},
+        {"text": "settings.json snippet", "passed": true, "evidence": "settings-snippet.json + jq merge command"}
+      ]
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "eval-hook-blocking",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 57.2,
+        "tokens": 19322,
+        "tool_calls": 7,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Chooses hook over skill", "passed": true, "evidence": "Hook-based; automatic enforcement explained"},
+        {"text": "PreToolUse (not PostToolUse)", "passed": true, "evidence": "PreToolUse chosen; blocking rationale given"},
+        {"text": "Script checks git push main/master", "passed": true, "evidence": "Pattern matching for main/master in git push"},
+        {"text": "Non-zero exit to block", "passed": true, "evidence": "exit 2 used"},
+        {"text": "exit 0 on non-matching paths", "passed": true, "evidence": "'exit 0 allows everything else through'"},
+        {"text": "settings.json snippet", "passed": true, "evidence": "settings-snippet.json written"}
+      ]
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {"mean": 1.0, "stddev": 0.0, "min": 1.0, "max": 1.0},
+      "time_seconds": {"mean": 68.3, "stddev": 17.9, "min": 46.4, "max": 90.0},
+      "tokens": {"mean": 23377, "stddev": 5147, "min": 18804, "max": 31210}
+    },
+    "old_skill": {
+      "pass_rate": {"mean": 0.93, "stddev": 0.08, "min": 0.80, "max": 1.0},
+      "time_seconds": {"mean": 65.1, "stddev": 8.6, "min": 57.2, "max": 75.8},
+      "tokens": {"mean": 25001, "stddev": 7472, "min": 19322, "max": 36330}
+    },
+    "delta": {
+      "pass_rate": "+0.07",
+      "time_seconds": "+3.2",
+      "tokens": "-1624"
+    }
+  },
+  "notes": [
+    "The skill's only clear win is eval-skill-creation: with_skill included the symlink step (from creation workflow), old_skill did not",
+    "eval-primitive-selection: no differentiation — general model knowledge is sufficient for hook vs skill selection at this level of difficulty",
+    "eval-hook-blocking: no differentiation — hook blocking pattern is well within general model knowledge",
+    "The skill adds ~3s overhead but uses slightly fewer tokens — the skill's decision tree is being used efficiently",
+    "Biggest improvement opportunity: the skill should enforce creation workflow completeness (symlink, path conventions, trigger phrase quality) more strongly",
+    "The skill reads as a reference card, not a workflow guide — Claude can ignore most of it and still produce good output from general knowledge"
+  ]
+}

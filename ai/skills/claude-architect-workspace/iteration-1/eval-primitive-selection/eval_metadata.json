@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "eval_name": "eval-primitive-selection",
+  "prompt": "I want to automatically log which files Claude reads during a session to a file called ~/.claude/read-audit.log so I can audit what it accessed. Should I build a skill or a hook for this? And once you decide, can you build it?",
+  "assertions": [
+    "Recommends a hook (not a skill) for automatic file-read logging",
+    "Explains why a hook is better than a skill for this use case",
+    "Specifies PostToolUse as the correct hook event",
+    "Provides a concrete hook shell script or template",
+    "Provides the settings.json registration snippet"
+  ]
+}

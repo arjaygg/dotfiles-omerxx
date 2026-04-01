@@ -1,0 +1,40 @@
+{
+  "expectations": [
+    {
+      "text": "Chooses a hook (not a skill) because the user wants automatic enforcement",
+      "passed": true,
+      "evidence": "Agent summary confirms PreToolUse hook approach chosen; response explicitly justifies automatic enforcement"
+    },
+    {
+      "text": "Chooses PreToolUse event (not PostToolUse) because it must block before execution",
+      "passed": true,
+      "evidence": "Agent summary confirms PreToolUse chosen; response explains blocking must happen before execution"
+    },
+    {
+      "text": "Provides a shell script that checks git push commands for main/master patterns",
+      "passed": true,
+      "evidence": "block-main-push.sh written with git push pattern matching for main/master"
+    },
+    {
+      "text": "Uses non-zero exit (exit 1 or exit 2) to block the tool call",
+      "passed": true,
+      "evidence": "Agent summary confirms exit 2 used with blocking message"
+    },
+    {
+      "text": "Includes exit 0 for non-matching commands to avoid accidental blocking",
+      "passed": true,
+      "evidence": "Agent summary confirms 'Exit 0 allows everything else through'"
+    },
+    {
+      "text": "Provides the settings.json registration snippet",
+      "passed": true,
+      "evidence": "settings-snippet.json written with PreToolUse/Bash matcher"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  }
+}

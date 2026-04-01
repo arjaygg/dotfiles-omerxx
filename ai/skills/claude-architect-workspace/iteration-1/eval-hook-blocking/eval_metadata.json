@@ -1,0 +1,13 @@
+{
+  "eval_id": 3,
+  "eval_name": "eval-hook-blocking",
+  "prompt": "I never want Claude to be able to push directly to the main or master branch. Can you set something up to block that automatically? I don't want to have to remember to tell Claude — it should just be enforced.",
+  "assertions": [
+    "Chooses a hook (not a skill) because the user wants automatic enforcement",
+    "Chooses PreToolUse event (not PostToolUse) because it must block before execution",
+    "Provides a shell script that checks git push commands for main/master patterns",
+    "Uses non-zero exit (exit 1 or exit 2) to block the tool call",
+    "Includes exit 0 for non-matching commands to avoid accidental blocking",
+    "Provides the settings.json registration snippet"
+  ]
+}

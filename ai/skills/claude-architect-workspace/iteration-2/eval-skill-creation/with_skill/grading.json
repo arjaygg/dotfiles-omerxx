@@ -1,0 +1,10 @@
+{
+  "expectations": [
+    {"text": "Creates SKILL.md with valid YAML frontmatter (name, description, triggers)", "passed": true, "evidence": "frontmatter with name, description, version, 7 triggers"},
+    {"text": "Description includes trigger phrases for auto-invocation", "passed": true, "evidence": "Description is trigger-aware per skill-creator best practice"},
+    {"text": "Instructions cover checking runAsNonRoot, resource limits, and privileged containers", "passed": true, "evidence": "6 checks covering all 3 required misconfigurations with severity levels"},
+    {"text": "Provides a concrete findings report format or template", "passed": true, "evidence": "Report format template included in instructions"},
+    {"text": "Mentions the symlink step to make the skill usable", "passed": true, "evidence": "response.md includes symlink command ln -sf"}
+  ],
+  "summary": {"passed": 5, "failed": 0, "total": 5, "pass_rate": 1.0}
+}
