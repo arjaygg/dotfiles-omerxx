@@ -12,23 +12,9 @@ _EXIT_CODE=$(hook_exit_code "$_HOOK_NAME" 2>/dev/null || echo 2)
 
 INPUT=$(cat)
 
-TOOL_NAME=$(echo "$INPUT" | python3 -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    print(d.get('tool_name', ''))
-except:
-    print('')
-" 2>/dev/null || echo "")
-
-SESSION_ID=$(echo "$INPUT" | python3 -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    print(d.get('session_id', 'default'))
-except:
-    print('default')
-" 2>/dev/null || echo "default")
+IFS=$'\001' read -r TOOL_NAME SESSION_ID < <(
+    echo "$INPUT" | jq -r '[.tool_name // "", .session_id // "default"] | join("\u0001")' 2>/dev/null || printf '\001default'
+)
 
 # --- If this IS a pctx execute_typescript call, reset the counter (batched path) ---
 if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then

@@ -7,23 +7,10 @@ set -euo pipefail
 
 INPUT=$(cat)
 
-# Parse all fields in one python3 call — tool_name at top level, rest inside tool_input
+# Parse all fields in one jq call — tool_name at top level, rest inside tool_input
 # Use \001 (non-whitespace) as separator so bash read preserves empty fields
 IFS=$'\001' read -r TOOL_NAME FILE_PATH CMD LIMIT < <(
-    echo "$INPUT" | python3 -c "
-import sys, json
-SEP = '\x01'
-try:
-    d = json.load(sys.stdin)
-    tool_name = d.get('tool_name', '')
-    ti = d.get('tool_input', {})
-    file_path = ti.get('file_path', ti.get('path', ''))
-    command = ti.get('command', '')
-    limit = str(ti.get('limit', ''))
-    print(SEP.join([tool_name, file_path, command, limit]))
-except:
-    print(SEP * 3)
-" 2>/dev/null || printf '\001\001\001'
+    echo "$INPUT" | jq -r '[.tool_name // "", .tool_input.file_path // .tool_input.path // "", .tool_input.command // "", (.tool_input.limit // "" | tostring)] | join("\u0001")' 2>/dev/null || printf '\001\001\001'
 )
 
 # --- Source hook-metrics for hook_block() and hook_metric() ---
@@ -61,27 +48,17 @@ _BGATE_HOOK_NAME="bash-tool-gate"
 _BGATE_LEVEL=$(hook_enforcement_level "$_BGATE_HOOK_NAME" 2>/dev/null || echo "block")
 
 if [[ "$TOOL_NAME" == "Bash" && "$_BGATE_LEVEL" != "off" ]]; then
-    # Block: cat → use Read tool
-    if [[ "$CMD" == cat\ * ]]; then
-        hook_block "$_BGATE_HOOK_NAME" "Bash" "BLOCKED: Use the Read tool instead of 'cat'. It's token-efficient, reviewable, and supports limit/offset."
-    fi
-
-    # Block: head/tail → use Read tool with limit/offset
-    if [[ "$CMD" == head\ * || "$CMD" == tail\ * ]]; then
-        hook_block "$_BGATE_HOOK_NAME" "Bash" "BLOCKED: Use the Read tool with limit/offset instead of 'head'/'tail'."
-    fi
+    # Note: cat, head, tail, rg are already blocked by settings.json deny list.
+    # Only grep, find, ls, and git-commit-on-main need hook enforcement.
 
     # Block: grep (but not git grep) → use Grep tool or Serena.searchForPattern
+    # Also in settings.json deny list (Bash(grep *), Bash(grep -*)) — kept here as defense-in-depth
     if [[ ( "$CMD" == grep\ * || "$CMD" == grep\ -* ) && "$CMD" != *"git grep"* ]]; then
         hook_block "$_BGATE_HOOK_NAME" "Bash" "BLOCKED: Use the Grep tool (ripgrep-backed, gitignore-aware) or Serena.searchForPattern instead of 'grep'."
     fi
 
-    # Block: rg → use Grep tool
-    if [[ "$CMD" == rg\ * || "$CMD" == rg\ -* ]]; then
-        hook_block "$_BGATE_HOOK_NAME" "Bash" "BLOCKED: Use the Grep tool instead of 'rg'. It is gitignore-aware and token-efficient."
-    fi
-
     # Block: find → use Glob or Serena.findFile
+    # Also in settings.json deny list (Bash(find . *), Bash(find / *)) — kept here as defense-in-depth
     if [[ "$CMD" == find\ .* || "$CMD" == find\ /* ]]; then
         hook_block "$_BGATE_HOOK_NAME" "Bash" "BLOCKED: Use the Glob tool or Serena.findFile instead of 'find'. They are project-aware and faster."
     fi
