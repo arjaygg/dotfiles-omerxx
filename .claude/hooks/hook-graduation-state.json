@@ -1,0 +1,49 @@
+{
+  "_comment": "Tracks hook graduation state. Updated by hook-graduate.sh. Do not edit manually.",
+  "hooks": {
+    "serena-tool-priority": {
+      "current_level": "block",
+      "graduated_from": "warn",
+      "graduated_date": "2026-03-31",
+      "next_graduation": {
+        "target_level": "warn",
+        "les_min": 1.0,
+        "preemptive_rate_min": 0.8,
+        "days_required": 7
+      }
+    },
+    "bash-tool-gate": {
+      "current_level": "block",
+      "graduated_from": "warn",
+      "graduated_date": "2026-03-31",
+      "next_graduation": {
+        "target_level": "warn",
+        "les_min": 1.0,
+        "preemptive_rate_min": 0.8,
+        "days_required": 7
+      }
+    },
+    "edit-without-read": {
+      "current_level": "warn",
+      "graduated_from": null,
+      "graduated_date": null,
+      "next_graduation": {
+        "target_level": "off",
+        "les_min": 1.5,
+        "preemptive_rate_min": 0.9,
+        "days_required": 14
+      }
+    },
+    "todo-gate": {
+      "current_level": "warn",
+      "graduated_from": null,
+      "graduated_date": null,
+      "next_graduation": {
+        "target_level": "block",
+        "les_min": -0.5,
+        "preemptive_rate_min": 0.0,
+        "days_required": 7
+      }
+    }
+  }
+}
