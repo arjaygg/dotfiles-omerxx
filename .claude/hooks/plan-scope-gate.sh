@@ -10,6 +10,9 @@
 # The agent can modify the file to add files in scope — this is documented
 # behavior and tracked in plans/2026-03-30-plan-enforcement-rfc.md.
 
+# Fast path: no plan-state.json means no scope enforcement needed
+[[ -f plans/plan-state.json ]] || exit 0
+
 # Claude Code passes tool input via stdin as JSON:
 # { "tool_name": "Edit", "tool_input": { "file_path": "...", ... } }
 input=$(cat)

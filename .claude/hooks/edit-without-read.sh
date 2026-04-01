@@ -15,18 +15,7 @@ _LEVEL=$(hook_enforcement_level "$_HOOK_NAME" 2>/dev/null || echo "warn")
 INPUT=$(cat)
 
 IFS=$'\001' read -r TOOL_NAME FILE_PATH < <(
-    echo "$INPUT" | python3 -c "
-import sys, json
-SEP = '\x01'
-try:
-    d = json.load(sys.stdin)
-    tool_name = d.get('tool_name', '')
-    ti = d.get('tool_input', {})
-    file_path = ti.get('file_path', '')
-    print(SEP.join([tool_name, file_path]))
-except:
-    print(SEP)
-" 2>/dev/null || printf '\001'
+    echo "$INPUT" | jq -r '[.tool_name // "", .tool_input.file_path // ""] | join("\u0001")' 2>/dev/null || printf '\001'
 )
 
 [[ "$TOOL_NAME" != "Edit" ]] && exit 0

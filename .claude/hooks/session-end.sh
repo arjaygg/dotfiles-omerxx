@@ -111,4 +111,7 @@ PYEOF
 # Record content hash so next turn can skip if unchanged
 echo "$CONTENT_HASH" > "$HASH_FILE"
 
+# Flush hook metrics to SQLite
+"${BASH_SOURCE[0]%/*}/hook-metrics.sh" flush 2>/dev/null || true
+
 exit 0

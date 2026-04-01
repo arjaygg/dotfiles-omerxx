@@ -82,6 +82,10 @@
       "Bash(head *)",
       "Bash(tail *)",
       "Bash(rg *)",
+      "Bash(grep *)",
+      "Bash(grep -*)",
+      "Bash(find . *)",
+      "Bash(find / *)",
       "Read(**/package-lock.json)",
       "Read(**/yarn.lock)",
       "Read(**/Cargo.lock)",
@@ -209,15 +213,6 @@
           {
             "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/pctx-batch-tracker.sh\"'"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/bash-output-guard.sh\"'"
           }
         ]
       },

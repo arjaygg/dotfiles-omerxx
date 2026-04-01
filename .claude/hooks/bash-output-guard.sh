@@ -15,29 +15,18 @@ _LEVEL=$(hook_enforcement_level "$_HOOK_NAME" 2>/dev/null || echo "warn")
 
 INPUT=$(cat)
 
-# Extract output text and command from tool response
+# Extract line count and command from tool response
 IFS=$'\001' read -r LINE_COUNT CMD < <(
-    echo "$INPUT" | python3 -c "
-import sys, json
-SEP = '\x01'
-try:
-    d = json.load(sys.stdin)
-    ti = d.get('tool_input', {})
-    command = ti.get('command', '')
-    tr = d.get('tool_response', {})
-    content = tr.get('content', d.get('content', ''))
-    text = ''
-    if isinstance(content, list):
-        for item in content:
-            if isinstance(item, dict) and item.get('type') == 'text':
-                text += item.get('text', '')
-    elif isinstance(content, str):
-        text = content
-    lines = text.count('\n') + (1 if text and not text.endswith('\n') else 0)
-    print(SEP.join([str(lines), command]))
-except:
-    print(SEP.join(['0', '']))
-" 2>/dev/null || printf '0\001'
+    echo "$INPUT" | jq -r '
+      [
+        ((.tool_response.content // .content // "") |
+          if type == "array" then (map(select(.type == "text") | .text) | join(""))
+          elif type == "string" then .
+          else ""
+          end | split("\n") | length | tostring),
+        .tool_input.command // ""
+      ] | join("\u0001")
+    ' 2>/dev/null || printf '0\001'
 )
 
 # --- Skip known short-output commands ---

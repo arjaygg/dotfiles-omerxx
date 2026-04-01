@@ -54,19 +54,18 @@ hook_block() {
     local tool_name="$2"
     local reason="$3"
     hook_metric "$hook_name" "$tool_name" 2 2>/dev/null || true
-    python3 -c "
-import json, sys
-print(json.dumps({'decision': 'block', 'reason': sys.argv[1]}))
-" "$reason"
+    jq -n --arg reason "$reason" '{"decision":"block","reason":$reason}'
     exit 0
 }
 
+_DB_INITIALIZED=0
+
 _ensure_db() {
+    [[ "$_DB_INITIALIZED" -eq 1 && -f "$METRICS_DB" ]] && return 0
     local db_dir
     db_dir=$(dirname "$METRICS_DB")
     [[ -d "$db_dir" ]] || mkdir -p "$db_dir"
-    if [[ ! -f "$METRICS_DB" ]]; then
-        sqlite3 "$METRICS_DB" <<'SQL'
+    sqlite3 "$METRICS_DB" <<'SQL'
 CREATE TABLE IF NOT EXISTS hook_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     timestamp TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime')),
@@ -77,18 +76,42 @@ CREATE TABLE IF NOT EXISTS hook_events (
 );
 CREATE INDEX IF NOT EXISTS idx_hook_events_hook ON hook_events(hook_name);
 CREATE INDEX IF NOT EXISTS idx_hook_events_ts ON hook_events(timestamp);
+CREATE TABLE IF NOT EXISTS learning_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime')),
+    session_id TEXT NOT NULL,
+    hook_name TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    blocked_tool TEXT DEFAULT '',
+    recovery_tool TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_learning_events_hook ON learning_events(hook_name);
 SQL
-    fi
+    _DB_INITIALIZED=1
 }
 
-# Called from hooks to log a metric (fast — single INSERT)
+METRICS_LOG="/tmp/.claude-hook-metrics-$(id -u).log"
+
+# Called from hooks to log a metric (fast — flat file append)
 hook_metric() {
     local hook_name="${1:-unknown}"
     local tool_name="${2:-}"
     local exit_code="${3:-0}"
     local session_id="${4:-}"
+    local ts
+    ts=$(date '+%Y-%m-%dT%H:%M:%S')
+    printf '%s|%s|%s|%s|%s\n' "$ts" "$hook_name" "$tool_name" "$exit_code" "$session_id" >> "$METRICS_LOG" 2>/dev/null || true
+}
+
+# Record a learning event (behavioral classification)
+hook_learning_event() {
+    local session_id="${1:-}"
+    local hook_name="${2:-unknown}"
+    local event_type="${3:-}"  # preemptive, block_recover, warn_adapt, warn_ignore, block_repeat
+    local blocked_tool="${4:-}"
+    local recovery_tool="${5:-}"
     _ensure_db
-    sqlite3 "$METRICS_DB" "INSERT INTO hook_events (hook_name, tool_name, exit_code, session_id) VALUES ('$hook_name', '$tool_name', $exit_code, '$session_id');" 2>/dev/null || true
+    sqlite3 "$METRICS_DB" "INSERT INTO learning_events (session_id, hook_name, event_type, blocked_tool, recovery_tool) VALUES ('$session_id', '$hook_name', '$event_type', '$blocked_tool', '$recovery_tool');" 2>/dev/null || true
 }
 
 # --- CLI commands ---
@@ -146,16 +169,60 @@ cmd_reset() {
     local count
     count=$(sqlite3 "$METRICS_DB" "SELECT COUNT(*) FROM hook_events;")
     sqlite3 "$METRICS_DB" "DELETE FROM hook_events;"
+    rm -f "$METRICS_LOG"
     echo "Cleared $count metric events."
+}
+
+cmd_effectiveness() {
+    _ensure_db
+    echo "Hook Effectiveness Report (last 30 days)"
+    echo "═══════════════════════════════════════════════════════════════"
+    sqlite3 -header -column "$METRICS_DB" <<'SQL'
+SELECT
+    hook_name AS hook,
+    COUNT(*) AS total,
+    SUM(CASE WHEN event_type = 'preemptive' THEN 1 ELSE 0 END) AS preempt,
+    SUM(CASE WHEN event_type = 'block_recover' THEN 1 ELSE 0 END) AS recover,
+    SUM(CASE WHEN event_type = 'warn_adapt' THEN 1 ELSE 0 END) AS adapt,
+    SUM(CASE WHEN event_type = 'warn_ignore' THEN 1 ELSE 0 END) AS ignore_ct,
+    SUM(CASE WHEN event_type = 'block_repeat' THEN 1 ELSE 0 END) AS repeat_ct,
+    ROUND(
+        (2.0 * SUM(CASE WHEN event_type = 'preemptive' THEN 1 ELSE 0 END)
+         + 1.0 * SUM(CASE WHEN event_type = 'block_recover' THEN 1 ELSE 0 END)
+         + 1.0 * SUM(CASE WHEN event_type = 'warn_adapt' THEN 1 ELSE 0 END)
+         - 1.0 * SUM(CASE WHEN event_type = 'warn_ignore' THEN 1 ELSE 0 END)
+         - 2.0 * SUM(CASE WHEN event_type = 'block_repeat' THEN 1 ELSE 0 END)
+        ) / NULLIF(COUNT(*), 0),
+    2) AS LES
+FROM learning_events
+WHERE timestamp >= datetime('now', '-30 days', 'localtime')
+GROUP BY hook_name
+ORDER BY LES DESC;
+SQL
+}
+
+cmd_flush() {
+    _ensure_db
+    local log_file="$METRICS_LOG"
+    [[ -f "$log_file" ]] || { echo "No pending metrics to flush."; return 0; }
+    local count=0
+    while IFS='|' read -r ts hook_name tool_name exit_code session_id; do
+        sqlite3 "$METRICS_DB" "INSERT INTO hook_events (timestamp, hook_name, tool_name, exit_code, session_id) VALUES ('$ts', '$hook_name', '$tool_name', $exit_code, '$session_id');" 2>/dev/null || true
+        ((count++)) || true
+    done < "$log_file"
+    rm -f "$log_file"
+    echo "Flushed $count metric events to SQLite."
 }
 
 # --- Main (CLI mode) ---
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     case "${1:-summary}" in
-        summary)    cmd_summary ;;
-        recent)     cmd_recent "${2:-20}" ;;
-        compliance) cmd_compliance ;;
-        reset)      cmd_reset ;;
-        *)          echo "Usage: hook-metrics.sh {summary|recent [N]|compliance|reset}" >&2; exit 1 ;;
+        summary)       cmd_summary ;;
+        recent)        cmd_recent "${2:-20}" ;;
+        compliance)    cmd_compliance ;;
+        effectiveness) cmd_effectiveness ;;
+        reset)         cmd_reset ;;
+        flush)         cmd_flush ;;
+        *)             echo "Usage: hook-metrics.sh {summary|recent [N]|compliance|effectiveness|reset|flush}" >&2; exit 1 ;;
     esac
 fi
