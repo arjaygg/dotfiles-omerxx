@@ -6,6 +6,7 @@ This file is the user-global Claude entrypoint for this machine.
 @../ai/rules/tool-priority.md
 @../ai/rules/global-developer-guidelines.md
 @../ai/rules/context-and-compaction.md
+@../ai/rules/qmd-usage.md
 
 ## Claude-Specific Notes
 
