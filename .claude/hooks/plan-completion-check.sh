@@ -19,8 +19,8 @@ INCOMPLETE=$(grep -c "^- \[ \]" plans/progress.md 2>/dev/null || echo 0)
 [ "$DONE" -lt $(( TOTAL_STEPS / 2 )) ] && exit 0
 
 if [ "$INCOMPLETE" -gt 0 ]; then
-  echo "PLAN CHECK: $INCOMPLETE step(s) still incomplete in $PLAN" >&2
-  echo "Review plans/progress.md before marking the task done." >&2
+  echo "PLAN CHECK: $INCOMPLETE step(s) still incomplete in $PLAN"
+  echo "Review plans/progress.md before marking the task done."
 fi
 
 exit 0
