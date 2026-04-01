@@ -8,7 +8,7 @@
 set -euo pipefail
 
 # Restore tmux window name on session end
-"$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh" session-stop 2>/dev/null || true
+"$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh" activity-stop 2>/dev/null || true
 
 CWD=$(pwd)
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M')
