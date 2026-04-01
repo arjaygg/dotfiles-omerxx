@@ -1,0 +1,17 @@
+{
+  "_comment": "Add this entry to the PostToolUse hooks block in ~/.dotfiles/.claude/settings.json, inside the existing 'Read' matcher block. The read-tracker.sh entry already present handles edit-without-read enforcement — this hook is additive and independent.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/read-audit.sh\"'"
+          }
+        ]
+      }
+    ]
+  },
+  "_integration_note": "In the actual settings.json, the matcher 'Read' block already exists with read-tracker.sh. Add the read-audit.sh entry as a second hook in that same block's 'hooks' array, or add a new matcher block. Both patterns work — Claude Code runs all matching hooks in sequence."
+}
