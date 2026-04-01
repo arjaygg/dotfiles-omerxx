@@ -1,0 +1,12 @@
+{
+  "eval_id": 2,
+  "eval_name": "eval-skill-creation",
+  "prompt": "Create a skill called k8s-security-audit that scans Kubernetes manifest YAML files for common misconfigurations: running as root (securityContext.runAsNonRoot not set), missing resource limits, and privileged containers. It should output a findings report.",
+  "assertions": [
+    "Creates SKILL.md with valid YAML frontmatter (name, description, triggers)",
+    "Description includes trigger phrases for auto-invocation",
+    "Instructions cover checking runAsNonRoot, resource limits, and privileged containers",
+    "Provides a concrete findings report format or template",
+    "Mentions the symlink step to make the skill usable"
+  ]
+}

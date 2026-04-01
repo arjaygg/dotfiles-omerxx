@@ -1,0 +1,177 @@
+{
+  "metadata": {
+    "skill_name": "claude-architect",
+    "skill_path": "/Users/axos-agallentes/.dotfiles/ai/skills/claude-architect",
+    "executor_model": "claude-sonnet-4-6",
+    "timestamp": "2026-04-01T06:00:00Z",
+    "evals_run": ["eval-primitive-selection", "eval-skill-creation", "eval-hook-blocking"],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": 1,
+      "eval_name": "eval-primitive-selection",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 36.3,
+        "tokens": 18770,
+        "tool_calls": 7,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Recommends hook not skill", "passed": true, "evidence": "Opens with 'This is a Hook'"},
+        {"text": "Explains why hook", "passed": true, "evidence": "Fires automatically, no user invocation"},
+        {"text": "PostToolUse specified", "passed": true, "evidence": "Explicitly named, non-blocking"},
+        {"text": "Hook script provided", "passed": true, "evidence": "read-audit.sh in outputs/"},
+        {"text": "Settings.json snippet", "passed": true, "evidence": "settings-snippet.json written"}
+      ]
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "eval-primitive-selection",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 75.8,
+        "tokens": 36330,
+        "tool_calls": 15,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Recommends hook not skill", "passed": true, "evidence": "PostToolUse hook on Read matcher"},
+        {"text": "Explains why hook", "passed": true, "evidence": "5-criterion comparison table"},
+        {"text": "PostToolUse specified", "passed": true, "evidence": "Explicit throughout"},
+        {"text": "Hook script provided", "passed": true, "evidence": "read-audit.sh with session ID"},
+        {"text": "Settings.json snippet", "passed": true, "evidence": "settings-snippet.json"}
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "eval-skill-creation",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 49.9,
+        "tokens": 18961,
+        "tool_calls": 4,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Valid YAML frontmatter", "passed": true, "evidence": "name, description, version, 7 triggers"},
+        {"text": "Description includes trigger phrases", "passed": true, "evidence": "Trigger-aware, pushy description"},
+        {"text": "All 3 checks covered", "passed": true, "evidence": "6 checks across runAsNonRoot, privileged, resource limits"},
+        {"text": "Findings report template", "passed": true, "evidence": "Report format template in instructions"},
+        {"text": "Symlink step mentioned", "passed": true, "evidence": "ln -sf command in response.md"}
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "eval-skill-creation",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 62.3,
+        "tokens": 19352,
+        "tool_calls": 6,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Valid YAML frontmatter", "passed": true, "evidence": "frontmatter present"},
+        {"text": "Description includes trigger phrases", "passed": true, "evidence": "Trigger-aware description"},
+        {"text": "All 3 checks covered", "passed": true, "evidence": "CRITICAL/HIGH/MEDIUM with all 3 checks"},
+        {"text": "Findings report template", "passed": true, "evidence": "Per-category sections and summary block"},
+        {"text": "Symlink step mentioned", "passed": false, "evidence": "No symlink step — not guided by creation workflow"}
+      ]
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "eval-hook-blocking",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 33.5,
+        "tokens": 18270,
+        "tool_calls": 5,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Chooses hook over skill", "passed": true, "evidence": "PreToolUse hook; automatic enforcement"},
+        {"text": "PreToolUse not PostToolUse", "passed": true, "evidence": "Explicitly chosen for hard blocking"},
+        {"text": "Script checks git push main/master", "passed": true, "evidence": "Regex git push.*(main|master)"},
+        {"text": "Non-zero exit", "passed": true, "evidence": "exit 2 on match"},
+        {"text": "exit 0 on non-matching", "passed": true, "evidence": "exits 0 on all other paths"},
+        {"text": "Settings.json snippet", "passed": true, "evidence": "settings-snippet.json with PreToolUse/Bash"}
+      ]
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "eval-hook-blocking",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 57.2,
+        "tokens": 19322,
+        "tool_calls": 7,
+        "errors": 0
+      },
+      "expectations": [
+        {"text": "Chooses hook over skill", "passed": true, "evidence": "Hook approach; enforcement explained"},
+        {"text": "PreToolUse not PostToolUse", "passed": true, "evidence": "PreToolUse with blocking rationale"},
+        {"text": "Script checks git push main/master", "passed": true, "evidence": "Pattern matching for main/master"},
+        {"text": "Non-zero exit", "passed": true, "evidence": "exit 2"},
+        {"text": "exit 0 on non-matching", "passed": true, "evidence": "exit 0 allows everything else"},
+        {"text": "Settings.json snippet", "passed": true, "evidence": "settings-snippet.json written"}
+      ]
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {"mean": 1.0, "stddev": 0.0, "min": 1.0, "max": 1.0},
+      "time_seconds": {"mean": 39.9, "stddev": 6.8, "min": 33.5, "max": 49.9},
+      "tokens": {"mean": 18667, "stddev": 284, "min": 18270, "max": 18961}
+    },
+    "old_skill": {
+      "pass_rate": {"mean": 0.93, "stddev": 0.08, "min": 0.80, "max": 1.0},
+      "time_seconds": {"mean": 65.1, "stddev": 8.6, "min": 57.2, "max": 75.8},
+      "tokens": {"mean": 25001, "stddev": 7472, "min": 19322, "max": 36330}
+    },
+    "delta": {
+      "pass_rate": "+0.07",
+      "time_seconds": "-25.2",
+      "tokens": "-6334"
+    }
+  },
+  "notes": [
+    "Iteration-2 with_skill: 100% pass rate maintained, avg time dropped from 68s to 40s (-41%), tokens dropped from 23k to 19k (-20%)",
+    "The 'action-first, no reference-card dump' instruction directly addressed user feedback — responses are now 23 lines vs 74 lines",
+    "Eval-1 no longer produces skill-shaped output when recommending a hook — key regression from iter-1 fixed",
+    "Eval-2 symlink gap closed — creation checklist enforces the step",
+    "Token efficiency improvement is significant: -6334 tokens per run on average vs old_skill baseline",
+    "The split into SKILL.md (workflow) + references/primitives.md (details) worked — agents only load what they need"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "tool_call_counts": {
+    "Read": 3,
+    "Write": 4,
+    "Edit": 0,
+    "Bash": 1,
+    "Glob": 4,
+    "Grep": 0
+  },
+  "total_tool_calls": 12,
+  "notes": "Bash count excludes the blocked 'ls' attempt (hook rejected it before execution). Glob calls used to locate settings.json, hooks directory, claude directory, and outputs directory."
+}
