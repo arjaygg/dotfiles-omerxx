@@ -1,0 +1,1 @@
+Walk me through what's happening in this code step by step. Show me the data flow from entry point to the failure point. For each step, identify: what state is coming in, what transformation happens, and what state goes out. Flag any assumptions the code makes that could be violated.
