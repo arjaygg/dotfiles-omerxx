@@ -154,6 +154,15 @@
         ]
       },
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/prompt-score-commit.sh\"'"
+          }
+        ]
+      },
+      {
         "matcher": ".*",
         "hooks": [
           {
