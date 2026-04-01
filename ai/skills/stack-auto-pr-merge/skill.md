@@ -39,14 +39,14 @@ Use this skill when you want to:
    - `changes-description`: What changes to make (human-readable and detailed)
    - `current-branch`: Optional - branch to update after merge (detect from git status if user says "update my branch")
 
-2. **Immediately launch background Task**:
+2. **Immediately launch a background Agent** using the `Agent` tool:
+   - `subagent_type`: `"general-purpose"`
+   - `run_in_background`: `true`
+   - `description`: `"Auto-merge {branch_name} to {base_branch}"`
+   - `prompt`: Fill in the template below, substituting `{branch_name}`, `{base_branch}`, `{changes_description}`, `{commit_message}`, `{branch_name_without_prefix}`, `{current_branch}` with the actual values from the user's request.
 
-```python
-Task(
-    subagent_type="general-purpose",
-    run_in_background=True,
-    description="Auto-merge {branch_name} to {base_branch}",
-    prompt=f"""Execute the stack auto-merge workflow:
+```
+Execute the stack auto-merge workflow:
 
 ## Your Task
 Create a PR with these changes and auto-merge it to {base_branch}:
@@ -55,49 +55,33 @@ Create a PR with these changes and auto-merge it to {base_branch}:
 ## Workflow Steps
 
 1. Create isolated worktree:
-   cd $(git rev-parse --show-toplevel)
-   ~/.dotfiles/.claude/scripts/stack create {branch_name} {base_branch}
+   $HOME/.dotfiles/.claude/scripts/stack create {branch_name} {base_branch}
 
 2. Change to worktree directory:
    cd .trees/{branch_name_without_prefix}/
 
 3. Make the changes described above using Edit/Write tools
 
-4. Commit changes (stage only the files you modified — explicit paths, not `git add -A`):
-   git add <specific-file1> <specific-file2>
+4. Commit changes (stage only the files you modified):
+   git add <specific-files>
    git commit -m "{commit_message}"
 
-5. Push to remote:
-   git push -u origin {branch_name}
+5. Push and create PR:
+   $HOME/.dotfiles/.claude/scripts/stack pr {branch_name} {base_branch} "{commit_message}"
 
-6. Create PR using gh CLI directly:
-   # Ensure correct account is active
-   REMOTE_ORG=$(git remote get-url origin | sed 's|.*github\.com[/:]||;s|/.*||')
-   ACTIVE=$(gh api user --jq '.login' 2>/dev/null)
-   TARGET_ACCOUNT=$( [ "$REMOTE_ORG" = "arjaygg" ] && echo "arjaygg" || echo "Arjay-Gallentes_axosEnt" )
-   [ "$ACTIVE" != "$TARGET_ACCOUNT" ] && gh auth switch --user "$TARGET_ACCOUNT" > /dev/null 2>&1 || true
-   gh auth setup-git
-   PR_URL=$(gh pr create --base {base_branch} --head {branch_name} --title "{commit_message}" --body "Auto-merged via stack workflow")
-   PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
-
-7. Merge using gh CLI (try auto first, fall back to admin squash):
+6. Merge (try auto first, fall back to admin):
+   PR_NUMBER=$(gh pr view {branch_name} --json number -q '.number')
    gh pr merge "$PR_NUMBER" --squash --auto 2>/dev/null || gh pr merge "$PR_NUMBER" --squash --admin
 
-8. Return to original directory and update current branch (if requested):
-   cd $(git rev-parse --show-toplevel)
-   git checkout {current_branch}
-   git pull origin {base_branch}
+7. Return to original directory and optionally update current branch:
+   cd $(git -C .trees/{branch_name_without_prefix} rev-parse --show-toplevel)
+   git fetch origin {base_branch}
+   git rebase origin/{base_branch}
 
-9. Clean up worktree:
+8. Clean up worktree:
    git worktree remove .trees/{branch_name_without_prefix}/
 
-## Expected Outcome
-- PR created and merged to {base_branch}
-- Current branch updated (if requested)
-- Worktree cleaned up
-- Report PR URL and merge status
-"""
-)
+Report: PR URL, merge status, any errors.
 ```
 
 3. **Notify user immediately**:
@@ -113,7 +97,7 @@ This skill uses **isolated worktrees** for complete non-blocking operation:
 - ✅ Multiple auto-merges can run in parallel
 - ✅ Automatic cleanup after merge
 - ✅ Uses existing `stack create` and `stack pr` commands
-- ✅ Runs in background via Task tool with `run_in_background=True`
+- ✅ Runs in background via Agent tool with `run_in_background: true`
 
 ## Safety Features
 
@@ -162,7 +146,7 @@ User: "I need to make 3 quick fixes:
 
        Auto-merge them all"
 
-Claude: Launches 3 background Tasks in parallel
+Claude: Launches 3 background Agents in parallel
   ✅ Started: feat/update-deps → main
   ✅ Started: fix/lint-utils → main
   ✅ Started: docs/api-update → main
