@@ -1,0 +1,10 @@
+{
+  "expectations": [
+    {"text": "Recommends a hook (not a skill) for automatic file-read logging", "passed": true, "evidence": "Opens with 'This is a Hook'"},
+    {"text": "Explains why a hook is better than a skill for this use case", "passed": true, "evidence": "'fires automatically on every Read tool call, requires no user invocation' — concise explanation"},
+    {"text": "Specifies PostToolUse as the correct hook event", "passed": true, "evidence": "PostToolUse explicitly named, non-blocking, always exits 0"},
+    {"text": "Provides a concrete hook shell script or template", "passed": true, "evidence": "read-audit.sh written to outputs/"},
+    {"text": "Provides the settings.json registration snippet", "passed": true, "evidence": "settings-snippet.json written; registration instructions in response"}
+  ],
+  "summary": {"passed": 5, "failed": 0, "total": 5, "pass_rate": 1.0}
+}

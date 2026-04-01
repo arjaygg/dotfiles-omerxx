@@ -1,0 +1,35 @@
+{
+  "expectations": [
+    {
+      "text": "Recommends a hook (not a skill) for automatic file-read logging",
+      "passed": true,
+      "evidence": "Decision section clearly states 'Use a PostToolUse hook on the Read matcher'"
+    },
+    {
+      "text": "Explains why a hook is better than a skill for this use case",
+      "passed": true,
+      "evidence": "Comparison table covers 5 criteria including 'Triggered automatically', 'Requires user action', 'Works even when Claude forgets'"
+    },
+    {
+      "text": "Specifies PostToolUse as the correct hook event",
+      "passed": true,
+      "evidence": "Explicitly uses PostToolUse throughout; explains distinction from PreToolUse"
+    },
+    {
+      "text": "Provides a concrete hook shell script or template",
+      "passed": true,
+      "evidence": "read-audit.sh written to outputs/ with session ID tracking via CLAUDE_SESSION_ID env var"
+    },
+    {
+      "text": "Provides the settings.json registration snippet",
+      "passed": true,
+      "evidence": "settings-snippet.json written and referenced in response; noted coexistence with existing read-tracker.sh"
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1.0
+  }
+}

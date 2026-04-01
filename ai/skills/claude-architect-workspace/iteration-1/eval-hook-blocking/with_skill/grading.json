@@ -1,0 +1,40 @@
+{
+  "expectations": [
+    {
+      "text": "Chooses a hook (not a skill) because the user wants automatic enforcement",
+      "passed": true,
+      "evidence": "Response is entirely hook-based; explains enforcement is automatic and cannot rely on user invoking a skill"
+    },
+    {
+      "text": "Chooses PreToolUse event (not PostToolUse) because it must block before execution",
+      "passed": true,
+      "evidence": "Explicit section 'Event: PreToolUse (not PostToolUse)' with reasoning: 'PostToolUse only observes after the fact — the push would have already happened'"
+    },
+    {
+      "text": "Provides a shell script that checks git push commands for main/master patterns",
+      "passed": true,
+      "evidence": "block-main-push.sh written; regex `git push\\b.*\\b(main|master)\\b` with examples of what matches/doesn't"
+    },
+    {
+      "text": "Uses non-zero exit (exit 1 or exit 2) to block the tool call",
+      "passed": true,
+      "evidence": "Uses exit 2 with message 'BLOCKED: Direct push to main/master is not allowed'"
+    },
+    {
+      "text": "Includes exit 0 for non-matching commands to avoid accidental blocking",
+      "passed": true,
+      "evidence": "Section 'Safety: Exit 0 on All Non-Matching Paths' explicitly covers tool != Bash and command != push pattern"
+    },
+    {
+      "text": "Provides the settings.json registration snippet",
+      "passed": true,
+      "evidence": "settings-snippet.json written; response shows jq merge command for registration"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "tool_calls": {
+    "Bash": 1,
+    "Write": 3,
+    "total": 4
+  },
+  "files_written": [
+    "outputs/SKILL.md",
+    "outputs/response.md",
+    "outputs/metrics.json"
+  ],
+  "skill_name": "k8s-security-audit",
+  "checks_defined": ["S01", "S02", "S03", "S04", "S05", "S06"],
+  "severities": {
+    "HIGH": ["S01", "S02"],
+    "MEDIUM": ["S03", "S04"],
+    "LOW": ["S05", "S06"]
+  }
+}

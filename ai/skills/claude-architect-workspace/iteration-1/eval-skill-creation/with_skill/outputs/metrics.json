@@ -1,0 +1,30 @@
+{
+  "tool_calls": {
+    "Bash": 1,
+    "Glob": 2,
+    "Write": 3,
+    "Read": 0,
+    "Edit": 0,
+    "Grep": 0,
+    "ToolSearch": 0,
+    "Skill": 0
+  },
+  "total_tool_calls": 6,
+  "files_written": [
+    "outputs/SKILL.md",
+    "outputs/response.md",
+    "outputs/metrics.json"
+  ],
+  "checks_performed": [
+    "existing_skills_glob_dotfiles",
+    "existing_skills_glob_claude"
+  ],
+  "existing_similar_skills_found": false,
+  "skill_name": "k8s-security-audit",
+  "skill_version": "1.0.0",
+  "security_checks_defined": [
+    "runAsNonRoot (HIGH)",
+    "missing resource limits (MEDIUM)",
+    "privileged containers (CRITICAL)"
+  ]
+}

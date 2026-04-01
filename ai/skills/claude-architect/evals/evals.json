@@ -1,0 +1,46 @@
+{
+  "skill_name": "claude-architect",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to automatically log which files Claude reads during a session to a file called ~/.claude/read-audit.log so I can audit what it accessed. Should I build a skill or a hook for this? And once you decide, can you build it?",
+      "expected_output": "Recommends a PostToolUse hook (not a skill) because this is automatic/lifecycle-driven, not user-triggered. Explains WHY (hooks fire automatically; skills require user invocation). Then actually creates the hook script and provides the settings.json registration snippet.",
+      "files": [],
+      "expectations": [
+        "Recommends a hook (not a skill) for automatic file-read logging",
+        "Explains why a hook is better than a skill for this use case",
+        "Specifies PostToolUse as the correct hook event",
+        "Provides a concrete hook shell script or template",
+        "Provides the settings.json registration snippet"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Create a skill called k8s-security-audit that scans Kubernetes manifest YAML files for common misconfigurations: running as root (securityContext.runAsNonRoot not set), missing resource limits, and privileged containers. It should output a findings report.",
+      "expected_output": "Creates a complete SKILL.md at the correct path (~/.dotfiles/ai/skills/k8s-security-audit/SKILL.md) with proper YAML frontmatter, trigger phrases, instructions for scanning YAML files, and the findings report format. Should also provide the symlink command.",
+      "files": [],
+      "expectations": [
+        "Creates SKILL.md at the correct dotfiles path",
+        "Includes valid YAML frontmatter with name, description, and triggers",
+        "Description includes trigger phrases for auto-invocation",
+        "Includes instructions for checking runAsNonRoot, resource limits, and privileged containers",
+        "Provides a concrete findings report format or template",
+        "Mentions the symlink step to make the skill usable"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I never want Claude to be able to push directly to the main or master branch. Can you set something up to block that automatically? I don't want to have to remember to tell Claude — it should just be enforced.",
+      "expected_output": "Recognizes this needs a PreToolUse hook (automatic enforcement, not user-invoked). Creates a hook script that intercepts Bash tool calls, checks if the command contains 'git push' targeting main/master, and exits non-zero to block it. Provides settings.json registration under PreToolUse with Bash matcher.",
+      "files": [],
+      "expectations": [
+        "Chooses a hook (not a skill) because the user wants automatic enforcement",
+        "Chooses PreToolUse event (not PostToolUse) because it must block before execution",
+        "Provides a shell script that checks git push commands for main/master patterns",
+        "Uses exit 2 or non-zero exit to block the tool call",
+        "Includes exit 0 for non-matching commands to avoid accidental blocking",
+        "Provides the settings.json registration snippet"
+      ]
+    }
+  ]
+}

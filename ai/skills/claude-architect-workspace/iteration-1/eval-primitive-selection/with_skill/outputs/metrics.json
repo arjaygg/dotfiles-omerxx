@@ -1,0 +1,24 @@
+{
+  "tool_calls": {
+    "Glob": 4,
+    "Read": 4,
+    "Bash": 2,
+    "Write": 4,
+    "total": 14
+  },
+  "files_read": [
+    "/Users/axos-agallentes/.dotfiles/.claude/hooks/read-tracker.sh",
+    "/Users/axos-agallentes/.dotfiles/.claude/hooks/post-tool-handler.sh",
+    "/Users/axos-agallentes/.dotfiles/.claude/settings.json"
+  ],
+  "files_written": [
+    "outputs/read-auditor.sh",
+    "outputs/settings-snippet.json",
+    "outputs/response.md",
+    "outputs/metrics.json"
+  ],
+  "primitive_selected": "HOOK",
+  "hook_lifecycle": "PostToolUse",
+  "hook_matcher": "Read",
+  "decision_rationale": "Automatic lifecycle-triggered behavior (no user invocation needed) maps to HOOK, not SKILL"
+}
