@@ -1,17 +1,19 @@
-# Hook enforcement levels: "block" (exit 2, JSON reason shown to Claude), "warn" (exit 0, advisory stdout hint), "off" (disabled)
-# After burn-in, graduate hooks from "warn" to "block" based on metrics data.
-# Run: hook-metrics.sh compliance — to see trigger rates before promoting.
-# Note: historical metrics.db entries with exit_code=1 are stale (pre-2026-03-31). Run: hook-metrics.sh reset
+# Hook enforcement: "block" (exit 1) or "off" (exit 0). No "warn" level.
+# Hooks either block or they don't. Advisory messages use exit 0 + stdout.
 #
-# Graduated 2026-03-31 based on session analysis:
-#   - Bash at 41% of tool calls (target <20%), pctx at <1% (target >10%)
-#   - Warnings were being ignored — promoting to block for enforcement
+# Consolidated 2026-04-01: 6 PreToolUse → 1 (pre-tool-gate-v2.sh), 4 PostToolUse → 1 (post-tool-analytics.sh)
+# See plans/curious-zooming-moonbeam.md for architecture rationale.
 
-serena-tool-priority: block
-pctx-batch-tracker: off     # disabled: pctx at <1% usage, overhead not justified until adoption rises
-# bash-output-guard: merged into post-tool-handler.sh (2026-04-01)
-bash-tool-gate: block
-edit-without-read: warn
-duplicate-session-check: warn   # warn = active, off = disabled
-todo-gate: warn                 # warn = advisory (burn-in), block = enforced stop prevention
-drift-guard: warn              # warn = advisory nudge, off = disabled
+# --- PreToolUse (pre-tool-gate-v2.sh) ---
+# Individual concerns are sections within the consolidated script.
+# These flags allow disabling specific checks without editing the script.
+serena-tool-priority: block      # Serena hints for Grep/Glob/Read
+bash-tool-gate: block            # grep/find/ls in Bash → dedicated tools
+edit-without-read: block         # Edit files must be Read first
+
+# --- Session lifecycle ---
+duplicate-session-check: off     # off = disabled
+
+# --- Stop event ---
+todo-gate: block                 # block incomplete todos on session end
+drift-guard: off                 # off = disabled (re-enable when needed)
