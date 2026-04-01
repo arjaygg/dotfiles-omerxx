@@ -66,8 +66,10 @@ Core commands:
   down [index]                   Navigate to child (worktree-aware; use eval)
   restack                        Restack via Charcoal and sync worktrees
   update [merged-branch]         Update stack after merge (rebases dependents)
-  pr <branch> [target] [title]   Create Azure DevOps PR
-  merge <pr-id>                  Merge PR and update dependent branches
+  pr <branch> [target] [title]   Create GitHub PR for branch
+  pr-all [--draft]               Create PRs for all unpublished stack branches
+  merge [pr-id-or-branch]        Merge PR and update dependent branches
+  clean [branch]                 Remove merged branch, worktree, and tmux window
   doctor [--fix]                 Diagnose stack health
 
 Worktree commands:
@@ -187,8 +189,14 @@ main() {
     pr)
       exec "$PR_STACK_DIR/create-pr.sh" "$@"
       ;;
+    pr-all)
+      exec "$PR_STACK_DIR/create-pr-all.sh" "$@"
+      ;;
     merge)
       exec "$PR_STACK_DIR/merge-stack.sh" "$@"
+      ;;
+    clean)
+      exec "$PR_STACK_DIR/clean-stack.sh" "$@"
       ;;
     doctor)
       require_git_repo

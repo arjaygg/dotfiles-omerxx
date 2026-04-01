@@ -18,6 +18,19 @@ show_claude() {
   local text=""
   if [[ "$status" == "working" ]]; then
     text=" ${project}"
+    # Append elapsed time since activity started
+    local start
+    start="$(tmux display-message -p '#{@claude_activity_start}' 2>/dev/null)"
+    if [[ -n "$start" ]]; then
+      local now elapsed
+      now=$(date +%s)
+      elapsed=$((now - start))
+      if [[ $elapsed -lt 60 ]]; then
+        text="${text} ${elapsed}s"
+      else
+        text="${text} $((elapsed / 60))m"
+      fi
+    fi
   else
     text="${project}"
   fi

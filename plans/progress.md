@@ -1,24 +1,39 @@
-# Progress: Hook System Optimization
+# Progress: Stack Skills Overhaul
+
+**Branch:** `chore/stack-skills-overhaul`  
+**Plan:** `plans/proud-tinkering-rose.md`
+
+## In Progress
 
 ## Done
-- [x] Validate all 26 hooks via autoresearch (6 bugs found)
-- [x] Web research on hook output channel semantics + JSON block pattern
-- [x] Create implementation plan (`plans/tranquil-floating-scone.md`)
-- [x] Steps 1-6: Hook correctness fixes (stderr→stdout, dead code, exit codes)
-- [x] Step 5: Smoke-test + commit (84e771d) + push branch
-- [x] hook-config.yaml: update comments to corrected semantics
-- [x] Deep analysis plan: `plans/quirky-tinkering-plum.md` (9 phases)
-- [x] Phase 1: Replace python3 with jq in 8 hooks (net -109 lines)
-- [x] Phase 2: Merge bash-output-guard into post-tool-handler (3-tier output)
-- [x] Phase 3: Fast-path exits (plan-scope-gate, serena-tool-priority, _ensure_db)
-- [x] Phase 4: SQLite metrics to flat file logging + session-end flush
-- [x] Phase 5: Fix serena enforcement + disable pctx-batch-tracker + remove dead code
-- [x] Phase 6: Validation framework (hook-integration-test.sh + fixtures)
-- [x] Phase 7: LES metrics (learning_events table + effectiveness CLI + analyze-transcript.py)
-- [x] Phase 8: Deny-list cleanup (grep/find added to settings.json)
-- [x] Phase 9: Auto-graduation mechanism (hook-graduate.sh + hook-graduation-state.json)
+- [x] Created branch `chore/stack-skills-overhaul`
 
-## Pending
-- [ ] Commit all changes
-- [ ] Push branch
-- [ ] Open PR
+## Backlog
+
+### Wave 1 (foreground — prerequisite)
+- [x] T14 — Create `lib/gh-account.sh` + migrate `create-pr.sh` to use it
+
+### Wave 2 (parallel background — after T14)
+- [ ] T1 — Fix `create-stack.sh` base branch default (current branch, not main)
+- [ ] T3 — Rewrite `merge-stack.sh` GitHub-only + use `gh-account.sh`
+
+### Wave 3 (parallel background)
+- [x] T4 — Add PR base update loop to `update-stack.sh` + use `gh-account.sh`
+- [ ] T8 — Fix `stack-auto-pr-merge` Python Task() → Agent tool syntax
+
+### Wave 4 (parallel background — skill files only)
+- [ ] T5 — Fix tmux window-exists check in `stack-navigate` + `stack-create`
+- [ ] T6 — Add post-merge tmux window cleanup to `stack-merge` skill
+- [ ] T7 — Add tmux bridge refresh call to `stack-create` skill
+
+### Wave 5 (parallel background — new files)
+- [ ] T10 — New `stack-clean` skill + script
+- [ ] T11 — New `stack pr-all` script + skill + entrypoint routing
+
+### Wave 6 (skill polish)
+- [ ] T2 — Fix `stack-pr` skill `gt log awk NR==2` → delegate to script
+- [ ] T9 — Add stack chain visualization to PR body in `create-pr.sh`
+- [ ] T12 — Add optional draft PR prompt to `stack-create` skill
+- [ ] T13 — Rename `sync-base` → `stack-sync` + `gt sync` + update `setup.sh`
+
+## Blocked

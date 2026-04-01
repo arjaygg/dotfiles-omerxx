@@ -76,5 +76,13 @@ gh pr create --base main --fill --draft
 
 User: "Create a stacked PR for feature/login-ui on top of feature/api"
 ```bash
-gh pr create --base feature/api --head feature/login-ui --fill
+$HOME/.dotfiles/.claude/scripts/stack pr feature/login-ui feature/api
 ```
+
+User: "Create PRs for all my branches" / "Publish the stack" / "Open all PRs"
+```bash
+$HOME/.dotfiles/.claude/scripts/stack pr-all
+# or for drafts:
+$HOME/.dotfiles/.claude/scripts/stack pr-all --draft
+```
+This creates PRs bottom-up for every branch in the stack that doesn't already have an open PR, correctly targeting each branch's Charcoal parent.
