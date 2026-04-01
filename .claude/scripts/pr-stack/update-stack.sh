@@ -14,6 +14,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/validation.sh"
 source "$SCRIPT_DIR/lib/charcoal-compat.sh"
+source "$SCRIPT_DIR/lib/gh-account.sh"
 
 # Only source worktree-charcoal if file exists
 if [ -f "$SCRIPT_DIR/lib/worktree-charcoal.sh" ]; then
@@ -35,6 +36,46 @@ if ! type sync_all_worktrees >/dev/null 2>&1; then
         : # no-op fallback
     }
 fi
+
+# Update GitHub PR base branches to match Charcoal stack relationships.
+# After a restack, dependent PRs may still target the old (now merged/deleted) branch on GitHub.
+_update_pr_base_branches() {
+    if ! command -v gh &>/dev/null; then
+        print_warning "gh CLI not found — skipping GitHub PR base update"
+        return 0
+    fi
+
+    local default_branch
+    default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null \
+        | sed 's@^refs/remotes/origin/@@' || echo "main")
+
+    print_info "Syncing GitHub PR base branches with Charcoal stack..."
+    local updated=0 skipped=0
+
+    while IFS= read -r branch; do
+        [ "$branch" = "$default_branch" ] && continue
+        [ -z "$branch" ] && continue
+
+        local parent
+        parent=$(charcoal_get_parent "$branch" 2>/dev/null || true)
+        [ -z "$parent" ] && { skipped=$((skipped + 1)); continue; }
+
+        local pr_num
+        pr_num=$(GH_TOKEN=$(gh_token_for_remote) gh pr view "$branch" \
+            --json number -q '.number' 2>/dev/null || true)
+        [ -z "$pr_num" ] && { skipped=$((skipped + 1)); continue; }
+
+        if GH_TOKEN=$(gh_token_for_remote) gh pr edit "$pr_num" --base "$parent" 2>/dev/null; then
+            print_info "  PR #$pr_num ($branch) → base: $parent"
+            updated=$((updated + 1))
+        else
+            print_warning "  Could not update PR base for $branch (PR #$pr_num)"
+            skipped=$((skipped + 1))
+        fi
+    done < <(git branch --format='%(refname:short)')
+
+    print_info "PR base sync: $updated updated, $skipped skipped/no PR"
+}
 
 print_usage() {
     echo -e "${BLUE}Usage:${NC}"
@@ -163,7 +204,10 @@ if gt restack; then
     sync_all_worktrees
     echo ""
 
+    # Update GitHub PR base branches to match the new stack relationships
+    _update_pr_base_branches
     echo ""
+
     echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
     print_success "Stack update complete!"
     echo ""

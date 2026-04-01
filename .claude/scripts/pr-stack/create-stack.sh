@@ -71,7 +71,13 @@ fi
 DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
 
 NEW_BRANCH=$1
-BASE_BRANCH=${2:-$DEFAULT_BRANCH}
+# Default base: current branch if on a stacked branch, otherwise trunk
+CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+if [ -n "$CURRENT_BRANCH" ] && [ "$CURRENT_BRANCH" != "$DEFAULT_BRANCH" ]; then
+    BASE_BRANCH=${2:-$CURRENT_BRANCH}
+else
+    BASE_BRANCH=${2:-$DEFAULT_BRANCH}
+fi
 COMMIT_MESSAGE=$3
 
 # Validate prerequisites using library functions
