@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__context-mode__ctx_execute",
+      "mcp__pctx__list_functions",
+      "mcp__pctx__execute_typescript"
+    ]
+  }
+}
