@@ -1,0 +1,12 @@
+{
+  "tool_calls": {
+    "Glob": 1,
+    "Bash": 1,
+    "Write": 4
+  },
+  "total_tool_calls": 6,
+  "files_written": 4,
+  "primitive_selected": "Hook",
+  "event_type": "PostToolUse",
+  "matcher": "Read"
+}
