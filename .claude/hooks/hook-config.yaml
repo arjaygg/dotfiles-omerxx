@@ -8,8 +8,8 @@
 #   - Warnings were being ignored — promoting to block for enforcement
 
 serena-tool-priority: block
-pctx-batch-tracker: warn
-bash-output-guard: block
+pctx-batch-tracker: off     # disabled: pctx at <1% usage, overhead not justified until adoption rises
+# bash-output-guard: merged into post-tool-handler.sh (2026-04-01)
 bash-tool-gate: block
 edit-without-read: warn
 duplicate-session-check: warn   # warn = active, off = disabled

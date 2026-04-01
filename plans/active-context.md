@@ -1,38 +1,28 @@
 # Active Context
 
-## Current Focus: Unified Agent Guidance Architecture (2026-03-23)
+## Current Focus: Hook System Performance & Effectiveness Optimization (2026-04-01)
 
-Branch `feat/unified-agent-guidance` implements the separation of shared agent guidance from dotfiles distribution files (ADL-002).
+Branch: `feat/tool-call-hooks-optimization`
+Plan: plans/quirky-tinkering-plum.md
+step: 5 of 9
+focus: Phases 3-5 executing in parallel agents
 
-### Completed This Branch
+### Completed This Session
 
-1. **AGENTS.md**: New canonical shared guidance file — project purpose, working rules, source of truth, tool priority stack, batching rule, branch workflow, Serena convention, project structure, MCP gateway, plans/ convention.
-2. **CLAUDE.md**: Slimmed to thin adapter (`@AGENTS.md` + Claude-specific notes).
-3. **ai/rules/agent-user-global.md**: Created — user-global cross-agent defaults in one neutral file.
-4. **.claude/CLAUDE.md**: Updated to import global rules via `@` directive.
-5. **.gemini/GEMINI.md**: Slimmed to import global rules.
-6. **.gemini/settings.json**: Added `context.fileName` block to load AGENTS.md.
-7. **.codex/AGENT.md**: Slimmed to import global rules via `model_instructions_file`.
-8. **docs/agent-configuration-architecture.md**: New — explains the two-layer model.
-9. **docs/decision-records.md**: New — canonical convention for decision records.
-10. **decisions/0002-…**: Durable ADR for this architectural separation.
-11. **validate-agent-guidance.sh**: Structural validation script (14/14 passing).
-12. **plans/decisions.md**: Created (this session) — ADL-001 through ADL-004.
-13. **ai/rules/context-and-compaction.md**: Updated to reference durable decisions.
+1. **Phase 1**: Replaced python3 with jq in 8 hooks (pre-tool-gate, post-tool-handler, bash-output-guard, serena-tool-priority, edit-without-read, read-tracker, pctx-batch-tracker, hook-metrics/hook_block). Net -109 lines.
+2. **Phase 2**: Merged bash-output-guard.sh into post-tool-handler.sh with 3-tier output handling (compact >300, warn 200-300, hint 50-200). Removed from settings.json and hook-config.yaml.
+3. **Phases 3-5**: Running in parallel background agents:
+   - Phase 3: Fast-path exits (plan-scope-gate, serena-tool-priority, hook-metrics _ensure_db)
+   - Phase 4: SQLite metrics to flat file logging
+   - Phase 5: Fix serena enforcement, disable pctx-batch-tracker, remove deny-list dead code
 
-### Validation
+### Key Decisions
 
-All checks pass:
-```
-bash .claude/scripts/validate-agent-guidance.sh  → 14 PASS, 0 FAIL
-```
+- jq (~3ms) replaces python3 (~19ms) for JSON parsing — 6x speedup per call
+- `printf '%s'` instead of `echo` for piping JSON to jq (avoids escape/newline issues)
+- bash-output-guard merged into post-tool-handler with fast-path skip for known-short commands
+- Phase 6-9 (validation, LES metrics, layering cleanup, auto-graduation) still pending
 
-### Verified
+### Prior Session Context
 
-- **`@../ai/rules/agent-user-global.md` works** (2026-03-23): Claude Code resolves `@` relative paths from the real path after following symlinks. `~/.claude/CLAUDE.md` → `~/.dotfiles/.claude/CLAUDE.md`, so `../ai/rules/` correctly resolves to `~/.dotfiles/ai/rules/agent-user-global.md`.
-- **Codex `~/` expansion**: pending test.
-
-### Next Steps
-
-- Test Codex `model_instructions_file = "~/.dotfiles/..."` in a live Codex session
-- Open PR for `feat/unified-agent-guidance` → `main`
+Hook correctness fixes (Steps 1-6) were completed on this branch. Bugs fixed: stderr→stdout, dead code removal, exit code fixes, regex fixes.
