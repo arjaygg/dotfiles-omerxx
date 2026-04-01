@@ -51,14 +51,25 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
         exit 1
     fi
 
-    # 1d. Serena hint: source code without limit (non-.go, non-config)
+    # 1d. Source code without limit (non-.go, non-config) — check enforcement level
     if [[ -z "$LIMIT" && -f "$FILE_PATH" && -f "${HOME}/.config/pctx/pctx.json" ]]; then
         NON_CODE_EXT="md|json|yaml|yml|sql|txt|env|toml|csv|tsv|xml|html|css|lock|sum|mod|cfg|ini|conf|sh|bash|zsh"
         ext="${FILE_PATH##*.}"
         ext="${ext,,}"
         if [[ ! "$ext" =~ ^($NON_CODE_EXT)$ && "$FILE_PATH" != *.go ]]; then
-            echo "HINT: Consider Serena.getSymbolsOverview for '$FILE_PATH' to see structure first, then Read with limit/offset for specific symbols."
-            exit 0
+            _HOOK_CFG="${HOME}/.dotfiles/.claude/hooks/hook-config.yaml"
+            _SERENA_LEVEL="block"
+            if [[ -f "$_HOOK_CFG" ]]; then
+                _SERENA_LEVEL=$(grep '^serena-tool-priority:' "$_HOOK_CFG" 2>/dev/null | awk '{print $2}' | tr -d '[:space:]')
+                [[ -z "$_SERENA_LEVEL" ]] && _SERENA_LEVEL="block"
+            fi
+            if [[ "$_SERENA_LEVEL" == "block" ]]; then
+                echo "BLOCKED: Reading entire source file '$FILE_PATH' without limit/offset. Use Serena.getSymbolsOverview to understand structure, then LeanCtx.ctxRead or Read with limit/offset for specific symbols."
+                exit 1
+            else
+                echo "HINT: Consider Serena.getSymbolsOverview for '$FILE_PATH' to see structure first, then Read with limit/offset for specific symbols."
+                exit 0
+            fi
         fi
     fi
 fi
@@ -207,7 +218,7 @@ if [[ "$TOOL_NAME" == "Write" && -n "$FILE_PATH" ]]; then
         FILENAME="${FILE_PATH##*/}"
         # Skip system files
         case "$FILENAME" in
-            active-context*|decisions*|progress*|session-handoff*|plan-state*|pctx-functions*|hook-learning*) ;;
+            active-context*|decisions*|progress*|session-handoff*|plan-state*|pctx-functions*|hook-learning*|plan.md) ;;
             *)
                 # Check naming convention: YYYY-MM-DD-context.md
                 if [[ ! "$FILENAME" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-.+\.md$ ]]; then
@@ -222,26 +233,41 @@ if [[ "$TOOL_NAME" == "Write" && -n "$FILE_PATH" ]]; then
 fi
 
 # ============================================================
-# SECTION 6: Grep/Glob — Serena tool priority hints
+# SECTION 6: Grep/Glob — Serena/LeanCtx tool priority
 # ============================================================
 if [[ -f "${HOME}/.config/pctx/pctx.json" ]]; then
-    # 6a. Grep: symbol-like patterns → suggest Serena.findSymbol
+    # Read enforcement level from hook-config.yaml
+    _HOOK_CFG="${HOME}/.dotfiles/.claude/hooks/hook-config.yaml"
+    _SERENA_LEVEL="block"
+    if [[ -f "$_HOOK_CFG" ]]; then
+        _SERENA_LEVEL=$(grep '^serena-tool-priority:' "$_HOOK_CFG" 2>/dev/null | awk '{print $2}' | tr -d '[:space:]')
+        [[ -z "$_SERENA_LEVEL" ]] && _SERENA_LEVEL="block"
+    fi
+    _SERENA_EXIT=0
+    [[ "$_SERENA_LEVEL" == "block" ]] && _SERENA_EXIT=1
+    _SERENA_PREFIX="HINT"
+    [[ "$_SERENA_LEVEL" == "block" ]] && _SERENA_PREFIX="BLOCKED"
+
+    # 6a. Grep — prefer LeanCtx.ctxSearch or Serena
     if [[ "$TOOL_NAME" == "Grep" && -n "$PATTERN" ]]; then
         if [[ "$PATTERN" =~ ^(func|class|type|struct|interface|def|fn)[[:space:]] ]]; then
-            echo "HINT: For symbol lookups, Serena.findSymbol is more precise than Grep and returns structural context."
-            exit 0
+            echo "$_SERENA_PREFIX: For symbol lookups, use Serena.findSymbol (structural) or LeanCtx.ctxSearch (token-efficient) instead of Grep."
+            exit $_SERENA_EXIT
         fi
         if [[ "$PATTERN" =~ ^[A-Z][a-zA-Z0-9]+$ ]]; then
-            echo "HINT: '$PATTERN' looks like a symbol name. Consider Serena.findSymbol('$PATTERN') for structural results."
-            exit 0
+            echo "$_SERENA_PREFIX: '$PATTERN' looks like a symbol name. Use Serena.findSymbol('$PATTERN') for structural results, or LeanCtx.ctxSearch for pattern matching."
+            exit $_SERENA_EXIT
         fi
+        # General pattern — LeanCtx.ctxSearch is a direct drop-in
+        echo "$_SERENA_PREFIX: Use LeanCtx.ctxSearch instead of Grep — it's gitignore-aware, session-cached, and token-efficient."
+        exit $_SERENA_EXIT
     fi
 
     # 6b. Glob: specific filename → suggest Serena.findFile
     if [[ "$TOOL_NAME" == "Glob" && -n "$PATTERN" ]]; then
         if [[ "$PATTERN" =~ /[a-zA-Z0-9_-]+\.[a-zA-Z]+$ && ! "$PATTERN" =~ \*\.[a-zA-Z]+$ ]]; then
             FILENAME="${PATTERN##*/}"
-            echo "HINT: For finding '$FILENAME', Serena.findFile('$FILENAME') searches the project index and is often faster."
+            echo "HINT: For finding '$FILENAME', use Serena.findFile('$FILENAME') or LeanCtx.ctxTree for directory listings."
             exit 0
         fi
     fi
