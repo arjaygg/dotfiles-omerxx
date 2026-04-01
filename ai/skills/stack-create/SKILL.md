@@ -60,7 +60,25 @@ Worktrees are created by **default** (no flag needed). You also get:
    - Tracks branch in Charcoal (navigation and restacking)
    - Enables worktree-aware Charcoal commands
 
-3. **Open a new Claude Code session in the worktree** (after confirming worktree was created):
+3. **Bootstrap `.claude/settings.local.json`** in the worktree (only when a worktree was created):
+   ```bash
+   WORKTREE_PATH="$(pwd)/.trees/<sanitized-name>"
+   LOCAL_SETTINGS="$WORKTREE_PATH/.claude/settings.local.json"
+   if [ ! -f "$LOCAL_SETTINGS" ]; then
+     mkdir -p "$WORKTREE_PATH/.claude"
+     cat > "$LOCAL_SETTINGS" << 'EOF'
+   {
+     "permissions": {
+       "defaultMode": "acceptEdits"
+     }
+   }
+   EOF
+   fi
+   ```
+   This ensures the new session never prompts for permission on every tool call.
+   Skip if the file already exists (respect any existing local overrides).
+
+4. **Open a new Claude Code session in the worktree** (after confirming worktree was created):
    Derive the `name` from the branch by stripping the type prefix:
    - `feature/user-auth` → name = `"user-auth"`
    - `fix/cursor-issue` → name = `"cursor-issue"`
@@ -83,7 +101,7 @@ Worktrees are created by **default** (no flag needed). You also get:
    This gives the new session a properly isolated CWD — the new Claude instance will
    start fresh in the worktree and pick up `plans/session-handoff.md` automatically.
 
-4. **Write a rich session handoff** before opening the new session, so the new Claude
+5. **Write a rich session handoff** before opening the new session, so the new Claude
    instance starts with context from the current session:
    ```bash
    mkdir -p .trees/<sanitized-name>/plans
@@ -112,10 +130,10 @@ Worktrees are created by **default** (no flag needed). You also get:
    EOF
    ```
    Only write if the worktree was actually created (skip for `--no-worktree`).
-   Write the handoff **before** running the tmux command in step 3 so the file is
+   Write the handoff **before** running the tmux command in step 4 so the file is
    present when Claude starts.
 
-5. Inform the user:
+6. Inform the user:
    - Branch and worktree created at `.trees/<sanitized-name>`
    - Handoff written to `.trees/<sanitized-name>/plans/session-handoff.md`
    - New Claude session opened in tmux window `<sanitized-name>` (in the current tmux session)
