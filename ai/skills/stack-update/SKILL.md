@@ -47,7 +47,9 @@ Use this skill when:
    - Sync all worktrees
    - Force push (safely) to update PRs
 
-3. Report any conflicts that require manual intervention.
+3. After rebasing, GitHub PR base branches are automatically updated to match the Charcoal stack. If PR #2 was stacked on a now-merged branch, its `--base` is corrected to point at the new parent. No manual `gh pr edit` needed.
+
+4. Report any conflicts that require manual intervention.
 
 **Note**: The skill handles dirty working directories automatically - no need to manually commit or stash!
 

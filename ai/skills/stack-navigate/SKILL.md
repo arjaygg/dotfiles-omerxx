@@ -121,21 +121,17 @@ Never use `EnterWorktree`/`ExitWorktree` — use the tmux approach instead.
    WINDOW_NAME=$(basename "$WORKTREE_PATH")
    ```
 
-2. Detect the current tmux session:
+2. Detect the current tmux session and check if a window for that worktree already exists:
    ```bash
    TMUX_SESSION=$(tmux display-message -p '#S')
-   ```
-
-3. Check if a window for that worktree already exists:
-   ```bash
-   if tmux list-windows -t "$TMUX_SESSION" -F '#{window_name}' | grep -q "^$WINDOW_NAME$"; then
-     # Switch to existing window
-     tmux select-window -t "$TMUX_SESSION:$WINDOW_NAME"
+   if tmux list-windows -t "$TMUX_SESSION" -F '#{window_name}' 2>/dev/null | grep -Fxq "$WINDOW_NAME"; then
+       # Window already exists — just switch to it
+       tmux select-window -t "$TMUX_SESSION:$WINDOW_NAME"
    else
-     # Open a new window with claude
-     tmux new-window -t "$TMUX_SESSION" -n "$WINDOW_NAME"
-     sleep 0.3
-     tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "cd $WORKTREE_PATH && claude" Enter
+       # Create new window and start claude
+       tmux new-window -t "$TMUX_SESSION" -n "$WINDOW_NAME"
+       sleep 0.3
+       tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "cd $WORKTREE_PATH && claude" Enter
    fi
    ```
 

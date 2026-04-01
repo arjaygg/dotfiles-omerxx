@@ -5,39 +5,14 @@
 
 set -e
 
-# Load validation library
+# Load libraries
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/validation.sh"
 source "$SCRIPT_DIR/lib/charcoal-compat.sh"
+source "$SCRIPT_DIR/lib/gh-account.sh"
 
-REMOTE_URL="$(git remote get-url origin 2>/dev/null || true)"
-
-# Ensure gh credential helper is active (prevents credential.helper= override from blocking push)
-gh auth setup-git 2>/dev/null || true
-
-# Detect which GH account to use based on remote org
-# Personal repos live under arjaygg; everything else uses the enterprise account
-_detect_gh_account() {
-    local org
-    org=$(echo "$REMOTE_URL" | sed 's|.*github\.com[/:]||;s|/.*||')
-    if [ "$org" = "arjaygg" ]; then
-        echo "arjaygg"
-    else
-        echo "Arjay-Gallentes_axosEnt"
-    fi
-}
-
-_ensure_gh_account() {
-    local target_account
-    target_account="$(_detect_gh_account)"
-    local active_account
-    active_account=$(gh api user --jq '.login' 2>/dev/null || echo "")
-    if [ -n "$active_account" ] && [ "$active_account" != "$target_account" ]; then
-        gh auth switch --user "$target_account" > /dev/null 2>&1 || true
-    fi
-}
-
-_ensure_gh_account
+# Silent, parallel-safe credential setup (no global auth switch)
+gh_setup_git
 
 # Functions
 print_usage() {
@@ -180,7 +155,7 @@ print_info "Creating Pull Request..."
 
 # Push the branch first (gh pr create requires it)
 print_info "Pushing branch to origin..."
-git push -u origin "$SOURCE_BRANCH"
+GH_TOKEN=$(gh_token_for_remote) git push -u origin "$SOURCE_BRANCH"
 
 GH_ARGS=(
     pr create
@@ -194,7 +169,7 @@ if [ "$DRAFT" = true ]; then
     GH_ARGS+=(--draft)
 fi
 
-PR_OUTPUT="$(gh "${GH_ARGS[@]}" 2>&1)"
+PR_OUTPUT="$(GH_TOKEN=$(gh_token_for_remote) gh "${GH_ARGS[@]}" 2>&1)"
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 0 ]; then

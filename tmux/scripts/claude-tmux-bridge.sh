@@ -84,17 +84,21 @@ case "$ACTION" in
         fi
 
         # Clear all Claude pane variables
-        for var in claude_status claude_project claude_branch claude_session_id claude_worktree claude_prev_window_name; do
+        for var in claude_status claude_project claude_branch claude_session_id claude_worktree claude_prev_window_name claude_activity_start; do
             unset_pane_var "$var"
         done
         ;;
 
     activity-start)
         set_pane_var "claude_status" "working"
+        set_pane_var "claude_activity_start" "$(date +%s)"
         ;;
 
     activity-stop)
         set_pane_var "claude_status" "idle"
+        unset_pane_var "claude_activity_start"
+        _notify_project=$(get_pane_var "claude_project")
+        tmux display-message -d 2000 "✓ Claude: ${_notify_project:-done}"
         ;;
 
     worktree-enter)

@@ -90,9 +90,18 @@ Worktrees are created by **default** (no flag needed). You also get:
    WORKTREE_PATH="$(pwd)/.trees/<sanitized-name>"
    WINDOW_NAME="<sanitized-name>"
    TMUX_SESSION=$(tmux display-message -p '#S')
-   tmux new-window -t "$TMUX_SESSION" -n "$WINDOW_NAME"
-   sleep 0.3
-   tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "cd $WORKTREE_PATH && claude" Enter
+   if tmux list-windows -t "$TMUX_SESSION" -F '#{window_name}' 2>/dev/null | grep -Fxq "$WINDOW_NAME"; then
+       # Window already exists — just switch to it
+       tmux select-window -t "$TMUX_SESSION:$WINDOW_NAME"
+   else
+       # Create new window and start claude
+       tmux new-window -t "$TMUX_SESSION" -n "$WINDOW_NAME"
+       sleep 0.3
+       tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "cd $WORKTREE_PATH && claude" Enter
+       # The bridge manages window name and status labels; calling session-start keeps the display in sync after creating a new window.
+       sleep 0.5
+       ~/.dotfiles/tmux/scripts/claude-tmux-bridge.sh session-start 2>/dev/null || true
+   fi
    ```
 
    If `$TMUX` is unset (not inside tmux), skip the tmux commands and instead inform

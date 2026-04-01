@@ -20,7 +20,7 @@ WORKTREE_SELECT="$SCRIPT_DIR/claude-worktree-select.sh"
 # ── Build pane list ──────────────────────────────────────────────────────────
 # Fields (tab-separated): TARGET STATUS PROJECT BRANCH WORKTREE SESSION WINDOW
 pane_data=$(tmux list-panes -a \
-    -F '#{session_name}:#{window_index}.#{pane_index}	#{@claude_status}	#{@claude_project}	#{@claude_branch}	#{@claude_worktree}	#{session_name}	#{window_name}' \
+    -F '#{session_name}:#{window_index}.#{pane_index}	#{@claude_status}	#{@claude_project}	#{@claude_branch}	#{@claude_worktree}	#{session_name}	#{window_name}	#{@claude_activity_start}' \
     2>/dev/null || true)
 
 # Filter to only panes with @claude_status set (non-empty)
@@ -46,22 +46,36 @@ display_list=$(printf '%s\n' "$active_panes" | awk -F'\t' '{
     branch  = ($4 != "") ? "[" $4 "]" : ""
     wt      = ($5 != "") ? "  wt:" $5 : ""
     sess    = $6
+    start   = $8
+    elapsed = ""
+    if (start != "" && status == "working") {
+        diff = systime() - start + 0
+        if (diff < 60) elapsed = " " diff "s"
+        else elapsed = " " int(diff/60) "m"
+    }
     icon    = (status == "working") ? "⚙" : "·"
-    printf "%-22s  %s  %-20s%s  (%s)\n", target, icon, project branch, wt, sess
+    printf "%-22s  %s  %-20s%s%s  (%s)\n", target, icon, project branch, wt, elapsed, sess
 }')
 
 # ── fzf picker ───────────────────────────────────────────────────────────────
 _rebuild_list() {
     tmux list-panes -a \
-        -F '#{session_name}:#{window_index}.#{pane_index}	#{@claude_status}	#{@claude_project}	#{@claude_branch}	#{@claude_worktree}	#{session_name}	#{window_name}' \
+        -F '#{session_name}:#{window_index}.#{pane_index}	#{@claude_status}	#{@claude_project}	#{@claude_branch}	#{@claude_worktree}	#{session_name}	#{window_name}	#{@claude_activity_start}' \
         2>/dev/null \
     | awk -F'\t' '$2 != "" {
         target  = $1; status = $2; project = $3
         branch  = ($4 != "") ? "[" $4 "]" : ""
         wt      = ($5 != "") ? "  wt:" $5 : ""
         sess    = $6
+        start   = $8
+        elapsed = ""
+        if (start != "" && status == "working") {
+            diff = systime() - start + 0
+            if (diff < 60) elapsed = " " diff "s"
+            else elapsed = " " int(diff/60) "m"
+        }
         icon    = (status == "working") ? "⚙" : "·"
-        printf "%-22s  %s  %-20s%s  (%s)\n", target, icon, project branch, wt, sess
+        printf "%-22s  %s  %-20s%s%s  (%s)\n", target, icon, project branch, wt, elapsed, sess
     }'
 }
 export -f _rebuild_list
