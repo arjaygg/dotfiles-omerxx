@@ -819,8 +819,9 @@ else
     fi
 fi
 
-# Project context (shortened path)
+# Project context (shortened path, max 12 chars)
 project_name=$(basename "$current_dir")
+project_name="${project_name:0:12}"
 
 # Workspace context awareness - show if navigated away from project root
 workspace_indicator=""
