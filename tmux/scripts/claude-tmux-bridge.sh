@@ -26,14 +26,26 @@ derive_branch() {
     git -C "$dir" branch --show-current 2>/dev/null || echo ""
 }
 
+abbreviate_branch() {
+    local branch="$1"
+    local max="${2:-8}"
+    local stripped
+    stripped=$(printf '%s' "$branch" | sed 's|^\(feat\|feature\|fix\|bugfix\|hotfix\|chore\|release\)/||')
+    printf '%s' "${stripped:0:$max}"
+}
+
 derive_window_name() {
     local project="$1"
     local branch="$2"
     local worktree="${3:-}"
 
     local label="${worktree:-$project}"
+    label="${label:0:10}"
+
     if [[ -n "$branch" ]]; then
-        echo "claude:${label}[${branch}]"
+        local short_branch
+        short_branch=$(abbreviate_branch "$branch" 8)
+        echo "claude:${label}[${short_branch}]"
     else
         echo "claude:${label}"
     fi
@@ -79,6 +91,10 @@ case "$ACTION" in
 
     activity-start)
         set_pane_var "claude_status" "working"
+        ;;
+
+    activity-stop)
+        set_pane_var "claude_status" "idle"
         ;;
 
     worktree-enter)
