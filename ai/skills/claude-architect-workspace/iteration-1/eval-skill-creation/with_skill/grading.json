@@ -1,0 +1,35 @@
+{
+  "expectations": [
+    {
+      "text": "Creates SKILL.md with valid YAML frontmatter (name, description, triggers)",
+      "passed": true,
+      "evidence": "frontmatter has name: k8s-security-audit, description block, version: 1.0.0, 10 trigger entries"
+    },
+    {
+      "text": "Description includes trigger phrases for auto-invocation",
+      "passed": true,
+      "evidence": "Description ends with 'Use this whenever you need to audit Kubernetes manifests, review k8s security...' — explicitly pushy"
+    },
+    {
+      "text": "Instructions cover checking runAsNonRoot, resource limits, and privileged containers",
+      "passed": true,
+      "evidence": "Three named checks: Check 1 runAsNonRoot (HIGH), Check 2 resource limits (MEDIUM), Check 3 privileged (CRITICAL) — all fully specified"
+    },
+    {
+      "text": "Provides a concrete findings report format or template",
+      "passed": true,
+      "evidence": "Step 3 shows full report template with severity summary table, per-finding blocks with File/Resource/Container/Issue/Remediation fields, and Clean Files section"
+    },
+    {
+      "text": "Mentions the symlink step to make the skill usable",
+      "passed": true,
+      "evidence": "response.md includes symlink command: ln -sf ~/.dotfiles/ai/skills/k8s-security-audit ~/.claude/skills/k8s-security-audit"
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1.0
+  }
+}

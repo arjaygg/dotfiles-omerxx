@@ -1,0 +1,35 @@
+{
+  "expectations": [
+    {
+      "text": "Recommends a hook (not a skill) for automatic file-read logging",
+      "passed": true,
+      "evidence": "Response opens with 'You need a HOOK, not a skill.' — unambiguous"
+    },
+    {
+      "text": "Explains why a hook is better than a skill for this use case",
+      "passed": true,
+      "evidence": "Explains skills require user invocation vs hooks are lifecycle-driven; includes 'Why not a skill?' section"
+    },
+    {
+      "text": "Specifies PostToolUse as the correct hook event",
+      "passed": true,
+      "evidence": "Explicitly states 'PostToolUse hook matching the Read tool' with three-point justification"
+    },
+    {
+      "text": "Provides a concrete hook shell script or template",
+      "passed": true,
+      "evidence": "read-auditor.sh written to outputs/ with stdin JSON parsing, tool_name guard, file_path extraction, log append"
+    },
+    {
+      "text": "Provides the settings.json registration snippet",
+      "passed": true,
+      "evidence": "Inline JSON snippet in response.md and settings-snippet.json written to outputs/"
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1.0
+  }
+}

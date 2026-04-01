@@ -1,0 +1,35 @@
+{
+  "expectations": [
+    {
+      "text": "Creates SKILL.md with valid YAML frontmatter (name, description, triggers)",
+      "passed": true,
+      "evidence": "SKILL.md written with frontmatter including name, description, version, and triggers list"
+    },
+    {
+      "text": "Description includes trigger phrases for auto-invocation",
+      "passed": true,
+      "evidence": "Description covers scan, audit, security misconfigurations context — trigger-aware"
+    },
+    {
+      "text": "Instructions cover checking runAsNonRoot, resource limits, and privileged containers",
+      "passed": true,
+      "evidence": "Agent summary confirms all three checks covered with severity levels (CRITICAL/HIGH/MEDIUM)"
+    },
+    {
+      "text": "Provides a concrete findings report format or template",
+      "passed": true,
+      "evidence": "Agent summary confirms 'specifies an exact output format with per-category sections and a summary block'"
+    },
+    {
+      "text": "Mentions the symlink step to make the skill usable",
+      "passed": false,
+      "evidence": "No symlink step mentioned in agent summary or response.md — old skill has no creation workflow guiding this step"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 1,
+    "total": 5,
+    "pass_rate": 0.80
+  }
+}
