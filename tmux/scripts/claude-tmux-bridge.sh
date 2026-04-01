@@ -64,10 +64,10 @@ case "$ACTION" in
         original=$(tmux display-message -p '#W' 2>/dev/null || echo "")
         set_pane_var "claude_prev_window_name" "$original"
 
-        # Set state variables
+        # Set state variables (abbreviated for status bar display)
         set_pane_var "claude_status" "idle"
-        set_pane_var "claude_project" "$project"
-        set_pane_var "claude_branch" "$branch"
+        set_pane_var "claude_project" "${project:0:10}"
+        set_pane_var "claude_branch" "$(abbreviate_branch "$branch" 8)"
         set_pane_var "claude_session_id" "${CLAUDE_SESSION_ID:-unknown}"
 
         # Rename window
@@ -92,6 +92,14 @@ case "$ACTION" in
     activity-start)
         set_pane_var "claude_status" "working"
         set_pane_var "claude_activity_start" "$(date +%s)"
+
+        # Re-assert abbreviated window name (Claude Code sets its own long title)
+        project=$(get_pane_var "claude_project")
+        branch=$(get_pane_var "claude_branch")
+        worktree=$(get_pane_var "claude_worktree")
+        if [[ -n "$project" ]]; then
+            rename_window "$(derive_window_name "$project" "$branch" "$worktree")"
+        fi
         ;;
 
     activity-stop)
