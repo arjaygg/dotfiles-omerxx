@@ -307,11 +307,12 @@
   },
   "enabledPlugins": {
     "skill-creator@claude-plugins-official": true,
-    "gopls-lsp@claude-plugins-official": true
+    "gopls-lsp@claude-plugins-official": true,
+    "bash-language-server@claude-code-lsps": true
   },
   "extraKnownMarketplaces": {},
   "alwaysThinkingEnabled": true,
-  "effortLevel": "medium",
+  "effortLevel": "low",
   "plansDirectory": "./plans",
   "skipDangerousModePermissionPrompt": true,
   "autoMode": {
@@ -350,5 +351,6 @@
       "command": "notebooklm-mcp",
       "args": []
     }
-  }
+  },
+  "model": "opus[1m]"
 }
