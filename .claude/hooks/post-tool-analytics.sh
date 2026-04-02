@@ -130,6 +130,18 @@ if [[ "$TOOL_NAME" == mcp__serena__* || "$TOOL_NAME" == mcp__pctx__* ]]; then
 fi
 
 # ============================================================
+# SECTION 4b: Serena session-init flag setter
+# Set the flag that pre-tool-gate-v2 Section 0 checks, so Grep is unblocked
+# once the model has called mcp__pctx__list_functions or any Serena tool.
+# ============================================================
+if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
+    if [[ "$TOOL_NAME" == "mcp__pctx__list_functions" ]] || [[ "$TOOL_NAME" == mcp__serena__* ]]; then
+        _INIT_FLAG="/tmp/.claude-serena-init-$(id -u)-${CLAUDE_SESSION_ID}"
+        touch "$_INIT_FLAG" 2>/dev/null || true
+    fi
+fi
+
+# ============================================================
 # SECTION 5: pctx batching reminder (once per session)
 # ============================================================
 if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then
