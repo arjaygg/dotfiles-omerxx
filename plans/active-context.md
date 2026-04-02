@@ -1,6 +1,6 @@
 # Active Context
 
-## Current Focus: Clean slate — all branches merged (2026-04-01)
+## Current Focus: Add trap error handlers to all hooks (2026-04-03)
 
 Branch: `main`
 No active plan.
