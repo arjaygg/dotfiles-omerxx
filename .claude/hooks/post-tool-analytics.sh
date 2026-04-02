@@ -9,6 +9,7 @@
 #         All metric logging happens here (batched, not per-hook).
 
 set -euo pipefail
+trap 'echo "HOOK CRASH (post-tool-analytics.sh line $LINENO): $BASH_COMMAND"; exit 0' ERR
 
 INPUT=$(cat)
 

@@ -11,6 +11,7 @@
 #   3. If text blocks contain [saves * memory:] but no Write to memory/ → emit reminder
 
 set -euo pipefail
+trap 'echo "HOOK CRASH (feedback-capture.sh line $LINENO): $BASH_COMMAND"; exit 0' ERR
 
 # --- Read transcript path from stdin ---
 HOOK_PAYLOAD=$(cat)

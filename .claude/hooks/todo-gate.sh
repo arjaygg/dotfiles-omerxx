@@ -13,6 +13,7 @@
 #   - all todos completed      → allow stop normally
 
 set -euo pipefail
+trap 'echo "HOOK CRASH (todo-gate.sh line $LINENO): $BASH_COMMAND"; exit 0' ERR
 
 SCRIPT_NAME="todo-gate"
 HOOK_CONFIG="$HOME/.dotfiles/.claude/hooks/hook-config.yaml"
