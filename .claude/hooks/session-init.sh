@@ -40,13 +40,24 @@ while [[ "$dir" != "/" ]]; do
 done
 
 if $HAS_SERENA; then
-    cat <<'EOF'
+    # Count available memories for the hint
+    _SERENA_DIR="$(pwd)/.serena/memories"
+    _MEM_COUNT=0
+    if [[ -d "$_SERENA_DIR" ]]; then
+        _MEM_COUNT=$(find "$_SERENA_DIR" -name "*.md" ! -path "*/_archive/*" 2>/dev/null | wc -l | tr -d ' ')
+    fi
+    _MEM_HINT=""
+    if [[ "$_MEM_COUNT" -gt 0 ]]; then
+        _MEM_HINT="  4. Serena.readMemory({ name: \"START_HERE\" }) — load project memories ($_MEM_COUNT available)"
+    fi
+
+    cat <<EOF
 [SESSION INIT REQUIRED]
 Before the first project file access (Read/Grep/Glob/Serena), you MUST:
   1. Call mcp__pctx__list_functions — confirm current Serena/lean-ctx signatures
   2. Write the result to plans/pctx-functions.md (create plans/ if missing)
   3. Call Serena.initialInstructions() — load project-specific rules
-
+${_MEM_HINT}
 Skip this ONLY if plans/pctx-functions.md already exists and was written today.
 EOF
 else
