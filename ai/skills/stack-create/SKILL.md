@@ -142,7 +142,16 @@ Worktrees are created by **default** (no flag needed). You also get:
    Write the handoff **before** running the tmux command in step 4 so the file is
    present when Claude starts.
 
-6. Inform the user:
+6. **Optionally create a draft PR** — ask the user if they'd like a draft PR opened immediately:
+   > "Worktree created. Want me to open a draft PR now so reviewers can track progress?"
+
+   If yes:
+   ```bash
+   $HOME/.dotfiles/.claude/scripts/stack pr "$(git branch --show-current)" "" "" --draft
+   ```
+   If no (or user doesn't respond), skip.
+
+7. Inform the user:
    - Branch and worktree created at `.trees/<sanitized-name>`
    - Handoff written to `.trees/<sanitized-name>/plans/session-handoff.md`
    - New Claude session opened in tmux window `<sanitized-name>` (in the current tmux session)

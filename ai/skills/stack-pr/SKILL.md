@@ -49,14 +49,12 @@ Use this skill when the user wants to:
    gh auth setup-git
    ```
 
-4. **Push and create PR** using `gh` CLI directly:
+4. **Push and create PR** by delegating to the stack script (handles account switching, target detection, and body generation):
    ```bash
    BRANCH=$(git branch --show-current)
-   TARGET=$(gt log --short 2>/dev/null | awk 'NR==2{print $1}' || echo "main")
-   git push -u origin "$BRANCH"
-   gh pr create --base "$TARGET" --head "$BRANCH" --title "<title>" --body "<body>"
+   $HOME/.dotfiles/.claude/scripts/stack pr "$BRANCH" "" "<title>"
    ```
-   For draft: add `--draft`
+   For draft: append `--draft`. The script auto-detects the Charcoal parent as target (falls back to main).
 
 5. Return the PR URL to the user.
 
