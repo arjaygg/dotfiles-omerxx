@@ -42,7 +42,7 @@ fi
 COUNT=0
 [[ -f "$TRACKER" ]] && COUNT=$(wc -l < "$TRACKER" | tr -d ' ')
 
-if [[ "$COUNT" -ge 2 ]]; then
+if [[ "$COUNT" -ge 3 ]]; then
     echo "BATCH HINT: You've made $COUNT sequential Serena/pctx MCP calls in the last 60s."
     echo "  Consider batching into one pctx execute_typescript call with Promise.all()."
     echo "  See: tool-priority.md §2 'Batching & Code Mode'"
