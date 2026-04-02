@@ -3,6 +3,7 @@
 # Used by pre-compact.sh (H7) to find files edited THIS session (not since last git op).
 
 set -euo pipefail
+trap 'echo "HOOK CRASH (session-init.sh line $LINENO): $BASH_COMMAND"; exit 0' ERR
 
 # Write session-start timestamp to a per-user temp file
 TIMESTAMP_FILE="/tmp/.claude-session-start-$(id -u)"

@@ -3,6 +3,7 @@
 # Silent when healthy; outputs a structured warning (becomes system-reminder) when action needed
 
 set -euo pipefail
+trap 'echo "HOOK CRASH (plans-healthcheck.sh line $LINENO): $BASH_COMMAND"; exit 0' ERR
 
 CWD=$(pwd)
 TODAY=$(date '+%Y-%m-%d')

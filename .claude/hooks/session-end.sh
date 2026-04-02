@@ -6,6 +6,7 @@
 # the last write, preventing redundant overwrites on every single turn.
 
 set -euo pipefail
+trap 'echo "HOOK CRASH (session-end.sh line $LINENO): $BASH_COMMAND"; exit 0' ERR
 
 # Restore tmux window name on session end
 "$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh" activity-stop 2>/dev/null || true

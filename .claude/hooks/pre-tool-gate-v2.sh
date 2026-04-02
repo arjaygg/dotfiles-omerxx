@@ -9,6 +9,7 @@
 #         No SQLite writes — metrics move to PostToolUse.
 
 set -euo pipefail
+trap 'echo "HOOK CRASH (pre-tool-gate-v2.sh line $LINENO): $BASH_COMMAND"' ERR
 
 INPUT=$(cat)
 
