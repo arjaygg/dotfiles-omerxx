@@ -1,6 +1,6 @@
 ---
-name: sync-base
-description: Rebase the current branch onto its parent/base branch to pick up new commits. USE THIS SKILL when user says "sync base", "sync with base", "rebase base", "update from base", "pull base", "sync parent", "rebase onto parent", "catch up with base", "bring in base changes", or wants their feature branch up to date with the branch it was forked from.
+name: stack-sync
+description: Rebase the current branch onto its parent/base branch to pick up new commits. USE THIS SKILL when user says "sync base", "sync with base", "rebase base", "update from base", "pull base", "sync parent", "rebase onto parent", "catch up with base", "bring in base changes", "gt sync", or wants their feature branch up to date with the branch it was forked from.
 triggers:
   - sync base
   - sync with base
@@ -13,9 +13,11 @@ triggers:
   - bring in base changes
   - sync from parent
   - rebase from base
+  - gt sync
+  - stack sync
 ---
 
-# Sync Base
+# Stack Sync
 
 Rebases the current branch onto its upstream parent branch so it includes the latest commits from the base. This is the everyday "keep my branch current" operation.
 
@@ -45,7 +47,7 @@ Try these in order — use the first that succeeds:
 
 3. **Merge-base heuristic** — find the nearest common ancestor among known bases:
    ```bash
-   git fetch origin main develop feat/k8s-supervisor-platform 2>/dev/null
+   git fetch origin main develop 2>/dev/null
    for base in main develop; do
      COUNT=$(git rev-list --count "origin/${base}..HEAD" 2>/dev/null)
      echo "$COUNT $base"
@@ -70,7 +72,7 @@ If `NEW_COMMITS` is 0, report "Already up to date with origin/${BASE_BRANCH}" an
 
 ```bash
 if ! git diff --quiet || ! git diff --cached --quiet; then
-  git stash push -m "sync-base: auto-stash before rebase"
+  git stash push -m "stack-sync: auto-stash before rebase"
   STASHED=1
 fi
 ```
@@ -126,7 +128,7 @@ Report:
 
 ## Examples
 
-User: "sync with base"
+User: "sync with base" / "gt sync"
 Action: Detect base → fetch → rebase → push → summary
 
 User: "update from base"
