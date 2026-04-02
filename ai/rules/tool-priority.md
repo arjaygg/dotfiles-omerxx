@@ -40,6 +40,25 @@ Use `pctx execute_typescript` when 2+ operations are planned or when data proces
 - Filter/map data inside the script; return only final results to the agent.
 - Do NOT call `JSON.parse()` on results (already objects).
 
+```typescript
+// Example: explore a package before editing
+const result = await mcp__pctx__execute_typescript(`
+async function run() {
+  const [overview, refs, file] = await Promise.all([
+    Serena.getSymbolsOverview("pkg/worker/"),
+    Serena.findReferencingSymbols("WorkerPool"),
+    Serena.findFile("config.go"),
+  ]);
+  // Filter only what matters — don't return everything
+  return {
+    exports: overview.symbols?.filter(s => s.exported),
+    usageSites: refs.locations?.length,
+    configPath: file.path,
+  };
+}
+`);
+```
+
 ## 3. Serena API Convention
 All Serena methods use **camelCase**.
 - `Serena.listDir` (NOT `list_dir`)
@@ -69,6 +88,43 @@ If Serena's Go LSP times out (SolidLSP repeated-init issue #634): call `Serena.r
 
 ## 5. Session Start (Required)
 Run `mcp__pctx__list_functions` before the first project access in a session. Write results to `plans/pctx-functions.md` and check its timestamp (TTL: 1 day).
+
+**Enforcement:** `pre-tool-gate-v2.sh` Section 0 will **block** any Grep call until this sequence completes. The gate checks for a session-scoped flag set by `post-tool-analytics.sh` when a Serena or pctx tool is first called. Skipping this step means Grep calls will be blocked mid-task — complete the init sequence first to avoid interruption.
+
+## 6. Why Serena Over Grep/Read
+
+This is not stylistic preference — it is a token budget constraint.
+
+**Grep returns raw text lines. Serena returns structured symbol metadata.**
+
+| Operation | Grep result | Serena result |
+|---|---|---|
+| Find function `NewWorker` | Entire file lines matching the regex, including comments and strings | One entry: file path + line + full signature |
+| Find all usages of `WorkerPool` | All lines containing the string across all files | Structured list of reference sites with context type |
+| Explore a package | N/A | Symbol tree: all exported types, funcs, consts in one call |
+
+Grep results flood context. A single Grep for a common symbol name across a Go repo can return 50–200 lines. Serena's `findSymbol` returns 1–5 structured entries. Over a session, this compounds: each Grep that could have been a `findSymbol` wastes 40–200 tokens. At 300+ tool calls per session, the accumulated waste forces early compaction and loses context.
+
+**Secondary reason:** Grep is gitignore-unaware by default and will match lock files, generated code, and vendor directories unless `glob` is carefully restricted. Serena's `searchForPattern` with `restrict_search_to_code_files: true` is filtered by construction.
+
+## 7. Common Violations (How Drift Happens)
+
+Watch for these patterns — they indicate the tool priority rules are being ignored:
+
+| Violation | Correct replacement |
+|---|---|
+| `Grep(pattern: "WorkerPool")` — PascalCase lookup | `Serena.findSymbol("WorkerPool")` |
+| `Grep(pattern: "func New")` — symbol definition search | `Serena.findSymbol("New*")` or `Serena.searchForPattern` |
+| `Read("pkg/worker/pool.go")` without limit — whole file read | `Serena.getSymbolsOverview("pkg/worker/pool.go")`, then Read with limit/offset |
+| Multiple sequential `Serena.*` calls (no batch) | `mcp__pctx__execute_typescript` with `Promise.all()` |
+| Starting session with Grep/Read before Serena init | Call `mcp__pctx__list_functions` → write `plans/pctx-functions.md` → `Serena.initialInstructions()` |
+| `Bash(grep ...)` or `Bash(find ...)` | Blocked by `permissions.deny`; use Serena or Glob |
+
+If you find yourself reaching for Grep, ask: **"Is this a symbol lookup or a pattern search?"**
+- Symbol lookup (known name) → `Serena.findSymbol`
+- Pattern search (structural) → `Serena.searchForPattern`
+- Pattern search (text, non-code) → `Grep tool` is acceptable
+- Finding a file → `Serena.findFile` or `Glob`
 
 ---
 *Maintained at: `/Users/axos-agallentes/.dotfiles/ai/rules/tool-priority.md`*
