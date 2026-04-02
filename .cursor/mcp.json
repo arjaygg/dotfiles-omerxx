@@ -3,10 +3,6 @@
     "pctx": {
       "url": "http://127.0.0.1:8787/mcp"
     },
-    "voice-mode": {
-      "command": "voice-mode",
-      "args": []
-    },
     "notebooklm": {
       "command": "notebooklm-mcp",
       "args": []

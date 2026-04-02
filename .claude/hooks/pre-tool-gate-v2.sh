@@ -26,6 +26,33 @@ eval "$(echo "$INPUT" | jq -r '
 ' 2>/dev/null)" 2>/dev/null || exit 0
 
 # ============================================================
+# GUARD: empty TOOL_NAME → eval failed silently; block to prevent pass-through
+# ============================================================
+[[ -z "$TOOL_NAME" ]] && {
+    echo "BLOCKED: hook parse failed (empty TOOL_NAME). Use a Serena MCP tool instead of a native file tool."
+    exit 1
+}
+
+# ============================================================
+# SECTION 0: Serena session-init gate
+# Only active in real Claude sessions (CLAUDE_SESSION_ID is set by the runtime).
+# Blocks Grep before Serena has been initialized so the model is forced to call
+# mcp__pctx__list_functions → Serena.initialInstructions() first.
+# ============================================================
+if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
+    _INIT_FLAG="/tmp/.claude-serena-init-$(id -u)-${CLAUDE_SESSION_ID}"
+    if [[ ! -f "$_INIT_FLAG" && "$TOOL_NAME" == "Grep" ]]; then
+        echo "BLOCKED: Serena not yet initialized this session."
+        echo "  Before using Grep, you MUST complete the session init sequence:"
+        echo "  1. Call mcp__pctx__list_functions"
+        echo "  2. Write result to plans/pctx-functions.md"
+        echo "  3. Call Serena.initialInstructions()"
+        echo "  This ensures structural (AST-level) search is available before falling back to text search."
+        exit 1
+    fi
+fi
+
+# ============================================================
 # SECTION 1: Read guards
 # ============================================================
 if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
