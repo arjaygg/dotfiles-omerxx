@@ -18,10 +18,6 @@
         "context-mode"
       ]
     },
-    "voice-mode": {
-      "command": "voice-mode",
-      "args": []
-    },
     "notebooklm": {
       "command": "notebooklm-mcp",
       "args": []

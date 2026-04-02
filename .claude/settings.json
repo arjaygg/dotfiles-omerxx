@@ -311,6 +311,7 @@
   },
   "extraKnownMarketplaces": {},
   "alwaysThinkingEnabled": true,
+  "effortLevel": "medium",
   "plansDirectory": "./plans",
   "skipDangerousModePermissionPrompt": true,
   "autoMode": {
