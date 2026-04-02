@@ -115,12 +115,25 @@ if [ -n "$STORY_FILE" ]; then
     STORY_REF="Related Story: \`$STORY_NUM\`"
 fi
 
+# Build stack chain visualization
+STACK_VIZ=""
+if charcoal_initialized 2>/dev/null; then
+    CHAIN=$(gt log --short 2>/dev/null | awk '{printf "%s`%s`", (NR>1 ? " → " : ""), $1}' || true)
+    if [ -n "$CHAIN" ]; then
+        STACK_VIZ="## Stack
+
+$CHAIN
+
+"
+    fi
+fi
+
 # Build description
 DESCRIPTION="## Changes
 
 $COMMITS
 
-## Dependencies
+${STACK_VIZ}## Dependencies
 "
 
 # If not targeting trunk, this is a dependent (stacked) PR.
