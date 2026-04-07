@@ -125,6 +125,62 @@ Heuristics for "3+ step tasks":
 
 ---
 
+## Model, Effort & Thinking Mode
+
+Use the right Claude Code primitives for each task. These are configured via `/model`, `/effort`,
+and `/fast` commands and apply for the remainder of the session.
+
+### Default configuration
+
+The recommended default is `model: "opusplan"` in `settings.json`. This automatically uses:
+- **Opus 4.6** when in plan mode (complex reasoning, architecture exploration)
+- **Sonnet 4.6** during execution (code generation, file edits, tool use)
+
+No manual `/model` switching needed for the plan→execute flow.
+
+### Model selection
+
+| Signal | Model | Command |
+|--------|-------|---------|
+| Trivial lookup, quick Q&A, classify | Haiku | `/model haiku` |
+| Standard coding (default) | Sonnet | (default via opusplan) |
+| Complex reasoning, architecture, hard bugs | Opus | `/model opus` or use plan mode |
+
+### Effort levels (also controls thinking depth)
+
+Effort is the dial for extended thinking — not a separate toggle. Higher effort = more thinking tokens.
+
+| Task type | Effort | Command |
+|-----------|--------|---------|
+| Mechanical: rename, format, boilerplate | low | `/effort low` |
+| Standard coding (default) | high | `/effort high` |
+| Architecture, root cause, hard debugging | max | `/effort max` |
+
+- **`/effort low`** — suppresses thinking; fastest output, lowest cost
+- **`/effort high`** — adaptive thinking; Claude decides when to reason deeply (default)
+- **`/effort max`** — maximum thinking budget; explores edge cases, no cap
+
+### Fast mode
+
+Fast mode uses the same model at 2.5x speed at 6x cost. Quality is identical.
+
+- **Enable** (`/fast on`): rapid iteration loops, live debugging, back-and-forth micro-sessions
+- **Disable** (`/fast off`): background/autonomous tasks, bulk operations, one-shot requests
+
+Combining `/fast on` + `/effort low` = maximum throughput for trivial tasks.
+Combining `/fast on` + `/effort high` = best interactive experience for standard work.
+
+### Plan mode
+
+Enter plan mode (`/plan`) for:
+- Multi-file architectural changes
+- Any task requiring `**Accepts:**` criteria before execution
+- Decisions where you want human review before any files are touched
+
+With `opusplan` set, plan mode automatically upgrades to Opus for the planning phase.
+
+---
+
 ## Unified AI Hub Structure
 
 All AI primitives are managed in the `ai/` directory:
