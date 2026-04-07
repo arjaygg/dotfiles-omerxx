@@ -1,0 +1,61 @@
+{
+  "name": "note",
+  "description": "Manage notes in a notebook. Unified tool for all note operations.\n\nSupports: create, list, update, delete\n\nArgs:\n    notebook_id: Notebook UUID\n    action: Operation to perform:\n        - create: Create a new note\n        - list: List all notes in notebook\n        - update: Update an existing note\n        - delete: Delete a note permanently (requires confirm=True)\n    note_id: Note UUID (required for update/delete)\n    content: Note content (required for create, optional for update)\n    title: Note title (optional for create/update)\n    confirm: Must be True for delete action\n\nReturns:\n    Action-specific response with status\n\nExample:\n    note(notebook_id=\"abc\", action=\"list\")\n    note(notebook_id=\"abc\", action=\"create\", content=\"My note\", title=\"Title\")\n    note(notebook_id=\"abc\", action=\"update\", note_id=\"xyz\", content=\"Updated\")\n    note(notebook_id=\"abc\", action=\"delete\", note_id=\"xyz\", confirm=True)",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "notebook_id": {
+        "type": "string"
+      },
+      "action": {
+        "type": "string"
+      },
+      "note_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "content": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "title": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "confirm": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "notebook_id",
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "additionalProperties": true
+  }
+}

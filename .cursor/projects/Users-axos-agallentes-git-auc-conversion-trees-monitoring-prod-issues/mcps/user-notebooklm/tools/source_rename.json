@@ -1,0 +1,28 @@
+{
+  "name": "source_rename",
+  "description": "Rename a source in a notebook.\n\nArgs:\n    notebook_id: Notebook UUID containing the source\n    source_id: Source UUID to rename\n    new_title: New display title for the source",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "notebook_id": {
+        "type": "string"
+      },
+      "source_id": {
+        "type": "string"
+      },
+      "new_title": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "notebook_id",
+      "source_id",
+      "new_title"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "additionalProperties": true
+  }
+}

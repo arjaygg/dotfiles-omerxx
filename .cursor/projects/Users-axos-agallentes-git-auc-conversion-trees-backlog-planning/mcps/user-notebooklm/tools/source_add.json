@@ -1,0 +1,105 @@
+{
+  "name": "source_add",
+  "description": "Add a source to a notebook. Unified tool for all source types.\n\nSupports: url, text, drive, file\n\nArgs:\n    notebook_id: Notebook UUID\n    source_type: Type of source to add:\n        - url: Web page or YouTube URL\n        - text: Pasted text content\n        - drive: Google Drive document\n        - file: Local file upload (PDF, text, audio)\n    url: URL to add (for source_type=url)\n    urls: List of URLs to add in bulk (for source_type=url, alternative to url)\n    text: Text content to add (for source_type=text)\n    title: Display title (for text sources)\n    file_path: Local file path (for source_type=file)\n    document_id: Google Drive document ID (for source_type=drive)\n    doc_type: Drive doc type: doc|slides|sheets|pdf (for source_type=drive)\n    wait: If True, wait for source processing to complete before returning\n    wait_timeout: Max seconds to wait if wait=True (default 120)\n\nExample:\n    source_add(notebook_id=\"abc\", source_type=\"url\", url=\"https://example.com\")\n    source_add(notebook_id=\"abc\", source_type=\"url\", urls=[\"https://a.com\", \"https://b.com\"])\n    source_add(notebook_id=\"abc\", source_type=\"url\", url=\"https://example.com\", wait=True)\n    source_add(notebook_id=\"abc\", source_type=\"file\", file_path=\"/path/to/doc.pdf\", wait=True)",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "notebook_id": {
+        "type": "string"
+      },
+      "source_type": {
+        "type": "string"
+      },
+      "url": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "urls": {
+        "anyOf": [
+          {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "text": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "title": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "file_path": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "document_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "doc_type": {
+        "default": "doc",
+        "type": "string"
+      },
+      "wait": {
+        "default": false,
+        "type": "boolean"
+      },
+      "wait_timeout": {
+        "default": 120,
+        "type": "number"
+      }
+    },
+    "required": [
+      "notebook_id",
+      "source_type"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "additionalProperties": true
+  }
+}

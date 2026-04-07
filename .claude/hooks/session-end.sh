@@ -115,4 +115,7 @@ echo "$CONTENT_HASH" > "$HASH_FILE"
 # Flush hook metrics to SQLite
 "${BASH_SOURCE[0]%/*}/hook-metrics.sh" flush 2>/dev/null || true
 
+# Clean up session-duration-guard counter
+rm -f "/tmp/.claude-turn-count-${UID}" 2>/dev/null || true
+
 exit 0

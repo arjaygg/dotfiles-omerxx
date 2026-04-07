@@ -95,12 +95,17 @@
     ],
     "defaultMode": "acceptEdits"
   },
+  "model": "haiku",
   "enableAllProjectMcpServers": true,
   "hooks": {
     "SessionStart": [
       {
         "matcher": ".*",
         "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/session-start-init.sh\"'"
+          },
           {
             "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/session-init.sh\"'"
@@ -194,6 +199,10 @@
           {
             "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/plans-healthcheck.sh\"'"
+          },
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/session-duration-guard.sh\"'"
           },
           {
             "type": "command",
@@ -351,6 +360,5 @@
       "command": "notebooklm-mcp",
       "args": []
     }
-  },
-  "model": "opus[1m]"
+  }
 }

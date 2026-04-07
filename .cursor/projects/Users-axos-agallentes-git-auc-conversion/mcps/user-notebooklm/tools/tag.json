@@ -1,0 +1,57 @@
+{
+  "name": "tag",
+  "description": "Manage notebook tags and find relevant notebooks by tag matching.\n\nActions:\n- add: Add tags to a notebook for smart selection\n- remove: Remove tags from a notebook\n- list: List all tagged notebooks with their tags\n- select: Find notebooks relevant to a query using tag matching\n\nArgs:\n    action: Operation to perform (add, remove, list, select)\n    notebook_id: Notebook UUID (required for add, remove)\n    tags: Comma-separated tags (required for add, remove; e.g. \"ai,research,llm\")\n    notebook_title: Optional display title (for add)\n    query: Search query (required for select; e.g. \"ai mcp\" or \"ai,mcp\")",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      },
+      "notebook_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "tags": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "notebook_title": {
+        "default": "",
+        "type": "string"
+      },
+      "query": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "additionalProperties": true
+  }
+}

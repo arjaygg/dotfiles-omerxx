@@ -1,0 +1,6 @@
+{
+  "uri": "voice://config/all",
+  "name": "all_configuration",
+  "description": "Complete voice mode configuration.\n\nShows all current configuration settings including:\n- Core settings (directories, saving options)\n- Provider settings (TTS/STT endpoints and preferences)\n- Audio settings (formats, quality)\n- Service-specific settings (Whisper, Kokoro)\n- Silence detection parameters\n- Streaming configuration\n- Event logging settings\n\nSensitive values like API keys are masked for security.",
+  "mimeType": "text/plain"
+}

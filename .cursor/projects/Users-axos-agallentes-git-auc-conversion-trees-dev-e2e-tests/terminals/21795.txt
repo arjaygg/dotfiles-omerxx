@@ -1,0 +1,79 @@
+---
+pid: 52660
+cwd: "/Users/axos-agallentes/git/auc-conversion/.trees/dev-e2e-tests"
+command: "./tests/e2e/run_tier0.sh 2>&1"
+started_at: 2026-03-31T20:32:47.096Z
+running_for_ms: 146204   
+---
+
+[1m════════════════════════════════════════[0m
+[1m  Tier 0 — Prerequisites[0m
+[1m════════════════════════════════════════[0m
+[0;36m▶[0m Checking kubectl access to namespace dev...
+  [0;32m✓ PASS[0m kubectl access to namespace dev
+[0;36m▶[0m Checking sqlcmd connectivity to AUC_Dev...
+  [0;32m✓ PASS[0m sqlcmd connected to AUC_Dev
+[0;36m▶[0m Checking sqlcmd connectivity to ALF_DEV...
+  [0;32m✓ PASS[0m sqlcmd connected to ALF_DEV
+[0;36m▶[0m Checking required database tables...
+  [0;32m✓ PASS[0m Required tables exist (worker_registry, ConversionMetrics, RuntimeConfig)
+[0;36m▶[0m Checking loadtest schema...
+  [0;32m✓ PASS[0m loadtest schema exists
+[0;36m▶[0m Checking worker deployment...
+  [0;32m✓ PASS[0m Worker deployment auc-conversion-worker-v2 exists
+[0;36m▶[0m Checking DB_SCHEMA env var on worker deployment...
+  [0;32m✓ PASS[0m DB_SCHEMA=loadtest is set on worker deployment
+[0;36m▶[0m Checking observability env vars...
+  [0;32m✓ PASS[0m EXPVAR_ENABLED=true
+  [0;32m✓ PASS[0m DB_METRICS_ENABLED=true
+
+[1m════════════════════════════════════════[0m
+[1m  Tier 0 — Setup[0m
+[1m════════════════════════════════════════[0m
+[0;36m▶[0m Scaling workers to 0...
+deployment.apps/auc-conversion-worker-v2 scaled
+[0;36m▶[0m Resetting ETL flags on source tables (FIRM_MAIN, AUC_RIA_MAIN, AUC_REP_ACNT)...
+(20,500 rows affected)
+(159 rows affected)
+(129,681 rows affected)
+[0;36m▶[0m ETL flags reset.
+[0;36m▶[0m Seeding E2E migration plan...
+E2E RUNNING AUC_REP_ACNT 0 638 NULL
+E2E RUNNING AUC_RIA_MAIN 0 812 NULL
+E2E RUNNING FIRM_MAIN 0 814 NULL
+
+E2E-SANITY plan seeded: Status=RUNNING, 3 Level-0 tables, ProcessLogID=NULL (worker will claim)
+[0;36m▶[0m Migration plan seeded.
+
+[1m════════════════════════════════════════[0m
+[1m  T0.1 — Worker Pod Startup & Registration[0m
+[1m════════════════════════════════════════[0m
+[0;36m▶[0m Scaling to 1 worker...
+deployment.apps/auc-conversion-worker-v2 scaled
+[0;36m▶[0m Waiting for pod to be ready...
+  [0;32m✓ PASS[0m Worker pod is ready
+[0;36m▶[0m Waiting 15s for worker registration and heartbeat...
+  [0;32m✓ PASS[0m Worker registered with active heartbeat
+
+[1m════════════════════════════════════════[0m
+[1m  T0.2 — Health Endpoints[0m
+[1m════════════════════════════════════════[0m
+[0;36m▶[0m Checking /healthz (liveness)...
+  [0;32m✓ PASS[0m /healthz returns ok
+[0;36m▶[0m Checking /readyz (readiness)...
+  [0;32m✓ PASS[0m /readyz returns ready
+[0;36m▶[0m Checking /debug/vars (expvar)...
+  [0;32m✓ PASS[0m /debug/vars returns JSON
+
+[1m════════════════════════════════════════[0m
+[1m  T0.3 — Conversion (3 tables, 1 worker)[0m
+[1m════════════════════════════════════════[0m
+[0;36m▶[0m Waiting for conversion to complete (timeout: 600s, poll: 10s)...
+
+[1;33m⚠[0m Running cleanup (cleanup_tier0.sql)...
+
+---
+exit_code: 1
+elapsed_ms: 151611
+ended_at: 2026-03-31T20:35:18.709Z
+---
