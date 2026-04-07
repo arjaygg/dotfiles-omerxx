@@ -1,0 +1,67 @@
+# Claude Code global ignore patterns
+# Files and directories matching these patterns will be excluded from context
+# Same syntax as .gitignore
+
+# Dependency directories
+vendor/
+node_modules/
+.npm/
+
+# Build output
+dist/
+build/
+bin/
+out/
+
+# Generated Go files
+*.pb.go
+*_generated.go
+*_gen.go
+mock_*.go
+zz_generated.*.go
+
+# Generated mock directories
+mocks/generated/
+testdata/generated/
+
+# Lock files (already in deny rules but also exclude from file search)
+*.sum
+package-lock.json
+yarn.lock
+Cargo.lock
+pnpm-lock.yaml
+
+# Git internals
+.git/
+
+# Compiled assets
+*.min.js
+*.min.css
+
+# Binary/media files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.svg
+*.woff
+*.woff2
+*.ttf
+*.eot
+
+# IDE and OS artifacts
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Coverage and test artifacts
+coverage.out
+*.test
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
