@@ -1,5 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "opusplan",
   "env": {
     "USE_BUILTIN_RIPGREP": "0",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
@@ -95,7 +96,6 @@
     ],
     "defaultMode": "acceptEdits"
   },
-  "model": "haiku",
   "enableAllProjectMcpServers": true,
   "hooks": {
     "SessionStart": [
@@ -229,6 +229,10 @@
           {
             "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/plan-todowrite-reminder.sh\"'"
+          },
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/primitive-hint.sh\"'"
           },
           {
             "type": "command",
