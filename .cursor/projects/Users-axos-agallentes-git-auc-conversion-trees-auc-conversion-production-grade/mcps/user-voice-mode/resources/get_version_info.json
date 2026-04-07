@@ -1,0 +1,6 @@
+{
+  "uri": "voice-mode:version",
+  "name": "get_version_info",
+  "description": "Get detailed version information about Voice Mode.\n\nShows version, git status, Python version, and platform details.",
+  "mimeType": "text/plain"
+}

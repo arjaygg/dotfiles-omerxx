@@ -1,0 +1,50 @@
+{
+  "name": "web_search_exa",
+  "description": "Search the web for any topic and get clean, ready-to-use content.\n\nBest for: Finding current information, news, facts, or answering questions about any topic.\nReturns: Clean text content from top search results, ready for LLM use.\n\nQuery tips: describe the ideal page, not keywords. \"blog post comparing React and Vue performance\" not \"React vs Vue\".\nIf highlights are insufficient, follow up with crawling_exa on the best URLs.",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Natural language search query. Should be a semantically rich description of the ideal page, not just keywords."
+      },
+      "numResults": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 100,
+        "description": "Number of search results to return (must be a number, default: 8)"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "auto",
+          "fast"
+        ],
+        "description": "Search type - 'auto': balanced search (default), 'fast': quick results"
+      },
+      "freshness": {
+        "type": "string",
+        "enum": [
+          "24h",
+          "week",
+          "month",
+          "year",
+          "any"
+        ],
+        "description": "How recent results should be. Only set when recency matters."
+      },
+      "includeDomains": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "List of domains to include in the search. If specified, results will only come from these domains."
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "additionalProperties": false,
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  }
+}

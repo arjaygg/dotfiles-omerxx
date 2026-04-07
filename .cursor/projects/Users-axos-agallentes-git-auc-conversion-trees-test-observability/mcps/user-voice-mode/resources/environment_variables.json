@@ -1,0 +1,6 @@
+{
+  "uri": "voice://config/env-vars",
+  "name": "environment_variables",
+  "description": "All voice mode environment variables with current values.\n\nShows each configuration variable with:\n- Name: The environment variable name\n- Environment Value: Current value from environment\n- Config File Value: Value from ~/.voicemode/voicemode.env (if exists)\n- Description: What the variable controls\n\nThis helps identify configuration sources and troubleshoot settings.",
+  "mimeType": "text/plain"
+}

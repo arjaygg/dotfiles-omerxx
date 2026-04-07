@@ -1,0 +1,6 @@
+{
+  "uri": "voicemode://docs/troubleshooting",
+  "name": "troubleshooting",
+  "description": "Audio, VAD, and connectivity troubleshooting.",
+  "mimeType": "text/plain"
+}

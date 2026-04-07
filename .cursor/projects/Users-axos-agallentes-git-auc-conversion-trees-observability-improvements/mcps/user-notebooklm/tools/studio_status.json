@@ -1,0 +1,46 @@
+{
+  "name": "studio_status",
+  "description": "Check studio content generation status and get URLs, or rename an artifact.\n\nArgs:\n    notebook_id: Notebook UUID\n    action: Action to perform:\n        - status (default): List all artifacts with their status and URLs\n        - rename: Rename an artifact (requires artifact_id and new_title)\n        - list_types: List all supported artifact types with their options\n    artifact_id: Required for action=\"rename\" - the artifact UUID to rename\n    new_title: Required for action=\"rename\" - the new title for the artifact\n\nReturns:\n    Dictionary with status and results.\n    For action=\"status\":\n        - status: \"success\"\n        - artifacts: List of artifacts, each containing:\n            - artifact_id: UUID\n            - title: Artifact title\n            - type: audio, video, report, etc.\n            - status: completed, in_progress, failed\n            - url: URL to view/download (if applicable)\n            - custom_instructions: The custom prompt/focus instructions used to generate the artifact (if any)\n        - summary: Counts of total, completed, in_progress",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "notebook_id": {
+        "type": "string"
+      },
+      "action": {
+        "default": "status",
+        "type": "string"
+      },
+      "artifact_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "new_title": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      }
+    },
+    "required": [
+      "notebook_id"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "additionalProperties": true
+  }
+}

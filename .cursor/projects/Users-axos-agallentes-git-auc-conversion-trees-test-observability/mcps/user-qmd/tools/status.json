@@ -1,0 +1,8 @@
+{
+  "name": "status",
+  "description": "Show the status of the QMD index: collections, document counts, and health information.",
+  "arguments": {
+    "type": "object",
+    "properties": {}
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "name": "batch",
+  "description": "Perform batch operations across multiple notebooks.\n\nActions:\n- query: Query multiple notebooks with the same question\n- add_source: Add the same source URL to multiple notebooks\n- create: Create multiple notebooks at once\n- delete: Delete multiple notebooks (IRREVERSIBLE, requires confirm=True)\n- studio: Generate studio artifacts across multiple notebooks\n\nArgs:\n    action: Operation to perform (query, add_source, create, delete, studio)\n    query: Question to ask (for action=query)\n    source_url: URL to add (for action=add_source)\n    titles: Comma-separated notebook titles (for action=create)\n    artifact_type: Artifact type (for action=studio): audio, video, report, etc.\n    notebook_names: Comma-separated notebook names or IDs\n    tags: Comma-separated tags to select notebooks\n    all: Apply to ALL notebooks\n    confirm: Must be True for delete action",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string"
+      },
+      "query": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "source_url": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "titles": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "artifact_type": {
+        "default": "audio",
+        "type": "string"
+      },
+      "notebook_names": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "tags": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "all": {
+        "default": false,
+        "type": "boolean"
+      },
+      "confirm": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "additionalProperties": true
+  }
+}

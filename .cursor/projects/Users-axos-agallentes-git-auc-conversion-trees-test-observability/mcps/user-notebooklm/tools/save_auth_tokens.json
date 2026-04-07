@@ -1,0 +1,36 @@
+{
+  "name": "save_auth_tokens",
+  "description": "Save NotebookLM cookies (FALLBACK method - try `nlm login` first!).\n\nIMPORTANT FOR AI ASSISTANTS:\n- First, run `nlm login` via Bash/terminal (automated, preferred)\n- Only use this tool if the automated CLI fails\n\nArgs:\n    cookies: Cookie header from Chrome DevTools (only needed if CLI fails)\n    csrf_token: Deprecated - auto-extracted\n    session_id: Deprecated - auto-extracted\n    request_body: Optional - contains CSRF if extracting manually\n    request_url: Optional - contains session ID if extracting manually",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "cookies": {
+        "type": "string"
+      },
+      "csrf_token": {
+        "default": "",
+        "type": "string"
+      },
+      "session_id": {
+        "default": "",
+        "type": "string"
+      },
+      "request_body": {
+        "default": "",
+        "type": "string"
+      },
+      "request_url": {
+        "default": "",
+        "type": "string"
+      }
+    },
+    "required": [
+      "cookies"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "additionalProperties": true
+  }
+}

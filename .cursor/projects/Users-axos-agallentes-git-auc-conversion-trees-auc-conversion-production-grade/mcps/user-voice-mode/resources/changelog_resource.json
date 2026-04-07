@@ -1,0 +1,6 @@
+{
+  "uri": "changelog://voice-mode",
+  "name": "changelog_resource",
+  "description": "Voice Mode changelog and release history.",
+  "mimeType": "text/plain"
+}

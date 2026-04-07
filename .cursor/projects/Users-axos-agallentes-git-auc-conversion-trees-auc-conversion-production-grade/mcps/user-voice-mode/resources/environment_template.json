@@ -1,0 +1,6 @@
+{
+  "uri": "voice://config/env-template",
+  "name": "environment_template",
+  "description": "Environment variable template for voice mode configuration.\n\nProvides a ready-to-use template of all available environment variables\nwith their current values. This can be saved to ~/.voicemode/voicemode.env and\ncustomized as needed.\n\nSensitive values like API keys are masked for security.",
+  "mimeType": "text/plain"
+}

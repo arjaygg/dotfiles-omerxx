@@ -1,0 +1,11 @@
+{
+  "name": "release-notes",
+  "description": "View recent release notes from Voice Mode's CHANGELOG.",
+  "arguments": [
+    {
+      "name": "versions",
+      "description": "",
+      "required": false
+    }
+  ]
+}

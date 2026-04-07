@@ -12,7 +12,8 @@ bash-tool-gate: block            # grep/find/ls in Bash → dedicated tools
 edit-without-read: block         # Edit files must be Read first
 
 # --- Session lifecycle ---
-duplicate-session-check: off     # off = disabled
+duplicate-session-check: block   # block duplicate sessions; off to disable
+session-duration-guard: block    # block at 500 turns; warn at 100+; off to disable
 
 # --- Stop event ---
 todo-gate: block                 # block incomplete todos on session end

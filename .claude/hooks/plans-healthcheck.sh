@@ -5,6 +5,9 @@
 set -euo pipefail
 trap 'echo "HOOK CRASH (plans-healthcheck.sh line $LINENO): $BASH_COMMAND"; exit 0' ERR
 
+# CRITICAL: Drain stdin — all UserPromptSubmit hooks must consume stdin to prevent buffering issues
+cat > /dev/null
+
 CWD=$(pwd)
 TODAY=$(date '+%Y-%m-%d')
 
@@ -101,6 +104,16 @@ if [[ ${#PCTX_WARNINGS[@]} -gt 0 ]]; then
     echo ""
 fi
 
+# --- [HOOKS HEALTH] Hyper-atomic commit hooks (runs unconditionally — independent of plan state) ---
+if git rev-parse --show-toplevel &>/dev/null 2>&1; then
+    HOOKS_PATH=$(git config --local core.hooksPath 2>/dev/null || echo "")
+    EXPECTED="$HOME/.dotfiles/git/hooks"
+    if [[ "$HOOKS_PATH" != "$EXPECTED" ]]; then
+        echo "[HOOKS HEALTH] Hyper-atomic commit hooks not installed in this repo."
+        echo "  Action: Run /hyper-commit-setup to enable atomic commit enforcement."
+    fi
+fi
+
 # Opt-in: only run if plans/ directory exists
 [[ -d "$CWD/plans" ]] || exit 0
 
@@ -127,16 +140,6 @@ done
 
 HANDOFF_EXISTS=0
 [[ -f "$CWD/plans/session-handoff.md" ]] && HANDOFF_EXISTS=1
-
-# --- [HOOKS HEALTH] Hyper-atomic commit hooks (runs unconditionally — independent of plan state) ---
-if git rev-parse --show-toplevel &>/dev/null 2>&1; then
-    HOOKS_PATH=$(git config --local core.hooksPath 2>/dev/null || echo "")
-    EXPECTED="$HOME/.dotfiles/git/hooks"
-    if [[ "$HOOKS_PATH" != "$EXPECTED" ]]; then
-        echo "[HOOKS HEALTH] Hyper-atomic commit hooks not installed in this repo."
-        echo "  Action: Run /hyper-commit-setup to enable atomic commit enforcement."
-    fi
-fi
 
 # All healthy and no handoff → silent exit
 if [[ ${#MISSING[@]} -eq 0 ]] && [[ ${#STALE[@]} -eq 0 ]] && [[ "$HANDOFF_EXISTS" -eq 0 ]]; then

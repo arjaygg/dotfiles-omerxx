@@ -1,0 +1,6 @@
+{
+  "uri": "whisper://models",
+  "name": "list_whisper_models",
+  "description": "List available Whisper models on the local system.\n\nReturns information about:\n- Installed models with size and location\n- Currently configured model (via WHISPER_MODEL env var)\n- Default model\n- Models directory location\n\nThis resource helps users understand what models are available\nand which one is currently being used by the whisper server.",
+  "mimeType": "text/plain"
+}
