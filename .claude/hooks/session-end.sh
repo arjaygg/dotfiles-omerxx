@@ -112,6 +112,25 @@ PYEOF
 # Record content hash so next turn can skip if unchanged
 echo "$CONTENT_HASH" > "$HASH_FILE"
 
+# Inject /findings reminder to persist session discoveries to Serena memories
+if [[ -f "$HANDOFF" ]]; then
+    cat <<'REMINDER_EOF' >> "$HANDOFF"
+
+---
+
+## Session Insights Checkpoint
+
+Before moving to the next task, consider running `/findings` to persist any architectural discoveries from this session to Serena memories. This keeps project knowledge durable across sessions instead of re-discovering patterns later.
+
+**Session findings to capture:**
+- Review `plans/decisions.md` — any new architectural decisions made today?
+- Check `plans/active-context.md` — any insights about the domain or codebase structure?
+- Identify non-obvious patterns, gotchas, or conventions worth preserving in project memories
+
+Run `/findings` to guide this process.
+REMINDER_EOF
+fi
+
 # Flush hook metrics to SQLite
 "${BASH_SOURCE[0]%/*}/hook-metrics.sh" flush 2>/dev/null || true
 
