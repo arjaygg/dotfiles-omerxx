@@ -3,6 +3,14 @@ name: claude-code-review-agent
 type: custom-reviewer
 description: Comprehensive review of Claude Code primitives, hook safety, tool usage, and POSIX compliance. Produces severity-ranked findings report aligned to Claude Code Best Practices and industry standards (error handling, stdin buffering, session safety, portability).
 version: 1.0
+model: haiku
+tools:
+  - Read
+  - Grep
+  - Glob
+  - TaskCreate
+  - TaskGet
+  - TaskList
 ---
 
 # Claude Code Review Agent
