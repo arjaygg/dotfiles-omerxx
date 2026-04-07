@@ -1,0 +1,33 @@
+{
+  "name": "studio_revise",
+  "description": "Revise individual slides in an existing slide deck. Creates a NEW artifact.\n\nOnly slide decks support revision. The original artifact is not modified.\nPoll studio_status after calling to check when the new deck is ready.\n\nArgs:\n    notebook_id: Notebook UUID\n    artifact_id: UUID of the existing slide deck to revise (from studio_status)\n    slide_instructions: List of revision instructions, each with:\n        - slide: Slide number (1-based, slide 1 = first slide)\n        - instruction: Text describing the desired change\n        Example: [{\"slide\": 1, \"instruction\": \"Make the title larger\"}]\n    confirm: Must be True after user approval\n\nExample:\n    studio_revise(\n        notebook_id=\"abc\",\n        artifact_id=\"xyz\",\n        slide_instructions=[\n            {\"slide\": 1, \"instruction\": \"Make the title larger\"},\n            {\"slide\": 3, \"instruction\": \"Remove the image\"}\n        ],\n        confirm=True\n    )",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "notebook_id": {
+        "type": "string"
+      },
+      "artifact_id": {
+        "type": "string"
+      },
+      "slide_instructions": {
+        "items": {},
+        "type": "array"
+      },
+      "confirm": {
+        "default": false,
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "notebook_id",
+      "artifact_id",
+      "slide_instructions"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "additionalProperties": true
+  }
+}

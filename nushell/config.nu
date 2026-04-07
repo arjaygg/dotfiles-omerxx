@@ -956,6 +956,12 @@ $env.DIRENV_LOG_FORMAT = ""
 # Uncomment if you have wt.nu (e.g. from wezterm/wt integration)
 # source ~/.config/nushell/vendor/autoload/wt.nu
 
+# Aliases from nu_scripts
+use ~/projects/nu_scripts/aliases/git/git-aliases.nu *
+use ~/projects/nu_scripts/aliases/eza/eza-aliases.nu *
+use ~/projects/nu_scripts/aliases/bat/bat-aliases.nu *
+use ~/projects/nu_scripts/aliases/docker/docker-aliases.nu *
+
 # Claude Code Multi-Backend Aliases
 alias claude = bash ~/.dotfiles/.claude/scripts/claude-launch.sh native
 alias claude-gemini = bash ~/.dotfiles/.claude/scripts/claude-launch.sh gemini

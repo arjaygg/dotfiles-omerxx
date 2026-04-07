@@ -1,0 +1,60 @@
+{
+  "name": "notebook_query",
+  "description": "Ask AI about EXISTING sources already in notebook. NOT for finding new sources.\n\nUse research_start instead for: deep research, web search, find new sources, Drive search.\n\nArgs:\n    notebook_id: Notebook UUID\n    query: Question to ask\n    source_ids: Source IDs to query (default: all)\n    conversation_id: For follow-up questions\n    timeout: Request timeout in seconds (default: from env NOTEBOOKLM_QUERY_TIMEOUT or 120.0)",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "notebook_id": {
+        "type": "string"
+      },
+      "query": {
+        "type": "string"
+      },
+      "source_ids": {
+        "anyOf": [
+          {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "conversation_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "timeout": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      }
+    },
+    "required": [
+      "notebook_id",
+      "query"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "additionalProperties": true
+  }
+}

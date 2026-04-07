@@ -1,0 +1,6 @@
+{
+  "uri": "voice://config/whisper",
+  "name": "whisper_configuration",
+  "description": "Whisper service configuration.\n\nShows all Whisper-specific settings including:\n- Model selection\n- Port configuration\n- Language settings\n- Model storage path\n\nThese settings control how the local Whisper.cpp service operates.",
+  "mimeType": "text/plain"
+}

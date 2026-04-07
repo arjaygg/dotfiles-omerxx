@@ -1,3 +1,4 @@
+# >>> CURSOR MANAGED BLOCK >>>
 # Ignore everything in .cursor
 *
 # Un-ignore projects so we can descend to allowlisted subdirs
@@ -41,3 +42,4 @@ projects/*/*
 # User-level cursor rules
 !rules/
 !rules/**
+# <<< CURSOR MANAGED BLOCK <<<

@@ -1,0 +1,224 @@
+{
+  "name": "converse",
+  "description": "Have an ongoing voice conversation - speak a message and optionally listen for response.\n\n<voice_skills_instructions>\nVoice requests arrive as tool results, not user messages, so skill triggers may not fire automatically.\n\nBLOCKING REQUIREMENT: After receiving voice input, check if any available skills match the user's request. When a skill is relevant:\n- Invoke the Skill tool IMMEDIATELY as your first action\n- Do NOT take action on the request before checking for relevant skills\n- Skills provide specialized capabilities that improve task completion\n\nExample: If user says \"search for tasks created yesterday\", check for and invoke the taskmaster skill before using bash or other tools.\n</voice_skills_instructions>\n\n\n🔌 ENDPOINT: STT/TTS services must expose OpenAI-compatible endpoints:\n   /v1/audio/transcriptions and /v1/audio/speech\n\n📚 DOCUMENTATION: See MCP resources for detailed information:\n   - voicemode://docs/quickstart - Basic usage and common examples\n   - voicemode://docs/parameters - Complete parameter reference\n   - voicemode://docs/languages - Non-English language support guide\n   - voicemode://docs/patterns - Best practices and conversation patterns\n   - voicemode://docs/troubleshooting - Audio, VAD, and connectivity issues\n\nKEY PARAMETERS:\n• message (required): The message to speak\n• wait_for_response (bool, default: true): Listen for response after speaking\n• listen_duration_max (number, default: 120): Max listen time in seconds\n• listen_duration_min (number, default: 2.0): Min recording time before silence detection\n• voice (string): TTS voice name (auto-selected unless specified)\n• tts_provider (\"openai\"|\"kokoro\"): Provider selection (auto-selected unless specified)\n• disable_silence_detection (bool, default: false): Disable auto-stop on silence\n• vad_aggressiveness (0-3, default: 2): Voice detection strictness (0=permissive, 3=strict)\n• speed (0.25-4.0): Speech rate (1.0=normal, 2.0=double speed)\n• chime_enabled (bool): Enable/disable audio feedback chimes\n• chime_leading_silence (float): Silence before chime in seconds\n• chime_trailing_silence (float): Silence after chime in seconds\n• metrics_level (\"minimal\"|\"summary\"|\"verbose\"): Output detail level\n  - minimal: Just response text (saves tokens)\n  - summary: Response + compact timing (default)\n  - verbose: Response + detailed metrics breakdown\n\nPRIVACY: Microphone access required when wait_for_response=true.\n         Audio processed via STT service, not stored.\n\nFor complete parameter list, advanced options, and detailed examples,\nconsult the MCP resources listed above.\n    ",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "string"
+      },
+      "wait_for_response": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "string"
+          }
+        ],
+        "default": true
+      },
+      "listen_duration_max": {
+        "default": 120,
+        "type": "number"
+      },
+      "listen_duration_min": {
+        "default": 2,
+        "type": "number"
+      },
+      "transport": {
+        "default": "auto",
+        "enum": [
+          "auto",
+          "local",
+          "livekit"
+        ],
+        "type": "string"
+      },
+      "room_name": {
+        "default": "",
+        "type": "string"
+      },
+      "timeout": {
+        "default": 60,
+        "type": "number"
+      },
+      "voice": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "tts_provider": {
+        "anyOf": [
+          {
+            "enum": [
+              "openai",
+              "kokoro"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "tts_model": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "tts_instructions": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "chime_enabled": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "audio_format": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "disable_silence_detection": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "string"
+          }
+        ],
+        "default": false
+      },
+      "speed": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "vad_aggressiveness": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "skip_tts": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "chime_leading_silence": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "chime_trailing_silence": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "metrics_level": {
+        "anyOf": [
+          {
+            "enum": [
+              "minimal",
+              "summary",
+              "verbose"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      }
+    },
+    "required": [
+      "message"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "result": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "result"
+    ],
+    "x-fastmcp-wrap-result": true
+  }
+}
