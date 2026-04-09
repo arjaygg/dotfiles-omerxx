@@ -52,11 +52,10 @@ jq -n \
 (
   cd /Users/axos-agallentes/git/auc-conversion || exit 1
 
-  # Background SubAgent with custom role
+  # Background SubAgent with custom role (visible output for debugging)
   claude \
     --project /Users/axos-agallentes/git/auc-conversion \
     --name "cicd-monitor-${PUSHED_REF}" \
-    --silent \
     "You are a CI/CD monitor for financial services. Your task:
 
 1. Poll GitHub Actions API for auc-conversion repo
