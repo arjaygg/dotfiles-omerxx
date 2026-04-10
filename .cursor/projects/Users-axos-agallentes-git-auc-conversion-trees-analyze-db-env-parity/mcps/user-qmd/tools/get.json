@@ -1,0 +1,30 @@
+{
+  "name": "get",
+  "description": "Retrieve the full content of a document by its file path or docid. Use paths or docids (#abc123) from search results. Suggests similar files if not found.",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "file": {
+        "type": "string",
+        "description": "File path or docid from search results (e.g., 'pages/meeting.md', '#abc123', or 'pages/meeting.md:100' to start at line 100)"
+      },
+      "fromLine": {
+        "description": "Start from this line number (1-indexed)",
+        "type": "number"
+      },
+      "maxLines": {
+        "description": "Maximum number of lines to return",
+        "type": "number"
+      },
+      "lineNumbers": {
+        "default": false,
+        "description": "Add line numbers to output (format: 'N: content')",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "file"
+    ],
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  }
+}

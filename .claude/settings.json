@@ -1,6 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "model": "opusplan",
   "env": {
     "USE_BUILTIN_RIPGREP": "0",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
@@ -182,6 +181,10 @@
           {
             "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/prompt-score-commit.sh\"'"
+          },
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/monitor-cicd-build.sh\"'"
           }
         ]
       },
@@ -347,7 +350,7 @@
   },
   "extraKnownMarketplaces": {},
   "alwaysThinkingEnabled": true,
-  "effortLevel": "low",
+  "effortLevel": "high",
   "plansDirectory": "./plans",
   "skipDangerousModePermissionPrompt": true,
   "autoMode": {
@@ -386,5 +389,6 @@
       "command": "notebooklm-mcp",
       "args": []
     }
-  }
+  },
+  "model": "haiku"
 }

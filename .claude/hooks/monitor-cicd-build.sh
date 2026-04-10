@@ -11,18 +11,30 @@ HOOK_INPUT=$(cat -)   # drain stdin fully — required even on early exit
 TOOL_NAME=$(printf '%s' "$HOOK_INPUT" | jq -r '.tool_name // ""')
 COMMAND=$(printf '%s' "$HOOK_INPUT" | jq -r '.tool_input.command // ""')
 
+
 # Only monitor on Bash tool use
 [[ "$TOOL_NAME" != "Bash" ]] && exit 0
 
-# B. Robust push/tag detection (replaces fragile regex)
+# B. Robust push/tag detection + ref extraction from command (handles compound commands)
 is_push=false; is_tag=false
-[[ "$COMMAND" =~ ^git[[:space:]]+push([[:space:]]|$) ]] && is_push=true
-[[ "$COMMAND" =~ ^git[[:space:]]+tag([[:space:]]|$) ]]  && is_tag=true
+PUSHED_TAG=""
+
+# Extract tag from: git push origin v1.0.331 (anywhere in compound command)
+if [[ "$COMMAND" =~ git[[:space:]]+push[[:space:]]+([^ ]+)[[:space:]]+(v[^ ]+|HEAD) ]]; then
+  PUSHED_TAG="${BASH_REMATCH[2]}"
+  is_push=true
+fi
+
+# Extract tag from: git tag v1.0.331 (anywhere in compound command)
+if [[ "$COMMAND" =~ git[[:space:]]+tag[[:space:]]+(v[^ ]+) ]]; then
+  PUSHED_TAG="${BASH_REMATCH[1]}"
+  is_tag=true
+fi
+
 [[ "$is_push" == false && "$is_tag" == false ]] && exit 0
 
-# C. Ref extraction via git state (not command string parsing)
+# C. Get SHA from git state (tag exists now)
 REPO=/Users/axos-agallentes/git/auc-conversion
-PUSHED_TAG=$(git -C "$REPO" describe --tags --abbrev=0 HEAD 2>/dev/null || echo "")
 PUSHED_SHA=$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo "")
 PUSHED_REF="${PUSHED_TAG:-HEAD}"
 
@@ -40,11 +52,10 @@ jq -n \
 (
   cd /Users/axos-agallentes/git/auc-conversion || exit 1
 
-  # Background SubAgent with custom role
+  # Background SubAgent with custom role (visible output for debugging)
   claude \
     --project /Users/axos-agallentes/git/auc-conversion \
     --name "cicd-monitor-${PUSHED_REF}" \
-    --silent \
     "You are a CI/CD monitor for financial services. Your task:
 
 1. Poll GitHub Actions API for auc-conversion repo

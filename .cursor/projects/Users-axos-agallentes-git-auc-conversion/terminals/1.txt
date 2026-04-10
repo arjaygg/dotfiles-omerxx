@@ -1,0 +1,9 @@
+---
+pid: 37381
+cwd: /Users/axos-agallentes/git/auc-conversion
+---
+source /Users/axos-agallentes/git/auc-conversion/.venv/bin/activate
+lean-ctx: ON
+axos-agallentes@Axos-AGallentesMAC auc-conversion % source /Users/axos-agallente
+s/git/auc-conversion/.venv/bin/activate
+(.venv) axos-agallentes@Axos-AGallentesMAC auc-conversion %
