@@ -1,0 +1,24 @@
+{
+  "name": "notebook_share_public",
+  "description": "Enable or disable public link access.\n\nArgs:\n    notebook_id: Notebook UUID\n    is_public: True to enable public link, False to disable (default: True)\n\nReturns: public_link if enabled, None if disabled",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "notebook_id": {
+        "type": "string"
+      },
+      "is_public": {
+        "default": true,
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "notebook_id"
+    ],
+    "additionalProperties": false
+  },
+  "outputSchema": {
+    "type": "object",
+    "additionalProperties": true
+  }
+}

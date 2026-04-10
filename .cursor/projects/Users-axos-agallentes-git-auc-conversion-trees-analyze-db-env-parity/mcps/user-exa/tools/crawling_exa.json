@@ -1,0 +1,37 @@
+{
+  "name": "crawling_exa",
+  "description": "Read a webpage's full content as clean markdown. Use after web_search_exa when highlights are insufficient or to read any URL.\n\nBest for: Extracting full content from known URLs. Batch multiple URLs in one call.\nReturns: Clean text content and metadata from the page(s).",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "urls": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "URLs to read. Batch multiple URLs in one call."
+      },
+      "maxCharacters": {
+        "type": "number",
+        "description": "Maximum characters to extract per page (must be a number, default: 3000)"
+      },
+      "maxAgeHours": {
+        "type": "number",
+        "description": "Maximum age of cached content in hours. 0 = always fetch fresh content, omit = use cached content with fresh fetch fallback."
+      },
+      "subpages": {
+        "type": "number",
+        "description": "Number of subpages to also crawl from each URL."
+      },
+      "subpageTarget": {
+        "type": "string",
+        "description": "Keywords to prioritize when selecting subpages"
+      }
+    },
+    "required": [
+      "urls"
+    ],
+    "additionalProperties": false,
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  }
+}
