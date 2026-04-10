@@ -131,7 +131,7 @@ Never use `EnterWorktree`/`ExitWorktree` — use the tmux approach instead.
        # Create new window and start claude
        tmux new-window -t "$TMUX_SESSION" -n "$WINDOW_NAME"
        sleep 0.3
-       tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "cd $WORKTREE_PATH && claude" Enter
+       tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "cd $WORKTREE_PATH && claude --dangerously-skip-permissions" Enter
    fi
    ```
 

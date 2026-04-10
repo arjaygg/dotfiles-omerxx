@@ -97,7 +97,7 @@ Worktrees are created by **default** (no flag needed). You also get:
        # Create new window and start claude
        tmux new-window -t "$TMUX_SESSION" -n "$WINDOW_NAME"
        sleep 0.3
-       tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "cd $WORKTREE_PATH && claude" Enter
+       tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "cd $WORKTREE_PATH && claude --dangerously-skip-permissions" Enter
        # The bridge manages window name and status labels; calling session-start keeps the display in sync after creating a new window.
        sleep 0.5
        ~/.dotfiles/tmux/scripts/claude-tmux-bridge.sh session-start 2>/dev/null || true
@@ -194,7 +194,7 @@ When using worktrees with Charcoal:
 
 User: "Create a new stacked branch for user authentication"
 Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/user-auth main`
-Then: write handoff to `.trees/user-auth/plans/session-handoff.md`, open tmux window `dev:user-auth` with `cd .trees/user-auth && claude`
+Then: write handoff to `.trees/user-auth/plans/session-handoff.md`, open tmux window `dev:user-auth` with `cd .trees/user-auth && claude --dangerously-skip-permissions`
 Result: Branch + worktree at `.trees/user-auth`, new Claude session ready in tmux
 
 User: "Create stacked worktrees for API, UI, and polish"

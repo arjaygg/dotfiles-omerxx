@@ -1,100 +1,135 @@
 #!/bin/bash
-# Monitor CI/CD build completion and report results (MS Teams integration)
-# Fires after: git push, merge to main, or tag creation
-# Spawns background SubAgent to poll GitHub Actions until build succeeds/fails
-# Reports to MS Teams on CRITICAL/HIGH failures; silent log on MEDIUM
+# Smart post-push CI watcher — event-driven, LogSage/RFM classification
+# Fires on: git push (any branch)
+# Uses: gh run watch (blocking — GH notifies completion, no polling loop)
+# Applies RFM scoring: Recency × Frequency × Magnitude
+#   Score < 4 → retry (transient)   Score ≥ 4 → escalate (systemic)
 
 set -o pipefail
 
-# A. Parse hook input from stdin (PostToolUse delivery format)
-HOOK_INPUT=$(cat -)   # drain stdin fully — required even on early exit
+HOOK_INPUT=$(cat -)
 TOOL_NAME=$(printf '%s' "$HOOK_INPUT" | jq -r '.tool_name // ""')
 COMMAND=$(printf '%s' "$HOOK_INPUT" | jq -r '.tool_input.command // ""')
 
-
-# Only monitor on Bash tool use
 [[ "$TOOL_NAME" != "Bash" ]] && exit 0
+[[ "$COMMAND" =~ git[[:space:]]+push ]] || exit 0
 
-# B. Robust push/tag detection + ref extraction from command (handles compound commands)
-is_push=false; is_tag=false
-PUSHED_TAG=""
-
-# Extract tag from: git push origin v1.0.331 (anywhere in compound command)
-if [[ "$COMMAND" =~ git[[:space:]]+push[[:space:]]+([^ ]+)[[:space:]]+(v[^ ]+|HEAD) ]]; then
-  PUSHED_TAG="${BASH_REMATCH[2]}"
-  is_push=true
-fi
-
-# Extract tag from: git tag v1.0.331 (anywhere in compound command)
-if [[ "$COMMAND" =~ git[[:space:]]+tag[[:space:]]+(v[^ ]+) ]]; then
-  PUSHED_TAG="${BASH_REMATCH[1]}"
-  is_tag=true
-fi
-
-[[ "$is_push" == false && "$is_tag" == false ]] && exit 0
-
-# C. Get SHA from git state (tag exists now)
 REPO=/Users/axos-agallentes/git/auc-conversion
-PUSHED_SHA=$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo "")
-PUSHED_REF="${PUSHED_TAG:-HEAD}"
+ACTED_FILE="$REPO/.serena/memories/cicd-acted-runs.md"
+GH_REPO="axos-financial/auc-conversion"
 
-# D. Structured context to agent (JSON file, not string interpolation)
-CONTEXT_FILE=$(mktemp /tmp/cicd-monitor-XXXXXX.json)
-jq -n \
-  --arg ref  "$PUSHED_REF" \
-  --arg sha  "$PUSHED_SHA" \
-  --arg repo "axos-financial/auc-conversion" \
-  --arg ts   "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  '{ref:$ref,sha:$sha,repo:$repo,triggered_at:$ts}' > "$CONTEXT_FILE"
+BRANCH=$(git -C "$REPO" rev-parse --abbrev-ref HEAD 2>/dev/null)
+[[ -z "$BRANCH" || "$BRANCH" == "HEAD" ]] && exit 0
 
-# Spawn background SubAgent (non-blocking)
-# E. Polling cap: 18 min (36 × 30s retries) — builds take 8-12 min
+# ─── RFM scoring ────────────────────────────────────────────────────────────
+# Reads cicd-acted-runs.md to compute R, F, M for the current branch.
+# Returns score via stdout (integer). Called after failure is confirmed.
+rfm_score() {
+  local branch="$1" failed_jobs="$2" acted_file="$3"
+  local now_epoch; now_epoch=$(date -u +%s)
+  local four_hours_ago=$(( now_epoch - 14400 ))
+  local seven_days_ago=$(( now_epoch - 604800 ))
+
+  # Extract timestamps of HIGH/CRITICAL failures for this branch
+  local failures=()
+  while IFS= read -r line; do
+    # Line format: - <id> | <branch> | HIGH | ... | <ISO-ts>
+    if [[ "$line" =~ ^-[[:space:]]+[0-9]+[[:space:]]+\|[[:space:]]+${branch}[[:space:]]+\|[[:space:]]+(HIGH|CRITICAL) ]]; then
+      local ts; ts=$(printf '%s' "$line" | awk -F'|' '{print $NF}' | tr -d ' ')
+      local epoch; epoch=$(date -jf "%Y-%m-%dT%H:%M:%SZ" "$ts" "+%s" 2>/dev/null || echo 0)
+      [[ "$epoch" -gt "$seven_days_ago" ]] && failures+=("$epoch")
+    fi
+  done < "$acted_file" 2>/dev/null
+
+  # R: Recency — did this branch fail in last 4 hours?
+  local R=1
+  for ep in "${failures[@]}"; do
+    [[ "$ep" -gt "$four_hours_ago" ]] && R=2 && break
+  done
+
+  # F: Frequency — failures in last 7 days
+  local count="${#failures[@]}"
+  local F=1
+  [[ "$count" -ge 2 && "$count" -le 3 ]] && F=2
+  [[ "$count" -ge 4 && "$count" -le 5 ]] && F=3
+  [[ "$count" -ge 6 ]] && F=4
+
+  # M: Magnitude — which environments are blocked by failed jobs
+  local M=1
+  if echo "$failed_jobs" | grep -qiE 'deploy.?(qa|staging)'; then M=2; fi
+  if echo "$failed_jobs" | grep -qiE 'deploy.?uat|deploy.?prod'; then M=3; fi
+
+  echo $(( R * F * M ))
+}
+
+# ─── Background watcher ─────────────────────────────────────────────────────
 (
-  cd /Users/axos-agallentes/git/auc-conversion || exit 1
+  # Wait up to 90s for the triggered run to appear
+  RUN_ID=""
+  for _ in $(seq 1 18); do
+    sleep 5
+    RUN_ID=$(gh run list \
+      --repo "$GH_REPO" \
+      --branch "$BRANCH" \
+      --limit 1 \
+      --json databaseId,status \
+      --jq '.[0] | select(.status != "completed") | .databaseId' 2>/dev/null)
+    [[ -n "$RUN_ID" && "$RUN_ID" != "null" ]] && break
+  done
 
-  # Background SubAgent with custom role (visible output for debugging)
-  claude \
-    --project /Users/axos-agallentes/git/auc-conversion \
-    --name "cicd-monitor-${PUSHED_REF}" \
-    "You are a CI/CD monitor for financial services. Your task:
+  [[ -z "$RUN_ID" || "$RUN_ID" == "null" ]] && exit 0
 
-1. Poll GitHub Actions API for auc-conversion repo
-   - Ref: $(jq -r '.ref' "$CONTEXT_FILE")
-   - SHA: $(jq -r '.sha' "$CONTEXT_FILE")
-   - Max 36 retries (18 minutes total), 30-second intervals
-   - Stop when status is 'completed'
+  # Skip if already acted on this run
+  grep -q "^- $RUN_ID " "$ACTED_FILE" 2>/dev/null && exit 0
 
-2. Classify failure severity:
-   - CRITICAL: secrets detected (TruffleHog), CVE (Trivy HIGH/CRITICAL)
-   - HIGH: test failure, build error, govulncheck dependency CVE
-   - MEDIUM: performance/cache issues, lint warnings, flaky tests
+  # Block until run completes — gh notifies completion, no polling loop
+  gh run watch "$RUN_ID" \
+    --repo "$GH_REPO" \
+    --interval 15 2>/dev/null || true
 
-3. Take actions based on severity:
+  CONCLUSION=$(gh run view "$RUN_ID" \
+    --repo "$GH_REPO" \
+    --json conclusion \
+    --jq '.conclusion' 2>/dev/null)
 
-   CRITICAL:
-     → Store findings in memory (cicd-monitor/critical-builds.md)
-     → SendMessage(to=\"cicd-audit\", event_type=\"failure_detected\", severity=\"CRITICAL\")
-     → TaskCreate(subject=\"Human review: {ref}\", agent=\"cicd-review\")
-     → DO NOT auto-retry
+  TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-   HIGH:
-     → Store findings in memory (cicd-monitor/high-failures.md)
-     → SendMessage(to=\"cicd-audit\", event_type=\"failure_detected\", severity=\"HIGH\")
-     → TaskCreate(subject=\"Retry run {ref}\", agent=\"cicd-auto-retry\")
-     → Pass run_id and failed_jobs to auto-retry agent
+  if [[ "$CONCLUSION" == "success" ]]; then
+    printf -- "- %s | %s | SUCCESS | logged (push hook) | %s\n" \
+      "$RUN_ID" "$BRANCH" "$TS" >> "$ACTED_FILE"
+    exit 0
+  fi
 
-   MEDIUM:
-     → Silent: log to memory only (cicd-monitor/build-logs.md)
-     → SendMessage(to=\"cicd-audit\", event_type=\"build_warning\", severity=\"MEDIUM\")
-     → Do NOT notify Teams (reduce noise)
+  # Get failed job names for classification
+  FAILED_JOBS=$(gh run view "$RUN_ID" \
+    --repo "$GH_REPO" \
+    --json jobs \
+    --jq '[.jobs[] | select(.conclusion == "failure") | .name] | join(",")' 2>/dev/null)
 
-4. Use tools:
-   - \`gh run list --branch $(jq -r '.ref' "$CONTEXT_FILE") --limit 1 --json status,conclusion,name,url,headSha\`
-   - \`gh run view <run-id> --json jobs,conclusion\`
-   - Store findings in Serena memory
+  # CRITICAL: security/secrets/CVE failures — never retry, always escalate
+  if echo "$FAILED_JOBS" | grep -qiE 'secret|trivy|cve|security'; then
+    printf -- "- %s | %s | CRITICAL | escalated (push hook, jobs: %s) | %s\n" \
+      "$RUN_ID" "$BRANCH" "$FAILED_JOBS" "$TS" >> "$ACTED_FILE"
+    exit 0
+  fi
 
-Report to parent when complete."
+  # HIGH: apply RFM to decide retry vs escalate
+  SCORE=$(rfm_score "$BRANCH" "$FAILED_JOBS" "$ACTED_FILE")
+
+  if [[ "$SCORE" -ge 4 ]]; then
+    # Systemic — don't retry, escalate for human review
+    printf -- "- %s | %s | HIGH | escalated (RFM=%s, push hook, jobs: %s) | %s\n" \
+      "$RUN_ID" "$BRANCH" "$SCORE" "$FAILED_JOBS" "$TS" >> "$ACTED_FILE"
+  else
+    # Transient — safe to retry once
+    if gh run rerun "$RUN_ID" --repo "$GH_REPO" 2>/dev/null; then
+      printf -- "- %s | %s | HIGH | auto-retry (RFM=%s, push hook, jobs: %s) | %s\n" \
+        "$RUN_ID" "$BRANCH" "$SCORE" "$FAILED_JOBS" "$TS" >> "$ACTED_FILE"
+    else
+      printf -- "- %s | %s | HIGH | retry-failed (RFM=%s, push hook, jobs: %s) | %s\n" \
+        "$RUN_ID" "$BRANCH" "$SCORE" "$FAILED_JOBS" "$TS" >> "$ACTED_FILE"
+    fi
+  fi
 ) &
-
 disown
 exit 0
