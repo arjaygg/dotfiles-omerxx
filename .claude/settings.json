@@ -389,6 +389,5 @@
       "command": "notebooklm-mcp",
       "args": []
     }
-  },
-  "model": "haiku"
+  }
 }
