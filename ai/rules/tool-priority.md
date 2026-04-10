@@ -23,7 +23,31 @@ Always use tools in this order. Stop at the first that satisfies your need. **Ne
 
 > **Pre-edit ritual:** Before modifying any symbol, run `findReferencingSymbols` to understand blast radius. This catches breaking changes before they happen.
 
-## 2. Batching & Code Mode
+## 2. Multi-File Context Selection Rule
+
+When working with **5+ files** across multiple packages, choose your approach based on scope and token budget:
+
+| Scope | Approach | Why |
+|---|---|---|
+| < 5 files | `Read` + `Grep` / `findSymbol` (sequential) | Individual files are faster than full packing |
+| 5–20 files, full context needed | `Repomix --compress` (full scope) | Compresses 300K+ tokens to 40–80K; fits Claude's window |
+| 3–4 specific packages, debug focus | `Repomix --compress --include "pkg/foo/**,pkg/bar/**"` | Focused compression; traces data flows without noise |
+| Single deep file | `Read` (one-shot) or `Serena.getSymbolsOverview` | No packing needed |
+
+### Decision Triggers
+- **"Implement a new transformer following existing patterns"** → Use Repomix (architecture context)
+- **"Trace the FK resolution path across 3+ files"** → Use Repomix (focused scope)
+- **"Debug this cross-file bug"** → Use Repomix if span > 4 files
+- **"Find all usages of symbol X"** → Use `Serena.findReferencingSymbols` (no packing needed)
+
+### Token Budgets (Validated)
+- Full code (pkg/** + cmd/**): ~357K tokens → compress to ~50–70K ✅
+- Specific packages (3–4): ~18–50K tokens (already tight) ✅
+- Keep total context < 180K to leave room for reasoning
+
+> **MCP Tool:** For projects with registered Repomix MCP, use `@repomix` in Claude Code prompts. No manual file generation needed.
+
+## 4. Batching & Code Mode
 Use `pctx execute_typescript` when 2+ operations are planned or when data processing should happen in the sandbox.
 
 > **MCP tool name:** `mcp__pctx__execute_typescript` (call this directly when batching)
@@ -59,13 +83,13 @@ async function run() {
 `);
 ```
 
-## 3. Serena API Convention
+## 5. Serena API Convention
 All Serena methods use **camelCase**.
 - `Serena.listDir` (NOT `list_dir`)
 - `Serena.findSymbol` (NOT `find_symbol`)
 - `Serena.searchForPattern` (NOT `search_for_pattern`)
 
-## 4. Serena Quirks and Mandatory Rules
+## 6. Serena Quirks and Mandatory Rules
 
 ### searchForPattern: always restrict to code files
 Always pass `restrict_search_to_code_files: true` to `searchForPattern`. Without it, lock files (`go.sum`, `package-lock.json`) and generated files flood results.
@@ -86,12 +110,12 @@ Do not duplicate to local markdown what is already in `.serena/memories/`.
 ### gopls LSP timeout
 If Serena's Go LSP times out (SolidLSP repeated-init issue #634): call `Serena.restartLanguageServer()`. Do not retry the failed call — the server needs to reinitialize first.
 
-## 5. Session Start (Required)
+## 7. Session Start (Required)
 Run `mcp__pctx__list_functions` before the first project access in a session. Write results to `plans/pctx-functions.md` and check its timestamp (TTL: 1 day).
 
 **Enforcement:** `pre-tool-gate-v2.sh` Section 0 will **block** any Grep call until this sequence completes. The gate checks for a session-scoped flag set by `post-tool-analytics.sh` when a Serena or pctx tool is first called. Skipping this step means Grep calls will be blocked mid-task — complete the init sequence first to avoid interruption.
 
-## 6. Why Serena Over Grep/Read
+## 8. Why Serena Over Grep/Read
 
 This is not stylistic preference — it is a token budget constraint.
 
@@ -107,7 +131,7 @@ Grep results flood context. A single Grep for a common symbol name across a Go r
 
 **Secondary reason:** Grep is gitignore-unaware by default and will match lock files, generated code, and vendor directories unless `glob` is carefully restricted. Serena's `searchForPattern` with `restrict_search_to_code_files: true` is filtered by construction.
 
-## 7. Common Violations (How Drift Happens)
+## 9. Common Violations (How Drift Happens)
 
 Watch for these patterns — they indicate the tool priority rules are being ignored:
 
