@@ -2,8 +2,9 @@ version: 1
 git_protocol: https
 editor: nvim
 aliases:
-  clone: repo clone
-  co: pr checkout
-  pr: pr create --web
-  pv: pr view --web
-  v: repo view --web
+    clone: repo clone
+    co: pr checkout
+    pr: pr create --web
+    pv: pr view --web
+    v: repo view --web
+extensions.codeql.version: v2.25.1

@@ -350,7 +350,6 @@
   },
   "extraKnownMarketplaces": {},
   "alwaysThinkingEnabled": true,
-  "effortLevel": "high",
   "plansDirectory": "./plans",
   "skipDangerousModePermissionPrompt": true,
   "autoMode": {
@@ -389,6 +388,5 @@
       "command": "notebooklm-mcp",
       "args": []
     }
-  },
-  "model": "haiku"
+  }
 }
