@@ -114,6 +114,25 @@ if git rev-parse --show-toplevel &>/dev/null 2>&1; then
     fi
 fi
 
+# --- [STACK HEALTH] Charcoal / stacking readiness (runs unconditionally) ---
+if git rev-parse --show-toplevel &>/dev/null 2>&1; then
+    STACK_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+    GT_INIT=0
+    [[ -f ".git/.graphite_repo_config" ]] && GT_INIT=1
+
+    if [[ "$STACK_BRANCH" == "main" || "$STACK_BRANCH" == "master" ]]; then
+        echo "[STACK HEALTH] On '$STACK_BRANCH' — use stack-create skill before editing."
+    fi
+
+    if [[ "$GT_INIT" -eq 0 ]] && command -v gt &>/dev/null; then
+        echo "[STACK HEALTH] Charcoal installed but 'gt repo init' not run in this repo."
+        echo "  Action: Run 'gt repo init' to enable stacking, then use stack-create skill."
+    elif ! command -v gt &>/dev/null; then
+        echo "[STACK HEALTH] Charcoal (gt) not found. Install: npm install -g @withgraphite/graphite-cli"
+        echo "  Then: gt repo init && stack create feature/<name> main"
+    fi
+fi
+
 # Opt-in: only run if plans/ directory exists
 [[ -d "$CWD/plans" ]] || exit 0
 

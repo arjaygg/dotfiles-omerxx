@@ -168,7 +168,29 @@ if [[ "$TOOL_NAME" == "Edit" ]]; then
         fi
     fi
 
-    # 3b. Kernel file edit caution (advisory)
+    # 3b. Edit/Write on main/master branch — hard block (stacking enforcement)
+    if [[ -n "$FILE_PATH" ]]; then
+        _EDIT_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+        if [[ "$_EDIT_BRANCH" == "main" || "$_EDIT_BRANCH" == "master" ]]; then
+            # Exempt: plans/ files (session bookkeeping, always on current branch)
+            #         .trees/ paths (already in a worktree)
+            if [[ ! "$FILE_PATH" =~ (^|/)(plans|\.trees)/ ]]; then
+                _SUGGESTED_BRANCH=""
+                _HINT_FILE="/tmp/.claude-stack-hint-$(id -u)-${CLAUDE_SESSION_ID:-}"
+                [[ -f "$_HINT_FILE" ]] && _SUGGESTED_BRANCH=$(cat "$_HINT_FILE" 2>/dev/null)
+                echo "BLOCKED: Editing '$FILE_PATH' on '$_EDIT_BRANCH'. Create a stacked branch first:" >&2
+                if [[ -n "$_SUGGESTED_BRANCH" ]]; then
+                    echo "  stack create feature/$_SUGGESTED_BRANCH $_EDIT_BRANCH" >&2
+                else
+                    echo "  stack create feature/<name> $_EDIT_BRANCH" >&2
+                fi
+                echo "  This creates a worktree at .trees/<name>/ — edit there instead." >&2
+                exit 1
+            fi
+        fi
+    fi
+
+    # 3c. Kernel file edit caution (advisory)
     if [[ -n "$FILE_PATH" ]]; then
         _CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
         _IN_WORKTREE=0
