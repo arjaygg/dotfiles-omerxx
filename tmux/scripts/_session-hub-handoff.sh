@@ -28,8 +28,23 @@ if [[ -z "$SOURCE_CWD" || ! -d "$SOURCE_CWD" ]]; then
     exit 1
 fi
 
-# Resolve repo root (handles worktrees)
-REPO_ROOT=$(git -C "$SOURCE_CWD" rev-parse --show-toplevel 2>/dev/null || echo "$SOURCE_CWD")
+# Resolve to MAIN repo root — handles source sessions inside .trees/ worktrees.
+# `git rev-parse --absolute-git-dir` exposes the /worktrees/ path segment.
+resolve_repo_root() {
+    local cwd="$1"
+    local git_abs_dir
+    git_abs_dir=$(git -C "$cwd" rev-parse --absolute-git-dir 2>/dev/null || echo "")
+    if [[ -z "$git_abs_dir" ]]; then
+        echo "$cwd"; return
+    fi
+    if [[ "$git_abs_dir" == *"/.git/worktrees/"* ]]; then
+        echo "${git_abs_dir%%/.git/worktrees/*}"
+    else
+        git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || echo "$cwd"
+    fi
+}
+
+REPO_ROOT=$(resolve_repo_root "$SOURCE_CWD")
 SOURCE_PROJECT=$(basename "$SOURCE_CWD")
 SOURCE_BRANCH=$(git -C "$SOURCE_CWD" branch --show-current 2>/dev/null || echo "unknown")
 
@@ -37,15 +52,27 @@ SOURCE_BRANCH=$(git -C "$SOURCE_CWD" branch --show-current 2>/dev/null || echo "
 
 prior_context=""
 prior_focus=""
+pending_tasks=""
 
-if [[ -f "$SOURCE_CWD/plans/session-handoff.md" ]]; then
-    prior_context=$(cat "$SOURCE_CWD/plans/session-handoff.md")
-    prior_focus=$(grep -m1 '^\*\*Focus:\*\*' "$SOURCE_CWD/plans/session-handoff.md" \
-        | sed 's/\*\*Focus:\*\*[[:space:]]*//' || true)
-elif [[ -f "$SOURCE_CWD/plans/active-context.md" ]]; then
+if [[ -f "$SOURCE_CWD/plans/active-context.md" ]]; then
     prior_context=$(cat "$SOURCE_CWD/plans/active-context.md")
-    prior_focus=$(grep -m1 '^\*\*Focus:\*\*' "$SOURCE_CWD/plans/active-context.md" \
+    # Extract focus from "focus: ..." line (active-context format) or **Focus:**
+    prior_focus=$(grep -m1 '^focus:' "$SOURCE_CWD/plans/active-context.md" \
+        | sed 's/^focus:[[:space:]]*//' || true)
+    [[ -z "$prior_focus" ]] && prior_focus=$(grep -m1 '^\*\*Focus:\*\*' "$SOURCE_CWD/plans/active-context.md" \
         | sed 's/\*\*Focus:\*\*[[:space:]]*//' || true)
+fi
+
+if [[ -z "$prior_focus" && -f "$SOURCE_CWD/plans/session-handoff.md" ]]; then
+    [[ -z "$prior_context" ]] && prior_context=$(cat "$SOURCE_CWD/plans/session-handoff.md")
+    prior_focus=$(grep -m1 '^\*\*Focus:\*\*\|^focus:' "$SOURCE_CWD/plans/session-handoff.md" \
+        | sed 's/^\*\*Focus:\*\*[[:space:]]*//; s/^focus:[[:space:]]*//' || true)
+fi
+
+# Extract pending tasks from progress.md for smarter LLM name suggestion
+if [[ -f "$SOURCE_CWD/plans/progress.md" ]]; then
+    pending_tasks=$(grep '^\- \[ \]' "$SOURCE_CWD/plans/progress.md" 2>/dev/null \
+        | sed 's/^- \[ \] //' | head -5 | tr '\n' '; ' | sed 's/; $//' || true)
 fi
 
 # Truncate prior_focus for display
@@ -76,9 +103,9 @@ slug_fallback=$(printf '%s' "$task_desc" \
 
 [[ -z "$slug_fallback" ]] && slug_fallback="continue-$(date +%m%d)"
 
-# Fire LLM in background for continuation name
+# Fire LLM in background for continuation name — include pending tasks for richer context
 tmpfile=$(mktemp /tmp/session-hub-handoff-name.XXXXXX)
-llm_prompt="Prior task: '$prior_focus_display'. New task: '$task_desc'. Suggest a short 2-4 word kebab-case git branch name (no type prefix). Reply with ONLY the name."
+llm_prompt="Prior focus: '${prior_focus_display}'.${pending_tasks:+ Pending: '${pending_tasks}'.} New task: '${task_desc}'. Suggest a short 2-4 word kebab-case git branch name (no type prefix). Reply with ONLY the name."
 timeout 20 claude --print --bare \
     --model claude-haiku-4-5 \
     "$llm_prompt" \

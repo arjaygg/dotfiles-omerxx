@@ -18,29 +18,40 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_CWD="${1:-$(pwd)}"
 
-# Resolve to actual git root (handles worktree paths)
-REPO_ROOT=$(git -C "$BASE_CWD" rev-parse --show-toplevel 2>/dev/null || echo "$BASE_CWD")
+# Resolve to MAIN repo root — handles the case where the selected session lives
+# inside a .trees/ worktree. `git rev-parse --show-toplevel` returns the worktree
+# path, not the main repo. `--absolute-git-dir` exposes the /worktrees/ segment.
+resolve_repo_root() {
+    local cwd="$1"
+    local git_abs_dir
+    git_abs_dir=$(git -C "$cwd" rev-parse --absolute-git-dir 2>/dev/null || echo "")
+    if [[ -z "$git_abs_dir" ]]; then
+        echo "$cwd"; return
+    fi
+    if [[ "$git_abs_dir" == *"/.git/worktrees/"* ]]; then
+        # Strip /.git/worktrees/<name> → main repo root
+        echo "${git_abs_dir%%/.git/worktrees/*}"
+    else
+        git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || echo "$cwd"
+    fi
+}
+
+REPO_ROOT=$(resolve_repo_root "$BASE_CWD")
 
 # ── Step 1: Prompt for task description ──────────────────────────────────────
 
 task_desc=$(printf '' \
     | fzf \
         --print-query \
-        --prompt="  Task (blank = fresh start): " \
+        --prompt="  Task description: " \
         --border \
         --border-label=" New Session " \
         --height=30% \
-        --header="Describe the task to get a smart worktree name  |  Leave blank for fresh session" \
+        --header="Describe the task (required) — this drives the worktree name via LLM  |  Esc to cancel" \
     2>/dev/null | head -1 || true)
 
-# If blank → fresh session in repo root, no worktree
-if [[ -z "$task_desc" ]]; then
-    name=$(basename "$REPO_ROOT")
-    window_name="claude:${name:0:20}"
-    tmux new-window \
-        -c "$REPO_ROOT" \
-        -n "${window_name:0:30}" \
-        bash -l -c "cd '$(printf '%s' "$REPO_ROOT" | sed "s/'/'\\\\''/g")' && claude; '$SCRIPT_DIR/claude-tmux-bridge.sh' session-stop"
+# Require a description — blank = cancel (no silent fresh session)
+if [[ -z "$task_desc" || "$task_desc" =~ ^[[:space:]]*$ ]]; then
     exit 0
 fi
 

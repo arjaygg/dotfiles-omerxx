@@ -12,6 +12,7 @@
 #   Enter    Resume session (or switch to live pane)
 #   Alt-N    New session with worktree (LLM-suggested name)
 #   Alt-H    New session with handoff carry from selected
+#   Alt-L    View full session history (plans/ docs + git log in pager)
 #   Ctrl-D   Mark selected session as done
 #   Alt-A    Toggle archived sessions
 #   Esc      Exit
@@ -364,23 +365,94 @@ show_preview() {
     local cwd="$3"
 
     if [[ "$entry_type" == "live" ]]; then
-        # session_id is pane_id for live entries
+        # Live pane: capture terminal output
         printf "\033[1;34m── Live pane: %s ──\033[0m\n\n" "$session_id"
-        tmux capture-pane -p -t "$session_id" -e 2>/dev/null | tail -25 || echo "(could not capture pane)"
+        tmux capture-pane -p -t "$session_id" -e 2>/dev/null | tail -30 || echo "(could not capture pane)"
         return
     fi
 
     printf "\033[1;34m── %s ──\033[0m\n\n" "$cwd"
 
+    local has_context=false
+
+    # ── Active Context (focus + plan pointer) ─────────────────────────────────
     if [[ -f "$cwd/plans/active-context.md" ]]; then
-        head -40 "$cwd/plans/active-context.md"
-    elif [[ -f "$cwd/plans/session-handoff.md" ]]; then
-        head -40 "$cwd/plans/session-handoff.md"
-    else
-        printf "(no context file found)\n\n"
-        # Show git log as fallback
-        git -C "$cwd" log --oneline -10 2>/dev/null || true
+        printf "\033[1;33m┌─ Active Context ────────────────────────────────────────────\033[0m\n"
+        cat "$cwd/plans/active-context.md"
+        printf "\033[1;33m└─────────────────────────────────────────────────────────────\033[0m\n\n"
+        has_context=true
     fi
+
+    # ── Pending Tasks (from progress.md) ──────────────────────────────────────
+    if [[ -f "$cwd/plans/progress.md" ]]; then
+        local pending done_count pending_count
+        pending=$(grep '^\- \[ \]' "$cwd/plans/progress.md" 2>/dev/null || true)
+        pending_count=$(printf '%s\n' "$pending" | grep -c . 2>/dev/null || echo 0)
+        done_count=$(grep -c '^\- \[x\]' "$cwd/plans/progress.md" 2>/dev/null || echo 0)
+        if [[ -n "$pending" ]]; then
+            printf "\033[1;32m┌─ Pending Tasks (%s todo, %s done) ──────────────────────────\033[0m\n" \
+                "$pending_count" "$done_count"
+            printf '%s\n' "$pending"
+            printf "\033[1;32m└─────────────────────────────────────────────────────────────\033[0m\n\n"
+            has_context=true
+        fi
+    fi
+
+    # ── Handoff status (if no active-context, or as supplement) ───────────────
+    if [[ "$has_context" == "false" && -f "$cwd/plans/session-handoff.md" ]]; then
+        printf "\033[1;35m┌─ Last Handoff ───────────────────────────────────────────────\033[0m\n"
+        head -25 "$cwd/plans/session-handoff.md"
+        printf "\033[1;35m└─────────────────────────────────────────────────────────────\033[0m\n\n"
+    elif [[ -f "$cwd/plans/session-handoff.md" ]]; then
+        # Just show the status badge line
+        local handoff_status
+        handoff_status=$(grep -m1 '^status:' "$cwd/plans/session-handoff.md" 2>/dev/null || true)
+        [[ -n "$handoff_status" ]] && printf "\033[0;37m  handoff %s\033[0m\n\n" "$handoff_status"
+    fi
+
+    if [[ "$has_context" == "false" ]]; then
+        printf "\033[0;37m(no plans/ context found)\033[0m\n\n"
+    fi
+
+    # ── Recent git activity (always) ──────────────────────────────────────────
+    if [[ -d "$cwd/.git" ]] || git -C "$cwd" rev-parse --git-dir &>/dev/null 2>&1; then
+        printf "\033[1;36m┌─ Recent Commits ─────────────────────────────────────────────\033[0m\n"
+        git -C "$cwd" log --oneline --color=always -8 2>/dev/null || echo "  (no commits)"
+        printf "\033[1;36m└─────────────────────────────────────────────────────────────\033[0m\n"
+    fi
+}
+
+# ── Phase 5b: History viewer (Alt-L) ──────────────────────────────────────────
+# Opens all plans/ docs concatenated in less for full context scrolling.
+
+show_history() {
+    local cwd="$1"
+
+    if [[ -z "$cwd" || ! -d "$cwd" ]]; then
+        echo "No session directory" >&2
+        return 1
+    fi
+
+    local tmpfile
+    tmpfile=$(mktemp /tmp/session-hub-history.XXXXXX.md)
+
+    {
+        printf "# Session History — %s\n\n" "$cwd"
+
+        for doc in active-context.md progress.md decisions.md session-handoff.md; do
+            if [[ -f "$cwd/plans/$doc" ]]; then
+                printf "\n---\n## %s\n\n" "$doc"
+                cat "$cwd/plans/$doc"
+            fi
+        done
+
+        printf "\n---\n## Git Log (last 20)\n\n"
+        git -C "$cwd" log --oneline -20 2>/dev/null || echo "(no git history)"
+    } > "$tmpfile"
+
+    # Open in pager; clean up after
+    "${PAGER:-less}" -R "$tmpfile"
+    rm -f "$tmpfile"
 }
 
 # ── Main fzf UI ────────────────────────────────────────────────────────────────
@@ -390,6 +462,13 @@ main() {
     if [[ "${1:-}" == "--preview" ]]; then
         shift
         show_preview "$@"
+        return 0
+    fi
+
+    # Handle --history call (used by fzf Alt-L binding)
+    if [[ "${1:-}" == "--history" ]]; then
+        shift
+        show_history "$@"
         return 0
     fi
 
@@ -407,7 +486,7 @@ main() {
             --border \
             --border-label=" Claude Code Sessions " \
             --border-label-pos=2 \
-            --header="Enter: Open  Alt-N: New  Alt-H: Handoff  Ctrl-D: Done  Alt-A: Archived  Esc: Exit" \
+            --header="Enter: Open  Alt-N: New  Alt-H: Handoff  Alt-L: History  Ctrl-D: Done  Alt-A: Archived  Esc: Exit" \
             --delimiter=$'\t' \
             --with-nth=2 \
             --preview="bash '$SCRIPT_DIR/session-hub.sh' --preview {1} {3} {4}" \
@@ -415,6 +494,7 @@ main() {
             --bind="alt-a:reload(bash '$SCRIPT_DIR/session-hub.sh' --list --with-archived)" \
             --bind="alt-n:execute(bash '$SCRIPT_DIR/_session-hub-new.sh' {4})+abort" \
             --bind="alt-h:execute(bash '$SCRIPT_DIR/_session-hub-handoff.sh' {4} {3})+abort" \
+            --bind="alt-l:execute(bash '$SCRIPT_DIR/session-hub.sh' --history {4})" \
             --bind="ctrl-d:execute(bash '$SCRIPT_DIR/_session-hub-done.sh' {4})+reload(bash '$SCRIPT_DIR/session-hub.sh' --list $show_archived)" \
             --bind="enter:accept" \
             2>/dev/null || true)
