@@ -34,4 +34,11 @@ if echo "$prompt" | grep -qiE \
   exit 0
 fi
 
+# Event watching: monitoring/polling/tailing intent → suggest Monitor over /loop
+if echo "$prompt" | grep -qiE \
+  'watch (the|for|ci|build|log|pod|deploy)|monitor (the|ci|build|log)|tail -f|follow.*log|poll (for|until|every)|notify.*when|alert.*when|detect.*change|wait.*until.*complet|loop.*check|check.*every [0-9]|every (30|60|120|[0-9]+) (sec|min)|ci.*(status|check|watch)|build.*(status|watch|fail)'; then
+  echo "📡 MONITORING TASK: consider the Monitor tool — event-driven, zero tokens when silent (vs /loop which charges a full prompt per tick). See ai/rules/monitor-patterns.md for recipes."
+  exit 0
+fi
+
 exit 0
