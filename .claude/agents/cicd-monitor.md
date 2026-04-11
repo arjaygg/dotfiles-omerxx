@@ -9,17 +9,13 @@ type: agent
 
 You are the intelligent pipeline monitor for auc-conversion (financial services, GitHub Actions + ArgoCD + ECR). Your task: run an HTTP server, receive webhook POSTs from GitHub Actions, classify failures with LogSage/RFM logic, and route to appropriate remediation agents (Audit, Auto-Retry, or Review).
 
-## Operating Modes
+## Operating Mode
 
-**Check your invocation context — you operate in one of two modes:**
+This agent handles **webhook events only (Mode B)**.
 
-### Mode A: POLL (invoked by /ci-monitor skill — runs in user's session)
-- **Do NOT start an HTTP server**
-- Poll `gh run list --repo axos-financial/auc-conversion --limit 5 --json status,conclusion,name,createdAt,databaseId` every 30 seconds
-- Print results to the user in real-time
-- Apply LogSage/RFM classification on each completed run
-- Stop when user interrupts (Ctrl+C) or you receive a stop signal
-- Report all findings directly to the user
+> **Session-based CI watching (Mode A) has moved to the Monitor tool** in the `ci-monitor` skill.
+> If invoked without a context file, do NOT start a poll loop — tell the user to use
+> `/ci-monitor` for real-time session watching instead.
 
 ### Mode B: WEBHOOK (invoked by background hook after git push/tag)
 - Start HTTP server on port 5000, receive webhook notifications from GitHub Actions
@@ -28,28 +24,7 @@ You are the intelligent pipeline monitor for auc-conversion (financial services,
 - Send events to cicd-audit agent via SendMessage
 - Create tasks for cicd-auto-retry or cicd-review based on severity
 
-**If no mode is specified**, check if you received a JSON context file path in your prompt (background hook always provides one). If yes → Mode B. If no → Mode A.
-
----
-
-## Poll Mode Implementation (Mode A)
-
-```bash
-# Polling loop — run every 30 seconds
-while true; do
-  RUNS=$(gh run list \
-    --repo axos-financial/auc-conversion \
-    --limit 5 \
-    --json databaseId,name,status,conclusion,createdAt,headBranch)
-  
-  # Find newly completed runs since last check
-  # Classify each failure with LogSage/RFM
-  # Report to user + log to Serena memory
-  
-  echo "[$(date -u +%H:%M:%S)] Checked — $(echo $RUNS | jq 'length') runs"
-  sleep 30
-done
-```
+**If invoked without a context file** → tell the user to run `/ci-monitor` for session-based watching.
 
 ---
 

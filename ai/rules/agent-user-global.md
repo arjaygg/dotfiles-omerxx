@@ -181,6 +181,25 @@ With `opusplan` set, plan mode automatically upgrades to Opus for the planning p
 
 ---
 
+## Background Monitoring and Event Watching
+
+Use the right primitive based on whether the task is event-driven or time-driven:
+
+| Signal | Primitive | Notes |
+|--------|-----------|-------|
+| "Tell me when X changes/happens" | `Monitor` | Zero tokens when silent; fires only on stdout events |
+| "Run this, notify when done" | `Bash(run_in_background: true)` | One-shot; single completion notification |
+| "Do X every N minutes regardless" | `/loop` or `CronCreate` | Full prompt cost per tick — use for LLM-required work |
+| "Watch across multiple sessions" | `CronCreate` → `RemoteTrigger` | Scheduled remote agent invocation |
+
+**Use Monitor when:** "notify me when CI fails", "tail logs for errors", "watch pods for crashes"
+**Use run_in_background when:** "run these tests and tell me when done"
+**Use /loop when:** each tick requires LLM reasoning, not just detecting a state change
+
+Patterns and recipes: `ai/rules/monitor-patterns.md`
+
+---
+
 ## Unified AI Hub Structure
 
 All AI primitives are managed in the `ai/` directory:
