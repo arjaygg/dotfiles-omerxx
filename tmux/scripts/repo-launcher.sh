@@ -35,8 +35,8 @@ if git rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
     fi
 fi
 
-# Deduplicate and sort
-repos_list=$(printf '%s' "$repos_list" | sort -u | grep -v '^$' || true)
+# Deduplicate preserving frecency order (awk keeps first occurrence; sort -u would destroy it)
+repos_list=$(printf '%s' "$repos_list" | awk '!seen[$0]++' | grep -v '^$' || true)
 
 if [[ -z "$repos_list" ]]; then
     echo "No git repos found."
@@ -46,24 +46,39 @@ if [[ -z "$repos_list" ]]; then
     exit 0
 fi
 
+# Annotate with inline branch labels (tab-separated so {1} returns path in fzf bindings)
+display_list=$(while IFS= read -r dir; do
+    [[ -z "$dir" ]] && continue
+    branch=$(git -C "$dir" branch --show-current 2>/dev/null || true)
+    if [[ -n "$branch" ]]; then
+        printf '%s\t[%s]\n' "$dir" "$branch"
+    else
+        printf '%s\n' "$dir"
+    fi
+done <<< "$repos_list")
+
 # ── fzf picker ────────────────────────────────────────────────────────────────
-selected=$(printf '%s\n' "$repos_list" \
+selected=$(printf '%s\n' "$display_list" \
     | fzf \
         --prompt="  Open repo: " \
         --header="Enter: Claude · Alt-O: Cursor · Alt-W: Windsurf · Esc: close" \
         --border \
         --height=70% \
+        --delimiter=$'\t' \
         --preview='
-            echo "Branch: $(git -C {} branch --show-current 2>/dev/null)"
+            echo "Branch: $(git -C {1} branch --show-current 2>/dev/null)"
             echo ""
-            git -C {} log --oneline --color=always -8 2>/dev/null || ls -1 {}
+            git -C {1} log --oneline --color=always -8 2>/dev/null || ls -1 {1}
         ' \
         --preview-window='right:45%:wrap' \
-        --bind="alt-o:execute-silent($SCRIPT_DIR/open-cursor.sh {})+abort" \
-        --bind="alt-w:execute-silent($SCRIPT_DIR/open-windsurf.sh {})+abort" \
+        --bind="alt-o:execute-silent($SCRIPT_DIR/open-cursor.sh {1})+abort" \
+        --bind="alt-w:execute-silent($SCRIPT_DIR/open-windsurf.sh {1})+abort" \
     2>/dev/null || true)
 
 [[ -z "$selected" ]] && exit 0
+
+# Strip branch label (tab-separated suffix) to recover the bare path
+selected=$(printf '%s' "$selected" | cut -f1)
 
 name=$(basename "$selected")
 
