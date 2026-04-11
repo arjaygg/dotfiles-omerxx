@@ -20,6 +20,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_session-hub-lib.sh
+source "$SCRIPT_DIR/_session-hub-lib.sh"
+
 SOURCE_CWD="${1:-}"
 SOURCE_SESSION_ID="${2:-}"
 
@@ -105,7 +108,9 @@ slug_fallback=$(printf '%s' "$task_desc" \
 
 # Fire LLM in background for continuation name — include pending tasks for richer context
 tmpfile=$(mktemp /tmp/session-hub-handoff-name.XXXXXX)
-llm_prompt="Prior focus: '${prior_focus_display}'.${pending_tasks:+ Pending: '${pending_tasks}'.} New task: '${task_desc}'. Suggest a short 2-4 word kebab-case git branch name (no type prefix). Reply with ONLY the name."
+pending_part=""
+[[ -n "$pending_tasks" ]] && pending_part=" Pending tasks: $pending_tasks."
+llm_prompt="Prior focus: ${prior_focus_display}.${pending_part} New task: ${task_desc}. Suggest a short 2-4 word kebab-case git branch name (no type prefix). Reply with ONLY the name."
 timeout 20 claude --print --bare \
     --model claude-haiku-4-5 \
     "$llm_prompt" \
@@ -189,8 +194,10 @@ HANDOFF_EOF
 # ── Step 7: Open Claude in new worktree ──────────────────────────────────────
 
 window_name="claude:${final_name:0:20}"
+task_list_id=$(get_task_list_id "$worktree_path")
+safe_path=$(printf '%s' "$worktree_path" | sed "s/'/'\\\\''/g")
 
 tmux new-window \
     -c "$worktree_path" \
     -n "${window_name:0:30}" \
-    bash -l -c "cd '$(printf '%s' "$worktree_path" | sed "s/'/'\\\\''/g")' && claude; '$SCRIPT_DIR/claude-tmux-bridge.sh' session-stop"
+    bash -l -c "cd '$safe_path' && CLAUDE_CODE_TASK_LIST_ID='$task_list_id' claude --dangerously-skip-permissions; '$SCRIPT_DIR/claude-tmux-bridge.sh' session-stop"

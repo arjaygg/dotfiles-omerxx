@@ -16,6 +16,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_session-hub-lib.sh
+source "$SCRIPT_DIR/_session-hub-lib.sh"
+
 BASE_CWD="${1:-$(pwd)}"
 
 # Resolve to MAIN repo root — handles the case where the selected session lives
@@ -134,8 +137,10 @@ fi
 # ── Step 5: Open Claude in new worktree ──────────────────────────────────────
 
 window_name="claude:${final_name:0:20}"
+task_list_id=$(get_task_list_id "$worktree_path")
+safe_path=$(printf '%s' "$worktree_path" | sed "s/'/'\\\\''/g")
 
 tmux new-window \
     -c "$worktree_path" \
     -n "${window_name:0:30}" \
-    bash -l -c "cd '$(printf '%s' "$worktree_path" | sed "s/'/'\\\\''/g")' && claude; '$SCRIPT_DIR/claude-tmux-bridge.sh' session-stop"
+    bash -l -c "cd '$safe_path' && CLAUDE_CODE_TASK_LIST_ID='$task_list_id' claude --dangerously-skip-permissions; '$SCRIPT_DIR/claude-tmux-bridge.sh' session-stop"

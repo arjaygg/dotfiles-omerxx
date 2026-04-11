@@ -20,6 +20,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_session-hub-lib.sh
+source "$SCRIPT_DIR/_session-hub-lib.sh"
+
 PROJECTS_DIR="${HOME}/.claude/projects"
 DAYS_RECENT=30
 SHOW_ARCHIVED="${1:-}"  # "--with-archived" flag
@@ -351,10 +354,14 @@ open_session() {
     local window_name="claude:${name:0:12}"
     [[ -n "$branch" ]] && window_name="claude:${name:0:10}[${branch:0:8}]"
 
+    local task_list_id safe_cwd
+    task_list_id=$(get_task_list_id "$cwd")
+    safe_cwd=$(printf '%s' "$cwd" | sed "s/'/'\\\\''/g")
+
     tmux new-window \
         -c "$cwd" \
         -n "${window_name:0:30}" \
-        bash -l -c "cd '$(printf '%s' "$cwd" | sed "s/'/'\\\\''/g")' && claude --resume '$session_id'; '$SCRIPT_DIR/claude-tmux-bridge.sh' session-stop"
+        bash -l -c "cd '$safe_cwd' && CLAUDE_CODE_TASK_LIST_ID='$task_list_id' claude --dangerously-skip-permissions --resume '$session_id'; '$SCRIPT_DIR/claude-tmux-bridge.sh' session-stop"
 }
 
 # ── Phase 5: Preview content ──────────────────────────────────────────────────
