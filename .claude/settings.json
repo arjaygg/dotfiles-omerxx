@@ -219,6 +219,10 @@
           },
           {
             "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/stack-enforce-prompt.sh\"'"
+          },
+          {
+            "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/plans-healthcheck.sh\"'"
           },
           {

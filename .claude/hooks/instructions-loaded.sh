@@ -39,6 +39,18 @@ else
     PCTX_STATUS="pctx.json not found"
 fi
 
+# --- Stack enforcement advisory ---
+STACK_WARNING=""
+if [[ "$GIT_BRANCH" == "main" || "$GIT_BRANCH" == "master" ]]; then
+    GT_INIT=0
+    [[ -f "$CWD/.git/.graphite_repo_config" ]] && GT_INIT=1
+    if [[ "$GT_INIT" -eq 1 ]]; then
+        STACK_WARNING="[STACK ENFORCER] You are on '$GIT_BRANCH'. Create a stacked branch before editing. Run: stack create feature/<name> $GIT_BRANCH"
+    else
+        STACK_WARNING="[STACK ENFORCER] You are on '$GIT_BRANCH' and Charcoal is not initialized. Run: gt repo init, then: stack create feature/<name> $GIT_BRANCH"
+    fi
+fi
+
 # --- Pending session handoff ---
 HANDOFF_NOTICE=""
 if [[ -f "$CWD/plans/session-handoff.md" ]]; then
@@ -46,16 +58,19 @@ if [[ -f "$CWD/plans/session-handoff.md" ]]; then
 fi
 
 # --- Emit context injection ---
-python3 - "$DATE" "$GIT_BRANCH" "$GIT_DIRTY" "$PCTX_STATUS" "$HANDOFF_NOTICE" "$CWD" <<'PYEOF'
+python3 - "$DATE" "$GIT_BRANCH" "$GIT_DIRTY" "$PCTX_STATUS" "$STACK_WARNING" "$HANDOFF_NOTICE" "$CWD" <<'PYEOF'
 import sys, json
 
-date, branch, dirty_count, pctx_status, handoff_notice, cwd = sys.argv[1:7]
+date, branch, dirty_count, pctx_status, stack_warning, handoff_notice, cwd = sys.argv[1:8]
 
 lines = [f"[SESSION START — {date}]"]
 
 if branch:
     dirty_label = f"  ({dirty_count} uncommitted file(s))" if dirty_count != "0" else ""
     lines.append(f"Branch: {branch}{dirty_label}")
+
+if stack_warning:
+    lines.append(stack_warning)
 
 if pctx_status != "ok":
     lines.append(f"pctx advisory: {pctx_status}")
