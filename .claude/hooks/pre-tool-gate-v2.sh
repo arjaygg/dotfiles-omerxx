@@ -145,6 +145,14 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
         _REPO_HASH=$(printf '%s' "$_repo_root_raw" | md5 -q 2>/dev/null || printf '%s' "$_repo_root_raw" | md5sum 2>/dev/null | cut -d' ' -f1)
         rm -f "/tmp/.claude-atomic-state-$(id -u)-${_REPO_HASH}" 2>/dev/null || true
     fi
+
+    # 2f. Poll loop advisory — suggest Monitor for event-watching patterns (advisory, non-blocking)
+    if echo "$CMD" | grep -qE 'while (true|\[::\])'; then
+        if echo "$CMD" | grep -qE '(gh (run|pr|workflow)|kubectl|tail -f|curl.*http|argocd)' && \
+           echo "$CMD" | grep -qE 'sleep [0-9]'; then
+            echo "[MONITOR HINT] This command looks like a poll loop. If the goal is event-watching (notify when condition changes), the Monitor tool is more efficient — zero tokens when silent, vs this loop which costs tokens on every iteration. See ai/rules/monitor-patterns.md."
+        fi
+    fi
 fi
 
 # ============================================================
