@@ -49,15 +49,18 @@ print_info "Cleaning branch: $BRANCH"
 WINDOW_NAME=$(echo "$BRANCH" | sed -E 's/^(feature|feat|bugfix|fix|hotfix|release|chore)\///')
 if [ -n "${TMUX:-}" ]; then
     TMUX_SESSION=$(tmux display-message -p '#S' 2>/dev/null || true)
-    if [ -n "$TMUX_SESSION" ] && tmux list-windows -t "$TMUX_SESSION" -F '#{window_name}' 2>/dev/null | grep -Fxq "$WINDOW_NAME"; then
-        # Switch away before killing
-        CURRENT_WINDOW=$(tmux display-message -p '#W' 2>/dev/null || true)
-        if [ "$CURRENT_WINDOW" = "$WINDOW_NAME" ]; then
-            tmux select-window -t "$TMUX_SESSION:$DEFAULT_BRANCH" 2>/dev/null || \
-            tmux select-window -t "$TMUX_SESSION:main" 2>/dev/null || true
+    if [ -n "$TMUX_SESSION" ]; then
+        # Use tmux select-window to check if window exists (more reliable than grep -Fxq)
+        if tmux select-window -t "$TMUX_SESSION:$WINDOW_NAME" 2>/dev/null; then
+            # Window exists — switch away before killing
+            CURRENT_WINDOW=$(tmux display-message -p '#W' 2>/dev/null || true)
+            if [ "$CURRENT_WINDOW" = "$WINDOW_NAME" ]; then
+                tmux select-window -t "$TMUX_SESSION:$DEFAULT_BRANCH" 2>/dev/null || \
+                tmux select-window -t "$TMUX_SESSION:main" 2>/dev/null || true
+            fi
+            tmux kill-window -t "$TMUX_SESSION:$WINDOW_NAME" 2>/dev/null || true
+            print_info "Closed tmux window: $WINDOW_NAME"
         fi
-        tmux kill-window -t "$TMUX_SESSION:$WINDOW_NAME" 2>/dev/null || true
-        print_info "Closed tmux window: $WINDOW_NAME"
     fi
 fi
 

@@ -121,17 +121,30 @@ Never use `EnterWorktree`/`ExitWorktree` — use the tmux approach instead.
    WINDOW_NAME=$(basename "$WORKTREE_PATH")
    ```
 
-2. Detect the current tmux session and check if a window for that worktree already exists:
+2. Detect the current tmux session and navigate to/create a window for that worktree:
    ```bash
-   TMUX_SESSION=$(tmux display-message -p '#S')
-   if tmux list-windows -t "$TMUX_SESSION" -F '#{window_name}' 2>/dev/null | grep -Fxq "$WINDOW_NAME"; then
-       # Window already exists — just switch to it
-       tmux select-window -t "$TMUX_SESSION:$WINDOW_NAME"
+   if [ -z "${TMUX:-}" ]; then
+       # Not inside tmux — just navigate directly
+       eval "$TARGET_PATH"
+       exit 0
+   fi
+   
+   TMUX_SESSION=$(tmux display-message -p '#S' 2>/dev/null)
+   if [ -z "$TMUX_SESSION" ]; then
+       # Cannot get tmux session — navigate directly
+       eval "$TARGET_PATH"
+       exit 0
+   fi
+   
+   # Use tmux select-window to check if window exists (more reliable than grep -Fxq)
+   if tmux select-window -t "$TMUX_SESSION:$WINDOW_NAME" 2>/dev/null; then
+       # Window already exists — already switched to it
+       echo "Switched to tmux window: $WINDOW_NAME"
    else
-       # Create new window and start claude
-       tmux new-window -t "$TMUX_SESSION" -n "$WINDOW_NAME"
+       # Create new window and start claude in the worktree
+       tmux new-window -t "$TMUX_SESSION" -n "$WINDOW_NAME" -c "$WORKTREE_PATH"
        sleep 0.3
-       tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "cd $WORKTREE_PATH && claude --dangerously-skip-permissions" Enter
+       tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "claude" Enter
    fi
    ```
 
@@ -142,6 +155,11 @@ Never use `EnterWorktree`/`ExitWorktree` — use the tmux approach instead.
 ```bash
 eval $($HOME/.dotfiles/.claude/scripts/stack up)
 ```
+
+**Key fix (T5):**
+- Replaced `grep -Fxq` with `tmux select-window` check (more robust and atomic)
+- Added proper error handling for missing `$TMUX` or `$TMUX_SESSION`
+- Use `-c $WORKTREE_PATH` flag in `tmux new-window` to start in correct directory
 
 ## Related Skills
 
