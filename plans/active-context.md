@@ -5,52 +5,40 @@
 **Commit:** 291ea5a  
 **Branch:** feature/fix-session-hub-tmux
 
-### Issue
-When using session-hub to create new Claude sessions (especially when selecting from ~/.dotfiles), the `tmux new-window` command would fail silently because there was NO window-existence check at all. This caused:
-- Stack branch creation to not open new Claude sessions
-- Session windows disappearing or not starting
-- Broken workflow for creating stacked branches with parallel development
+### Root Cause & Solution
+Fixed fragile `grep -Fxq` pattern with atomic `tmux select-window` check for detecting existing tmux windows. Updated 3 files:
+- **stack-create skill** (lines 108–125)
+- **stack-navigate skill** (lines 140–148)  
+- **clean-stack.sh** (lines 53–54)
 
-### Root Cause
-Both `_session-hub-new.sh` and `session-hub.sh` were missing the window-exists detection logic entirely:
-- `_session-hub-new.sh` (line 143): directly called `tmux new-window` without checking
-- `session-hub.sh` (line 361): directly called `tmux new-window` without checking
+## 🔨 IN PROGRESS: T3 — Rewrite `merge-stack.sh` (GitHub-only + gh-account.sh)
 
-If the window already existed, the command would fail silently (2>/dev/null suppresses errors).
+**Branch:** feature/fix-session-hub-tmux  
+**Focus:** Refactor merge-stack.sh to remove multi-VCS baggage and inline dependent-branch updates
 
-### Solution ✅
-Added proper window-exists detection to both scripts:
+### Problem Statement
+Current `merge-stack.sh` (125 lines) has 4 critical design issues:
 
-**Pattern:**
-```bash
-# Get window name (truncated to 30 chars for tmux limit)
-window_name_trunc="${window_name:0:30}"
+1. **Mixed Multi-VCS Design** — Imports `gh-account.sh` for Azure DevOps + GitHub account switching, but only implements GitHub merge (`gh pr merge`). No Azure DevOps merge logic. Dead weight.
 
-# Check if we're in tmux first
-if [[ -n "$TMUX" ]]; then
-    TMUX_SESSION=$(tmux display-message -p '#S')
-    # Check if window exists
-    if tmux list-windows -t "$TMUX_SESSION" -F '#{window_name}' | grep -Fxq "$window_name_trunc"; then
-        # Window exists — switch to it
-        tmux select-window -t "$TMUX_SESSION:$window_name_trunc"
-        return 0
-    fi
-fi
+2. **Fragmented Token Injection** — Calls `GH_TOKEN=$(gh_token_for_remote)` before every `gh` command instead of relying on standard `gh auth`. Not needed for GitHub-only.
 
-# Window doesn't exist — create it
-tmux new-window -c "$worktree_path" -n "$window_name_trunc" bash -l -c "..."
-```
+3. **Tangled Dependencies** — Merges a PR in merge-stack.sh, then delegates all dependent-branch updates to `update-stack.sh` via subprocess (line 117). This creates responsibility split:
+   - merge-stack.sh: merge PR + delete branch
+   - update-stack.sh: rebase dependents + sync PR bases + sync worktrees
+   - **Result:** User can't understand end-to-end flow from one script; breaks on mid-workflow failures
 
-### Files Modified
-1. **tmux/scripts/_session-hub-new.sh** (lines 137-155) — Added window-exists check
-2. **tmux/scripts/session-hub.sh** (lines 354-374) — Added window-exists check in open_session()
+4. **Lost Azure DevOps Implementation** — Script structure suggests multi-VCS was planned; never completed. Carrying dead code.
 
-### Validation
-- Tested `tmux list-windows` output format and grep matching — works correctly
-- Window detection now properly handles truncation (tmux limits window names to 30 chars)
-- Switching to existing window works without errors
+### Solution Roadmap
+- [ ] Step 1: Copy dependent-branch update logic from update-stack.sh into merge-stack.sh
+- [ ] Step 2: Remove gh-account.sh import + gh_token_for_remote calls
+- [ ] Step 3: Inline Charcoal rebase + GitHub PR base sync
+- [ ] Step 4: Add merge validation (PR exists, check CI/reviews)
+- [ ] Step 5: Test with a live PR merge
 
-### Remaining Backlog (stack skill fixes)
-- [ ] T1 — Fix `create-stack.sh` base branch default (current branch, not main)
-- [ ] T3 — Rewrite `merge-stack.sh` GitHub-only + use `gh-account.sh`
-- [ ] T8 — Fix `stack-auto-pr-merge` Python Task() → Agent tool syntax
+**Expected result:** Single script that merges a PR and updates all dependents end-to-end, no subprocess.
+
+### Remaining Backlog
+- [ ] T1 — Verify `create-stack.sh` base branch logic (appears already correct)
+- [ ] T8 — Verify `stack-auto-pr-merge` Agent tool syntax (appears already correct)
