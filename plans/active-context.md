@@ -32,6 +32,6 @@ Single 183-line script that handles full merge workflow end-to-end:
 - Syncs all dependent PR base branches on GitHub
 - **No subprocess call to update-stack.sh**
 
-### Remaining Backlog
-- [ ] T1 — Verify `create-stack.sh` base branch logic (appears already correct)
-- [ ] T8 — Verify `stack-auto-pr-merge` Agent tool syntax (appears already correct)
+### All Backlog Complete ✅
+- [x] T1 — `create-stack.sh` base branch logic verified correct (lines 74-80)
+- [x] T8 — `stack-auto-pr-merge` Agent tool syntax verified correct (run_in_background: true)
