@@ -112,6 +112,68 @@ resolve_statusline_model_name() {
     echo "$current_model"
 }
 
+# Calculate cache hit rate percentage
+calculate_cache_hit_rate() {
+    local cache_read="${1:-0}"
+    local usage_input="${2:-0}"
+    local total=$((cache_read + usage_input))
+
+    if [[ $total -eq 0 ]]; then
+        echo "0"
+        return
+    fi
+
+    echo "$((cache_read * 100 / total))"
+}
+
+# Determine context trend (↑ climbing, → stable, ↓ falling)
+calculate_context_trend() {
+    local current="$1"
+    local previous="${2:-0}"
+    local threshold=5  # ±5% change threshold
+
+    if [[ $current -gt $((previous + threshold)) ]]; then
+        echo "↑"  # Context climbing
+    elif [[ $current -lt $((previous - threshold)) ]]; then
+        echo "↓"  # Context falling
+    else
+        echo "→"  # Stable
+    fi
+}
+
+# Get warning threshold based on task type
+get_warning_threshold() {
+    local task_type="${1:-generic}"
+
+    case "$task_type" in
+        "quick_fix")     echo "80" ;;
+        "feature_dev")   echo "70" ;;
+        "research")      echo "60" ;;
+        "refactor")      echo "50" ;;
+        "code_review")   echo "65" ;;
+        *)               echo "75" ;;
+    esac
+}
+
+# Format project directory for display (home-relative path)
+format_project_path() {
+    local project_path="$1"
+    local max_length="${2:-40}"
+
+    # Replace home directory with ~
+    local display_path="${project_path/#$HOME/~}"
+
+    # If path is too long, show only the last 2-3 components
+    if [[ ${#display_path} -gt $max_length ]]; then
+        # Extract last 2-3 path components
+        local depth=2
+        local short_path=$(echo "$display_path" | awk -F'/' '{for(i=NF-'$depth'+1;i<=NF;i++)printf "%s%s",$i,i<NF?"/":" "}')
+        echo "$short_path"
+    else
+        echo "$display_path"
+    fi
+}
+
 # Platform-specific timestamp parsing function
 parse_iso_timestamp() {
     local timestamp="$1"
@@ -262,6 +324,33 @@ if echo "$input" | jq -e . >/dev/null 2>&1 && [[ "$input" != "{}" ]]; then
         cache_creation_tokens=0
         usage_input_tokens=0
         usage_output_tokens=0
+    fi
+
+    # Calculate cache hit rate
+    cache_hit_percent=$(calculate_cache_hit_rate "$cache_read_tokens" "$usage_input_tokens")
+
+    # Format cache info for display
+    if [[ $cache_hit_percent -gt 0 ]]; then
+        cache_info="$(printf "%d%% cache" "$cache_hit_percent")"
+        if [[ $cache_hit_percent -gt 70 ]]; then
+            cache_color="32"  # Green for good cache
+        elif [[ $cache_hit_percent -gt 40 ]]; then
+            cache_color="33"  # Yellow for fair cache
+        else
+            cache_color="90"  # Gray for low cache
+        fi
+    else
+        cache_info="cold start"
+        cache_color="90"
+    fi
+
+    # Format token info (input:output ratio)
+    if [[ $usage_input_tokens -gt 0 || $usage_output_tokens -gt 0 ]]; then
+        tokens_input_display=$([[ $usage_input_tokens -ge 1000000 ]] && echo "$((usage_input_tokens / 1000000))M" || echo "$((usage_input_tokens / 1000))K")
+        tokens_output_display=$([[ $usage_output_tokens -ge 1000000 ]] && echo "$((usage_output_tokens / 1000000))M" || echo "$((usage_output_tokens / 1000))K")
+        tokens_info="${tokens_input_display}/${tokens_output_display}"
+    else
+        tokens_info="0/0"
     fi
 
     # Extract session metadata
@@ -819,9 +908,13 @@ else
     fi
 fi
 
-# Project context (shortened path, max 12 chars)
-project_name=$(basename "$current_dir")
-project_name="${project_name:0:12}"
+# Project context (home-relative path with smart shortening)
+if [[ -n "$current_dir" ]]; then
+    project_path_display=$(format_project_path "$current_dir" 40)
+    project_name="$project_path_display"
+else
+    project_name=$(basename "$current_dir" 2>/dev/null || echo "unknown")
+fi
 
 # Workspace context awareness - show if navigated away from project root
 workspace_indicator=""
@@ -1022,12 +1115,18 @@ fi
 # Build status line based on selected mode
 case "$STATUSLINE_MODE" in
     "compact")
-        # Compact mode: Model, context, message/time, project
+        # Compact mode: Model, context, cache hit, message/time, project
         # Add output style if not default
         if [[ "$output_style" != "default" && -n "$output_style" ]]; then
             output_style_compact=$'\033[95m'"${output_style}"$'\033[0m • '
         else
             output_style_compact=""
+        fi
+
+        # Add cache hit info if significant
+        cache_display=""
+        if [[ $cache_hit_percent -gt 10 ]]; then
+            cache_display=" • \033[${cache_color}m${cache_hit_percent}% cache\033[0m"
         fi
 
         if [[ -n "$message_display" ]]; then
@@ -1036,20 +1135,22 @@ case "$STATUSLINE_MODE" in
             if [[ "$message_preview" != "$compact_message" ]]; then
                 compact_message="${compact_message}..."
             fi
-            printf "\033[%sm%s\033[0m • \033[32m%d%%\033[0m • %s💬 \"%s\" • \033[34m%s\033[0m%s\n" \
+            printf "\033[%sm%s\033[0m • \033[32m%d%%\033[0m%s • %s💬 \"%s\" • \033[34m%s\033[0m%s\n" \
                 "$model_color" \
                 "$model_display" \
                 "$context_percent" \
+                "$cache_display" \
                 "$output_style_compact" \
                 "$compact_message" \
                 "$project_name" \
                 "$workspace_indicator"
         else
             # Fall back to time if no message
-            printf "\033[%sm%s\033[0m • \033[32m%d%%\033[0m • %s\033[%sm%s\033[0m • \033[34m%s\033[0m%s\n" \
+            printf "\033[%sm%s\033[0m • \033[32m%d%%\033[0m%s • %s\033[%sm%s\033[0m • \033[34m%s\033[0m%s\n" \
                 "$model_color" \
                 "$model_display" \
                 "$context_percent" \
+                "$cache_display" \
                 "$output_style_compact" \
                 "$msg_color" \
                 "$last_msg" \
@@ -1072,7 +1173,11 @@ case "$STATUSLINE_MODE" in
         output="${output//\%message\%/$message_display}"
         output="${output//\%output_style\%/$output_style}"
         output="${output//\%cache\%/$cache_info}"
+        output="${output//\%cache_hit\%/${cache_hit_percent}%}"
         output="${output//\%tokens\%/$tokens_info}"
+        output="${output//\%tokens_input\%/${tokens_input_display}}"
+        output="${output//\%tokens_output\%/${tokens_output_display}}"
+        output="${output//\%tokens_ratio\%/$tokens_info}"
         output="${output//\%version\%/$claude_version}"
         echo "$output"
         ;;
@@ -1086,12 +1191,19 @@ case "$STATUSLINE_MODE" in
             output_style_display=""
         fi
 
+        # Build cache info display
+        cache_verbose=""
+        if [[ $cache_hit_percent -gt 0 ]]; then
+            cache_verbose=" \033[36m▸\033[0m Cache: \033[${cache_color}m${cache_hit_percent}%\033[0m"
+        fi
+
         if [[ -n "$message_display" ]]; then
             # Show message preview instead of last time
-            printf "\033[%sm%s\033[0m \033[36m▸\033[0m Context: %s \033[36m▸\033[0m Session: \033[96m%s\033[0m \033[36m▸\033[0m %s %s\033[36m▸\033[0m %s \033[36m▸\033[0m \033[34m%s\033[0m%s\n" \
+            printf "\033[%sm%s\033[0m \033[36m▸\033[0m Context: %s%s \033[36m▸\033[0m Session: \033[96m%s\033[0m \033[36m▸\033[0m %s %s\033[36m▸\033[0m %s \033[36m▸\033[0m \033[34m%s\033[0m%s\n" \
                 "$model_color" \
                 "$model_display" \
                 "$context_info" \
+                "$cache_verbose" \
                 "$session_display" \
                 "$combined_time" \
                 "$output_style_display" \
@@ -1100,10 +1212,11 @@ case "$STATUSLINE_MODE" in
                 "$workspace_indicator"
         else
             # If no message, show timing instead
-            printf "\033[%sm%s\033[0m \033[36m▸\033[0m Context: %s \033[36m▸\033[0m Session: \033[96m%s\033[0m \033[36m▸\033[0m %s %s\033[36m▸\033[0m Last: \033[%sm%s\033[0m \033[36m▸\033[0m \033[34m%s\033[0m%s\n" \
+            printf "\033[%sm%s\033[0m \033[36m▸\033[0m Context: %s%s \033[36m▸\033[0m Session: \033[96m%s\033[0m \033[36m▸\033[0m %s %s\033[36m▸\033[0m Last: \033[%sm%s\033[0m \033[36m▸\033[0m \033[34m%s\033[0m%s\n" \
                 "$model_color" \
                 "$model_display" \
                 "$context_info" \
+                "$cache_verbose" \
                 "$session_display" \
                 "$combined_time" \
                 "$output_style_display" \
