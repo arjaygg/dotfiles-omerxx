@@ -52,6 +52,18 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
 fi
 
 # ============================================================
+# SECTION 1b: Auto-memory drift reminder (global)
+# Fires when any memory/*.md is written — reminds to update MEMORY.md index.
+# Lives here (global) because ~/.claude/projects/.../memory/ is cross-project.
+# ============================================================
+if [[ "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Edit" ]]; then
+    if [[ "$FILE_PATH" == */memory/*.md ]] && [[ "$FILE_PATH" != */MEMORY.md ]]; then
+        echo "⚠️  MEMORY FILE WRITTEN: Update MEMORY.md index with a one-line entry." >&2
+        echo "   Format: - [Name]($(basename "$FILE_PATH")) — one-line description (≤150 chars)" >&2
+    fi
+fi
+
+# ============================================================
 # SECTION 2: Bash/Agent output compaction (>300 lines)
 # ============================================================
 if [[ "$LINE_COUNT" -gt 0 ]]; then
