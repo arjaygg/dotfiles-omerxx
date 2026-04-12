@@ -351,6 +351,5 @@
       "command": "notebooklm-mcp",
       "args": []
     }
-  },
-  "model": "opus[1m]"
+  }
 }
