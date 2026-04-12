@@ -353,14 +353,29 @@ open_session() {
     branch=$(git -C "$cwd" branch --show-current 2>/dev/null || true)
     local window_name="claude:${name:0:12}"
     [[ -n "$branch" ]] && window_name="claude:${name:0:10}[${branch:0:8}]"
+    local window_name_trunc="${window_name:0:30}"
 
     local task_list_id safe_cwd
     task_list_id=$(get_task_list_id "$cwd")
     safe_cwd=$(printf '%s' "$cwd" | sed "s/'/'\\\\''/g")
 
+    # Check if we're in tmux; if so, check for existing window before creating
+    if [[ -n "$TMUX" ]]; then
+        local TMUX_SESSION
+        TMUX_SESSION=$(tmux display-message -p '#S' 2>/dev/null || true)
+        if [[ -n "$TMUX_SESSION" ]]; then
+            # Check if window already exists
+            if tmux list-windows -t "$TMUX_SESSION" -F '#{window_name}' 2>/dev/null | grep -Fxq "$window_name_trunc"; then
+                # Window already exists, just switch to it
+                tmux select-window -t "$TMUX_SESSION:$window_name_trunc" 2>/dev/null || true
+                return 0
+            fi
+        fi
+    fi
+
     tmux new-window \
         -c "$cwd" \
-        -n "${window_name:0:30}" \
+        -n "$window_name_trunc" \
         bash -l -c "cd '$safe_cwd' && CLAUDE_CODE_TASK_LIST_ID='$task_list_id' claude --dangerously-skip-permissions --resume '$session_id'; '$SCRIPT_DIR/claude-tmux-bridge.sh' session-stop"
 }
 

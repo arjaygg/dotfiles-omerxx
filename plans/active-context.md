@@ -1,43 +1,56 @@
 # Active Context
 
-## Completed: T5 — Fix tmux window-exists check (2026-04-11)
+## ✅ COMPLETED: T5 — Fix tmux window-exists check (2026-04-12)
 
-Branch: `feature/fix-session-hub-tmux`
+**Commit:** 291ea5a  
+**Branch:** feature/fix-session-hub-tmux
 
-### Issue Fixed
-The tmux window detection logic used `grep -Fxq` which was too strict and could fail with certain window names or tmux configurations. This caused new Claude sessions to not open in new tmux windows when creating stacked branches, especially in the ~/.dotfiles project.
+### Issue
+When using session-hub to create new Claude sessions (especially when selecting from ~/.dotfiles), the `tmux new-window` command would fail silently because there was NO window-existence check at all. This caused:
+- Stack branch creation to not open new Claude sessions
+- Session windows disappearing or not starting
+- Broken workflow for creating stacked branches with parallel development
 
 ### Root Cause
-Both `stack-create` and `stack-navigate` skills used:
-```bash
-tmux list-windows ... | grep -Fxq "$WINDOW_NAME"
-```
-This pattern is fragile because:
-1. It depends on exact output formatting from tmux
-2. It can fail if there are trailing spaces or other whitespace
-3. It's less reliable across different tmux versions
+Both `_session-hub-new.sh` and `session-hub.sh` were missing the window-exists detection logic entirely:
+- `_session-hub-new.sh` (line 143): directly called `tmux new-window` without checking
+- `session-hub.sh` (line 361): directly called `tmux new-window` without checking
 
-### Solution Applied
-Replaced with atomic `tmux select-window` check:
+If the window already existed, the command would fail silently (2>/dev/null suppresses errors).
+
+### Solution ✅
+Added proper window-exists detection to both scripts:
+
+**Pattern:**
 ```bash
-if tmux select-window -t "$TMUX_SESSION:$WINDOW_NAME" 2>/dev/null; then
-    # Window exists
-else
-    # Create window
+# Get window name (truncated to 30 chars for tmux limit)
+window_name_trunc="${window_name:0:30}"
+
+# Check if we're in tmux first
+if [[ -n "$TMUX" ]]; then
+    TMUX_SESSION=$(tmux display-message -p '#S')
+    # Check if window exists
+    if tmux list-windows -t "$TMUX_SESSION" -F '#{window_name}' | grep -Fxq "$window_name_trunc"; then
+        # Window exists — switch to it
+        tmux select-window -t "$TMUX_SESSION:$window_name_trunc"
+        return 0
+    fi
 fi
+
+# Window doesn't exist — create it
+tmux new-window -c "$worktree_path" -n "$window_name_trunc" bash -l -c "..."
 ```
 
 ### Files Modified
-1. **ai/skills/stack-create/SKILL.md** — Fixed step 4 (tmux window opening logic)
-2. **ai/skills/stack-navigate/SKILL.md** — Fixed tmux window check for navigation
-3. **.claude/scripts/pr-stack/clean-stack.sh** — Consistent window detection
+1. **tmux/scripts/_session-hub-new.sh** (lines 137-155) — Added window-exists check
+2. **tmux/scripts/session-hub.sh** (lines 354-374) — Added window-exists check in open_session()
 
-### Additional Improvements
-- Added early-exit error handling if `$TMUX` or `$TMUX_SESSION` is empty
-- Used `-c $WORKTREE_PATH` flag in `tmux new-window` to avoid separate `cd` commands
-- Cleaner, more maintainable code with better diagnostics
+### Validation
+- Tested `tmux list-windows` output format and grep matching — works correctly
+- Window detection now properly handles truncation (tmux limits window names to 30 chars)
+- Switching to existing window works without errors
 
-### Backlog (other stack skill fixes)
-- [ ] T1 — Fix `create-stack.sh` base branch default
-- [ ] T3 — Rewrite `merge-stack.sh` GitHub-only + `gh-account.sh`
+### Remaining Backlog (stack skill fixes)
+- [ ] T1 — Fix `create-stack.sh` base branch default (current branch, not main)
+- [ ] T3 — Rewrite `merge-stack.sh` GitHub-only + use `gh-account.sh`
 - [ ] T8 — Fix `stack-auto-pr-merge` Python Task() → Agent tool syntax
