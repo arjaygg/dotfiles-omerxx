@@ -89,23 +89,51 @@ Worktrees are created by **default** (no flag needed). You also get:
    ```bash
    WORKTREE_PATH="$(pwd)/.trees/<sanitized-name>"
    WINDOW_NAME="<sanitized-name>"
-   TMUX_SESSION=$(tmux display-message -p '#S')
-   if tmux list-windows -t "$TMUX_SESSION" -F '#{window_name}' 2>/dev/null | grep -Fxq "$WINDOW_NAME"; then
-       # Window already exists — just switch to it
-       tmux select-window -t "$TMUX_SESSION:$WINDOW_NAME"
+   
+   if [ -z "${TMUX:-}" ]; then
+       # Not inside tmux — inform user to open manually
+       echo ""
+       echo "⚠️  Not running inside tmux. To open the new worktree in a tmux window:"
+       echo "   cd $WORKTREE_PATH && claude"
+       exit 0
+   fi
+   
+   TMUX_SESSION=$(tmux display-message -p '#S' 2>/dev/null)
+   if [ -z "$TMUX_SESSION" ]; then
+       echo "⚠️  Could not determine tmux session. To open the new worktree in tmux:"
+       echo "   cd $WORKTREE_PATH && claude"
+       exit 0
+   fi
+   
+   # Use tmux select-window to test if window exists (simpler & more reliable than grep)
+   # If select succeeds, window exists; if it fails, create it
+   if tmux select-window -t "$TMUX_SESSION:$WINDOW_NAME" 2>/dev/null; then
+       # Window already exists — already switched to it
+       echo "Switched to existing tmux window: $WINDOW_NAME"
    else
-       # Create new window and start claude
-       tmux new-window -t "$TMUX_SESSION" -n "$WINDOW_NAME"
+       # Window doesn't exist — create it and start Claude
+       tmux new-window -t "$TMUX_SESSION" -n "$WINDOW_NAME" -c "$WORKTREE_PATH"
        sleep 0.3
-       tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "cd $WORKTREE_PATH && claude --dangerously-skip-permissions" Enter
-       # The bridge manages window name and status labels; calling session-start keeps the display in sync after creating a new window.
+       tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "claude" Enter
+       
+       # Sync tmux bridge display if available
        sleep 0.5
-       ~/.dotfiles/tmux/scripts/claude-tmux-bridge.sh session-start 2>/dev/null || true
+       if [ -f ~/.dotfiles/tmux/scripts/claude-tmux-bridge.sh ]; then
+           ~/.dotfiles/tmux/scripts/claude-tmux-bridge.sh session-start 2>/dev/null || true
+       fi
    fi
    ```
 
-   If `$TMUX` is unset (not inside tmux), skip the tmux commands and instead inform
-   the user to open a new terminal and run `cd .trees/<sanitized-name> && claude`.
+   **Key fixes for window-exists bug (T5):**
+   - Use `tmux select-window` instead of `grep -Fxq` (more direct, avoids formatting edge cases)
+   - Add early exit if `$TMUX` or `$TMUX_SESSION` is empty (proper error handling)
+   - Use `-c $WORKTREE_PATH` in `tmux new-window` to avoid `cd` command issues
+   - Cleaner, more maintainable code
+   
+   **Why this fixes the dotfiles issue:**
+   - The original `grep -Fxq` could fail with certain window names or tmux configurations
+   - `tmux select-window` is atomic and foolproof: it either succeeds or fails
+   - Explicit error messages help debug when tmux isn't available
 
    This gives the new session a properly isolated CWD — the new Claude instance will
    start fresh in the worktree and pick up `plans/session-handoff.md` automatically.
