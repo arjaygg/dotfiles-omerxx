@@ -4,6 +4,32 @@ These rules apply to every project on this machine where `pctx` (and its upstrea
 
 > **Precedence:** In pctx-enabled projects, these rules supersede `agent-user-global.md` for tool selection (stricter: "Never" vs "Prefer").
 
+---
+
+## 0. ⛔ Pre-Bash Decision Gate — MANDATORY BEFORE EVERY BASH CALL
+
+**Check this map before writing ANY `Bash` command. If a dedicated tool exists, use it — no exceptions, no workarounds.**
+
+| Intent | WRONG (Bash) | RIGHT (Dedicated Tool) |
+|---|---|---|
+| Read a file | `cat file` | `Read(file_path)` |
+| Read first N lines | `head -N file` | `Read(file_path, limit: N)` |
+| Read from line N onward | `tail -n +N file` | `Read(file_path, offset: N)` |
+| Read lines N to M | `sed -n 'N,Mp'`, `awk 'NR>=N && NR<=M'` | `Read(file_path, offset: N, limit: M-N)` |
+| Limit any piped output | `cmd \| head -N`, `cmd \| awk 'NR<=N'` | Use the tool's built-in `limit:` param |
+| Search file contents | `grep pattern`, `rg pattern` | `Grep(pattern, path)` |
+| Find files by name/pattern | `find . -name "*.go"` | `Glob("**/*.go")` |
+| List directory | `ls dir/` | `Glob("dir/*")` |
+| Edit a file in-place | `sed -i`, `awk` rewrite | `Edit(file, old_string, new_string)` |
+| Create a file | `echo > file`, `cat <<EOF` | `Write(file_path, content)` |
+
+**If a hook fires blocking your Bash command:**
+1. Switch to the correct dedicated tool immediately — do NOT find a shell workaround
+2. Write a feedback memory NOW: what command was blocked, what the correct tool is
+3. Do not wait for the user to point it out
+
+---
+
 ## 1. Tool Priority Stack
 Always use tools in this order. Stop at the first that satisfies your need. **Never use Bash for operations that have a dedicated tool.**
 
@@ -142,7 +168,14 @@ Watch for these patterns — they indicate the tool priority rules are being ign
 | `Read("pkg/worker/pool.go")` without limit — whole file read | `Serena.getSymbolsOverview("pkg/worker/pool.go")`, then Read with limit/offset |
 | Multiple sequential `Serena.*` calls (no batch) | `mcp__pctx__execute_typescript` with `Promise.all()` |
 | Starting session with Grep/Read before Serena init | Call `mcp__pctx__list_functions` → write `plans/pctx-functions.md` → `Serena.initialInstructions()` |
-| `Bash(grep ...)` or `Bash(find ...)` | Blocked by `permissions.deny`; use Serena or Glob |
+| `Bash(grep ...)` or `Bash(rg ...)` | Blocked by `permissions.deny`; use `Grep` tool or `Serena.searchForPattern` |
+| `Bash(cat file)` | Blocked; use `Read(file_path)` |
+| `Bash(head -N file)` | Blocked; use `Read(file_path, limit: N)` |
+| `Bash(tail -n +N file)` | Blocked; use `Read(file_path, offset: N)` |
+| `Bash(cmd \| awk 'NR<=N')` to limit output | Blocked; use the tool's built-in `limit:` param |
+| `Bash(find . -name ...)` | Blocked; use `Glob` |
+| `Bash(ls dir/)` | Use `Glob("dir/*")` |
+| `Bash(sed -i ...)` or `Bash(awk)` for file edit | Use `Edit(file, old_string, new_string)` |
 
 If you find yourself reaching for Grep, ask: **"Is this a symbol lookup or a pattern search?"**
 - Symbol lookup (known name) → `Serena.findSymbol`
