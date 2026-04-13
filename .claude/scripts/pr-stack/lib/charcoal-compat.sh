@@ -12,9 +12,9 @@
 # - Keep metadata in sync for Azure DevOps compatibility
 
 # Source validation library for common functions
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/validation.sh" ]; then
-    source "$SCRIPT_DIR/validation.sh"
+_PRLIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$_PRLIB_DIR/validation.sh" ]; then
+    source "$_PRLIB_DIR/validation.sh"
 fi
 
 # ============================================================================

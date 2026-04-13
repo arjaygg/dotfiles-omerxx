@@ -11,13 +11,13 @@ _WORKTREE_CHARCOAL_SOURCED=1
 
 # Source dependencies only if not already loaded
 if ! type print_info &>/dev/null; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    source "$SCRIPT_DIR/validation.sh"
+    _PRLIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "$_PRLIB_DIR/validation.sh"
 fi
 
 if ! type charcoal_initialized &>/dev/null; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    source "$SCRIPT_DIR/charcoal-compat.sh"
+    _PRLIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "$_PRLIB_DIR/charcoal-compat.sh"
 fi
 
 # ============================================================================

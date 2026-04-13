@@ -4,9 +4,9 @@
 # Validates stack health and detects common issues
 
 # Source dependencies
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/validation.sh"
-source "$SCRIPT_DIR/charcoal-compat.sh"
+_PRLIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$_PRLIB_DIR/validation.sh"
+source "$_PRLIB_DIR/charcoal-compat.sh"
 
 # Issue tracking
 declare -a DOCTOR_ERRORS

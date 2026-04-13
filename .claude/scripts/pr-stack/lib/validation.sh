@@ -185,8 +185,8 @@ validate_azure_cli() {
 is_stacking_active() {
     # Source charcoal-compat if not already sourced
     if ! type charcoal_initialized &>/dev/null; then
-        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-        source "$SCRIPT_DIR/charcoal-compat.sh" 2>/dev/null || return 1
+        local _PRLIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        source "$_PRLIB_DIR/charcoal-compat.sh" 2>/dev/null || return 1
     fi
 
     charcoal_initialized
@@ -197,8 +197,8 @@ is_stacking_active() {
 validate_stack_info_exists() {
     # Source charcoal-compat if not already sourced
     if ! type charcoal_initialized &>/dev/null; then
-        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-        source "$SCRIPT_DIR/charcoal-compat.sh" 2>/dev/null || return 1
+        local _PRLIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        source "$_PRLIB_DIR/charcoal-compat.sh" 2>/dev/null || return 1
     fi
 
     if ! charcoal_initialized; then
@@ -218,8 +218,8 @@ get_stack_base_branch() {
 
     # Source charcoal-compat if not already sourced
     if ! type charcoal_get_parent &>/dev/null; then
-        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-        source "$SCRIPT_DIR/charcoal-compat.sh" 2>/dev/null || return 1
+        local _PRLIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        source "$_PRLIB_DIR/charcoal-compat.sh" 2>/dev/null || return 1
     fi
 
     if ! charcoal_initialized; then
