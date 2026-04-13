@@ -4,9 +4,9 @@
 # Generates ASCII, Mermaid, and DOT format graphs for PR stacks
 
 # Source dependencies
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/validation.sh"
-source "$SCRIPT_DIR/worktree-charcoal.sh"
+_PRLIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$_PRLIB_DIR/validation.sh"
+source "$_PRLIB_DIR/worktree-charcoal.sh"
 
 # ============================================================================
 # Data Collection
