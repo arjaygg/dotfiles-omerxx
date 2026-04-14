@@ -43,7 +43,7 @@ while true; do
       | grep --line-buffered "completed" || true)
 
     if [ -n "$NEW_EVENTS" ]; then
-      echo "$NEW_EVENTS" | while IFS='|' read -r run_id branch status conclusion; do
+      echo "$NEW_EVENTS" | while IFS='|' read -r run_id branch run_status conclusion; do
         if grep -q "$run_id" "$ACTED_FILE" 2>/dev/null; then
           continue
         fi
