@@ -70,6 +70,12 @@ Use this skill when the user wants to:
 
    Skip if not inside tmux (`$TMUX` is unset).
 
+   **Cursor Desktop / no tmux:** No window management needed. Work continues in the
+   current session. To move to the parent branch's worktree after merge, run:
+   ```bash
+   eval $($HOME/.dotfiles/.claude/scripts/stack up)
+   ```
+
 ## Examples
 
 User: "Merge PR #12345"
