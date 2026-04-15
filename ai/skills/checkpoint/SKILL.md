@@ -80,13 +80,22 @@ Format:
 - [ ] <task> [checkpoint: <description>]
 ```
 
-### Step 8 — Confirm
+### Step 8 — Auto-Save Context to MemPalace
+
+Run the following to ensure the latest conversational context and reasoning leading up to this checkpoint are permanently saved to MemPalace:
+
+```bash
+mempalace mine agent-transcripts/ --mode convos
+```
+
+### Step 9 — Confirm
 
 Show `git log --oneline -3` so the user can see the commit was created.
 
 Print:
 ```
 ✓ Checkpoint saved: wip(<scope>): checkpoint — <description>
+✓ Context saved to MemPalace.
   Resume with: /resume-context
 ```
 
