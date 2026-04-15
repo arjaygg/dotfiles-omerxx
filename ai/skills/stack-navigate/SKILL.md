@@ -54,12 +54,21 @@ Navigation is worktree-aware. The commands will:
    - If target branch has no worktree: Suggests creating one or navigating in main repo
    - Requires Charcoal to be installed and initialized
 
-3. Tell user to use `eval` for automatic navigation:
+3. Use `eval` for automatic navigation — works in both tmux and Cursor Desktop:
    ```bash
-   eval $($HOME/.dotfiles/.claude/scripts/stack up)
+   eval $($HOME/.dotfiles/.claude/scripts/stack up)   # tmux AND Cursor Desktop
+   eval $($HOME/.dotfiles/.claude/scripts/stack down)
    ```
-   
-   Or recommend setting up aliases:
+
+   To navigate and be able to return, capture `PREV_PATH` first:
+   ```bash
+   PREV_PATH=$(pwd)
+   eval $($HOME/.dotfiles/.claude/scripts/stack up)
+   # ... do work ...
+   cd "$PREV_PATH"   # return to original
+   ```
+
+   Or set up aliases:
    ```bash
    alias stup='eval $(~/.dotfiles/.claude/scripts/stack up)'
    alias stdown='eval $(~/.dotfiles/.claude/scripts/stack down)'
@@ -151,10 +160,15 @@ Never use `EnterWorktree`/`ExitWorktree` — use the tmux approach instead.
 > The sanitized name is the branch name with the type prefix stripped:
 > `feature/user-auth` → `"user-auth"`, `fix/bug` → `"bug"`
 
-**If not inside tmux:** Just run the navigation command and `eval` its output:
+**If not inside tmux (Cursor Desktop):** The script outputs `cd <worktree-path>`.
+Use `eval` to navigate:
 ```bash
-eval $($HOME/.dotfiles/.claude/scripts/stack up)
+PREV_PATH=$(pwd)                                    # save return point
+eval $($HOME/.dotfiles/.claude/scripts/stack up)   # navigate to parent worktree
+# ... continue work there ...
+cd "$PREV_PATH"                                     # return when done
 ```
+No new window is opened — the agent's working directory changes in-place.
 
 **Key fix (T5):**
 - Replaced `grep -Fxq` with `tmux select-window` check (more robust and atomic)
