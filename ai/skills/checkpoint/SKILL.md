@@ -82,10 +82,12 @@ Format:
 
 ### Step 8 — Auto-Save Context to MemPalace
 
-Run the following to ensure the latest conversational context and reasoning leading up to this checkpoint are permanently saved to MemPalace:
+Run the following to ensure the latest conversational context and reasoning leading up to this checkpoint are permanently saved to MemPalace (if transcripts are being tracked):
 
 ```bash
-mempalace mine agent-transcripts/ --mode convos
+if [ -d "agent-transcripts/" ]; then
+  mempalace mine agent-transcripts/ --mode convos
+fi
 ```
 
 ### Step 9 — Confirm
