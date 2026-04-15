@@ -100,17 +100,19 @@ Worktrees are created by **default** (no flag needed). You also get:
    - `fix/cursor-issue` → name = `"cursor-issue"`
    - `chore/cleanup` → name = `"cleanup"`
 
-   Use tmux to open a new window in the current session and start Claude there.
+   When not inside tmux (e.g. Cursor Desktop), the script outputs `cd <worktree-path>`
+   so the agent can `eval` it to navigate. Use: `eval $($HOME/.dotfiles/.claude/scripts/stack create <name> [base])`
+
+   When inside tmux, open a new window in the current session and start Claude there.
    Detect the current session name at runtime — never hardcode it:
    ```bash
    WORKTREE_PATH="$(pwd)/.trees/<sanitized-name>"
    WINDOW_NAME="<sanitized-name>"
    
    if [ -z "${TMUX:-}" ]; then
-       # Not inside tmux — inform user to open manually
-       echo ""
-       echo "⚠️  Not running inside tmux. To open the new worktree in a tmux window:"
-       echo "   cd $WORKTREE_PATH && claude"
+       # Cursor Desktop / no-tmux: output cd command for agent to eval
+       # Run: eval $($HOME/.dotfiles/.claude/scripts/stack create <name> [base])
+       echo "cd $WORKTREE_PATH"
        exit 0
    fi
    
@@ -197,8 +199,8 @@ Worktrees are created by **default** (no flag needed). You also get:
 
 8. Inform the user:
    - If `IN_WORKTREE=true`: Branch created in current worktree (no new worktree created)
-   - If `IN_WORKTREE=false`: Branch and worktree created at `.trees/<sanitized-name>`, handoff written, tmux window opened
-   - They can switch to it with: `tmux select-window -t "$TMUX_SESSION:<sanitized-name>"`
+   - If `IN_WORKTREE=false` + **tmux**: Branch and worktree created, handoff written, tmux window opened
+   - If `IN_WORKTREE=false` + **no tmux (Cursor Desktop)**: Branch and worktree created at `.trees/<sanitized-name>`, handoff written. The skill outputs a `cd` command — use `eval $(...stack create ...)` to navigate to the new worktree automatically.
 
 ## Opting out of worktrees
 
@@ -240,8 +242,10 @@ When using worktrees with Charcoal:
 
 User: "Create a new stacked branch for user authentication"
 Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/user-auth main`
-Then: write handoff to `.trees/user-auth/plans/session-handoff.md`, open tmux window `dev:user-auth` with `cd .trees/user-auth && claude --dangerously-skip-permissions`
-Result: Branch + worktree at `.trees/user-auth`, new Claude session ready in tmux
+Then: write handoff to `.trees/user-auth/plans/session-handoff.md`
+- **tmux**: opens window `dev:user-auth` with `claude`
+- **Cursor Desktop / no tmux**: outputs `cd .trees/user-auth` — agent evals it to navigate
+Result: Branch + worktree at `.trees/user-auth`, session (or cwd) in the worktree
 
 User: "Create stacked worktrees for API, UI, and polish"
 Actions:
