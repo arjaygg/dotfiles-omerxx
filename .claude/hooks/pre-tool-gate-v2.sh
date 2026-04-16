@@ -37,19 +37,36 @@ eval "$(echo "$INPUT" | jq -r '
 # ============================================================
 # SECTION 0: Serena session-init gate
 # Only active in real Claude sessions (CLAUDE_SESSION_ID is set by the runtime).
-# Blocks Grep before Serena has been initialized so the model is forced to call
-# mcp__pctx__list_functions → Serena.initialInstructions() first.
+# Blocks Grep AND source-file Reads before Serena has been initialized, so the
+# model is forced to call mcp__pctx__list_functions → Serena.initialInstructions() first.
+# Plan/config files (.md, .json, .yaml) are exempt — only code files are gated.
 # ============================================================
 if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
     _INIT_FLAG="/tmp/.claude-serena-init-$(id -u)-${CLAUDE_SESSION_ID}"
-    if [[ ! -f "$_INIT_FLAG" && "$TOOL_NAME" == "Grep" ]]; then
-        echo "BLOCKED: Serena not yet initialized this session." >&2
-        echo "  Before using Grep, you MUST complete the session init sequence:" >&2
-        echo "  1. Call mcp__pctx__list_functions" >&2
-        echo "  2. Write result to plans/pctx-functions.md" >&2
-        echo "  3. Call Serena.initialInstructions()" >&2
-        echo "  This ensures structural (AST-level) search is available before falling back to text search." >&2
-        exit 1
+    if [[ ! -f "$_INIT_FLAG" ]]; then
+        _INIT_STEPS="  1. Call mcp__pctx__list_functions\n  2. Write result to plans/pctx-functions.md\n  3. Call Serena.initialInstructions()"
+
+        if [[ "$TOOL_NAME" == "Grep" ]]; then
+            echo "BLOCKED: Serena not yet initialized this session." >&2
+            echo "  Before using Grep, complete the session init sequence:" >&2
+            printf '%b\n' "$_INIT_STEPS" >&2
+            echo "  This ensures structural (AST-level) search is available before falling back to text search." >&2
+            exit 1
+        fi
+
+        # Block Read on source code files — Serena.getSymbolsOverview must come first
+        if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
+            _SRC_EXT="go|ts|tsx|js|jsx|py|rs|java|kt|cs|cpp|c|h"
+            _EXT="${FILE_PATH##*.}"
+            _EXT="${_EXT,,}"
+            if [[ "$_EXT" =~ ^($_SRC_EXT)$ ]]; then
+                echo "BLOCKED: Reading source file '$FILE_PATH' before Serena init." >&2
+                echo "  Complete session init first:" >&2
+                printf '%b\n' "$_INIT_STEPS" >&2
+                echo "  Then use Serena.getSymbolsOverview to explore structure instead of reading the whole file." >&2
+                exit 1
+            fi
+        fi
     fi
 fi
 
