@@ -244,7 +244,7 @@
             "command": "/Users/axos-agallentes/homebrew/bin/node /Users/axos-agallentes/homebrew/lib/node_modules/context-mode/hooks/precompact.mjs"
           }
         ]
-      },
+      }
     ],
     "Stop": [
       {
