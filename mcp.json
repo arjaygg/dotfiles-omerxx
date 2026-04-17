@@ -5,6 +5,7 @@
       "args": [
         "mcp",
         "start",
+        "-q",
         "--stdio",
         "-c",
         "${env:HOME}/.config/pctx/pctx.json"

@@ -5,9 +5,10 @@
       "args": [
         "mcp",
         "start",
+        "-q",
         "--stdio",
         "-c",
-        "${env:HOME}/.config/pctx/pctx.json"
+        "/Users/axos-agallentes/.config/pctx/pctx.json"
       ]
     }
   }

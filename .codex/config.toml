@@ -45,6 +45,9 @@ trust_level = "trusted"
 [projects."/Users/axos-agallentes/.dotfiles"]
 trust_level = "trusted"
 
+[projects."/Users/axos-agallentes/git/auc-conversion"]
+trust_level = "trusted"
+
 [mcp_servers.pctx]
 type = "stdio"
 command = "pctx"

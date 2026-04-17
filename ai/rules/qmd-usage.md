@@ -9,6 +9,7 @@ QMD is a local semantic search engine over private markdown collections. Use it 
 | `activtrak` | ActivTrak product, user behavior analytics, internal tooling, feature docs, onboarding | ActivTrak features, user tracking, productivity analytics, internal tools, product behavior |
 | `team-okrs` | Team goals, OKRs, planning, priorities, KPIs, roadmap, metrics, quarterly targets | Team goals, OKRs, key results, initiatives, priorities, planning cycles, metrics, Q1/Q2/Q3/Q4 targets |
 | `claude-pdf-context` | PDF documents, uploaded references, shared context docs | "my docs", "check the docs", PDFs, uploaded documents, reference materials |
+| `auc-conversion` | AUC Conversion project docs — RFCs, ADRs, guides, specs, testing strategy, architecture, stories, technical debt | RFCs, ADRs, worker architecture, queue design, dequeuing, DB contention, Go patterns, conversion worker behavior, project guides |
 
 ## Tool Selection
 
