@@ -108,6 +108,10 @@
           {
             "type": "command",
             "command": "/Users/axos-agallentes/homebrew/bin/node /Users/axos-agallentes/homebrew/lib/node_modules/context-mode/hooks/sessionstart.mjs"
+          },
+          {
+            "type": "command",
+            "command": "/Users/axos-agallentes/.local/bin/mempalace hook run --hook session-start --harness claude-code"
           }
         ]
       }
@@ -240,6 +244,15 @@
             "command": "/Users/axos-agallentes/homebrew/bin/node /Users/axos-agallentes/homebrew/lib/node_modules/context-mode/hooks/precompact.mjs"
           }
         ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/axos-agallentes/.local/bin/mempalace hook run --hook precompact --harness claude-code"
+          }
+        ]
       }
     ],
     "Stop": [
@@ -257,6 +270,10 @@
           {
             "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/feedback-capture.sh\"'"
+          },
+          {
+            "type": "command",
+            "command": "/Users/axos-agallentes/.local/bin/mempalace hook run --hook stop --harness claude-code"
           }
         ]
       },
@@ -303,7 +320,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash ~/.claude/claude-statusline/statusline.sh"
+    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ Cache: %cache_hit% ▸ %time% ▸ %project%'"
   },
   "enabledPlugins": {
     "skill-creator@claude-plugins-official": true,
@@ -312,7 +329,8 @@
   },
   "extraKnownMarketplaces": {},
   "alwaysThinkingEnabled": true,
-  "effortLevel": "low",
+  "effortLevel": "medium",
+  "advisorModel": "opus",
   "plansDirectory": "./plans",
   "skipDangerousModePermissionPrompt": true,
   "autoMode": {
@@ -325,31 +343,5 @@
     ]
   },
   "compactCustomInstructions": "After compaction, immediately re-read plans/active-context.md before doing anything else — it is the authoritative resume point. Do not waste summary tokens on content already captured in plans/ files (active-context.md, decisions.md, progress.md) — those files persist on disk and will be re-read. Focus the summary on: in-flight tool call results not yet written to disk, ephemeral error messages, and any decisions made verbally that have not been recorded. Always preserve: current branch name, uncommitted file list, active plan file path, and the exact task being worked on at the moment of compaction.",
-  "mcpServers": {
-    "pctx": {
-      "command": "pctx",
-      "args": [
-        "mcp",
-        "start",
-        "--stdio",
-        "-c",
-        "${env:HOME}/.config/pctx/pctx.json"
-      ]
-    },
-    "sequential-thinking": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
-      ]
-    },
-    "voice-mode": {
-      "command": "voice-mode",
-      "args": []
-    },
-    "notebooklm": {
-      "command": "notebooklm-mcp",
-      "args": []
-    }
-  }
+  "model": "haiku"
 }
