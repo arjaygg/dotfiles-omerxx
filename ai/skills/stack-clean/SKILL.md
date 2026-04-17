@@ -44,7 +44,13 @@ Removes a merged or stale branch along with its worktree (`.trees/<name>`) and t
    - Remove the worktree at `.trees/<sanitized-name>` (refuses if dirty without `--force`)
    - Delete the local branch (refuses if unmerged without `--force`)
 
-3. Inform the user what was cleaned.
+3. Remove the QMD collection for this worktree (if it exists):
+   ```bash
+   $HOME/.bun/bin/qmd collection remove "<worktree-dir-name>" 2>/dev/null || true
+   ```
+   Use the same sanitized name as the `.trees/<name>` directory (e.g. branch `feature/auth` → dir `auth` → collection name `auth`). Silently skip if `qmd` is not installed or collection doesn't exist.
+
+4. Inform the user what was cleaned.
 
 ## Safety
 
