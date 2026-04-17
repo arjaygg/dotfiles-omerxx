@@ -245,15 +245,6 @@
           }
         ]
       },
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/axos-agallentes/.local/bin/mempalace hook run --hook precompact --harness claude-code"
-          }
-        ]
-      }
     ],
     "Stop": [
       {
