@@ -75,6 +75,18 @@ Skip this ONLY if plans/pctx-functions.md already exists and was written today.
 EOF
 fi
 
+# Register QMD collection for this worktree on first session (idempotent)
+if [[ "$CWD" == */.trees/* ]]; then
+    _QMD="$HOME/.bun/bin/qmd"
+    if [[ -x "$_QMD" ]]; then
+        _WT_NAME="${CWD##*/.trees/}"
+        _WT_NAME="${_WT_NAME%%/*}"
+        if ! "$_QMD" collection list 2>/dev/null | grep -qF "${_WT_NAME}"; then
+            "$_QMD" collection add "$CWD" --name "$_WT_NAME" --mask "**/*.md" 2>/dev/null || true
+        fi
+    fi
+fi
+
 # Update tmux window name with Claude session context
 "$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh" session-start &
 

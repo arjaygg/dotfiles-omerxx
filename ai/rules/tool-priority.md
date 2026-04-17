@@ -183,5 +183,67 @@ If you find yourself reaching for Grep, ask: **"Is this a symbol lookup or a pat
 - Pattern search (text, non-code) → `Grep tool` is acceptable
 - Finding a file → `Serena.findFile` or `Glob`
 
+## 10. Extended Tool Ecosystem Routing
+
+These rules cover the tools that `tool-priority.md` did not originally address: QMD, LeanCtx, and web research. Many overlap — use the routing table to pick the right one.
+
+### Documentation & Knowledge Lookup
+
+| Task | 1st Priority | 2nd Priority | Avoid |
+|---|---|---|---|
+| **Find docs by concept/meaning** | `Qmd.deepSearch` | `Qmd.vectorSearch` | `LeanCtx.ctxSearch` on .md files |
+| **Find docs by keyword** | `Qmd.search` | `LeanCtx.ctxSearch` | `Grep` on docs/ |
+| **Retrieve a known doc** | `Qmd.get` | `Read(path)` | — |
+| **Project knowledge (structured)** | `Serena.readMemory` | `Qmd.deepSearch` | Re-deriving from source |
+
+**Decision rule:** If you know the document path → `Qmd.get` or `Read`. If you're searching by concept or don't know where it lives → `Qmd.deepSearch`. If it's about project architecture/patterns/decisions → `Serena.readMemory` first (structured), then `Qmd` (semantic fallback).
+
+**QMD scope:** QMD indexes `docs/**/*.md` from the main repo plus the current worktree (when a worktree session is active). It does NOT index source code — use Serena for that.
+
+### File Reading
+
+| Task | 1st Priority | 2nd Priority | Avoid |
+|---|---|---|---|
+| **Read file for editing** | `Read(path)` | — | `LeanCtx.ctxRead` (use Read before Edit) |
+| **Read file for analysis** | `LeanCtx.ctxRead(mode: "signatures"\|"map"\|"aggressive")` | `Read` with limit/offset | Uncached full `Read` on large files |
+| **Read many files at once** | `LeanCtx.ctxMultiRead` | Sequential `Read` calls | — |
+| **Read with smart compression** | `LeanCtx.ctxSmartRead` | `LeanCtx.ctxRead` | — |
+
+**Rule:** Always `Read` before `Edit` (required by the Edit tool). For analysis-only reads of large files, use `LeanCtx.ctxRead` with a compression mode to save tokens.
+
+### Shell Commands
+
+| Task | 1st Priority | Avoid |
+|---|---|---|
+| **Run command, capture output** | `LeanCtx.ctxShell` (compresses output) | `Bash` for commands producing >20 lines |
+| **git/mkdir/rm/mv** | `Bash` (simple, low-output) | `LeanCtx.ctxShell` (overkill for 1-line output) |
+
+### Web Research
+
+| Task | 1st Priority | 2nd Priority | Avoid |
+|---|---|---|---|
+| **Fetch a known URL for analysis** | `mcp__plugin_context-mode__ctx_fetch_and_index` | `WebFetch` | Direct `WebFetch` (floods context) |
+| **Search for external info** | `WebSearch` | — | `WebFetch` without a URL |
+| **Follow-up questions on fetched page** | `mcp__plugin_context-mode__ctx_search` | — | Re-fetching the same URL |
+
+**Rule:** `WebFetch` directly dumps raw HTML/text into context. Always prefer `ctx_fetch_and_index` first — it indexes the page and lets you query it without polluting the context window.
+
+### Session Context & Continuity
+
+| Task | Tool |
+|---|---|
+| **What did I work on before?** | `LeanCtx.ctxSession(action: "load")` |
+| **What did a previous agent find?** | `Serena.readMemory` or `LeanCtx.ctxSession(action: "load")` |
+| **Persist finding across sessions** | `LeanCtx.ctxSession(action: "finding")` + `Serena.writeMemory` |
+
+### Common Violations (Extended)
+
+| Violation | Correct replacement |
+|---|---|
+| `Grep` or `LeanCtx.ctxSearch` on `docs/**/*.md` | `Qmd.search` or `Qmd.deepSearch` |
+| `WebFetch(url)` for analysis | `ctx_fetch_and_index(url)` then `ctx_search` |
+| `Read(large_file)` for analysis (no edit intent) | `LeanCtx.ctxSmartRead` or `ctxRead(mode: "signatures")` |
+| Multiple `Read` calls in sequence | `LeanCtx.ctxMultiRead` |
+
 ---
 *Maintained at: `/Users/axos-agallentes/.dotfiles/ai/rules/tool-priority.md`*

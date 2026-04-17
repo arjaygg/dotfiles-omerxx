@@ -15,44 +15,29 @@
       ]
     },
     {
-      "name": "exa",
-      "command": "npx",
-      "args": [
-        "--prefer-offline",
-        "exa-mcp-server",
-        "--tools=web_search_exa,deep_search_exa,get_code_context_exa,crawling_exa,company_research_exa,linkedin_search_exa,deep_researcher_start,deep_researcher_check"
-      ],
-      "env": {
-        "EXA_API_KEY": "${env:EXA_API_KEY}"
-      }
-    },
-    {
       "name": "qmd",
-      "command": "qmd",
+      "command": "/Users/axos-agallentes/.bun/bin/qmd",
       "args": [
         "mcp"
       ]
     },
     {
-      "name": "Ref",
-      "url": "https://api.ref.tools/mcp",
-      "auth": {
-        "type": "headers",
-        "headers": {
-          "x-ref-api-key": "${env:REF_API_KEY}"
-        }
+      "name": "lean-ctx",
+      "command": "/Users/axos-agallentes/.cargo/bin/lean-ctx",
+      "args": [
+        "mcp",
+        "--stdio"
+      ],
+      "env": {
+        "LEAN_CTX_CACHE_TTL": "300"
       }
     },
     {
-      "name": "markitdown",
-      "command": "markitdown-mcp",
-      "args": []
-    },
-    {
-      "name": "lean-ctx",
-      "command": "/Users/axos-agallentes/.cargo/bin/lean-ctx",
-      "args": ["mcp", "--stdio"],
-      "env": { "LEAN_CTX_CACHE_TTL": "300" }
+      "name": "repomix",
+      "command": "repomix",
+      "args": [
+        "--mcp"
+      ]
     }
   ],
   "logger": {

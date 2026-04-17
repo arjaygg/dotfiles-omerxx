@@ -9,6 +9,12 @@
 PLAN=$(grep "^plan:" plans/active-context.md 2>/dev/null | awk '{print $2}')
 [ -z "$PLAN" ] || [ ! -f "$PLAN" ] && exit 0
 
+# Superpowers Inline-Review Enforcement
+if grep -qE "TBD|TODO|// \.\.\. existing code" plans/active-context.md 2>/dev/null; then
+  echo "SUPERPOWERS CHECK FAILED: plans/active-context.md contains placeholders (TBD/TODO/existing code)."
+  echo "Rewrite the plan to be comprehensive and explicit."
+fi
+
 TOTAL_STEPS=$(grep -c "^## Step" "$PLAN" 2>/dev/null || echo 0)
 [ "$TOTAL_STEPS" -eq 0 ] && exit 0
 
