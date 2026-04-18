@@ -122,6 +122,16 @@ Heuristics for "3+ step tasks":
 - Any request phrased as "do X, then Y" or "X and also Y"
 - Any implementation task (feature, fix, refactor, migration)
 
+## Task Tracking Discipline (Multi-Agent)
+
+When spawning subagents for multi-step work:
+1. Create the task list first: `TaskCreate` with all subtasks
+2. Export `CLAUDE_CODE_TASK_LIST_ID=<id>` in each subagent's environment
+3. Each subagent uses `TaskUpdate` (not a new `TaskCreate`) to report progress
+4. The orchestrator polls `TaskGet` before aggregating results
+
+Never abandon a `TaskCreate` list — orphaned lists accumulate across sessions. Mark cancelled tasks with status `cancelled`.
+
 
 ---
 
