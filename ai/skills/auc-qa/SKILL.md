@@ -1,7 +1,7 @@
 ---
 name: auc-qa
 description: AUC-Conversion QA Agent — Test-first, mutation-verified testing for the auc-conversion ETL. Use this whenever writing failing tests before implementation (ATDD), running mutation testing on pkg/observability or pkg/resilience, or validating heuristic test coverage. Called by all Dev Agents before implementation starts.
-version: 1.0.0
+version: 1.0.1
 triggers:
   - /auc-qa
 ---
@@ -49,6 +49,9 @@ tests/integration/observability/**
 5. Read Serena memory `mutation_testing_patterns` before writing mutation tests
 6. Read Serena memory `go_testing_challenges` for known Go test pitfalls in this repo
 7. Integration tests go to `tests/integration/observability/`
+8. Prefer strengthening existing `*_test.go` coverage over creating new `*_mutation_test.go` files
+9. Only create or modify mutation-specific test files when the user explicitly asks for them or the task clearly targets an existing maintained mutation test file
+10. If untracked or malformed `*_mutation_test.go` files are present, stop and report the anomaly instead of auto-generating or silently rewriting scaffolding
 
 ## Related Skills
 

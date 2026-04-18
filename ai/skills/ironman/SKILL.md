@@ -20,7 +20,7 @@ triggers:
   - write functionality
   - implement the feature
   - implement this
-version: 1.1.0
+version: 1.1.1
 model: sonnet
 allowed-tools:
   - Read
@@ -486,6 +486,8 @@ If interrupted or hitting a blocker:
 - **For Go: always run `go test -race`** — catches subtle concurrency bugs
 - **Never stop mid-task without recording progress** — use TaskUpdate and plans/progress.md
 - **Prioritize background tasks** — use run_in_background for long operations
+- **Never create or rewrite `*_mutation_test.go` files unless the user explicitly asks or the active task clearly targets an existing maintained mutation test file**
+- **If malformed or untracked mutation files block progress, stop and ask before editing them unless the user has explicitly approved compile-only cleanup**
 
 ---
 

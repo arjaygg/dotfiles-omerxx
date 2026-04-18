@@ -399,6 +399,48 @@ fi
 
 model_name=$(resolve_statusline_model_name "$model_name")
 
+# Git status indicator: branch name with Starship/p10k-style status symbols
+# Shows: " branch !+?" where ! = unstaged, + = staged, ? = untracked
+# Also shows: ↑N for commits ahead, ↓N for commits behind remote
+git_status_indicator=""
+_git_check_dir="${current_dir:-$(pwd)}"
+if git -C "$_git_check_dir" rev-parse --git-dir >/dev/null 2>&1; then
+    _git_branch=$(git -C "$_git_check_dir" rev-parse --abbrev-ref HEAD 2>/dev/null)
+    if [[ -n "$_git_branch" ]]; then
+        _git_flags=""
+        # Check for unstaged changes (tracked files modified but not staged)
+        if ! git -C "$_git_check_dir" diff --quiet 2>/dev/null; then
+            _git_flags="${_git_flags}$(printf '\033[33m!\033[0m')"  # yellow
+        fi
+        # Check for staged changes (index differs from HEAD)
+        if ! git -C "$_git_check_dir" diff --cached --quiet 2>/dev/null; then
+            _git_flags="${_git_flags}$(printf '\033[32m+\033[0m')"  # green
+        fi
+        # Check for untracked files
+        if [[ -n "$(git -C "$_git_check_dir" ls-files --others --exclude-standard 2>/dev/null)" ]]; then
+            _git_flags="${_git_flags}$(printf '\033[31m?\033[0m')"  # red
+        fi
+
+        # Check ahead/behind remote (use @{u} upstream ref; skip if no remote)
+        _git_ahead_behind=$(git -C "$_git_check_dir" rev-list --left-right --count 'HEAD...@{u}' 2>/dev/null)
+        _git_ahead=""
+        _git_behind=""
+        if [[ -n "$_git_ahead_behind" ]]; then
+            _ahead_count=$(echo "$_git_ahead_behind" | awk '{print $1}')
+            _behind_count=$(echo "$_git_ahead_behind" | awk '{print $2}')
+            [[ "$_ahead_count" -gt 0 ]] 2>/dev/null && _git_ahead="$(printf '\033[34m↑%s\033[0m' "$_ahead_count")"  # blue
+            [[ "$_behind_count" -gt 0 ]] 2>/dev/null && _git_behind="$(printf '\033[35m↓%s\033[0m' "$_behind_count")"  # magenta
+        fi
+
+        # Compose: " branch !+? ↑N ↓N" — omit empty parts
+        _git_detail=""
+        [[ -n "$_git_flags" ]] && _git_detail="${_git_detail} ${_git_flags}"
+        [[ -n "$_git_ahead" ]] && _git_detail="${_git_detail} ${_git_ahead}"
+        [[ -n "$_git_behind" ]] && _git_detail="${_git_detail} ${_git_behind}"
+        git_status_indicator=" $(printf '\033[36m%s\033[0m' "${_git_branch}")${_git_detail}"
+    fi
+fi
+
 # Intelligent model context limit detection
 detect_model_context_limit() {
     local model="$1"
@@ -1179,6 +1221,8 @@ case "$STATUSLINE_MODE" in
         output="${output//\%tokens_output\%/${tokens_output_display}}"
         output="${output//\%tokens_ratio\%/$tokens_info}"
         output="${output//\%version\%/$claude_version}"
+        output="${output//\%git_status\%/$git_status_indicator}"
+        output="${output//\%git_dirty\%/$git_status_indicator}"
         echo "$output"
         ;;
 
