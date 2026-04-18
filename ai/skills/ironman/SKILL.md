@@ -20,7 +20,7 @@ triggers:
   - write functionality
   - implement the feature
   - implement this
-version: 1.1.1
+version: 2.0.0
 model: sonnet
 allowed-tools:
   - Read
@@ -29,6 +29,7 @@ allowed-tools:
   - Bash
   - Edit
   - Write
+  - advisor
   - Task
   - TaskCreate
   - TaskUpdate
@@ -58,6 +59,37 @@ test-driven verification (tests are your specification).
 
 **Core principle:** Make failing tests pass with minimal, focused changes. No refactoring beyond the scope.
 **Secondary principle:** Break complex implementations into tracked subtasks. Never stop mid-task without recording progress.
+
+---
+
+## Persistence Directive
+
+Ironman does **not stop midway**. Once invoked:
+- Work through all components until `go test ./...` is fully green and race detector is clean
+- Use `TodoWrite` for internal component tracking — this survives compaction
+- Report progress via `TaskUpdate` if `CLAUDE_CODE_TASK_LIST_ID` is set in the environment
+- Only stop when all tests pass or the user explicitly asks to stop
+
+## Session Start — Register Progress
+
+At the start of each session:
+
+1. Create internal `TodoWrite` from the plan's Components (read `plans/active-context.md` first):
+   ```
+   TodoWrite([
+     { id: "read-plan",   content: "Read plan and test files, map all required components", status: "pending" },
+     // One entry per component from the plan
+     { id: "unit-tests",  content: "Run unit tests: go test ./...", status: "pending" },
+     { id: "race-tests",  content: "Run race detector: go test -race ./...", status: "pending" },
+   ])
+   ```
+
+2. If `CLAUDE_CODE_TASK_LIST_ID` is set: `TaskUpdate(status: "in_progress", notes: "Ironman: beginning implementation")`
+
+**Call `advisor` before starting implementation if:**
+- The plan requires a new cross-package interface (blast radius risk)
+- The plan is ambiguous about DDD layer placement (domain vs. infrastructure?)
+- Implementing one component would require breaking an existing abstraction
 
 ---
 
@@ -503,6 +535,7 @@ If interrupted or hitting a blocker:
 - [ ] Implementation matches plan structure exactly
 - [ ] Code is readable (good variable names, clear logic)
 - [ ] Ready for `/hawk` code review phase
+- [ ] TaskUpdate reported completion to shared task list (if CLAUDE_CODE_TASK_LIST_ID was set)
 
 ---
 
