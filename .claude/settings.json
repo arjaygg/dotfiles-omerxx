@@ -327,6 +327,7 @@
   },
   "compactCustomInstructions": "After compaction, immediately re-read plans/active-context.md before doing anything else — it is the authoritative resume point. Do not waste summary tokens on content already captured in plans/ files (active-context.md, decisions.md, progress.md) — those files persist on disk and will be re-read. Focus the summary on: in-flight tool call results not yet written to disk, ephemeral error messages, and any decisions made verbally that have not been recorded. Always preserve: current branch name, uncommitted file list, active plan file path, and the exact task being worked on at the moment of compaction.",
   "autoCompact": true,
+  "autoMemory": false,
   "skillOverrides": {
     "story-complete": "off",
     "auc-dev-a": "off",
