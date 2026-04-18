@@ -45,6 +45,7 @@ while [[ $# -gt 0 ]]; do
             echo "  %time%       - Current time"
             echo "  %last%       - Time since last message"
             echo "  %project%    - Project name"
+            echo "  %task_list_id% - Task list ID (date-based)"
             echo "  %message%    - Last message preview (first 5 words)"
             echo "  %output_style% - Output style name"
             echo "  %cache%      - Cache performance (read/created tokens)"
@@ -84,6 +85,9 @@ detect_os() {
 }
 
 OS_TYPE=$(detect_os)
+
+# Read task list ID early — must be top-level so it's set in all code paths
+task_list_id="${CLAUDE_CODE_TASK_LIST_ID:-}"
 
 is_claude_client_alias() {
     local model="$1"
@@ -358,6 +362,9 @@ if echo "$input" | jq -e . >/dev/null 2>&1 && [[ "$input" != "{}" ]]; then
 
     # Extract workspace context
     project_dir=$(echo "$input" | jq -r '.workspace.project_dir // empty')
+
+    # Read task list ID from environment (set by tmux launcher scripts)
+    task_list_id="${CLAUDE_CODE_TASK_LIST_ID:-}"
 
     # If we got valid JSON but no session info, this might be a different JSON structure
     if [[ -z "$session_id" && -z "$transcript_path" ]]; then
@@ -1171,13 +1178,17 @@ case "$STATUSLINE_MODE" in
             cache_display=" • \033[${cache_color}m${cache_hit_percent}% cache\033[0m"
         fi
 
+        # Format task list ID display
+        task_id_display=""
+        [[ -n "$task_list_id" ]] && printf -v task_id_display ' • \033[90m[tasks: %s]\033[0m' "$task_list_id"
+
         if [[ -n "$message_display" ]]; then
             # Show truncated message preview (first 3 words for compact)
             compact_message=$(echo "$message_preview" | awk '{print $1, $2, $3}' | sed 's/ *$//')
             if [[ "$message_preview" != "$compact_message" ]]; then
                 compact_message="${compact_message}..."
             fi
-            printf "\033[%sm%s\033[0m • \033[32m%d%%\033[0m%s • %s💬 \"%s\" • \033[34m%s\033[0m%s\n" \
+            printf "\033[%sm%s\033[0m • \033[32m%d%%\033[0m%s • %s💬 \"%s\" • \033[34m%s\033[0m%s%s\n" \
                 "$model_color" \
                 "$model_display" \
                 "$context_percent" \
@@ -1185,10 +1196,11 @@ case "$STATUSLINE_MODE" in
                 "$output_style_compact" \
                 "$compact_message" \
                 "$project_name" \
-                "$workspace_indicator"
+                "$workspace_indicator" \
+                "$task_id_display"
         else
             # Fall back to time if no message
-            printf "\033[%sm%s\033[0m • \033[32m%d%%\033[0m%s • %s\033[%sm%s\033[0m • \033[34m%s\033[0m%s\n" \
+            printf "\033[%sm%s\033[0m • \033[32m%d%%\033[0m%s • %s\033[%sm%s\033[0m • \033[34m%s\033[0m%s%s\n" \
                 "$model_color" \
                 "$model_display" \
                 "$context_percent" \
@@ -1197,7 +1209,8 @@ case "$STATUSLINE_MODE" in
                 "$msg_color" \
                 "$last_msg" \
                 "$project_name" \
-                "$workspace_indicator"
+                "$workspace_indicator" \
+                "$task_id_display"
         fi
         ;;
 
@@ -1212,6 +1225,9 @@ case "$STATUSLINE_MODE" in
         output="${output//\%time\%/$combined_time}"
         output="${output//\%last\%/$last_msg}"
         output="${output//\%project\%/$project_name}"
+        task_list_id_fmt=""
+        [[ -n "$task_list_id" ]] && task_list_id_fmt=" ▸ $task_list_id"
+        output="${output//\%task_list_id\%/$task_list_id_fmt}"
         output="${output//\%message\%/$message_display}"
         output="${output//\%output_style\%/$output_style}"
         output="${output//\%cache\%/$cache_info}"
@@ -1241,9 +1257,13 @@ case "$STATUSLINE_MODE" in
             cache_verbose=" \033[36m▸\033[0m Cache: \033[${cache_color}m${cache_hit_percent}%\033[0m"
         fi
 
+        # Format task list ID display
+        task_id_display=""
+        [[ -n "$task_list_id" ]] && printf -v task_id_display ' \033[36m▸\033[0m Tasks: \033[90m%s\033[0m' "$task_list_id"
+
         if [[ -n "$message_display" ]]; then
             # Show message preview instead of last time
-            printf "\033[%sm%s\033[0m \033[36m▸\033[0m Context: %s%s \033[36m▸\033[0m Session: \033[96m%s\033[0m \033[36m▸\033[0m %s %s\033[36m▸\033[0m %s \033[36m▸\033[0m \033[34m%s\033[0m%s\n" \
+            printf "\033[%sm%s\033[0m \033[36m▸\033[0m Context: %s%s \033[36m▸\033[0m Session: \033[96m%s\033[0m \033[36m▸\033[0m %s %s\033[36m▸\033[0m %s \033[36m▸\033[0m \033[34m%s\033[0m%s%s\n" \
                 "$model_color" \
                 "$model_display" \
                 "$context_info" \
@@ -1253,10 +1273,11 @@ case "$STATUSLINE_MODE" in
                 "$output_style_display" \
                 "$message_display" \
                 "$project_name" \
-                "$workspace_indicator"
+                "$workspace_indicator" \
+                "$task_id_display"
         else
             # If no message, show timing instead
-            printf "\033[%sm%s\033[0m \033[36m▸\033[0m Context: %s%s \033[36m▸\033[0m Session: \033[96m%s\033[0m \033[36m▸\033[0m %s %s\033[36m▸\033[0m Last: \033[%sm%s\033[0m \033[36m▸\033[0m \033[34m%s\033[0m%s\n" \
+            printf "\033[%sm%s\033[0m \033[36m▸\033[0m Context: %s%s \033[36m▸\033[0m Session: \033[96m%s\033[0m \033[36m▸\033[0m %s %s\033[36m▸\033[0m Last: \033[%sm%s\033[0m \033[36m▸\033[0m \033[34m%s\033[0m%s%s\n" \
                 "$model_color" \
                 "$model_display" \
                 "$context_info" \
@@ -1267,7 +1288,8 @@ case "$STATUSLINE_MODE" in
                 "$msg_color" \
                 "$last_msg" \
                 "$project_name" \
-                "$workspace_indicator"
+                "$workspace_indicator" \
+                "$task_id_display"
         fi
         ;;
 esac

@@ -19,8 +19,17 @@ get_task_list_id() {
     fi
     mkdir -p "$proj_dir/plans"
     local new_id
-    new_id=$(python3 -c "import uuid; print(str(uuid.uuid4()))" 2>/dev/null \
-        || printf '%s-%s' "$(date +%s%N 2>/dev/null || date +%s)" "$$")
+    # Use date-only format (YYYY-MM-DD) plus hash of canonical cwd to maintain uniqueness within day
+    local date_part
+    date_part=$(date +%Y-%m-%d)
+    # Canonicalize path (resolve symlinks, remove trailing slash) for consistent hashing
+    local canonical_dir
+    canonical_dir=$(cd "$proj_dir" 2>/dev/null && pwd || printf '%s' "$proj_dir")
+    local cwd_hash
+    cwd_hash=$(printf '%s' "$canonical_dir" | python3 -c "import sys, hashlib; print(hashlib.md5(sys.stdin.read().encode()).hexdigest()[:8])" 2>/dev/null \
+        || printf '%s' "$canonical_dir" | md5sum | cut -d' ' -f1 | cut -c1-8 2>/dev/null \
+        || printf '%x' "$$")
+    new_id="$date_part-$cwd_hash"
     printf '%s' "$new_id" > "$id_file"
     printf '%s' "$new_id"
 }

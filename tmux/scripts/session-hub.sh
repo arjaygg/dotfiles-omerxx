@@ -376,7 +376,7 @@ open_session() {
     tmux new-window \
         -c "$cwd" \
         -n "$window_name_trunc" \
-        bash -l -c "cd '$safe_cwd' && CLAUDE_CODE_TASK_LIST_ID='$task_list_id' claude --dangerously-skip-permissions --resume '$session_id'; '$SCRIPT_DIR/claude-tmux-bridge.sh' session-stop"
+        bash -l -c "cd '$safe_cwd' && export CLAUDE_CODE_TASK_LIST_ID='$task_list_id' && claude --dangerously-skip-permissions --resume '$session_id'; '$SCRIPT_DIR/claude-tmux-bridge.sh' session-stop"
 }
 
 # ── Phase 5: Preview content ──────────────────────────────────────────────────
