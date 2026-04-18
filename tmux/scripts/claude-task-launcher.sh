@@ -12,10 +12,11 @@ SENTINEL_NO_ID="[no task id]"
 
 # Derive default candidates
 branch=$(git -C "$PANE_PATH" branch --show-current 2>/dev/null || true)
+branch_slug="${branch#*/}"   # strip type prefix: feature/foo → foo
 datetime_id="task-$(date +%Y%m%d-%H%M%S)"
 
 candidates=()
-[[ -n "$branch" ]] && candidates+=("$branch")
+[[ -n "$branch_slug" ]] && candidates+=("$branch_slug")
 candidates+=("$datetime_id")
 candidates+=("$SENTINEL_NO_ID")
 
