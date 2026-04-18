@@ -71,6 +71,42 @@ if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
 fi
 
 # ============================================================
+# SECTION 0B: Context-loaded gate (ctxIntent requirement)
+# Blocks Grep unless LeanCtx.ctxIntent or ctxBatchExecute was called.
+# These tools load live project context — always current, not manually curated.
+# ============================================================
+if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
+    _CTX_FLAG="/tmp/.claude-ctx-loaded-$(id -u)-${CLAUDE_SESSION_ID}"
+    if [[ "$TOOL_NAME" == "Grep" && ! -f "$_CTX_FLAG" ]]; then
+        echo "BLOCKED: Context not yet loaded in this session." >&2
+        echo "  Before using Grep, load project context with:" >&2
+        echo "    LeanCtx.ctxIntent({ query: '<your task description>' })" >&2
+        echo "  Batch it in: mcp__pctx__execute_typescript" >&2
+        echo "  This indexes live project context — derived from current codebase, not manually curated." >&2
+        exit 1
+    fi
+fi
+
+# ============================================================
+# SECTION 1B: Serena/pctx batching threshold gate
+# Blocks excessive sequential calls to Serena/pctx tools without execute_typescript batching.
+# ============================================================
+if [[ "$TOOL_NAME" == mcp__serena__* ]] || [[ "$TOOL_NAME" == mcp__pctx__* ]]; then
+    if [[ "$TOOL_NAME" != "mcp__pctx__execute_typescript" ]]; then
+        # Direct Serena/pctx call (not batched) — check counter
+        _COUNTER_FILE="/tmp/.claude-serena-calls-$(id -u)-${SESSION_ID}"
+        if [[ -f "$_COUNTER_FILE" ]]; then
+            _COUNT=$(wc -l < "$_COUNTER_FILE" 2>/dev/null || echo 0)
+            if [[ "$_COUNT" -ge 4 ]]; then
+                echo "BLOCKED: $_COUNT sequential Serena/pctx calls without batching." >&2
+                echo "  Use: mcp__pctx__execute_typescript with Promise.all() to batch multiple calls." >&2
+                exit 1
+            fi
+        fi
+    fi
+fi
+
+# ============================================================
 # SECTION 1: Read guards
 # ============================================================
 if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then

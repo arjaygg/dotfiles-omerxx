@@ -118,6 +118,15 @@ if [[ "$TOOL_NAME" == mcp__serena__* || "$TOOL_NAME" == mcp__pctx__* ]]; then
     if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then
         # Batched call — reset counter
         rm -f "$TRACKER" 2>/dev/null || true
+
+        # Detect context-loading calls (ctxIntent or ctxBatchExecute)
+        SCRIPT=$(echo "$INPUT" | jq -r '.tool_input.script // empty' 2>/dev/null)
+        if [[ -n "$SCRIPT" ]]; then
+            if echo "$SCRIPT" | grep -qE "ctxIntent|ctxBatchExecute"; then
+                # Mark that context has been loaded in this session
+                touch "/tmp/.claude-ctx-loaded-$(id -u)-${CLAUDE_SESSION_ID}" 2>/dev/null || true
+            fi
+        fi
     else
         # Track the call
         NOW=$(date '+%s')
