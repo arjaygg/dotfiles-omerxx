@@ -160,16 +160,28 @@ done
 HANDOFF_EXISTS=0
 [[ -f "$CWD/plans/session-handoff.md" ]] && HANDOFF_EXISTS=1
 
+# Check if active-context.md is 3+ days old (content may describe a different task)
+ACTIVE_CTX_AGE=""
+ACTIVE_CTX_PATH="$CWD/plans/active-context.md"
+if [[ -f "$ACTIVE_CTX_PATH" ]]; then
+    MTIME=$(stat -f%m "$ACTIVE_CTX_PATH" 2>/dev/null || stat -c%Y "$ACTIVE_CTX_PATH" 2>/dev/null || echo 0)
+    NOW=$(date +%s)
+    AGE_DAYS=$(( (NOW - MTIME) / 86400 ))
+    if [[ "$AGE_DAYS" -ge 3 ]]; then
+        ACTIVE_CTX_AGE="${AGE_DAYS}"
+    fi
+fi
+
 # All healthy and no handoff → silent exit
-if [[ ${#MISSING[@]} -eq 0 ]] && [[ ${#STALE[@]} -eq 0 ]] && [[ "$HANDOFF_EXISTS" -eq 0 ]]; then
+if [[ ${#MISSING[@]} -eq 0 ]] && [[ ${#STALE[@]} -eq 0 ]] && [[ "$HANDOFF_EXISTS" -eq 0 ]] && [[ -z "$ACTIVE_CTX_AGE" ]]; then
     exit 0
 fi
 
 # Build and output warning
-python3 - "${MISSING[*]:-}" "${STALE[*]:-}" "$HANDOFF_EXISTS" <<'PYEOF'
+python3 - "${MISSING[*]:-}" "${STALE[*]:-}" "$HANDOFF_EXISTS" "$ACTIVE_CTX_AGE" <<'PYEOF'
 import sys
 
-missing_str, stale_str, handoff_exists = sys.argv[1], sys.argv[2], sys.argv[3]
+missing_str, stale_str, handoff_exists, ctx_age = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 missing = [f for f in missing_str.split() if f]
 stale = [f for f in stale_str.split() if f]
 has_handoff = handoff_exists == "1"
@@ -193,8 +205,16 @@ if stale:
         lines.append(f"  - {f}")
     lines.append("Action: Update stale files to reflect current session state.")
 
-if has_handoff:
+if ctx_age:
     if missing or stale:
+        lines.append("")
+    lines.append(f"STALE CONTEXT: plans/active-context.md is {ctx_age} days old.")
+    lines.append("  Warning: content may describe a different task than what you're working on now.")
+    lines.append("  Action: Read active-context.md and verify the 'focus:' line matches your current task.")
+    lines.append("          Update it if stale, or delete it to start fresh.")
+
+if has_handoff:
+    if missing or stale or ctx_age:
         lines.append("")
     lines.append("HANDOFF AVAILABLE: plans/session-handoff.md exists from a prior session.")
     lines.append("Action: Read plans/session-handoff.md to restore prior session context, then delete it.")

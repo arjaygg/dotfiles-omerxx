@@ -154,6 +154,15 @@
         ]
       },
       {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/post-read-auto-delete.sh\"'"
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {

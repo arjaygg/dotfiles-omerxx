@@ -17,11 +17,14 @@ These rules apply to every project on this machine where `pctx` (and its upstrea
 | Read from line N onward | `tail -n +N file` | `Read(file_path, offset: N)` |
 | Read lines N to M | `sed -n 'N,Mp'`, `awk 'NR>=N && NR<=M'` | `Read(file_path, offset: N, limit: M-N)` |
 | Limit any piped output | `cmd \| head -N`, `cmd \| awk 'NR<=N'` | Use the tool's built-in `limit:` param |
+| Limit output from external CLI (kubectl, gh, az, docker, jq, curl) | N/A — no agent-accessible `limit:` param | Pipe to `head -N` is correct; this is NOT an anti-pattern |
 | Search file contents | `grep pattern`, `rg pattern` | `Grep(pattern, path)` |
 | Find files by name/pattern | `find . -name "*.go"` | `Glob("**/*.go")` |
 | List directory | `ls dir/` | `Glob("dir/*")` |
 | Edit a file in-place | `sed -i`, `awk` rewrite | `Edit(file, old_string, new_string)` |
 | Create a file | `echo > file`, `cat <<EOF` | `Write(file_path, content)` |
+
+**External CLI exception:** For commands invoking external tools (kubectl, gh, az, docker, jq, curl) where no agent-accessible `limit:` parameter exists, piping to `head -N` is explicitly permitted and is the correct pattern.
 
 **If a hook fires blocking your Bash command:**
 1. Switch to the correct dedicated tool immediately — do NOT find a shell workaround
