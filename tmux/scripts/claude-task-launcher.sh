@@ -11,7 +11,10 @@ PANE_PATH="${1:-$PWD}"
 SENTINEL_NO_ID="[no task id]"
 
 # Derive default candidates
-branch=$(git -C "$PANE_PATH" branch --show-current 2>/dev/null || true)
+branch=""
+if git -C "$PANE_PATH" rev-parse --git-dir >/dev/null 2>&1; then
+  branch=$(git -C "$PANE_PATH" branch --show-current 2>/dev/null || true)
+fi
 branch_slug="${branch#*/}"   # strip type prefix: feature/foo → foo
 datetime_id="task-$(date +%Y%m%d-%H%M%S)"
 
