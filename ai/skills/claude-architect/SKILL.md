@@ -2,17 +2,10 @@
 name: claude-architect
 description: >
   Creates, designs, and registers Claude Code primitives — Skills, Hooks, Agents, MCP Servers,
-  Memory, Permissions, and Worktrees. Decides which primitive fits a goal and builds it on the spot.
-  USE THIS SKILL any time someone asks about controlling or extending Claude Code's own behavior, including:
-  "create a skill", "add a hook", "I want Claude to automatically do X", "can I make it automatic somehow",
-  "should I use a skill or a hook", "which is better — a skill or a hook", "build a slash command",
-  "set up an MCP server", "I want Claude to be able to call an API", "how do I give Claude access to X",
-  "block Claude from doing X", "prevent Claude from doing Y", "is that a hook?",
-  "which Claude primitive should I use", "automate when X happens", "I want Claude to always do X without me asking",
-  "what's the difference between an agent and a subagent and a skill", or anything about designing Claude Code behavior.
-  Always invoke proactively — do not wait for the user to know the vocabulary.
-  Do NOT invoke for: git pre-commit hooks (not Claude Code hooks), GitHub Actions, external automation
-  tools (Airflow, Jenkins), building VSCode/Cursor extensions, or general bash scripting unrelated to Claude.
+  Memory, Permissions, and Worktrees. Use this whenever someone asks to control or extend Claude Code
+  behavior, choose between skills/hooks/agents/MCP, create a slash command, automate Claude behavior,
+  add permissions, block Claude actions, or explain TodoWrite vs TaskCreate. Do not use for git hooks,
+  GitHub Actions, external schedulers, editor extensions, or general bash scripting unrelated to Claude.
 version: 2.1.0
 triggers:
   - create a skill
