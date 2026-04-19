@@ -1,26 +1,14 @@
 # Active Context
 
-plan: plans/2026-04-18-session-hygiene-enforcement.md
-step: 0 of 4
-focus: planning — pending user approval
+## Current Focus
+Dotfiles repository maintenance and AI agent configuration optimization.
 
-## Current Task
+## Recent Work
+- Claude hooks improvements with MCP usage examples
+- Codex reasoning effort optimization 
+- Serena memory system integration
 
-Implementing findings from Apr 15–18 auc-conversion session analysis. Four enforcement gaps identified:
-
-1. session-handoff.md persistence (676 injections/session) → PostToolUse auto-delete hook
-2. tool-priority.md pipe-limiter has no external CLI exception → doc edit
-3. auc-conversion AGENTS.md missing code-path advisor triggers + TaskTracking discipline
-4. plans-healthcheck.sh doesn't detect stale active-context.md
-
-## Branch
-
-`chore/enforce-session-hygiene` (dotfiles) + separate branch in auc-conversion for Fix 3
-
-## Key Files
-
-- `.claude/hooks/post-read-auto-delete.sh` (create)
-- `.claude/settings.json` (add PostToolUse hook)
-- `ai/rules/tool-priority.md` (add external CLI pipe exception)
-- `.claude/hooks/plans-healthcheck.sh` (extend staleness check)
-- `/Users/axos-agallentes/git/auc-conversion/AGENTS.md` (add two sections)
+## Next Steps
+- Monitor hook effectiveness in practice
+- Evaluate reasoning quality improvements
+- Expand Serena memory coverage
