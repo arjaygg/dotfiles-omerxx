@@ -209,6 +209,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/session-init-enforcer.sh\"'"
+          },
+          {
+            "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/qmd-sync.sh\"'"
           },
           {
@@ -238,6 +242,10 @@
           {
             "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/prompt-score-correction.sh\"'"
+          },
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/symbol-intent.sh\"'"
           }
         ]
       }
