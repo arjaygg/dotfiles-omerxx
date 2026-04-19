@@ -1,6 +1,6 @@
 personality = "pragmatic"
-model = "gpt-5.4"
-model_reasoning_effort = "high"
+model = "gpt-5.3-codex"
+model_reasoning_effort = "medium"
 model_instructions_file = "~/.dotfiles/ai/rules/agent-user-global.md"
 project_doc_fallback_filenames = ["AGENTS.md"]
 [projects."~/git/setup"]
@@ -51,7 +51,7 @@ trust_level = "trusted"
 [mcp_servers.pctx]
 type = "stdio"
 command = "pctx"
-args = ["mcp", "start", "--stdio", "-c", "~/.config/pctx/pctx.json"]
+args = ["mcp", "start", "--stdio", "-c", "/Users/axos-agallentes/.config/pctx/pctx.json"]
 startup_timeout_sec = 90
 
 [notice.model_migrations]
@@ -62,7 +62,69 @@ gpt-5-codex = "gpt-5.2-codex"
 "gpt-5.3-codex" = "gpt-5.4"
 
 [features]
+apps = false
 unified_exec = true
 shell_snapshot = true
 multi_agent = true
 prevent_idle_sleep = true
+
+[marketplaces.openai-bundled]
+last_updated = "2026-04-19T13:00:04Z"
+source_type = "local"
+source = "/Users/axos-agallentes/.codex/.tmp/bundled-marketplaces/openai-bundled"
+
+[[skills.config]]
+path = "/Users/axos-agallentes/.dotfiles/ai/skills/ado-workitem/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-dev-a/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-dev-b/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-dev-c/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-devintegration-suite/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-manifest-review/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-qa/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-sm/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-tech-writer/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/Users/axos-agallentes/.dotfiles/ai/skills/bmad-custom-pr-review/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/Users/axos-agallentes/.codex/skills/.system/plugin-creator/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/Users/axos-agallentes/.codex/skills/.system/skill-installer/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/Users/axos-agallentes/.codex/skills/.system/skill-creator/SKILL.md"
+enabled = false
+
+[[skills.config]]
+path = "/Users/axos-agallentes/.dotfiles/ai/skills/tech-lead/SKILL.md"
+enabled = false
