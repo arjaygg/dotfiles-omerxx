@@ -27,16 +27,47 @@ if ! command -v notebooklm-mcp &> /dev/null; then
     uv tool install notebooklm-mcp-cli
 fi
 
-# Claude Code skill symlinks (relative paths, tool-agnostic)
-mkdir -p ~/.dotfiles/.claude/skills
-ln -sf ../../ai/skills/pctx-code-mode ~/.dotfiles/.claude/skills/pctx-code-mode
-ln -sf ../../ai/skills/autoresearch ~/.dotfiles/.claude/skills/autoresearch
-ln -sf ../../ai/skills/explore ~/.dotfiles/.claude/skills/explore
+# Symlink all shared skills from the Unified AI Hub into an agent's user-scoped
+# skills directory. Existing real directories are preserved so tool-managed
+# folders like ~/.codex/skills/.system are not overwritten.
+link_skills_from_dir() {
+    local source_dir="$1"
+    local target_dir="$2"
+    local mode="${3:-replace}" # replace | only-missing
 
-# Codex skill symlinks (absolute paths — codex resolves from ~/.codex/skills/)
-mkdir -p ~/.codex/skills
-ln -sf ~/.dotfiles/ai/skills/pctx-code-mode ~/.codex/skills/pctx-code-mode
-ln -sf ~/.dotfiles/ai/skills/explore ~/.codex/skills/explore
+    [ -d "$source_dir" ] || return 0
+    mkdir -p "$target_dir"
+
+    local skill_dir name target
+    for skill_dir in "$source_dir"/*; do
+        [ -d "$skill_dir" ] || continue
+        [ -f "$skill_dir/SKILL.md" ] || [ -f "$skill_dir/skill.md" ] || continue
+
+        name="$(basename "$skill_dir")"
+        target="$target_dir/$name"
+
+        if [ -e "$target" ] && [ ! -L "$target" ]; then
+            echo "Skipping $target (exists and is not a symlink)"
+            continue
+        fi
+
+        if [ "$mode" = "only-missing" ] && [ -e "$target" ]; then
+            continue
+        fi
+
+        ln -sfn "$skill_dir" "$target"
+    done
+}
+
+# Claude Code skill symlinks (repo-scoped distribution layer)
+link_skills_from_dir "$HOME/.dotfiles/ai/skills" "$HOME/.dotfiles/.claude/skills"
+
+# Codex user-scoped skill symlinks. Codex discovers user skills from
+# ~/.codex/skills, so link every shared AI skill there while preserving Codex's
+# own ~/.codex/skills/.system directory. Then include any Claude-local skills
+# that have not yet been promoted into ai/skills.
+link_skills_from_dir "$HOME/.dotfiles/ai/skills" "$HOME/.codex/skills"
+link_skills_from_dir "$HOME/.dotfiles/.claude/skills" "$HOME/.codex/skills" only-missing
 
 # Cursor skill symlinks (absolute paths — cursor resolves from ~/.cursor/skills/)
 mkdir -p ~/.cursor/skills

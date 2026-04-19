@@ -129,6 +129,7 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
     # 1c. .go files without limit — use Serena
     if [[ "$FILE_PATH" == *.go && -z "$LIMIT" ]]; then
         echo "BLOCKED: Reading entire .go file '$FILE_PATH' without limit/offset. Use Serena.getSymbolsOverview to understand structure, then Read with limit/offset for the specific symbol." >&2
+        echo "  Call via: mcp__pctx__execute_typescript with: await Serena.getSymbolsOverview('${FILE_PATH}')" >&2
         exit 1
     fi
 
@@ -146,6 +147,7 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
             fi
             if [[ "$_SERENA_LEVEL" == "block" ]]; then
                 echo "BLOCKED: Reading entire source file '$FILE_PATH' without limit/offset. Use Serena.getSymbolsOverview to understand structure, then LeanCtx.ctxRead or Read with limit/offset for specific symbols." >&2
+                echo "  Call via: mcp__pctx__execute_typescript with: await Serena.getSymbolsOverview('${FILE_PATH}')" >&2
                 exit 1
             else
                 echo "HINT: Consider Serena.getSymbolsOverview for '$FILE_PATH' to see structure first, then Read with limit/offset for specific symbols."
@@ -363,14 +365,17 @@ if [[ -f "${HOME}/.config/pctx/pctx.json" ]]; then
     if [[ "$TOOL_NAME" == "Grep" && -n "$PATTERN" ]]; then
         if [[ "$PATTERN" =~ ^(func|class|type|struct|interface|def|fn)[[:space:]] ]]; then
             echo "$_SERENA_PREFIX: For symbol lookups, use Serena.findSymbol (structural) or LeanCtx.ctxSearch (token-efficient) instead of Grep." >&2
+            echo "  Call via: mcp__pctx__execute_typescript with: await Serena.findSymbol({ name: '<symbol>' })" >&2
             exit $_SERENA_EXIT
         fi
         if [[ "$PATTERN" =~ ^[A-Z][a-zA-Z0-9]+$ ]]; then
             echo "$_SERENA_PREFIX: '$PATTERN' looks like a symbol name. Use Serena.findSymbol('$PATTERN') for structural results, or LeanCtx.ctxSearch for pattern matching." >&2
+            echo "  Call via: mcp__pctx__execute_typescript with: await Serena.findSymbol({ name: '${PATTERN}' })" >&2
             exit $_SERENA_EXIT
         fi
         # General pattern — LeanCtx.ctxSearch is a direct drop-in
         echo "$_SERENA_PREFIX: Use LeanCtx.ctxSearch instead of Grep — it's gitignore-aware, session-cached, and token-efficient." >&2
+        echo "  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ query: '${PATTERN}' })" >&2
         exit $_SERENA_EXIT
     fi
 
