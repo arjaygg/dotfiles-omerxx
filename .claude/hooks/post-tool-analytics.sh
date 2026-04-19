@@ -120,7 +120,7 @@ if [[ "$TOOL_NAME" == mcp__serena__* || "$TOOL_NAME" == mcp__pctx__* ]]; then
         rm -f "$TRACKER" 2>/dev/null || true
 
         # Detect context-loading calls (ctxIntent or ctxBatchExecute)
-        SCRIPT=$(echo "$INPUT" | jq -r '.tool_input.script // empty' 2>/dev/null)
+        SCRIPT=$(echo "$INPUT" | jq -r '.tool_input.code // empty' 2>/dev/null)
         if [[ -n "$SCRIPT" ]]; then
             if echo "$SCRIPT" | grep -qE "ctxIntent|ctxBatchExecute"; then
                 # Mark that context has been loaded in this session

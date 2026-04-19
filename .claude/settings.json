@@ -136,7 +136,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|Read|Edit|Write|Grep|Glob|Agent",
+        "matcher": "Bash|Read|Edit|Write|MultiEdit|Grep|Glob|Agent",
         "hooks": [
           {
             "type": "command",

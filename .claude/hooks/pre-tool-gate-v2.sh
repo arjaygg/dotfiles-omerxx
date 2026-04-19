@@ -2,7 +2,7 @@
 # Consolidated PreToolUse gate (v2)
 # Replaces: pre-tool-gate.sh, serena-tool-priority.sh, edit-without-read.sh,
 #           check-agent-parallelism.sh, plan-scope-gate.sh, plan-naming-enforcer
-# Matcher: Bash|Read|Edit|Write|Grep|Glob|Agent
+# Matcher: Bash|Read|Edit|Write|MultiEdit|Grep|Glob|Agent
 #
 # Design: single process, jq for JSON parse (~3ms vs python3 ~30ms),
 #         stdout only (never stderr), exit 0 or 1 (no exit 2).
@@ -43,6 +43,22 @@ eval "$(echo "$INPUT" | jq -r '
 # ============================================================
 if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
     _INIT_FLAG="/tmp/.claude-serena-init-$(id -u)-${CLAUDE_SESSION_ID}"
+
+    # Honor "skip if plans/pctx-functions.md was written today" — auto-set the temp flag
+    # so a warmed session (file exists from today) doesn't re-block tools on a new session ID.
+    if [[ ! -f "$_INIT_FLAG" ]]; then
+        _PCTX_FILE="plans/pctx-functions.md"
+        _TODAY=$(date '+%Y-%m-%d')
+        _FILE_DATE=""
+        if [[ -f "$_PCTX_FILE" ]]; then
+            _FILE_DATE=$(date -r "$_PCTX_FILE" '+%Y-%m-%d' 2>/dev/null || \
+                         stat -c '%y' "$_PCTX_FILE" 2>/dev/null | cut -d' ' -f1 || echo "")
+        fi
+        if [[ "$_FILE_DATE" == "$_TODAY" ]]; then
+            touch "$_INIT_FLAG" 2>/dev/null || true
+        fi
+    fi
+
     if [[ ! -f "$_INIT_FLAG" ]]; then
         _INIT_STEPS="  1. Call mcp__pctx__list_functions\n  2. Write result to plans/pctx-functions.md\n  3. Call Serena.initialInstructions()"
 
@@ -66,6 +82,17 @@ if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
                 echo "  Then use Serena.getSymbolsOverview to explore structure instead of reading the whole file." >&2
                 exit 1
             fi
+        fi
+
+        # Block Bash before init — Claude must not bypass init via shell commands.
+        # The init sequence uses only MCP tools (mcp__pctx__list_functions,
+        # mcp__pctx__execute_typescript) and the Write tool — no Bash needed.
+        if [[ "$TOOL_NAME" == "Bash" ]]; then
+            echo "BLOCKED: Bash not available before session init." >&2
+            echo "  Complete the session init sequence first:" >&2
+            printf '%b\n' "$_INIT_STEPS" >&2
+            echo "  Session init uses only MCP tools — no Bash required." >&2
+            exit 1
         fi
     fi
 fi
@@ -208,13 +235,20 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
             echo "[MONITOR HINT] This command looks like a poll loop. If the goal is event-watching (notify when condition changes), the Monitor tool is more efficient — zero tokens when silent, vs this loop which costs tokens on every iteration. See ai/rules/monitor-patterns.md."
         fi
     fi
+
+    # 2g. Piped text processors — catch 'cmd | head', 'cmd | grep', etc. (deny list only catches prefixes)
+    if echo "$CMD" | grep -qE '\| *(head|tail|cat|sed|awk|grep|rg)( |$)'; then
+        PIPE_CMD=$(echo "$CMD" | grep -oE '\| *(head|tail|cat|sed|awk|grep|rg)' | head -1 | tr -d '| ')
+        echo "BLOCKED: Piped '$PIPE_CMD' detected. Use --limit/--json flags, jq, or context-mode tools instead of text processors after pipes." >&2
+        exit 1
+    fi
 fi
 
 # ============================================================
 # SECTION 3: Edit guards
 # ============================================================
-if [[ "$TOOL_NAME" == "Edit" ]]; then
-    # 3a. Edit without read check
+# 3a. Edit/MultiEdit without read check
+if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "MultiEdit" ]]; then
     if [[ -n "$FILE_PATH" ]]; then
         READ_LOG="/tmp/.claude-read-log-$(id -u)"
         if [[ ! -f "$READ_LOG" ]] || ! grep -qF "$FILE_PATH" "$READ_LOG" 2>/dev/null; then
@@ -222,8 +256,10 @@ if [[ "$TOOL_NAME" == "Edit" ]]; then
             exit 1
         fi
     fi
+fi
 
-    # 3b. Edit/Write on main/master branch — hard block (stacking enforcement)
+# 3b. Edit/Write/MultiEdit on main/master branch — hard block (stacking enforcement)
+if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "MultiEdit" ]]; then
     if [[ -n "$FILE_PATH" ]]; then
         _EDIT_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
         if [[ "$_EDIT_BRANCH" == "main" || "$_EDIT_BRANCH" == "master" ]]; then
@@ -244,8 +280,10 @@ if [[ "$TOOL_NAME" == "Edit" ]]; then
             fi
         fi
     fi
+fi
 
-    # 3c. Kernel file edit caution (advisory)
+# 3c. Kernel file edit caution (advisory)
+if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "MultiEdit" ]]; then
     if [[ -n "$FILE_PATH" ]]; then
         _CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
         _IN_WORKTREE=0
@@ -266,7 +304,7 @@ fi
 # ============================================================
 # SECTION 4: Edit/Write — hyper-atomic state + plan scope
 # ============================================================
-if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]]; then
+if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "MultiEdit" ]]; then
     # 4a. Hyper-atomic state check
     _ATOMIC_HOOKS=$(git config --local core.hooksPath 2>/dev/null || echo "")
     if [[ "$_ATOMIC_HOOKS" == "$HOME/.dotfiles/git/hooks" ]]; then
