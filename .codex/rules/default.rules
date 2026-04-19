@@ -1,0 +1,34 @@
+# Codex native shell approval rules.
+# Keep this focused on high-risk commands and common trusted prefixes.
+
+# Existing trusted workflow commands
+prefix_rule(pattern=["git", "fetch"], decision="allow")
+prefix_rule(pattern=["git", "switch", "-c", "backup/pre-main-sync-2026-03-22"], decision="allow")
+prefix_rule(pattern=["git", "switch", "codex/tui-standalone-startup-fix"], decision="allow")
+prefix_rule(pattern=["git", "cherry-pick"], decision="allow")
+prefix_rule(pattern=["git", "add", "README.md", "cmd/server/main.go", "go.mod"], decision="allow")
+prefix_rule(pattern=["go", "test"], decision="allow")
+prefix_rule(pattern=["rm", "-f", "CLIProxyAPI", "server"], decision="allow")
+prefix_rule(pattern=["git", "worktree", "remove"], decision="allow")
+prefix_rule(pattern=["git", "switch", "main"], decision="allow")
+prefix_rule(pattern=["git", "pull", "--ff-only"], decision="allow")
+prefix_rule(pattern=["git", "branch", "-d"], decision="allow")
+
+# Guardrails for destructive operations
+prefix_rule(
+  pattern=["git", "reset", "--hard"],
+  decision="prompt",
+  justification="Destructive git history operation: require explicit confirmation."
+)
+
+prefix_rule(
+  pattern=["git", "clean", "-fd"],
+  decision="prompt",
+  justification="Deletes untracked files: require explicit confirmation."
+)
+
+prefix_rule(
+  pattern=["rm", "-rf"],
+  decision="prompt",
+  justification="Recursive delete is high-risk: require explicit confirmation."
+)
