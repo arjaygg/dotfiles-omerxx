@@ -6,10 +6,10 @@
 # the last write, preventing redundant overwrites on every single turn.
 
 set -euo pipefail
-trap 'echo "HOOK CRASH (session-end.sh line $LINENO): $BASH_COMMAND"; exit 0' ERR
+trap 'echo "HOOK CRASH (session-end.sh line $LINENO): $BASH_COMMAND" >&2; exit 0' ERR
 
 # Restore tmux window name on session end
-"$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh" activity-stop 2>/dev/null || true
+"$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh" activity-stop >/dev/null 2>&1 || true
 
 CWD=$(pwd)
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M')
@@ -132,7 +132,7 @@ REMINDER_EOF
 fi
 
 # Flush hook metrics to SQLite
-"${BASH_SOURCE[0]%/*}/hook-metrics.sh" flush 2>/dev/null || true
+"${BASH_SOURCE[0]%/*}/hook-metrics.sh" flush >/dev/null 2>&1 || true
 
 # Clean up session-duration-guard counter
 rm -f "/tmp/.claude-turn-count-${UID}" 2>/dev/null || true
