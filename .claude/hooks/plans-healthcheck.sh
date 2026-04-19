@@ -44,7 +44,7 @@ if [[ ! -f "$CACHE_FILE" ]] || [[ $CACHE_AGE -ge $CACHE_TTL ]]; then
             MISSING_BINARIES+=("$bin")
             # Trigger silent background install if a command is defined
             install_cmd="${BINARY_AUTO_INSTALL[$bin]:-}"
-            if [[ -n "$install_cmd" ]]; then
+            if [[ -n "$install_cmd" ]] && [[ "${CLAUDE_HOOKS_DISABLE_AUTO_INSTALL:-0}" != "1" ]]; then
                 (eval "$install_cmd" &>/dev/null) &
             fi
         fi
