@@ -67,6 +67,7 @@ unified_exec = true
 shell_snapshot = true
 multi_agent = true
 prevent_idle_sleep = true
+codex_hooks = true
 
 [marketplaces.openai-bundled]
 last_updated = "2026-04-19T13:00:04Z"

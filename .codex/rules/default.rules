@@ -1,0 +1,38 @@
+# Codex native shell approval rules.
+# Keep this focused on high-risk commands and common trusted prefixes.
+
+# Low-risk defaults
+prefix_rule(pattern=["git", "fetch"], decision="allow")
+prefix_rule(pattern=["go", "test"], decision="allow")
+
+# Prompt for potentially destructive git operations
+prefix_rule(
+  pattern=["git", "worktree", "remove"],
+  decision="prompt",
+  justification="Worktree removal can discard local work; require explicit confirmation."
+)
+
+# Guardrails for destructive operations
+prefix_rule(
+  pattern=["git", "reset", "--hard"],
+  decision="prompt",
+  justification="Destructive git history operation: require explicit confirmation."
+)
+
+prefix_rule(
+  pattern=["git", "clean", "-fd"],
+  decision="prompt",
+  justification="Deletes untracked files: require explicit confirmation."
+)
+
+prefix_rule(
+  pattern=["git", "clean", "-fdx"],
+  decision="prompt",
+  justification="Deletes ignored and untracked files: require explicit confirmation."
+)
+
+prefix_rule(
+  pattern=["rm", "-rf"],
+  decision="prompt",
+  justification="Recursive delete is high-risk: require explicit confirmation."
+)
