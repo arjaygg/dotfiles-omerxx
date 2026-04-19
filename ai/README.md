@@ -25,6 +25,7 @@ The primitives are linked granularly from this directory into the agent-specific
 
 - **Source:** `~/.dotfiles/ai/`
 - **Link Strategy:** Granular symlinking of individual files and directories.
+- **Codex Skills:** User-scoped Codex skills live in `~/.codex/skills/`. `setup.sh` links every skill with a `SKILL.md`/`skill.md` manifest from `~/.dotfiles/ai/skills/` into that directory and preserves Codex-managed folders such as `~/.codex/skills/.system`. Any Claude-local skill that has not yet been promoted into `ai/skills/` is linked into Codex only if the name is not already present.
 
 ### Cursor Auto-Loading
 
