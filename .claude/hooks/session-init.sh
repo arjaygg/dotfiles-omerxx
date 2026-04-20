@@ -5,12 +5,26 @@
 set -euo pipefail
 trap 'echo "HOOK CRASH (session-init.sh line $LINENO): $BASH_COMMAND"; exit 0' ERR
 
+emit_hook_context() {
+    local msg="$1"
+    python3 - "$msg" <<'PYEOF'
+import json, sys
+msg = sys.argv[1]
+print(json.dumps({
+    "hookSpecificOutput": {
+        "hookEventName": "SessionStart",
+        "additionalContext": msg
+    }
+}))
+PYEOF
+}
+
 # Write session-start timestamp to a per-user temp file
 TIMESTAMP_FILE="/tmp/.claude-session-start-$(id -u)"
 date '+%s' > "$TIMESTAMP_FILE"
 
 # Warn if a substantial session already ran in this directory recently
-bash "$HOME/.dotfiles/.claude/hooks/duplicate-session-check.sh" || true
+_DUPLICATE_WARN="$(bash "$HOME/.dotfiles/.claude/hooks/duplicate-session-check.sh" 2>/dev/null || true)"
 
 # Kill stale pctx processes from other worktrees to prevent cross-contamination.
 # Each stdio pctx session inherits its CWD, so a process started in worktree A
@@ -40,6 +54,7 @@ while [[ "$dir" != "/" ]]; do
     dir="$(dirname "$dir")"
 done
 
+_SESSION_MSG=""
 if $HAS_SERENA; then
     # Count available memories for the hint
     _SERENA_DIR="$(pwd)/.serena/memories"
@@ -52,7 +67,7 @@ if $HAS_SERENA; then
         _MEM_HINT="  4. Serena.readMemory({ name: \"START_HERE\" }) — load project memories ($_MEM_COUNT available)"
     fi
 
-    cat <<EOF
+    _SESSION_MSG="$(cat <<EOT
 [SESSION INIT REQUIRED]
 Before the first project file access (Read/Grep/Glob/Serena), you MUST:
   1. Call mcp__pctx__list_functions — confirm current Serena/lean-ctx signatures
@@ -61,9 +76,10 @@ Before the first project file access (Read/Grep/Glob/Serena), you MUST:
 ${_MEM_HINT}
   5. Call LeanCtx.ctxIntent({ query: <task-description> }) — REQUIRED to unlock Grep in this session.
 Skip this ONLY if plans/pctx-functions.md already exists and was written today.
-EOF
+EOT
+)"
 else
-    cat <<'EOF'
+    _SESSION_MSG="$(cat <<'EOT'
 [SESSION INIT REQUIRED]
 Before the first project file access (Read/Grep/Glob/Serena), you MUST:
   1. Call mcp__pctx__list_functions — confirm current Serena/lean-ctx signatures
@@ -72,7 +88,8 @@ Before the first project file access (Read/Grep/Glob/Serena), you MUST:
 
 Skip step 3 (Serena.initialInstructions) — no .serena/ config found in this directory tree.
 Skip this ONLY if plans/pctx-functions.md already exists and was written today.
-EOF
+EOT
+)"
 fi
 
 # Register QMD collection for this worktree on first session (idempotent)
@@ -88,6 +105,14 @@ if [[ "$CWD" == */.trees/* ]]; then
 fi
 
 # Update tmux window name with Claude session context
-"$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh" session-start &
+"$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh" session-start >/dev/null 2>&1 &
+
+if [[ -n "${_DUPLICATE_WARN:-}" ]]; then
+    _SESSION_MSG="${_DUPLICATE_WARN}
+
+${_SESSION_MSG}"
+fi
+
+emit_hook_context "$_SESSION_MSG"
 
 exit 0
