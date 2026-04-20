@@ -22,6 +22,9 @@ eval "$(echo "$INPUT" | jq -r '
   @sh "TASK_STATUS=\(.tool_input.status // "")"
 ' 2>/dev/null)" 2>/dev/null || exit 0
 
+# Prefer explicit session_id from tool payload; fall back to env var for compatibility.
+EFFECTIVE_SESSION_ID="${SESSION_ID:-${CLAUDE_SESSION_ID:-default}}"
+
 # Extract output text and line count for Bash/Agent (heavier parse, only when needed)
 LINE_COUNT=0
 OUTPUT=""
@@ -124,7 +127,7 @@ if [[ "$TOOL_NAME" == mcp__serena__* || "$TOOL_NAME" == mcp__pctx__* ]]; then
         if [[ -n "$SCRIPT" ]]; then
             if echo "$SCRIPT" | grep -qE "ctxIntent|ctxBatchExecute"; then
                 # Mark that context has been loaded in this session
-                touch "/tmp/.claude-ctx-loaded-$(id -u)-${CLAUDE_SESSION_ID}" 2>/dev/null || true
+                touch "/tmp/.claude-ctx-loaded-$(id -u)-${EFFECTIVE_SESSION_ID}" 2>/dev/null || true
             fi
         fi
     else
@@ -156,11 +159,9 @@ fi
 # Set the flag that pre-tool-gate-v2 Section 0 checks, so Grep is unblocked
 # once the model has called mcp__pctx__list_functions or any Serena tool.
 # ============================================================
-if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
-    if [[ "$TOOL_NAME" == "mcp__pctx__list_functions" ]] || [[ "$TOOL_NAME" == mcp__serena__* ]]; then
-        _INIT_FLAG="/tmp/.claude-serena-init-$(id -u)-${CLAUDE_SESSION_ID}"
-        touch "$_INIT_FLAG" 2>/dev/null || true
-    fi
+if [[ "$TOOL_NAME" == "mcp__pctx__list_functions" ]] || [[ "$TOOL_NAME" == mcp__serena__* ]]; then
+    _INIT_FLAG="/tmp/.claude-serena-init-$(id -u)-${EFFECTIVE_SESSION_ID}"
+    touch "$_INIT_FLAG" 2>/dev/null || true
 fi
 
 # ============================================================

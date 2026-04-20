@@ -1,6 +1,6 @@
 personality = "pragmatic"
 model = "gpt-5.3-codex"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 model_instructions_file = "~/.dotfiles/ai/rules/agent-user-global.md"
 project_doc_fallback_filenames = ["AGENTS.md"]
 [projects."~/git/setup"]

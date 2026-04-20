@@ -8,6 +8,34 @@ trap 'echo "HOOK CRASH (plans-healthcheck.sh line $LINENO): $BASH_COMMAND"; exit
 # CRITICAL: Drain stdin — all UserPromptSubmit hooks must consume stdin to prevent buffering issues
 cat > /dev/null
 
+# UserPromptSubmit expects JSON output when emitting context.
+# Capture plain-text advisory output from this script and wrap it as hookSpecificOutput.
+TMP_OUT="$(mktemp "/tmp/plans-healthcheck.XXXXXX")"
+exec 3>&1
+exec >"$TMP_OUT"
+
+flush_userprompt_json() {
+    local status=$?
+    if [[ -s "$TMP_OUT" ]]; then
+        python3 - "$TMP_OUT" >&3 <<'PYEOF'
+import json, sys
+path = sys.argv[1]
+with open(path, encoding="utf-8", errors="replace") as f:
+    msg = f.read().strip()
+if msg:
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "UserPromptSubmit",
+            "additionalContext": msg
+        }
+    }))
+PYEOF
+    fi
+    rm -f "$TMP_OUT"
+    exit "$status"
+}
+trap flush_userprompt_json EXIT
+
 CWD=$(pwd)
 TODAY=$(date '+%Y-%m-%d')
 

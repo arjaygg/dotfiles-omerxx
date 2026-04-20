@@ -2,7 +2,7 @@
 
 plan: plans/2026-04-18-session-hygiene-enforcement.md
 step: 0 of 4
-focus: planning — pending user approval
+focus: new session — awaiting user direction (2026-04-20)
 
 ## Current Task
 

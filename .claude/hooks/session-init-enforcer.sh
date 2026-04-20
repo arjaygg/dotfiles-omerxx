@@ -7,6 +7,9 @@
 
 set -euo pipefail
 
+# CRITICAL: Drain stdin — all UserPromptSubmit hooks should consume stdin
+cat > /dev/null
+
 [[ -z "${CLAUDE_SESSION_ID:-}" ]] && exit 0
 
 _SERENA_FLAG="/tmp/.claude-serena-init-$(id -u)-${CLAUDE_SESSION_ID}"
@@ -33,7 +36,7 @@ if $_MISSING_CTX; then
     _STEPS+="  - LeanCtx.ctxIntent({ query: '<describe the current task>' })\n"
 fi
 
-cat <<EOF
+cat <<EOF | python3 -c 'import json,sys; m=sys.stdin.read().strip(); print(json.dumps({"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":m}}))'
 [SESSION INIT INCOMPLETE] Run the following via mcp__pctx__execute_typescript BEFORE answering this prompt:
 $(printf '%b' "$_STEPS")
 Batch all missing steps into ONE execute_typescript call with Promise.all() where possible.

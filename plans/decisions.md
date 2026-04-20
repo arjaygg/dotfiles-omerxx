@@ -60,3 +60,9 @@ Durable record: `decisions/0003-universal-constitution-loading.md`
 ## ADL-009 — Hooks are scaffolding, not architecture
 
 2026-04-01 — Hooks train behavioral patterns but have diminishing returns once Claude learns the rule via instructions. Future: LES metrics, auto-graduation, memory reinforcement.
+
+---
+
+## ADL-010 — 2026-04-20 session initialization housekeeping
+
+Loaded Serena manual + project memories, processed and deleted `plans/session-handoff.md`, and kept active plan context unchanged pending next user task.
