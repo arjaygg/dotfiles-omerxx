@@ -11,7 +11,7 @@
 #   3. If text blocks contain [saves * memory:] but no Write to memory/ → emit reminder
 
 set -euo pipefail
-trap 'echo "HOOK CRASH (feedback-capture.sh line $LINENO): $BASH_COMMAND"; exit 0' ERR
+trap 'echo "HOOK CRASH (feedback-capture.sh line $LINENO): $BASH_COMMAND" >&2; exit 0' ERR
 
 # --- Read transcript path from stdin ---
 HOOK_PAYLOAD=$(cat)
@@ -32,7 +32,7 @@ fi
 [[ -z "$TRANSCRIPT_PATH" ]] || [[ ! -f "$TRANSCRIPT_PATH" ]] && exit 0
 
 # --- Parse last assistant turn and detect mismatch ---
-python3 - "$TRANSCRIPT_PATH" <<'PYEOF'
+python3 - "$TRANSCRIPT_PATH" <<'PYEOF' >&2
 import sys, json, re
 
 jsonl_path = sys.argv[1]

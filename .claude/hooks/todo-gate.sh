@@ -13,7 +13,7 @@
 #   - all todos completed      → allow stop normally
 
 set -euo pipefail
-trap 'echo "HOOK CRASH (todo-gate.sh line $LINENO): $BASH_COMMAND"; exit 0' ERR
+trap 'echo "HOOK CRASH (todo-gate.sh line $LINENO): $BASH_COMMAND" >&2; exit 0' ERR
 
 SCRIPT_NAME="todo-gate"
 HOOK_CONFIG="$HOME/.dotfiles/.claude/hooks/hook-config.yaml"
@@ -105,9 +105,9 @@ print(json.dumps({'decision': 'block', 'reason': reason}))
 " "$REASON"
     exit 0
 else
-    # Advisory: stdout so model sees it, exit 0 so stop proceeds
-    echo ""
-    echo "TODO-GATE: $COUNT incomplete todo(s) remain:"
-    echo "$ITEMS"
+    # Advisory only; keep stdout clean for stop-hook JSON parsing
+    echo "" >&2
+    echo "TODO-GATE: $COUNT incomplete todo(s) remain:" >&2
+    echo "$ITEMS" >&2
     exit 0
 fi
