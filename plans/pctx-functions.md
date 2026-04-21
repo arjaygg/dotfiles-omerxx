@@ -1,29 +1,22 @@
-# pctx function signatures snapshot
+# pctx Functions — 2026-04-21
 
-Date: 2026-04-20
+Namespaces: Serena, Qmd, LeanCtx, Repomix
 
-Captured via `mcp__pctx__.list_functions`.
-
-## Namespaces discovered
-- Serena
-- Qmd
-- LeanCtx
-- Repomix
-
-## Serena functions
+## Serena
 listDir, findFile, searchForPattern, getSymbolsOverview, findSymbol, findReferencingSymbols,
 replaceSymbolBody, insertAfterSymbol, insertBeforeSymbol, renameSymbol,
 writeMemory, readMemory, listMemories, deleteMemory, renameMemory, editMemory,
-checkOnboardingPerformed, onboarding, initialInstructions.
+checkOnboardingPerformed, onboarding, initialInstructions
 
-## Qmd functions
-search, vectorSearch, deepSearch, get, multiGet, status.
+## Qmd
+search, vectorSearch, deepSearch, get, multiGet, status
 
-## LeanCtx functions
-ctxRead, ctxMultiRead, ctxTree, ctxShell, ctxSearch, ctxCompress, ctxBenchmark, ctxMetrics,
-ctxAnalyze, ctxCache, ctxDiscover, ctxSmartRead, ctxDelta, ctxDedup, ctxFill, ctxIntent,
-ctxResponse, ctxContext, ctxGraph, ctxSession, ctxKnowledge, ctxAgent, ctxOverview, ctxWrapped.
+## LeanCtx
+ctxRead, ctxMultiRead, ctxTree, ctxShell, ctxSearch, ctxCompress, ctxBenchmark,
+ctxMetrics, ctxAnalyze, ctxCache, ctxDiscover, ctxSmartRead, ctxDelta, ctxDedup,
+ctxFill, ctxIntent, ctxResponse, ctxContext, ctxGraph, ctxSession, ctxKnowledge,
+ctxAgent, ctxOverview, ctxWrapped
 
-## Repomix functions
-packCodebase, packRemoteRepository, generateSkill, attachPackedOutput, readRepomixOutput,
-grepRepomixOutput, fileSystemReadFile, fileSystemReadDirectory.
+## Repomix
+packCodebase, packRemoteRepository, generateSkill, attachPackedOutput,
+readRepomixOutput, grepRepomixOutput, fileSystemReadFile, fileSystemReadDirectory
