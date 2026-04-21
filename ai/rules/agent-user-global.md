@@ -22,6 +22,12 @@ These rules are the user-global baseline for AI coding agents on this machine.
 - Prefer non-interactive git commands.
 - For non-trivial changes, prefer isolated branches and worktrees.
 
+## Pull Request Title Policy
+
+- PR titles MUST use Conventional Commits format: `type(optional-scope): summary`
+- Allowed types: `feat`, `fix`, `perf`, `refactor`, `test`, `ci`, `chore`, `docs`, `style`, `revert`
+- When creating PRs, prefer stack tooling (`~/.dotfiles/.claude/scripts/stack pr` / `stack pr-all`) so validation is deterministic.
+
 ## File And Tool Discipline
 
 - Prefer dedicated tools over shell fallbacks when the client provides them.
@@ -209,6 +215,16 @@ Use the right primitive based on whether the task is event-driven or time-driven
 Patterns and recipes: `ai/rules/monitor-patterns.md`
 
 ---
+
+## Compound Request Echo-Back
+
+For any request containing 2+ distinct actions joined by AND/THEN/ALSO/PLUS, before taking any action:
+1. Print a one-line interpretation: "I understand: (1) X, (2) Y, (3) Z"
+2. Proceed immediately — do NOT wait for confirmation unless actions are destructive
+
+## Scope Declaration
+
+Before editing >3 files: list the files and why each is in scope. Stop if any are not obviously connected to the request.
 
 ## Unified AI Hub Structure
 
