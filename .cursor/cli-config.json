@@ -3,7 +3,15 @@
     "allow": [
       "Shell(ls)",
       "Shell(sudo)",
-      "Shell(brew)"
+      "Shell(brew)",
+      "Shell(git)",
+      "Shell(kubectl)",
+      "Shell(grep)",
+      "Shell(head)",
+      "Shell(python3)",
+      "Shell(python)",
+      "Shell(jq)",
+      "Shell(rg)"
     ],
     "deny": []
   },

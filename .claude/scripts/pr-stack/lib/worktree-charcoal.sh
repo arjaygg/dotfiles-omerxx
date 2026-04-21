@@ -24,6 +24,47 @@ fi
 # Worktree Detection
 # ============================================================================
 
+# Absolute path to the directory where linked worktrees should live (main checkout
+# root: the parent of ".trees/", not a nested worktree directory).
+# Uses the /.trees/ path layout first (Charcoal/stack default), then git-common-dir.
+resolve_main_repo_root() {
+    local apath
+    apath="$(pwd -P 2>/dev/null || pwd)"
+
+    if [[ "$apath" == */.trees/* ]]; then
+        echo "${apath%%/.trees/*}"
+        return 0
+    fi
+
+    local common top
+    common="$(git rev-parse --git-common-dir 2>/dev/null || true)"
+    top="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+
+    if [[ -z "$common" ]]; then
+        echo "$top"
+        return 0
+    fi
+
+    if [[ "$common" != /* ]]; then
+        common="${top%/}/${common#./}"
+    fi
+    if [[ "$common" != /* ]]; then
+        common="$top/$common"
+    fi
+
+    common="$(cd "$common" && pwd)"
+
+    case "$common" in
+        */.git)
+            echo "${common%/.git}"
+            ;;
+        *)
+            # Unexpected; fall back to reported worktree root
+            echo "$top"
+            ;;
+    esac
+}
+
 # Check if current directory is a worktree
 # Returns: 0 if in worktree, 1 if in main repo
 is_in_worktree() {
@@ -41,15 +82,7 @@ is_in_worktree() {
 # Get the main repo path from a worktree
 # Returns: Path to main repo
 get_main_repo_path() {
-    local git_common_dir
-    git_common_dir=$(git rev-parse --git-common-dir 2>/dev/null)
-    
-    if [ -n "$git_common_dir" ]; then
-        # Remove /.git from the end
-        echo "${git_common_dir%/.git}"
-    else
-        git rev-parse --show-toplevel
-    fi
+    resolve_main_repo_root
 }
 
 # Get worktree path for a given branch
@@ -341,14 +374,12 @@ wt_add_for_branch() {
         return 1
     fi
 
-    # CRITICAL: If we're already in a worktree, we must create the new worktree
-    # from the main repo root, not nested inside the current worktree.
-    if is_in_worktree; then
-        local main_repo
-        main_repo=$(get_main_repo_path)
-        print_info "Detected worktree context - creating from main repo at: $main_repo"
-        cd "$main_repo"
+    local main_repo
+    main_repo="$(resolve_main_repo_root)"
+    if [[ "$(pwd -P 2>/dev/null || pwd)" != "$main_repo" ]]; then
+        print_info "Using main repo root for worktree add: $main_repo"
     fi
+    cd "$main_repo"
 
     # Sanitize branch name for directory
     local description
@@ -436,6 +467,7 @@ wt_stack_status() {
 # ============================================================================
 
 export -f is_in_worktree 2>/dev/null || true
+export -f resolve_main_repo_root 2>/dev/null || true
 export -f get_main_repo_path 2>/dev/null || true
 export -f get_worktree_path 2>/dev/null || true
 export -f wt_charcoal_up 2>/dev/null || true

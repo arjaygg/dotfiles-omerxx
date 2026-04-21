@@ -18,6 +18,9 @@ case "$STATE" in
         _DIAG=$("$ATOMIC_STATUS" --verbose 2>&1 1>/dev/null || true)
         [[ -n "$_DIAG" ]] && echo "$_DIAG" | sed 's/^/   /' >&2
         echo "   Split your changes into focused commits, one concern at a time." >&2
+        # Log Level 4 violation
+        source "$HOME/.dotfiles/.claude/hooks/violation-tracker.sh" 2>/dev/null || true
+        log_violation "level4_block" "pre_commit" "git_commit" "" "atomic_blocked_commit" 2>/dev/null || true
         exit 1
         ;;
     overgrown)

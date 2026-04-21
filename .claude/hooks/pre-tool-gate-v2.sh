@@ -11,6 +11,9 @@
 set -euo pipefail
 trap 'echo "HOOK CRASH (pre-tool-gate-v2.sh line $LINENO): $BASH_COMMAND"' ERR
 
+# Source violation tracker
+source "$HOME/.dotfiles/.claude/hooks/violation-tracker.sh" 2>/dev/null || true
+
 INPUT=$(cat)
 
 # --- Single JSON parse via jq ---
@@ -141,13 +144,25 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
     case "${FILE_PATH##*/}" in
         package-lock.json|yarn.lock|Cargo.lock|pnpm-lock.yaml|composer.lock|Gemfile.lock)
             echo "BLOCKED: Reading ${FILE_PATH##*/} directly wastes tokens. Use Grep to search for specific entries instead." >&2
+            log_violation "level1_block" "pre_tool_gate" "Read" "$FILE_PATH" "lock_file_read" 2>/dev/null || true
             exit 1 ;;
     esac
 
-    # 1b. Large files without limit
+    # 1a-extra. Generated/bulk files by pattern — repomix outputs, go.sum, lock files
+    _fname="${FILE_PATH##*/}"
+    if [[ "$_fname" == *_repomix_* || "$FILE_PATH" == *.sum || "$FILE_PATH" == *-lock.* ]]; then
+        echo "BLOCKED: ${_fname} is a generated/lock file — no direct-read value. Use ctxSmartRead or Grep to search specific entries." >&2
+        log_violation "level1_block" "pre_tool_gate" "Read" "$FILE_PATH" "generated_file_read" 2>/dev/null || true
+        exit 1
+    fi
+
+    # 1b. Large files without limit — tiered by size
     if [[ -f "$FILE_PATH" && -z "$LIMIT" ]]; then
         FILE_SIZE=$(stat -f%z "$FILE_PATH" 2>/dev/null || stat -c%s "$FILE_PATH" 2>/dev/null || echo 0)
-        if [[ "$FILE_SIZE" -gt 102400 ]]; then
+        if [[ "$FILE_SIZE" -gt 512000 ]]; then
+            echo "BLOCKED: $FILE_PATH is $(( FILE_SIZE / 1024 ))KB — use LeanCtx.ctxSmartRead(\"$FILE_PATH\") for analysis-only reads." >&2
+            exit 1
+        elif [[ "$FILE_SIZE" -gt 102400 ]]; then
             echo "BLOCKED: $FILE_PATH is $(( FILE_SIZE / 1024 ))KB. Use Read with limit/offset or Grep to read only the relevant section." >&2
             exit 1
         fi
@@ -327,6 +342,7 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Mult
                 _DIAG=$("$HOME/.dotfiles/scripts/ai/atomic-status.sh" --verbose 2>&1 1>/dev/null || true)
                 [[ -n "$_DIAG" ]] && echo "$_DIAG" | sed 's/^/  /' >&2
                 echo "  Commit or checkpoint current work before editing more files." >&2
+                log_violation "level1_block" "pre_tool_gate" "$TOOL_NAME" "$FILE_PATH" "atomic_blocked" 2>/dev/null || true
                 exit 1
                 ;;
             overgrown)
@@ -443,6 +459,12 @@ if [[ "$TOOL_NAME" == "Agent" ]]; then
         echo "If tasks are truly sequential or dependent, rephrase your prompt to make that explicit." >&2
         exit 0
     fi
+fi
+
+# Log successful pass-through (Level 1 allowed operation)
+if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Bash" || "$TOOL_NAME" == "Read" ]]; then
+    log_violation "level1_pass" "pre_tool_gate" "$TOOL_NAME" "$FILE_PATH" "" 2>/dev/null || true
+    [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]] && log_operation "edit" "$FILE_PATH" 2>/dev/null || true
 fi
 
 exit 0
