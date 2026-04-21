@@ -36,7 +36,14 @@ Use this skill when the user wants to:
    - `title`: PR title (optional — auto-generated from branch name if omitted)
    - `draft`: Whether to create as draft (optional)
 
-2. **Account detection** — determine which GH account to use:
+2. **PR title policy (required)**:
+   - Titles must be Conventional Commits format:
+     `type(optional-scope): summary`
+   - Allowed types: `feat|fix|perf|refactor|test|ci|chore|docs|style|revert`
+   - If title is omitted, the stack script now generates a deterministic conventional title from the branch name.
+   - If title is explicitly provided and invalid, creation is blocked.
+
+3. **Account detection** — determine which GH account to use:
    ```bash
    REMOTE_ORG=$(git remote get-url origin | sed 's|.*github\.com[/:]||;s|/.*||')
    ACTIVE=$(gh api user --jq '.login' 2>/dev/null)
@@ -44,19 +51,19 @@ Use this skill when the user wants to:
    [ "$ACTIVE" != "$TARGET_ACCOUNT" ] && gh auth switch --user "$TARGET_ACCOUNT" > /dev/null 2>&1 || true
    ```
 
-3. **Preflight** — ensure credential helper is registered:
+4. **Preflight** — ensure credential helper is registered:
    ```bash
    gh auth setup-git
    ```
 
-4. **Push and create PR** by delegating to the stack script (handles account switching, target detection, and body generation):
+5. **Push and create PR** by delegating to the stack script (handles account switching, target detection, body generation, and PR title validation):
    ```bash
    BRANCH=$(git branch --show-current)
    $HOME/.dotfiles/.claude/scripts/stack pr "$BRANCH" "" "<title>"
    ```
    For draft: append `--draft`. The script auto-detects the Charcoal parent as target (falls back to main).
 
-5. Return the PR URL to the user.
+6. Return the PR URL to the user.
 
 ## Examples
 

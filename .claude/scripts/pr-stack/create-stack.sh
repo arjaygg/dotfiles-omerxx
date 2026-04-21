@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # create-stack.sh - Create a new branch in the PR stack
-# Usage: ./create-stack.sh <new-branch-name> [base-branch] [commit-message] [--no-worktree]
-# Worktrees are created by default. Pass --no-worktree to skip.
+# Usage: ./create-stack.sh <new-branch-name> [base-branch] [commit-message]
+# Always creates a linked worktree under <main-repo>/.trees/ (never nested under another worktree).
 
 set -e
 
@@ -15,37 +15,26 @@ source "$_CREATE_STACK_DIR/lib/worktree-charcoal.sh"
 # Functions
 print_usage() {
     echo -e "${BLUE}Usage:${NC}"
-    echo "  ./create-stack.sh <new-branch-name> [base-branch] [commit-message] [--no-worktree]"
+    echo "  ./create-stack.sh <new-branch-name> [base-branch] [commit-message]"
     echo ""
     echo -e "${BLUE}Arguments:${NC}"
     echo "  new-branch-name    Name of the new branch to create (required)"
     echo "  base-branch        Branch to base the new branch on (default: main)"
     echo "  commit-message     Initial commit message (optional)"
-    echo "  --worktree, -w     Create a git worktree (default: enabled)"
-    echo "  --no-worktree      Skip worktree creation"
     echo ""
     echo -e "${BLUE}Examples:${NC}"
     echo "  ./create-stack.sh feature/new-api main"
-    echo "  ./create-stack.sh feature/ui feature/api --no-worktree"
+    echo "  ./create-stack.sh feature/ui feature/api"
 }
 
 # Parse arguments
 NEW_BRANCH=""
 BASE_BRANCH=""
 COMMIT_MESSAGE=""
-CREATE_WORKTREE=true
 POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --worktree|-w)
-            CREATE_WORKTREE=true
-            shift
-            ;;
-        --no-worktree)
-            CREATE_WORKTREE=false
-            shift
-            ;;
         -h|--help)
             print_usage
             exit 0
@@ -96,11 +85,14 @@ if ! charcoal_initialized; then
     exit 1
 fi
 
-# Get repository root (already at root from validation)
-REPO_ROOT=$(get_repo_root)
+# Linked worktrees must be created from the main checkout root (parent of .trees/),
+# not from inside another worktree — even though validation cd's to show-toplevel.
+REPO_ROOT="$(resolve_main_repo_root)"
+cd "$REPO_ROOT"
 
 print_info "Creating new branch: $NEW_BRANCH"
 print_info "Based on: $BASE_BRANCH"
+print_info "Repository root: $REPO_ROOT"
 
 # Fetch latest changes
 print_info "Fetching latest changes..."
@@ -114,195 +106,77 @@ fi
 BASE_BEHIND=$(git rev-list --count "$BASE_BRANCH..origin/$BASE_BRANCH" 2>/dev/null || echo "0")
 if [ "$BASE_BEHIND" -gt 0 ]; then
     print_warning "Local $BASE_BRANCH is $BASE_BEHIND commit(s) behind origin/$BASE_BRANCH"
-    if [ "$CREATE_WORKTREE" = true ]; then
-         print_info "Auto-updating base branch for worktree creation..."
-         # We can't checkout, so we rely on fetch. 
-         # If the local base branch is behind, the worktree creation from it might use the old tip.
-         # However, we can use origin/$BASE_BRANCH if we want the latest.
-         # For now, let's assume the user wants to branch from the local ref, 
-         # but we warn them. If they wanted to update, they should have pulled.
-         # OR we can try to fast-forward if possible without checkout:
-         if git remote get-url origin >/dev/null 2>&1; then
-             git fetch origin "$BASE_BRANCH:$BASE_BRANCH" 2>/dev/null || print_warning "Could not fast-forward $BASE_BRANCH without checkout."
-         else
-             print_warning "No 'origin' remote configured; cannot fast-forward $BASE_BRANCH"
-         fi
+    print_info "Auto-updating base branch ref for worktree creation..."
+    if git remote get-url origin >/dev/null 2>&1; then
+        git fetch origin "$BASE_BRANCH:$BASE_BRANCH" 2>/dev/null || print_warning "Could not fast-forward $BASE_BRANCH without checkout."
     else
-        read -p "Update $BASE_BRANCH from remote? (y/n) " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            git checkout "$BASE_BRANCH"
-            git pull origin "$BASE_BRANCH"
-        fi
+        print_warning "No 'origin' remote configured; cannot fast-forward $BASE_BRANCH"
     fi
 fi
 
-if [ "$CREATE_WORKTREE" = true ]; then
-    # Worktree Creation Logic
+# Worktree creation (always); paths are relative to REPO_ROOT
 
-    # CRITICAL: If we're already in a worktree, we must create the new worktree
-    # from the main repo root, not nested inside the current worktree.
-    # E.g., if in .trees/story-1/, create .trees/new-branch/ not .trees/story-1/.trees/new-branch/
+# Sanitize directory name (remove type prefix if standard, replace slashes)
+# E.g. feature/foo -> foo
+DESCRIPTION=$(echo "$NEW_BRANCH" | sed -E 's/^(feature|feat|bugfix|fix|hotfix|release|chore)\///')
+DESCRIPTION=$(echo "$DESCRIPTION" | tr '[:upper:]' '[:lower:]' | sed -E 's/[ _]/-/g' | sed -E 's/[^a-z0-9.-]//g' | sed -E 's/-+/-/g' | sed -E 's/^-|-$//g')
 
-    MAIN_REPO_ROOT="$REPO_ROOT"
-    if is_in_worktree; then
-        MAIN_REPO_ROOT=$(get_main_repo_path)
-        print_info "Detected worktree context - creating from main repo at: $MAIN_REPO_ROOT"
-        cd "$MAIN_REPO_ROOT"
+WORKTREE_PATH=".trees/$DESCRIPTION"
+
+print_info "Creating worktree at $WORKTREE_PATH..."
+
+mkdir -p .trees
+
+if [ -d "$WORKTREE_PATH" ]; then
+    print_error "Directory $WORKTREE_PATH already exists"
+    exit 1
+fi
+
+if ! grep -q "^.trees/" .gitignore 2>/dev/null; then
+    echo ".trees/" >> .gitignore
+    print_info "Added .trees/ to .gitignore"
+fi
+
+if git worktree add -b "$NEW_BRANCH" "$WORKTREE_PATH" "$BASE_BRANCH"; then
+    WORKTREE_ABS_PATH="$(cd "$WORKTREE_PATH" && pwd)"
+        
+    print_info "Setting up worktree configuration..."
+
+    if [ -f .env ] && git check-ignore -q .env 2>/dev/null; then
+        cp .env "$WORKTREE_PATH/.env"
+        print_info "Copied .env (gitignored)"
     fi
 
-    # Sanitize directory name (remove type prefix if standard, replace slashes)
-    # E.g. feature/foo -> foo
-    # Sanitize logic:
-    # 1. Remove standard prefixes
-    # 2. Lowercase
-    # 3. Replace spaces/underscores with hyphens
-    # 4. Remove special chars
-    # 5. Collapse hyphens
-
-    DESCRIPTION=$(echo "$NEW_BRANCH" | sed -E 's/^(feature|feat|bugfix|fix|hotfix|release|chore)\///')
-    DESCRIPTION=$(echo "$DESCRIPTION" | tr '[:upper:]' '[:lower:]' | sed -E 's/[ _]/-/g' | sed -E 's/[^a-z0-9.-]//g' | sed -E 's/-+/-/g' | sed -E 's/^-|-$//g')
-
-    WORKTREE_PATH=".trees/$DESCRIPTION"
-
-    print_info "Creating worktree at $WORKTREE_PATH..."
-
-    # Ensure .trees exists (in main repo root)
-    mkdir -p .trees
-    
-    # Check if directory exists
-    if [ -d "$WORKTREE_PATH" ]; then
-        print_error "Directory $WORKTREE_PATH already exists"
-        exit 1
-    fi
-    
-    # Check if .trees/ is in .gitignore
-    if ! grep -q "^.trees/" .gitignore 2>/dev/null; then
-        echo ".trees/" >> .gitignore
-        print_info "Added .trees/ to .gitignore"
-    fi
-    
-    # Create worktree and branch
-    # git worktree add -b <branch> <path> <start-point>
-    if git worktree add -b "$NEW_BRANCH" "$WORKTREE_PATH" "$BASE_BRANCH"; then
-        
-        # Get absolute path of worktree for config updates
-        WORKTREE_ABS_PATH="$(cd "$WORKTREE_PATH" && pwd)"
-        
-        # ==============================================================================
-        # CONFIG COPYING (Strictly following .claude/agents/git-worktree.md rules)
-        # ==============================================================================
-        
-        print_info "Setting up worktree configuration..."
-        
-        # 1. Copy .env if it exists and is gitignored
-        if [ -f .env ] && git check-ignore -q .env 2>/dev/null; then
-            cp .env "$WORKTREE_PATH/.env"
-            print_info "Copied .env (gitignored)"
-        fi
-        
-        # 2. Copy directories ONLY if they are NOT tracked by git
-        # We use git ls-tree to check tracking status in HEAD
-        
-        for dir in ".vscode" ".claude" ".serena" ".cursor"; do
-            if [ -d "$dir" ]; then
-                if ! git ls-tree -d HEAD "$dir" >/dev/null 2>&1; then
-                    cp -r "$dir" "$WORKTREE_PATH/$dir"
-                    print_info "Copied $dir (untracked)"
-                else
-                    # Special case: Copy gitignored cache/memory files within tracked directories
-                    # e.g. .serena/cache
-                    if [ "$dir" == ".serena" ] && [ -d ".serena/cache" ]; then
-                        mkdir -p "$WORKTREE_PATH/.serena"
-                        cp -r ".serena/cache" "$WORKTREE_PATH/.serena/cache" 2>/dev/null || true
-                        print_info "Copied .serena/cache"
-                    fi
+    for dir in ".vscode" ".claude" ".serena" ".cursor"; do
+        if [ -d "$dir" ]; then
+            if ! git ls-tree -d HEAD "$dir" >/dev/null 2>&1; then
+                cp -r "$dir" "$WORKTREE_PATH/$dir"
+                print_info "Copied $dir (untracked)"
+            else
+                if [ "$dir" == ".serena" ] && [ -d ".serena/cache" ]; then
+                    mkdir -p "$WORKTREE_PATH/.serena"
+                    cp -r ".serena/cache" "$WORKTREE_PATH/.serena/cache" 2>/dev/null || true
+                    print_info "Copied .serena/cache"
                 fi
             fi
-        done
-
-        # 3. Copy MCP configs (often gitignored) with updated paths
-
-
-        # 3a. pctx — user-scope settings.json handles pctx with --project-from-cwd.
-        #     Stdio mode inherits session CWD (the worktree), so no local override needed.
-        #     DO NOT generate .config/pctx.json — hardcoded paths cause stale-config bugs
-        #     when other worktree sessions pick up the wrong pctx instance.
-
-        # 3b. .mcp.json — copy and update --project paths (Serena, etc.)
-        if [ -f .mcp.json ]; then
-            sed "s|\"--project\", \"[^\"]*\"|\"--project\", \"$WORKTREE_ABS_PATH\"|g" .mcp.json > "$WORKTREE_PATH/.mcp.json"
-            print_info "Copied and updated .mcp.json"
         fi
+    done
 
-        # 3c. .cursor/mcp.json
-        if [ -f .cursor/mcp.json ]; then
-            mkdir -p "$WORKTREE_PATH/.cursor"
-            sed "s|\"--project\", \"[^\"]*\"|\"--project\", \"$WORKTREE_ABS_PATH\"|g" .cursor/mcp.json > "$WORKTREE_PATH/.cursor/mcp.json"
-            print_info "Copied and updated .cursor/mcp.json"
-        fi
-
-        # ==============================================================================
-        
-        # Setup initial commit in the worktree if requested
-        if [ -n "$COMMIT_MESSAGE" ]; then
-            print_info "Creating initial commit in worktree..."
-            mkdir -p "$WORKTREE_PATH/.branch-info"
-            cat > "$WORKTREE_PATH/.branch-info/$NEW_BRANCH.md" << EOF
-# Branch: $NEW_BRANCH
-
-## Base Branch
-$BASE_BRANCH
-
-## Created
-$(date)
-
-## Purpose
-$COMMIT_MESSAGE
-
-## Dependencies
-- Based on: $BASE_BRANCH
-EOF
-            (cd "$WORKTREE_PATH" && git add ".branch-info/$NEW_BRANCH.md" && git commit -m "$COMMIT_MESSAGE")
-            print_success "Initial commit created in worktree"
-        fi
-        
-        # Store stack info (critical for PR stacking)
-        # We do this here because the main script's stack update block runs in current dir
-        # but we want to ensure it's recorded. The outer script does this too, but double checking
-        # that the branch creation above didn't fail is key.
-        
-        echo ""
-        echo -e "${GREEN}✅ Created worktree: $WORKTREE_PATH${NC}"
-        echo -e "📂 Path: $WORKTREE_ABS_PATH"
-        echo -e "🌿 Branch: $NEW_BRANCH (Base: $BASE_BRANCH)"
-        echo -e "ℹ️  Note: Tracked directories (.vscode, etc.) are automatically checked out."
-        echo ""
-        echo -e "${GREEN}To navigate to worktree:${NC}"
-        echo "  cd $WORKTREE_PATH"
-        echo ""
-        echo -e "${GREEN}Next steps:${NC}"
-        echo "  1. Make your changes"
-        echo "  2. Push: git push -u origin $NEW_BRANCH"
-    else
-        print_error "Failed to create worktree"
-        exit 1
+    if [ -f .mcp.json ]; then
+        sed "s|\"--project\", \"[^\"]*\"|\"--project\", \"$WORKTREE_ABS_PATH\"|g" .mcp.json > "$WORKTREE_PATH/.mcp.json"
+        print_info "Copied and updated .mcp.json"
     fi
 
-else
-    # Standard Branch Creation Logic
-    print_info "Creating branch $NEW_BRANCH from $BASE_BRANCH..."
-    git checkout -b "$NEW_BRANCH" "$BASE_BRANCH"
-    
-    print_success "Branch $NEW_BRANCH created successfully"
-    
-    # If commit message provided, create initial commit
+    if [ -f .cursor/mcp.json ]; then
+        mkdir -p "$WORKTREE_PATH/.cursor"
+        sed "s|\"--project\", \"[^\"]*\"|\"--project\", \"$WORKTREE_ABS_PATH\"|g" .cursor/mcp.json > "$WORKTREE_PATH/.cursor/mcp.json"
+        print_info "Copied and updated .cursor/mcp.json"
+    fi
+
     if [ -n "$COMMIT_MESSAGE" ]; then
-        print_info "Creating initial commit..."
-    
-        # Create a simple .gitkeep or README
-        mkdir -p ".branch-info"
-        cat > ".branch-info/$NEW_BRANCH.md" << EOF
+        print_info "Creating initial commit in worktree..."
+        mkdir -p "$WORKTREE_PATH/.branch-info"
+        cat > "$WORKTREE_PATH/.branch-info/$NEW_BRANCH.md" << EOF
 # Branch: $NEW_BRANCH
 
 ## Base Branch
@@ -317,29 +191,27 @@ $COMMIT_MESSAGE
 ## Dependencies
 - Based on: $BASE_BRANCH
 EOF
-    
-        git add ".branch-info/$NEW_BRANCH.md"
-        git commit -m "$COMMIT_MESSAGE"
-    
-        print_success "Initial commit created"
+        (cd "$WORKTREE_PATH" && git add ".branch-info/$NEW_BRANCH.md" && git commit -m "$COMMIT_MESSAGE")
+        print_success "Initial commit created in worktree"
     fi
-    
-    # Show current status
+
     echo ""
-    print_info "Current branch: $(git branch --show-current)"
-    print_info "Files changed from $BASE_BRANCH:"
-    git diff --stat "$BASE_BRANCH"
-    
-    # Show next steps
+    echo -e "${GREEN}✅ Created worktree: $WORKTREE_PATH${NC}"
+    echo -e "📂 Path: $WORKTREE_ABS_PATH"
+    echo -e "🌿 Branch: $NEW_BRANCH (Base: $BASE_BRANCH)"
+    echo -e "ℹ️  Note: Tracked directories (.vscode, etc.) are automatically checked out."
+    echo ""
+    echo -e "${GREEN}To navigate to worktree:${NC}"
+    echo "  cd $WORKTREE_PATH"
     echo ""
     echo -e "${GREEN}Next steps:${NC}"
-    echo "  1. Make your changes and commit them"
-    echo "  2. Push branch: git push -u origin $NEW_BRANCH"
-    echo "  3. Create PR: ./scripts/pr-stack/create-pr.sh $NEW_BRANCH $BASE_BRANCH \"Title\""
-    echo ""
-    echo -e "${BLUE}Optional:${NC} Create a worktree for parallel development:"
-    echo "  git worktree add .trees/${NEW_BRANCH##*/} -b $NEW_BRANCH"
+    echo "  1. Make your changes"
+    echo "  2. Push: git push -u origin $NEW_BRANCH"
+else
+    print_error "Failed to create worktree"
+    exit 1
 fi
+
 echo ""
 
 # Track in Charcoal (single source of truth for stack relationships)

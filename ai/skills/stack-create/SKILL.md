@@ -42,46 +42,27 @@ Worktrees are created by **default** (no flag needed). You also get:
 1. Parse the user's request to identify:
    - `branch-name`: The name for the new branch (required)
    - `base-branch`: The branch to base on (default: current branch or main)
-   - `no-worktree`: Pass `--no-worktree` only if user explicitly says they don't want a worktree
 
-2. **Detect if already inside a worktree** before creating anything:
+2. **No manual worktree detection.** The `stack create` script resolves the **main repository root** (parent of `.trees/`) even when you run it from inside `.trees/<some-branch>/`, so the new worktree is always created as a **sibling** under `<main-repo>/.trees/<sanitized-name>/`, never nested as `.trees/foo/.trees/bar`.
+
+3. Execute the unified stack CLI (same invocation from any directory in the repo or its worktrees):
    ```bash
-   CURRENT_PATH="$(pwd)"
-   # Check if current path contains /.trees/ — indicates we're already in a worktree
-   if echo "$CURRENT_PATH" | grep -q "/.trees/"; then
-     IN_WORKTREE=true
-   else
-     IN_WORKTREE=false
-   fi
+   $HOME/.dotfiles/.claude/scripts/stack create <branch-name> [base-branch]
    ```
-   **If `IN_WORKTREE=true`:** Do NOT create a new worktree. Just create the branch in the current worktree using `--no-worktree`. Skip steps 3–5 (handoff and tmux).
 
-3. Execute the unified stack CLI:
-   - **If already in a worktree** (skip new worktree):
-     ```bash
-     $HOME/.dotfiles/.claude/scripts/stack create <branch-name> [base-branch] --no-worktree
-     ```
-   - **If NOT in a worktree** (default — create worktree):
-     ```bash
-     $HOME/.dotfiles/.claude/scripts/stack create <branch-name> [base-branch]
-     ```
-   - **If user explicitly says no worktree:**
-     ```bash
-     $HOME/.dotfiles/.claude/scripts/stack create <branch-name> [base-branch] --no-worktree
-     ```
+   Capture the **absolute worktree path** from the script output (line starting with `Path:` / `📂 Path:`) for the next steps. If needed, you can also resolve it with `git worktree list` after the command.
 
    This automatically:
-   - Creates the branch and worktree at `.trees/<sanitized-name>` (when not already in one)
+   - Creates the branch and worktree at `<main-repo>/.trees/<sanitized-name>/`
    - Copies configs (MCP paths updated, .vscode, .serena copied)
    - Tracks branch in Charcoal (navigation and restacking)
    - Enables worktree-aware Charcoal commands
 
-4. **Bootstrap `.claude/settings.local.json`** in the worktree (only when a worktree was created — i.e., `IN_WORKTREE=false`):
+4. **Bootstrap `.claude/settings.local.json`** in the **new** worktree (use `WORKTREE_PATH` from step 3, not `$(pwd)/.trees/...`):
    ```bash
-   WORKTREE_PATH="$(pwd)/.trees/<sanitized-name>"
    LOCAL_SETTINGS="$WORKTREE_PATH/.claude/settings.local.json"
    if [ ! -f "$LOCAL_SETTINGS" ]; then
-     mkdir -p "$WORKTREE_PATH/.claude"
+     mkdir -p "$(dirname "$LOCAL_SETTINGS")"
      cat > "$LOCAL_SETTINGS" << 'EOF'
    {
      "permissions": {
@@ -94,7 +75,7 @@ Worktrees are created by **default** (no flag needed). You also get:
    This ensures the new session never prompts for permission on every tool call.
    Skip if the file already exists (respect any existing local overrides).
 
-5. **Open a new Claude Code session in the worktree** (only when `IN_WORKTREE=false` and worktree was created):
+5. **Open a new Claude Code session in the worktree** (after a successful create):
    Derive the `name` from the branch by stripping the type prefix:
    - `feature/user-auth` → name = `"user-auth"`
    - `fix/cursor-issue` → name = `"cursor-issue"`
@@ -106,7 +87,6 @@ Worktrees are created by **default** (no flag needed). You also get:
    When inside tmux, open a new window in the current session and start Claude there.
    Detect the current session name at runtime — never hardcode it:
    ```bash
-   WORKTREE_PATH="$(pwd)/.trees/<sanitized-name>"
    WINDOW_NAME="<sanitized-name>"
    
    if [ -z "${TMUX:-}" ]; then
@@ -159,14 +139,14 @@ Worktrees are created by **default** (no flag needed). You also get:
 6. **Write a rich session handoff** before opening the new session, so the new Claude
    instance starts with context from the current session:
    ```bash
-   mkdir -p .trees/<sanitized-name>/plans
+   mkdir -p "$WORKTREE_PATH/plans"
 
    # Capture current session context (empty string if files don't exist)
    ACTIVE_CONTEXT=$([ -f plans/active-context.md ] && cat plans/active-context.md || echo "*(none)*")
    PROGRESS=$([ -f plans/progress.md ] && cat plans/progress.md || echo "*(none)*")
    DECISIONS=$([ -f plans/decisions.md ] && cat plans/decisions.md || echo "*(none)*")
 
-   cat > .trees/<sanitized-name>/plans/session-handoff.md << EOF
+   cat > "$WORKTREE_PATH/plans/session-handoff.md" << EOF
    # Session Handoff
    status: pending
    branch: <full-branch-name>
@@ -184,9 +164,7 @@ Worktrees are created by **default** (no flag needed). You also get:
    $DECISIONS
    EOF
    ```
-   Only write if the worktree was actually created (skip for `--no-worktree`).
-   Write the handoff **before** running the tmux command in step 4 so the file is
-   present when Claude starts.
+   Write the handoff **before** opening tmux (step 5) so the file is present when Claude starts.
 
 7. **Optionally create a draft PR** — ask the user if they'd like a draft PR opened immediately:
    > "Worktree created. Want me to open a draft PR now so reviewers can track progress?"
@@ -198,20 +176,12 @@ Worktrees are created by **default** (no flag needed). You also get:
    If no (or user doesn't respond), skip.
 
 8. Inform the user:
-   - If `IN_WORKTREE=true`: Branch created in current worktree (no new worktree created)
-   - If `IN_WORKTREE=false` + **tmux**: Branch and worktree created, handoff written, tmux window opened
-   - If `IN_WORKTREE=false` + **no tmux (Cursor Desktop)**: Branch and worktree created at `.trees/<sanitized-name>`, handoff written. The skill outputs a `cd` command — use `eval $(...stack create ...)` to navigate to the new worktree automatically.
+   - **tmux**: New branch and worktree at `<main-repo>/.trees/<sanitized-name>`, handoff written, tmux window opened
+   - **no tmux (Cursor Desktop)**: Same worktree path; use `cd "$WORKTREE_PATH"` (from script output) to navigate
 
 ## Opting out of worktrees
 
-Worktrees are skipped automatically when:
-1. **Already inside a `.trees/` worktree** — detected by checking if `$(pwd)` contains `/.trees/`
-2. **User explicitly requests no worktree** — pass `--no-worktree`
-
-```bash
-$HOME/.dotfiles/.claude/scripts/stack create <branch-name> [base-branch] --no-worktree
-```
-Do **not** write a handoff or open a tmux session in either case.
+`stack create` always adds a linked worktree. If the user truly wants **only** a local branch without a worktree, use plain Git (e.g. `git checkout -b ...` from the desired checkout) and `gt branch track` as needed — do not rely on a `--no-worktree` flag on `stack create`.
 
 ## Worktree Management
 
@@ -257,13 +227,11 @@ $HOME/.dotfiles/.claude/scripts/stack create feature/polish feature/ui
 Then write handoffs and open tmux windows for each: `api`, `ui`, `polish` (in current tmux session)
 
 User: "Stack a new branch without a worktree"
-Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/ui feature/backend --no-worktree`
-(No tmux session opened)
+Action: Use `git checkout -b` / Charcoal tracking manually; `stack create` always creates a worktree.
 
 User: "Create a branch for the next story" (while already inside `.trees/some-feature/`)
-Detection: `$(pwd)` contains `/.trees/` → `IN_WORKTREE=true`
-Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/next-story --no-worktree`
-Result: Branch created in the current worktree — no new `.trees/` directory created
+Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/next-story [base]`
+Result: New worktree at `<main-repo>/.trees/next-story/` (sibling of `some-feature`, not nested under it)
 
 ## Related Skills
 

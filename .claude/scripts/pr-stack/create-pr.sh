@@ -3,11 +3,12 @@
 # create-pr.sh - Create a Pull Request on GitHub
 # Usage: ./create-pr.sh <source-branch> [target-branch] [title] [--draft]
 
-set -e
+set -euo pipefail
 
 # Load libraries
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/validation.sh"
+source "$SCRIPT_DIR/lib/pr-title.sh"
 source "$SCRIPT_DIR/lib/charcoal-compat.sh"
 source "$SCRIPT_DIR/lib/gh-account.sh"
 
@@ -97,14 +98,14 @@ if [ -z "$COMMITS" ]; then
     COMMITS="(no commits found)"
 fi
 
-# Title: if not provided, auto-generate (non-interactive safe).
+# Title: if not provided, auto-generate a conventional title from the branch.
 if [ -z "${TITLE:-}" ]; then
-    # If interactive, prompt; otherwise default.
-    if [ -t 0 ]; then
-        read -p "Enter PR title (default: ${SOURCE_BRANCH}): " TITLE
-    fi
-    TITLE=${TITLE:-$SOURCE_BRANCH}
+    TITLE="$(suggest_pr_title_from_branch "$SOURCE_BRANCH")"
+    print_info "No PR title provided. Using generated title: $TITLE"
 fi
+
+# Deterministic gate: block PR creation when title isn't Conventional Commits.
+validate_conventional_pr_title_or_die "$TITLE" || exit 1
 
 # Check if there are related stories
 # Fix: Search from REPO_ROOT to find docs even if we are in a worktree

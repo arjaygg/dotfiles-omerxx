@@ -39,6 +39,7 @@ Creates GitHub PRs for every unpublished branch in the Charcoal stack, processin
    - Walk the Charcoal stack bottom-up (leaf → trunk)
    - Skip trunk and branches with existing open PRs
    - Create a PR for each unpublished branch, targeting its Charcoal parent
+   - Generate deterministic Conventional Commit PR titles from branch names when not provided
    - Print a summary with PR URLs
 
 2. Return the summary output to the user, including any created PR URLs.
