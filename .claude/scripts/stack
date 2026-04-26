@@ -60,7 +60,7 @@ Usage: .claude/scripts/stack <command> [args]
 
 Core commands:
   init [trunk]                  Initialize Charcoal (gt) in this repo
-  create <branch> [base] [-w]    Create stacked branch (optionally with worktree)
+  create <branch> [base]         Create stacked branch with worktree under .trees/
   status [--verbose] [--ci]      Show PR stack (includes worktree view when possible)
   up                             Navigate to parent (worktree-aware; use eval)
   down [index]                   Navigate to child (worktree-aware; use eval)
