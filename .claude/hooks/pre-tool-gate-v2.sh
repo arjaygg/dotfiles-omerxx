@@ -33,7 +33,7 @@ eval "$(echo "$INPUT" | jq -r '
 # GUARD: empty TOOL_NAME → eval failed silently; block to prevent pass-through
 # ============================================================
 [[ -z "$TOOL_NAME" ]] && {
-    echo "BLOCKED: hook parse failed (empty TOOL_NAME). Use a Serena MCP tool instead of a native file tool." >&2
+    echo "BLOCKED: hook parse failed (empty TOOL_NAME). Use a Serena MCP tool instead of a native file tool."
     exit 1
 }
 
@@ -66,10 +66,10 @@ if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
         _INIT_STEPS="  1. Call mcp__pctx__list_functions\n  2. Write result to plans/pctx-functions.md\n  3. Call Serena.initialInstructions()"
 
         if [[ "$TOOL_NAME" == "Grep" ]]; then
-            echo "BLOCKED: Serena not yet initialized this session." >&2
-            echo "  Before using Grep, complete the session init sequence:" >&2
-            printf '%b\n' "$_INIT_STEPS" >&2
-            echo "  This ensures structural (AST-level) search is available before falling back to text search." >&2
+            echo "BLOCKED: Serena not yet initialized this session."
+            echo "  Before using Grep, complete the session init sequence:"
+            printf '%b\n' "$_INIT_STEPS"
+            echo "  This ensures structural (AST-level) search is available before falling back to text search."
             exit 1
         fi
 
@@ -79,10 +79,10 @@ if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
             _EXT="${FILE_PATH##*.}"
             _EXT="${_EXT,,}"
             if [[ "$_EXT" =~ ^($_SRC_EXT)$ ]]; then
-                echo "BLOCKED: Reading source file '$FILE_PATH' before Serena init." >&2
-                echo "  Complete session init first:" >&2
-                printf '%b\n' "$_INIT_STEPS" >&2
-                echo "  Then use Serena.getSymbolsOverview to explore structure instead of reading the whole file." >&2
+                echo "BLOCKED: Reading source file '$FILE_PATH' before Serena init."
+                echo "  Complete session init first:"
+                printf '%b\n' "$_INIT_STEPS"
+                echo "  Then use Serena.getSymbolsOverview to explore structure instead of reading the whole file."
                 exit 1
             fi
         fi
@@ -91,10 +91,10 @@ if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
         # The init sequence uses only MCP tools (mcp__pctx__list_functions,
         # mcp__pctx__execute_typescript) and the Write tool — no Bash needed.
         if [[ "$TOOL_NAME" == "Bash" ]]; then
-            echo "BLOCKED: Bash not available before session init." >&2
-            echo "  Complete the session init sequence first:" >&2
-            printf '%b\n' "$_INIT_STEPS" >&2
-            echo "  Session init uses only MCP tools — no Bash required." >&2
+            echo "BLOCKED: Bash not available before session init."
+            echo "  Complete the session init sequence first:"
+            printf '%b\n' "$_INIT_STEPS"
+            echo "  Session init uses only MCP tools — no Bash required."
             exit 1
         fi
     fi
@@ -108,11 +108,11 @@ fi
 if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
     _CTX_FLAG="/tmp/.claude-ctx-loaded-$(id -u)-${CLAUDE_SESSION_ID}"
     if [[ "$TOOL_NAME" == "Grep" && ! -f "$_CTX_FLAG" ]]; then
-        echo "BLOCKED: Context not yet loaded in this session." >&2
-        echo "  Before using Grep, load project context with:" >&2
-        echo "    LeanCtx.ctxIntent({ query: '<your task description>' })" >&2
-        echo "  Batch it in: mcp__pctx__execute_typescript" >&2
-        echo "  This indexes live project context — derived from current codebase, not manually curated." >&2
+        echo "BLOCKED: Context not yet loaded in this session."
+        echo "  Before using Grep, load project context with:"
+        echo "    LeanCtx.ctxIntent({ query: '<your task description>' })"
+        echo "  Batch it in: mcp__pctx__execute_typescript"
+        echo "  This indexes live project context — derived from current codebase, not manually curated."
         exit 1
     fi
 fi
@@ -128,8 +128,8 @@ if [[ "$TOOL_NAME" == mcp__serena__* ]] || [[ "$TOOL_NAME" == mcp__pctx__* ]]; t
         if [[ -f "$_COUNTER_FILE" ]]; then
             _COUNT=$(wc -l < "$_COUNTER_FILE" 2>/dev/null || echo 0)
             if [[ "$_COUNT" -ge 4 ]]; then
-                echo "BLOCKED: $_COUNT sequential Serena/pctx calls without batching." >&2
-                echo "  Use: mcp__pctx__execute_typescript with Promise.all() to batch multiple calls." >&2
+                echo "BLOCKED: $_COUNT sequential Serena/pctx calls without batching."
+                echo "  Use: mcp__pctx__execute_typescript with Promise.all() to batch multiple calls."
                 exit 1
             fi
         fi
@@ -143,7 +143,7 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
     # 1a. Lock files — never read directly (backup for deny list)
     case "${FILE_PATH##*/}" in
         package-lock.json|yarn.lock|Cargo.lock|pnpm-lock.yaml|composer.lock|Gemfile.lock)
-            echo "BLOCKED: Reading ${FILE_PATH##*/} directly wastes tokens. Use Grep to search for specific entries instead." >&2
+            echo "BLOCKED: Reading ${FILE_PATH##*/} directly wastes tokens. Use Grep to search for specific entries instead."
             log_violation "level1_block" "pre_tool_gate" "Read" "$FILE_PATH" "lock_file_read" 2>/dev/null || true
             exit 1 ;;
     esac
@@ -151,7 +151,7 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
     # 1a-extra. Generated/bulk files by pattern — repomix outputs, go.sum, lock files
     _fname="${FILE_PATH##*/}"
     if [[ "$_fname" == *_repomix_* || "$FILE_PATH" == *.sum || "$FILE_PATH" == *-lock.* ]]; then
-        echo "BLOCKED: ${_fname} is a generated/lock file — no direct-read value. Use ctxSmartRead or Grep to search specific entries." >&2
+        echo "BLOCKED: ${_fname} is a generated/lock file — no direct-read value. Use ctxSmartRead or Grep to search specific entries."
         log_violation "level1_block" "pre_tool_gate" "Read" "$FILE_PATH" "generated_file_read" 2>/dev/null || true
         exit 1
     fi
@@ -160,18 +160,18 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
     if [[ -f "$FILE_PATH" && -z "$LIMIT" ]]; then
         FILE_SIZE=$(stat -f%z "$FILE_PATH" 2>/dev/null || stat -c%s "$FILE_PATH" 2>/dev/null || echo 0)
         if [[ "$FILE_SIZE" -gt 512000 ]]; then
-            echo "BLOCKED: $FILE_PATH is $(( FILE_SIZE / 1024 ))KB — use LeanCtx.ctxSmartRead(\"$FILE_PATH\") for analysis-only reads." >&2
+            echo "BLOCKED: $FILE_PATH is $(( FILE_SIZE / 1024 ))KB — use LeanCtx.ctxSmartRead(\"$FILE_PATH\") for analysis-only reads."
             exit 1
         elif [[ "$FILE_SIZE" -gt 102400 ]]; then
-            echo "BLOCKED: $FILE_PATH is $(( FILE_SIZE / 1024 ))KB. Use Read with limit/offset or Grep to read only the relevant section." >&2
+            echo "BLOCKED: $FILE_PATH is $(( FILE_SIZE / 1024 ))KB. Use Read with limit/offset or Grep to read only the relevant section."
             exit 1
         fi
     fi
 
     # 1c. .go files without limit — use Serena
     if [[ "$FILE_PATH" == *.go && -z "$LIMIT" ]]; then
-        echo "BLOCKED: Reading entire .go file '$FILE_PATH' without limit/offset. Use Serena.getSymbolsOverview to understand structure, then Read with limit/offset for the specific symbol." >&2
-        echo "  Call via: mcp__pctx__execute_typescript with: await Serena.getSymbolsOverview('${FILE_PATH}')" >&2
+        echo "BLOCKED: Reading entire .go file '$FILE_PATH' without limit/offset. Use Serena.getSymbolsOverview to understand structure, then Read with limit/offset for the specific symbol."
+        echo "  Call via: mcp__pctx__execute_typescript with: await Serena.getSymbolsOverview('${FILE_PATH}')"
         exit 1
     fi
 
@@ -188,8 +188,8 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
                 [[ -z "$_SERENA_LEVEL" ]] && _SERENA_LEVEL="block"
             fi
             if [[ "$_SERENA_LEVEL" == "block" ]]; then
-                echo "BLOCKED: Reading entire source file '$FILE_PATH' without limit/offset. Use Serena.getSymbolsOverview to understand structure, then LeanCtx.ctxRead or Read with limit/offset for specific symbols." >&2
-                echo "  Call via: mcp__pctx__execute_typescript with: await Serena.getSymbolsOverview('${FILE_PATH}')" >&2
+                echo "BLOCKED: Reading entire source file '$FILE_PATH' without limit/offset. Use Serena.getSymbolsOverview to understand structure, then LeanCtx.ctxRead or Read with limit/offset for specific symbols."
+                echo "  Call via: mcp__pctx__execute_typescript with: await Serena.getSymbolsOverview('${FILE_PATH}')"
                 exit 1
             else
                 echo "HINT: Consider Serena.getSymbolsOverview for '$FILE_PATH' to see structure first, then Read with limit/offset for specific symbols."
@@ -205,19 +205,22 @@ fi
 if [[ "$TOOL_NAME" == "Bash" ]]; then
     # 2a. grep (but not git grep) — use Grep tool
     if [[ ( "$CMD" == grep\ * || "$CMD" == grep\ -* ) && "$CMD" != *"git grep"* ]]; then
-        echo "BLOCKED: Use the Grep tool (ripgrep-backed, gitignore-aware) or Serena.searchForPattern instead of 'grep'." >&2
+        echo "BLOCKED: Use the Grep tool or LeanCtx.ctxSearch instead of 'grep'."
+        echo "  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ query: '<pattern>' })"
         exit 1
     fi
 
     # 2b. find → use Glob or Serena.findFile
     if [[ "$CMD" == find\ .* || "$CMD" == find\ /* ]]; then
-        echo "BLOCKED: Use the Glob tool or Serena.findFile instead of 'find'. They are project-aware and faster." >&2
+        echo "BLOCKED: Use the Glob tool or Serena.findFile instead of 'find'."
+        echo "  Call via: Glob tool with a glob pattern, or: await Serena.findFile('<filename>')"
         exit 1
     fi
 
     # 2c. plain ls (not ls -l* for symlink inspection)
     if [[ ( "$CMD" == ls\ * || "$CMD" == "ls" ) && "$CMD" != ls\ -l* ]]; then
-        echo "BLOCKED: Use Glob or Serena.listDir instead of 'ls'. They are structured and token-efficient." >&2
+        echo "BLOCKED: Use the Glob tool or Serena.listDir instead of 'ls'."
+        echo "  Call via: Glob tool with pattern, or: await Serena.listDir('<path>')"
         exit 1
     fi
 
@@ -225,13 +228,13 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
     if [[ "$CMD" == git\ commit* ]]; then
         CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
         if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
-            echo "BLOCKED: You are about to commit directly to '$CURRENT_BRANCH'. Create a feature branch first: stack create <name> $CURRENT_BRANCH" >&2
+            echo "BLOCKED: You are about to commit directly to '$CURRENT_BRANCH'. Create a feature branch first: stack create <name> $CURRENT_BRANCH"
             exit 1
         fi
         # Block raw git commit when hyper-atomic hooks are installed
         _ATOMIC_HOOKS=$(git config --local core.hooksPath 2>/dev/null || echo "")
         if [[ "$_ATOMIC_HOOKS" == "$HOME/.dotfiles/git/hooks" ]]; then
-            echo "BLOCKED: Use '~/.dotfiles/scripts/ai/commit.sh -m \"subject\" -m \"why\"' instead of raw git commit." >&2
+            echo "BLOCKED: Use '~/.dotfiles/scripts/ai/commit.sh -m \"subject\" -m \"why\"' instead of raw git commit."
             exit 1
         fi
     fi
@@ -254,7 +257,9 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
     # 2g. Piped text processors — catch 'cmd | head', 'cmd | grep', etc. (deny list only catches prefixes)
     if echo "$CMD" | grep -qE '\| *(head|tail|cat|sed|awk|grep|rg)( |$)'; then
         PIPE_CMD=$(echo "$CMD" | grep -oE '\| *(head|tail|cat|sed|awk|grep|rg)' | head -1 | tr -d '| ')
-        echo "BLOCKED: Piped '$PIPE_CMD' detected. Use --limit/--json flags, jq, or context-mode tools instead of text processors after pipes." >&2
+        echo "BLOCKED: Piped '$PIPE_CMD' is not allowed after a command."
+        echo "  Use the Read tool with a limit parameter, jq for JSON output, or LeanCtx.ctxSearch for text search."
+        echo "  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ query: '<pattern>' })"
         exit 1
     fi
 fi
@@ -267,7 +272,7 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "MultiEdit" ]]; then
     if [[ -n "$FILE_PATH" ]]; then
         READ_LOG="/tmp/.claude-read-log-$(id -u)"
         if [[ ! -f "$READ_LOG" ]] || ! grep -qF "$FILE_PATH" "$READ_LOG" 2>/dev/null; then
-            echo "BLOCKED: Editing '$FILE_PATH' without reading it first. Use Read (or Serena.getSymbolsOverview) to understand the file before editing." >&2
+            echo "BLOCKED: Editing '$FILE_PATH' without reading it first. Use Read (or Serena.getSymbolsOverview) to understand the file before editing."
             exit 1
         fi
     fi
@@ -284,13 +289,13 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Mult
                 _SUGGESTED_BRANCH=""
                 _HINT_FILE="/tmp/.claude-stack-hint-$(id -u)-${CLAUDE_SESSION_ID:-}"
                 [[ -f "$_HINT_FILE" ]] && _SUGGESTED_BRANCH=$(cat "$_HINT_FILE" 2>/dev/null)
-                echo "BLOCKED: Editing '$FILE_PATH' on '$_EDIT_BRANCH'. Create a stacked branch first:" >&2
+                echo "BLOCKED: Editing '$FILE_PATH' on '$_EDIT_BRANCH'. Create a stacked branch first:"
                 if [[ -n "$_SUGGESTED_BRANCH" ]]; then
-                    echo "  stack create feature/$_SUGGESTED_BRANCH $_EDIT_BRANCH" >&2
+                    echo "  stack create feature/$_SUGGESTED_BRANCH $_EDIT_BRANCH"
                 else
-                    echo "  stack create feature/<name> $_EDIT_BRANCH" >&2
+                    echo "  stack create feature/<name> $_EDIT_BRANCH"
                 fi
-                echo "  This creates a worktree at .trees/<name>/ — edit there instead." >&2
+                echo "  This creates a worktree at .trees/<name>/ — edit there instead."
                 exit 1
             fi
         fi
@@ -338,24 +343,24 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Mult
         fi
         case "$_ATOMIC_STATE" in
             blocked)
-                echo "BLOCKED: Mixed concerns detected in staged files (state: blocked)." >&2
+                echo "BLOCKED: Mixed concerns detected in staged files (state: blocked)."
                 _DIAG=$("$HOME/.dotfiles/scripts/ai/atomic-status.sh" --verbose 2>&1 1>/dev/null || true)
-                [[ -n "$_DIAG" ]] && echo "$_DIAG" | sed 's/^/  /' >&2
-                echo "  Commit or checkpoint current work before editing more files." >&2
+                [[ -n "$_DIAG" ]] && echo "${_DIAG//$'\n'/$'\n'  }"
+                echo "  Commit or checkpoint current work before editing more files."
                 log_violation "level1_block" "pre_tool_gate" "$TOOL_NAME" "$FILE_PATH" "atomic_blocked" 2>/dev/null || true
                 exit 1
                 ;;
             overgrown)
-                echo "BLOCKED: Working tree is overgrown (state: overgrown)." >&2
+                echo "BLOCKED: Working tree is overgrown (state: overgrown)."
                 _DIAG=$("$HOME/.dotfiles/scripts/ai/atomic-status.sh" --verbose 2>&1 1>/dev/null || true)
-                [[ -n "$_DIAG" ]] && echo "$_DIAG" | sed 's/^/  /' >&2
-                echo "  Consider committing a subset before continuing." >&2
-                echo "  Run: ~/.dotfiles/scripts/ai/commit.sh -m 'subject' -m 'why'" >&2
+                [[ -n "$_DIAG" ]] && echo "${_DIAG//$'\n'/$'\n'  }"
+                echo "  Consider committing a subset before continuing."
+                echo "  Run: ~/.dotfiles/scripts/ai/commit.sh -m 'subject' -m 'why'"
                 exit 1
                 ;;
             ready_to_commit)
-                echo "BLOCKED: Changes are ready to commit (state: ready_to_commit)." >&2
-                echo "  Run: ~/.dotfiles/scripts/ai/commit.sh -m 'subject' -m 'why'" >&2
+                echo "BLOCKED: Changes are ready to commit (state: ready_to_commit)."
+                echo "  Run: ~/.dotfiles/scripts/ai/commit.sh -m 'subject' -m 'why'"
                 exit 1
                 ;;
         esac
