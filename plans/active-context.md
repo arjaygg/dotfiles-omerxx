@@ -1,32 +1,45 @@
 # Active Context
 
-plan: decisions/RFC-STACK-SHIP-001.md
-step: Phase 1 of 4
-focus: Core merge algorithm + skill implementation
+## Status: COMPLETE — CI/CD Lifecycle Redesign
 
-## Current Task
+**Task:** Deep analyze existing CI skills, identify improvements, apply Claude Code primitives, and implement unified PR→merge→deploy lifecycle.
 
-Implementing RFC-STACK-SHIP-001: Fully Automated Stack Branch → Release Pipeline
-Phase 1: Core skill with merge algorithm, validation, and logging.
+**Completion:** All changes implemented and committed to main dotfiles repo (commit `97ae44a`).
 
-## Work Items
+## Implementation Summary
 
-Phase 1 Implementation:
-- [x] Create RFC-STACK-SHIP-001.md specification (76da439)
-- [x] Create ai/skills/stack-ship/SKILL.md documentation (3402781)
-- [x] Create scripts/stack-ship.sh implementation (37c6877)
-- [x] Test with --dry-run on test branch
-- [ ] Test with real stacked branches (post-PR merge)
-- [ ] Create PR and merge to main
+### New Skills (2)
+- **`ci-pr-lifecycle`** (v1.0): Full PR lifecycle monitor with combined CI + review polling
+- **`ci-deploy-watch`** (v1.0): Post-merge deployment monitor
 
-## Branch
+### Updated Skills (4)
+- **`ci-monitor`** (v3.0 → v4.0): Repo auto-detection from git remote
+- **`ci-status`** (v1.0 → v2.0): Unified status surface
+- **`ci-watch`**: Deprecation notice + redirect
+- **`stack-pr`**: Added auto-chain instruction to `/ci-pr-lifecycle`
 
-`chore/stack-ship` (dotfiles) — Phase 1 implementation
+### Hooks & Configuration
+- **`post-pr-lifecycle-advisory.sh`**: Advisory on PR creation
+- **`post-merge-deploy-advisory.sh`**: Advisory on PR merge
+- **`.claude/settings.json`**: Registered two PostToolUse hooks
 
-## Key Files
+## Architecture
 
-- `decisions/RFC-STACK-SHIP-001.md` — Full RFC specification
-- `ai/skills/stack-ship/SKILL.md` — Skill documentation
-- `.claude/scripts/stack-ship.sh` — Implementation script
-- `plans/active-context.md` — This file
-- `.stack-ship/log.jsonl` — Audit log (created on first merge)
+Single combined Monitor loop:
+- Polls CI checks (`gh run list`) + review state (`gh pr view`) every 30s
+- Emits events only on state change: `CI_COMPLETE`, `REVIEW_CHANGED`
+- Skill-level chaining (primary): `stack-pr` → `/ci-pr-lifecycle`
+- PostToolUse hooks (secondary): Advisory text if user invokes `gh pr create` directly
+- Event routing: CI success+review approved → "All gates passed — run /stack-merge to land"
+
+## Files Modified
+
+- `ai/skills/ci-pr-lifecycle/SKILL.md` (NEW)
+- `ai/skills/ci-deploy-watch/SKILL.md` (NEW)
+- `ai/skills/ci-monitor/SKILL.md` (UPDATED)
+- `ai/skills/ci-status/SKILL.md` (UPDATED)
+- `ai/skills/ci-watch/SKILL.md` (UPDATED)
+- `ai/skills/stack-pr/SKILL.md` (UPDATED)
+- `.claude/hooks/post-pr-lifecycle-advisory.sh` (NEW)
+- `.claude/hooks/post-merge-deploy-advisory.sh` (NEW)
+- `.claude/settings.json` (UPDATED)
