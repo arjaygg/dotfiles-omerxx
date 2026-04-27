@@ -160,6 +160,15 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/git-commit-guard.sh\"'"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/pre-push-remote-check.sh\"'"
           }
         ]
