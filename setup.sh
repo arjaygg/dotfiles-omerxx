@@ -20,7 +20,7 @@ stow .
 # Cursor config symlinks (explicit — ~/.cursor is a real dir, config items linked from dotfiles)
 # Runtime state (projects, plans, plugins, extensions, etc.) lives in the real dir only.
 mkdir -p ~/.cursor
-for _dir in commands hooks output-styles rules skills; do
+for _dir in commands hooks rules; do
     [ -d ~/.dotfiles/.cursor/$_dir ] && ln -sfn ~/.dotfiles/.cursor/$_dir ~/.cursor/$_dir
 done
 for _file in rules.md CURSOR_SETUP_GUIDE.md mcp.example.json blocklist; do
@@ -76,10 +76,17 @@ link_skills_from_dir "$HOME/.dotfiles/ai/skills" "$HOME/.dotfiles/.claude/skills
 link_skills_from_dir "$HOME/.dotfiles/ai/skills" "$HOME/.codex/skills"
 link_skills_from_dir "$HOME/.dotfiles/.claude/skills" "$HOME/.codex/skills" only-missing
 
-# Cursor skill symlinks (absolute paths — cursor resolves from ~/.cursor/skills/)
+# Cursor skill symlinks — explicit subset from ai/skills/
 mkdir -p ~/.cursor/skills
-ln -sf ~/.dotfiles/ai/skills/pctx-code-mode ~/.cursor/skills/pctx-code-mode
-ln -sf ~/.dotfiles/ai/skills/explore ~/.cursor/skills/explore
+for _skill in pctx-code-mode explore quarantine-triage-live; do
+    [ -d ~/.dotfiles/ai/skills/$_skill ] && ln -sfn ~/.dotfiles/ai/skills/$_skill ~/.cursor/skills/$_skill
+done
+
+# Cursor output-style symlinks — all styles from ai/output-styles/
+mkdir -p ~/.cursor/output-styles
+for _style in ~/.dotfiles/ai/output-styles/*.md; do
+    [ -f "$_style" ] && ln -sf "$_style" ~/.cursor/output-styles/"$(basename "$_style")"
+done
 
 # Gemini: covered via ~/.gemini/skills/ai -> ~/.dotfiles/ai/skills (stow-managed)
 
