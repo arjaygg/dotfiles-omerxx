@@ -358,10 +358,11 @@
   },
   "extraKnownMarketplaces": {},
   "alwaysThinkingEnabled": true,
-  "effortLevel": "medium",
+  "effortLevel": "xhigh",
   "advisorModel": "opus",
   "plansDirectory": "./plans",
   "skipDangerousModePermissionPrompt": true,
+  "preferredNotifChannel": "ghostty",
   "autoMode": {
     "environment": [
       "Organization: Axos Financial / Axos Bank. Primary use: software development.",
