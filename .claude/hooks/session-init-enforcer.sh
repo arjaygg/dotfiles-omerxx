@@ -7,13 +7,13 @@
 
 set -euo pipefail
 
-# CRITICAL: Drain stdin — all UserPromptSubmit hooks should consume stdin
-cat > /dev/null
+# UserPromptSubmit hooks receive session_id in stdin JSON (not as env var).
+_INPUT=$(cat)
+_SESSION_ID=$(echo "$_INPUT" | jq -r '.session_id // ""' 2>/dev/null)
+[[ -z "${_SESSION_ID:-}" ]] && exit 0
 
-[[ -z "${CLAUDE_SESSION_ID:-}" ]] && exit 0
-
-_SERENA_FLAG="/tmp/.claude-serena-init-$(id -u)-${CLAUDE_SESSION_ID}"
-_CTX_FLAG="/tmp/.claude-ctx-loaded-$(id -u)-${CLAUDE_SESSION_ID}"
+_SERENA_FLAG="/tmp/.claude-serena-init-$(id -u)-${_SESSION_ID}"
+_CTX_FLAG="/tmp/.claude-ctx-loaded-$(id -u)-${_SESSION_ID}"
 
 _MISSING_SERENA=false
 _MISSING_CTX=false
