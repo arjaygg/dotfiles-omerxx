@@ -12,10 +12,11 @@ Phase 1: Core skill with merge algorithm, validation, and logging.
 ## Work Items
 
 Phase 1 Implementation:
-- [x] Create RFC-STACK-SHIP-001.md specification
-- [x] Create ai/skills/stack-ship/SKILL.md documentation
-- [x] Create .claude/scripts/stack-ship.sh implementation
-- [ ] Test with stacked branches in this repo
+- [x] Create RFC-STACK-SHIP-001.md specification (76da439)
+- [x] Create ai/skills/stack-ship/SKILL.md documentation (3402781)
+- [x] Create scripts/stack-ship.sh implementation (37c6877)
+- [x] Test with --dry-run on test branch
+- [ ] Test with real stacked branches (post-PR merge)
 - [ ] Create PR and merge to main
 
 ## Branch
