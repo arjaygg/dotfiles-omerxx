@@ -37,6 +37,10 @@ karabiner/automatic_backups/
 # Plans (only session handoff is ephemeral)
 plans/session-handoff.md
 
+# Serena runtime state (logs, cache — not config or memories)
+.serena/logs/
+.serena/cache/
+
 # Accidental/self-referential stow symlinks
 .claude/commands/commands
 .claude/output-styles/output-styles
