@@ -112,7 +112,7 @@ Worktrees are created by **default** (no flag needed). You also get:
        # Window doesn't exist — create it and start Claude
        tmux new-window -t "$TMUX_SESSION" -n "$WINDOW_NAME" -c "$WORKTREE_PATH"
        sleep 0.3
-       tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "claude" Enter
+       tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "claude --dangerously-skip-permissions" Enter
        
        # Sync tmux bridge display if available
        sleep 0.5
