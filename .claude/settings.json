@@ -201,6 +201,24 @@
         ]
       },
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/post-pr-lifecycle-advisory.sh\"'"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/post-merge-deploy-advisory.sh\"'"
+          }
+        ]
+      },
+      {
         "matcher": ".*",
         "hooks": [
           {
