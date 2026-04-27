@@ -1,1 +1,0 @@
-/Users/axos-agallentes/.dotfiles/ai/output-styles/strategic-analyst.md
