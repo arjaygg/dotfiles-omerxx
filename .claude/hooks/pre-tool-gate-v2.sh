@@ -214,11 +214,12 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
         exit 1
     fi
 
-    # 2b. find → use Glob or Serena.findFile
-    if [[ "$CMD" == find\ .* || "$CMD" == find\ /* ]]; then
-        _blk_echo "BLOCKED: Use the Glob tool or Serena.findFile instead of 'find'."
-        _blk_echo "  Call via: Glob tool with a glob pattern, or: await Serena.findFile('<filename>')"
-        exit 1
+    # 2b. find → use Glob or Serena.findFile (hard block — exit 2 = deterministic)
+    if [[ "$CMD" == find\ * ]]; then
+        echo "BLOCKED: Use the Glob tool or Serena.findFile instead of 'find'." >&2
+        echo "  Use: Glob with a glob pattern, or execute_typescript: await Serena.findFile('<filename>')" >&2
+        printf '{"continue":false,"stopReason":"BLOCKED: Use Glob tool or Serena.findFile instead of find. Example: Glob(\".github/workflows/*.yaml\") or execute_typescript with Serena.findFile(\"<filename>\")."}'
+        exit 2
     fi
 
     # 2c. plain ls (not ls -l* for symlink inspection)
@@ -258,9 +259,26 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
         fi
     fi
 
+    # 2f-standalone. Standalone head/tail/cat — use Read tool instead (mirrors deny-list entries being removed)
+    _FIRST_CMD=$(echo "$CMD" | awk '{print $1}')
+    if [[ "$_FIRST_CMD" == "head" || "$_FIRST_CMD" == "tail" || "$_FIRST_CMD" == "cat" ]]; then
+        _blk_echo "BLOCKED: Use the Read tool with a limit/offset parameter instead of '$_FIRST_CMD'."
+        exit 1
+    fi
+
     # 2g. Piped text processors — catch 'cmd | head', 'cmd | grep', etc. (deny list only catches prefixes)
     if echo "$CMD" | grep -qE '\| *(head|tail|cat|sed|awk|grep|rg)( |$)'; then
         PIPE_CMD=$(echo "$CMD" | grep -oE '\| *(head|tail|cat|sed|awk|grep|rg)' | head -1 | tr -d '| ')
+        # For | head / | tail on safe CLI commands — rewrite by stripping the pipe (exit 0 + JSON = Claude Code rewrite)
+        if [[ "$PIPE_CMD" == "head" || "$PIPE_CMD" == "tail" ]]; then
+            _BASE_CMD=$(echo "$CMD" | sed 's/ *|.*//')
+            _FIRST_WORD=$(echo "$_BASE_CMD" | awk '{print $1}')
+            if echo "$_FIRST_WORD" | grep -qE '^(gh|kubectl|git|argocd|az|docker|helm|aws|rtk)$'; then
+                echo "$INPUT" | jq --arg cmd "$_BASE_CMD" '.tool_input.command = $cmd'
+                echo "REWRITE: Stripped '| $PIPE_CMD' — running: $_BASE_CMD" >&2
+                exit 0
+            fi
+        fi
         _blk_echo "BLOCKED: Piped '$PIPE_CMD' is not allowed after a command."
         _blk_echo "  Use the Read tool with a limit parameter, jq for JSON output, or LeanCtx.ctxSearch for text search."
         _blk_echo "  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ query: '<pattern>' })"

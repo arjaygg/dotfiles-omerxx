@@ -57,6 +57,7 @@
       "Bash(pkill *)",
       "Bash(kill -9 *)",
       "Bash(find * -delete*)",
+      "Bash(find *)",
       "Bash(shred *)",
       "Bash(dd if=*)",
       "Bash(chmod 777 *)",
@@ -79,14 +80,9 @@
       "Read(~/.gnupg/**)",
       "Edit(~/.gnupg/**)",
       "Write(~/.gnupg/**)",
-      "Bash(cat *)",
-      "Bash(head *)",
-      "Bash(tail *)",
       "Bash(rg *)",
       "Bash(grep *)",
       "Bash(grep -*)",
-      "Bash(find . *)",
-      "Bash(find / *)",
       "Read(**/package-lock.json)",
       "Read(**/yarn.lock)",
       "Read(**/Cargo.lock)",
@@ -96,7 +92,6 @@
     ],
     "defaultMode": "acceptEdits"
   },
-  "model": "haiku",
   "enableAllProjectMcpServers": true,
   "skillOverrides": {
     "story-complete": "off",
@@ -170,6 +165,15 @@
           {
             "type": "command",
             "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/pre-push-remote-check.sh\"'"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/read-before-write-guard.sh\"'"
           }
         ]
       },
