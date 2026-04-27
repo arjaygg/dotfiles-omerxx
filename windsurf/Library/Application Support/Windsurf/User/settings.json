@@ -150,5 +150,9 @@
   "workbench.auxiliaryActivityBar.location": "default",
   "[go]": {
     "editor.defaultFormatter": "golang.go"
-  }
+  },
+  "windsurf.autoContinue": 0,
+  "windsurf.allowCascadeAccessGitignoreFiles": true,
+  "git.openRepositoryInParentFolders": "always",
+  "windsurf.terminal.cascadeProfile.osx": "managed"
 }
