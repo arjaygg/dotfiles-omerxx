@@ -1,6 +1,0 @@
-{
-  "uri": "voice://config/kokoro",
-  "name": "kokoro_configuration",
-  "description": "Kokoro TTS service configuration.\n\nShows all Kokoro-specific settings including:\n- Port configuration\n- Models directory\n- Cache directory\n- Default voice selection\n\nThese settings control how the local Kokoro TTS service operates.",
-  "mimeType": "text/plain"
-}
