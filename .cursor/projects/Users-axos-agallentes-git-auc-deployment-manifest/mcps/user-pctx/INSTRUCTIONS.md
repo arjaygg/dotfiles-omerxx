@@ -1,4 +1,4 @@
-This server provides tools to explore SDK functions and execute SDK scripts for the following services: Serena, Exa, Qmd, Ref, Markitdown, LeanCtx
+This server provides tools to explore SDK functions and execute SDK scripts for the following services: Serena, Qmd, LeanCtx, Repomix
 General:
     - BATCH MULTIPLE TOOL CALLS INTO ONE `execute_typescript` CALL.
     - These tools exists to reduce round-trips. When a task requires multiple tool calls:
