@@ -17,10 +17,17 @@ stow .
 
 # Specific tool setup (for things Stow might need help with or additional setup)
 
-# Cursor Library link (if not already handled by stow)
-if [ ! -L ~/.cursor/Library ]; then
-    ln -sf ~/.dotfiles/.cursor/Library ~/.cursor/Library
-fi
+# Cursor config symlinks (explicit — ~/.cursor is a real dir, config items linked from dotfiles)
+# Runtime state (projects, plans, plugins, extensions, etc.) lives in the real dir only.
+mkdir -p ~/.cursor
+for _dir in commands hooks output-styles rules skills; do
+    [ -d ~/.dotfiles/.cursor/$_dir ] && ln -sfn ~/.dotfiles/.cursor/$_dir ~/.cursor/$_dir
+done
+for _file in rules.md CURSOR_SETUP_GUIDE.md mcp.example.json blocklist; do
+    [ -f ~/.dotfiles/.cursor/$_file ] && ln -sf ~/.dotfiles/.cursor/$_file ~/.cursor/$_file
+done
+# Library link
+ln -sfn ~/.dotfiles/.cursor/Library ~/.cursor/Library
 
 # Install NotebookLM MCP tool (idempotent)
 if ! command -v notebooklm-mcp &> /dev/null; then
