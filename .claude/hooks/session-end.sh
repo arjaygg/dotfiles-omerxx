@@ -112,6 +112,17 @@ PYEOF
 # Record content hash so next turn can skip if unchanged
 echo "$CONTENT_HASH" > "$HASH_FILE"
 
+# Append violation summary if available
+if [[ -f "$HANDOFF" ]] && command -v violation-analysis.sh &>/dev/null; then
+    {
+        echo ""
+        echo "---"
+        echo ""
+        echo "## Hook Violations (this session)"
+        violation-analysis.sh summary 2>/dev/null || echo "*(no violations)*"
+    } >> "$HANDOFF" 2>/dev/null || true
+fi
+
 # Inject /findings reminder to persist session discoveries to Serena memories
 if [[ -f "$HANDOFF" ]]; then
     cat <<'REMINDER_EOF' >> "$HANDOFF"
