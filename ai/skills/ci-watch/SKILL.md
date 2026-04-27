@@ -1,14 +1,27 @@
 ---
 name: ci-watch
-description: "Fire-and-forget CI monitor. Launches a headless background agent that polls GitHub Actions
-  and writes status to plans/ci-status.md. Returns within 5 seconds. On green: deploys to DEV and
-  sends a macOS notification. Check status with /ci-status."
+description: "⚠️ DEPRECATED in favor of /ci-pr-lifecycle. Legacy fire-and-forget CI monitor using headless subprocess.
+  For full PR lifecycle (CI + review + deploy) with zero-cost event streaming, use /ci-pr-lifecycle instead.
+  This skill remains functional for backwards compatibility."
 version: 1.0
 triggers:
   - "/ci-watch"
 ---
 
-# CI Watch Skill
+# CI Watch Skill (DEPRECATED)
+
+⚠️ **This skill is deprecated.** Use `/ci-pr-lifecycle` for full PR lifecycle monitoring (CI + review state + deployment readiness).
+
+For the full PR workflow (CI checks + review validation + deployment monitoring) with efficient event-driven streaming, invoke:
+```
+/ci-pr-lifecycle
+```
+
+This skill uses a headless background subprocess, which is expensive and untrackable. The Monitor-based `/ci-pr-lifecycle` approach is 10-20x cheaper and integrates naturally with the PR lifecycle.
+
+---
+
+## Legacy Instructions (Kept for Backwards Compatibility)
 
 Launches a background headless Claude agent to monitor CI for the current PR. Returns immediately
 — the agent runs independently and writes results to `plans/ci-status.md`.

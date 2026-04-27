@@ -1,10 +1,10 @@
 ---
 name: ci-monitor
-description: "Self-healing CI/CD monitor. Uses the Monitor tool to stream GitHub Actions events
+description: "Self-healing CI/CD monitor for any GitHub repo. Uses the Monitor tool to stream GitHub Actions events
   in real-time — zero tokens when silent, notifications only on status changes. Classifies
-  failures with LogSage/RFM, auto-retries HIGH, escalates CRITICAL. 10-20x cheaper than
-  poll-agent approach. Invoke via /ci-monitor."
-version: 3.0
+  failures with LogSage/RFM, auto-retries HIGH, escalates CRITICAL. Repo auto-detected from git remote.
+  10-20x cheaper than poll-agent approach. Invoke via /ci-monitor."
+version: 4.0
 triggers:
   - "/ci-monitor"
   - "/monitor-ci"
@@ -12,20 +12,43 @@ triggers:
 
 # CI Monitor Skill
 
-Event-driven CI watcher. Uses the `Monitor` tool to stream GitHub Actions status changes
+Event-driven CI watcher for any GitHub repository. Uses the `Monitor` tool to stream GitHub Actions status changes
 directly into your session — no background agent required for observation.
+
+Auto-detects repo from `git remote`; no hardcoding required.
 
 ## Instructions
 
-Call the `Monitor` tool with these parameters:
+### Step 1 — Detect repo and bootstrap memory file
 
-**description:** `"GitHub Actions status on axos-financial/auc-conversion"`
+```bash
+REPO=$(git remote get-url origin | sed 's|.*github\.com[/:]||;s|\.git$||')
+ACTED_FILE="${HOME}/.dotfiles/.serena/memories/cicd-acted-runs.md"
+
+# Create memory file if absent
+mkdir -p "$(dirname "$ACTED_FILE")"
+if [ ! -f "$ACTED_FILE" ]; then
+  cat > "$ACTED_FILE" <<'EOF'
+# CICD Acted Runs
+
+Tracks CI runs that have been processed to avoid duplicate handling.
+
+---
+
+(none yet)
+EOF
+fi
+```
+
+### Step 2 — Call Monitor tool
+
+**description:** `"GitHub Actions on <REPO>"`
 
 **persistent:** `true`
 
 **command:**
 ```bash
-REPO="axos-financial/auc-conversion"
+REPO="<REPO>"
 ACTED_FILE="${HOME}/.dotfiles/.serena/memories/cicd-acted-runs.md"
 LAST_SNAPSHOT=""
 
@@ -58,21 +81,31 @@ done
 
 ## Reacting to Monitor Events
 
-When a `RUN_COMPLETE` notification arrives, classify and route inline:
+When a `RUN_COMPLETE` notification arrives:
 
-1. **Parse:** extract `run_id`, `branch`, `conclusion` from the event line
-2. **Classify** with LogSage/RFM:
-   - Fetch jobs: `gh run view $run_id --repo axos-financial/auc-conversion --json jobs`
-   - Check for secrets/CVE jobs → CRITICAL
-   - Calculate RFM score from `.serena/memories/cicd-events.md`
-   - Map to: CRITICAL / HIGH_RETRY (RFM<4) / HIGH_ESCALATE (RFM≥4) / MEDIUM / SUCCESS
-3. **Route:**
-   - CRITICAL → `Agent(cicd-review)` + `SendMessage(cicd-audit)`
-   - HIGH_RETRY → `Agent(cicd-auto-retry)` + `SendMessage(cicd-audit)`
-   - HIGH_ESCALATE → `Agent(cicd-review)` + `SendMessage(cicd-audit)`
-   - MEDIUM → `SendMessage(cicd-audit)` only
-   - SUCCESS → `SendMessage(cicd-audit)` for DORA metrics
-4. **Record** `run_id` in `.serena/memories/cicd-acted-runs.md`
+### Parse
+Extract `run_id`, `branch`, `conclusion` from the event line.
+
+### Classify
+Use LogSage/RFM scoring:
+1. Fetch jobs: `gh run view $run_id --repo $REPO --json jobs`
+2. Check job names for patterns (secrets, security, integration, database):
+   - Security/secrets failures → CRITICAL
+   - Database/migration failures → CRITICAL
+   - Integration test failures → HIGH_RETRY (RFM recent)
+   - Flaky unit tests → HIGH_RETRY
+3. Calculate RFM (Recency × Frequency × Magnitude) from `.serena/memories/cicd-events.md`
+4. Map to severity class: CRITICAL / HIGH_RETRY / HIGH_ESCALATE / MEDIUM / SUCCESS
+
+### Route
+- **CRITICAL** (security, secrets, migration) → `Agent(cicd-review)` + `SendMessage(cicd-audit)`
+- **HIGH_RETRY** (RFM < 4, transient patterns) → `Agent(cicd-auto-retry)` + `SendMessage(cicd-audit)`
+- **HIGH_ESCALATE** (RFM ≥ 4, recurring) → `Agent(cicd-review)` + `SendMessage(cicd-audit)`
+- **MEDIUM** (flaky, unrelated) → `SendMessage(cicd-audit)` only
+- **SUCCESS** → `SendMessage(cicd-audit)` for DORA metrics
+
+### Record
+Write `run_id | branch | timestamp | action` to `.serena/memories/cicd-acted-runs.md` to dedup.
 
 ## Stopping
 
@@ -80,5 +113,5 @@ Call `TaskStop` on the Monitor's task ID, or stop the persistent monitor via `/t
 
 ## Related
 
-- cicd-monitor agent: `~/.dotfiles/.claude/agents/cicd-monitor.md` (webhook Mode B only)
+- cicd-monitor agent: `~/.dotfiles/.claude/agents/cicd-monitor.md` (webhook integration, Mode B)
 - Monitor patterns: `ai/rules/monitor-patterns.md`

@@ -65,6 +65,8 @@ Use this skill when the user wants to:
 
 6. Return the PR URL to the user.
 
+7. **Auto-start PR lifecycle monitoring:** After the PR is created successfully, invoke `/ci-pr-lifecycle` to start unified CI + review monitoring. This monitors checks, validates review state, and gates merge readiness automatically.
+
 ## Examples
 
 User: "Create a PR for this feature"
