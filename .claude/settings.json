@@ -96,6 +96,7 @@
     ],
     "defaultMode": "acceptEdits"
   },
+  "model": "haiku",
   "enableAllProjectMcpServers": true,
   "skillOverrides": {
     "story-complete": "off",

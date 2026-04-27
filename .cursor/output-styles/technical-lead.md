@@ -1,0 +1,1 @@
+/Users/axos-agallentes/.dotfiles/ai/output-styles/technical-lead.md
