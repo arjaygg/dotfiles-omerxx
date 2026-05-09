@@ -3,7 +3,15 @@
     "allow": [
       "mcp__context-mode__ctx_execute",
       "mcp__pctx__list_functions",
-      "mcp__pctx__execute_typescript"
+      "mcp__pctx__execute_typescript",
+      "Bash(cp /Users/axos-agallentes/.dotfiles/.claude/hooks/pre-tool-gate-v2.sh /Users/axos-agallentes/.dotfiles/.trees/fix-pre-tool-gate-and-write-guard/.claude/hooks/pre-tool-gate-v2.sh)",
+      "Bash(cp /Users/axos-agallentes/.dotfiles/.claude/settings.json /Users/axos-agallentes/.dotfiles/.trees/fix-pre-tool-gate-and-write-guard/.claude/settings.json)",
+      "Bash(cp /Users/axos-agallentes/.dotfiles/.claude/hooks/read-before-write-guard.sh /Users/axos-agallentes/.dotfiles/.trees/fix-pre-tool-gate-and-write-guard/.claude/hooks/read-before-write-guard.sh)",
+      "Bash(chmod +x /Users/axos-agallentes/.dotfiles/.trees/fix-pre-tool-gate-and-write-guard/.claude/hooks/read-before-write-guard.sh)",
+      "Bash(git -C /Users/axos-agallentes/.dotfiles/.trees/fix-pre-tool-gate-and-write-guard status --short)",
+      "Bash(git restore *)",
+      "Bash(rm -f /Users/axos-agallentes/.dotfiles/.claude/hooks/read-before-write-guard.sh)",
+      "Bash(git pull *)"
     ]
   }
 }
