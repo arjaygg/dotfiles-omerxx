@@ -16,7 +16,7 @@
     },
     {
       "name": "qmd",
-      "command": "/Users/axos-agallentes/.bun/bin/qmd",
+      "command": "/opt/homebrew/bin/qmd",
       "args": [
         "mcp"
       ]
