@@ -161,6 +161,17 @@ Spawn all 4 simultaneously. Each agent MUST:
 4. **Cognitive complexity:** Nesting depth > 4 levels → MEDIUM; > 6 levels → HIGH
 5. **Dead code / unused params:** `_ param` or clearly unused variables → LOW
 6. **Coding standards:** Cross-reference `docs/architecture/coding-standards.md`
+7. **Code Health score:** Run `make code-health-json 2>/dev/null | .github/scripts/code-health-score.sh /dev/stdin 0` if both exist. Emit one structured finding with severity based on score:
+   - Score ≥ 7.0 → LOW (informational)
+   - Score 4.0–6.9 → MEDIUM (warning band — refactor targets identified)
+   - Score < 4.0 → HIGH (alert band — block feature work until addressed)
+   - Score < 2.0 → CRITICAL (technical debt is actively obstructing delivery)
+   Hotspot escalation: if the top file by finding count also has ≥5 git commits in 90 days
+   (`git log --since="90 days ago" -- <file> | wc -l`), escalate the finding by one level
+   (LOW→MEDIUM, MEDIUM→HIGH, HIGH→CRITICAL). Hotspots are riskier because they change often
+   while being hard to reason about.
+   Include `top_hotspot: <file> (N findings, M commits/90d)` in the finding description.
+   If `make code-health-json` or the scorer script is not available, skip silently.
 
 **Tool priority:** `Serena.getSymbolsOverview` → `Serena.findReferencingSymbols` → `Grep`
 
