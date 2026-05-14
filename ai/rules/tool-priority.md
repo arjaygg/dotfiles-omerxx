@@ -253,7 +253,7 @@ These rules cover the tools that `tool-priority.md` did not originally address: 
 | Task | Tool |
 |---|---|
 | **Assess code maintainability / code health score** | `/code-health` skill |
-| **Quick complexity check on a single file** | `Bash(golangci-lint run --enable cyclop,funlen --output.json.path /dev/stdout <file>)` |
+| **Quick complexity check on a single file** | `/code-health <file>` (pass path as argument) |
 | **Code health as part of code review** | `/hawk` (Quality agent runs code health automatically) |
 | **CI code health gate** | `make code-health` or `make code-health-json` + scorer script |
 

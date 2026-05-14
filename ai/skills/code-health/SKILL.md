@@ -31,6 +31,11 @@ triggers:
   - health score
   - code score
   - complexity score
+  - refactoring priorities
+  - technical debt assessment
+  - where's the technical debt
+  - what should I refactor
+  - show me refactor priorities
 version: 1.0.0
 model: sonnet
 allowed-tools:
