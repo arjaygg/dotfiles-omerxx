@@ -133,5 +133,19 @@ enabled = false
 path = "/Users/axos-agallentes/.dotfiles/ai/skills/tech-lead/SKILL.md"
 enabled = false
 
+[tui]
+status_line = [
+  "model-with-reasoning",
+  "fast-mode",
+  "current-dir",
+  "git-branch",
+  "context-remaining",
+  "five-hour-limit",
+  "weekly-limit",
+  "used-tokens",
+  "codex-version",
+]
+status_line_use_colors = true
+
 [tui.model_availability_nux]
 "gpt-5.5" = 1
