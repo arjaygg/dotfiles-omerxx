@@ -7,6 +7,8 @@ description: >
   reviewing before a commit, or reviewing this PR locally.
   Spawns 4 parallel specialized agents: Architecture, Quality, Resilience, Security.
   Never stops until all agents complete and findings are aggregated.
+  For complete PR review coverage, pair hawk with fury: hawk reviews code quality,
+  fury validates test coverage and writes missing tests.
 triggers:
   - hawk review
   - /hawk
