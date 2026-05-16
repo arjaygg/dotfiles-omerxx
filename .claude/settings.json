@@ -93,7 +93,7 @@
     ],
     "defaultMode": "acceptEdits"
   },
-  "model": "haiku",
+  "model": "sonnet",
   "enableAllProjectMcpServers": true,
   "skillOverrides": {
     "story-complete": "off",
