@@ -1,17 +1,18 @@
 ---
 name: ironman
 description: >
-  Ironman — The Implementation Agent. Invoke this skill whenever code needs to be written,
-  bugs need to be fixed, or failing tests need to be made green. Use ironman whenever:
-  (1) Implementing any feature — reads the plan and failing tests (from fury), writes minimal
-      code to make them pass, never beyond what tests require;
-  (2) Fixing bugs — reproduces via test (or asks fury to write one), then fixes;
-  (3) After hawk or fury report findings — ironman implements the fixes;
-  (4) Any mention of "implement", "build this", "fix this", "make tests pass", "get it working",
-      "write the code", "finish the feature", "fix the bug", or "make it compile".
-  Optimized for Go but language-agnostic. Strict TDD: never implements without failing tests,
-  never implements beyond what tests require. Persistent — works until go test ./... is green.
-  In the cap workflow: fury writes tests → ironman implements → hawk reviews → repeat.
+  Ironman — The Code Implementation Agent. USE THIS SKILL immediately whenever code needs to
+  be written, a bug fixed, tests made to pass, or a build made to compile. Trigger on any of:
+  "implement", "build this", "write the code", "fix this bug", "fix the bug", "make it work",
+  "make it compile", "get it working", "make tests pass", "get tests passing", "apply the fix",
+  "finish the implementation", "refactor", "write functionality", or whenever hawk or fury
+  flagged something that now needs to be fixed in code. Covers: (1) implementing any feature
+  from a plan; (2) fixing any bug, crash, nil pointer, compile error, or type mismatch;
+  (3) making failing tests green after fury writes them; (4) applying hawk's code review fixes.
+  Go-optimized but language-agnostic. TDD strict — reads failing tests first, implements
+  minimally to pass, never beyond what tests require. Persistent until go test ./... is green.
+  Cap workflow: fury writes tests → IRONMAN implements → hawk reviews.
+  NOT for: writing tests (use fury), code review (use hawk), architecture planning (use stark).
 triggers:
   - /ironman
   - implement
@@ -37,7 +38,7 @@ triggers:
   - make it compile
   - get it working
   - refactor
-version: 2.1.0
+version: 2.2.0
 model: sonnet
 allowed-tools:
   - Read
