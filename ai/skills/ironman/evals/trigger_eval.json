@@ -1,0 +1,22 @@
+[
+  {"query": "implement the user authentication feature", "should_trigger": true},
+  {"query": "fix this bug in the payment processor", "should_trigger": true},
+  {"query": "make the failing tests pass", "should_trigger": true},
+  {"query": "build the new API endpoint for user profiles", "should_trigger": true},
+  {"query": "write the code for the queue consumer", "should_trigger": true},
+  {"query": "get it working, the tests keep failing", "should_trigger": true},
+  {"query": "apply the fix for the nil pointer dereference error", "should_trigger": true},
+  {"query": "refactor the database connection pool", "should_trigger": true},
+  {"query": "make it compile, there are missing types and interfaces", "should_trigger": true},
+  {"query": "finish the implementation of the retry logic", "should_trigger": true},
+  {"query": "hawk just flagged a SQL injection issue, go fix it", "should_trigger": true},
+  {"query": "write unit tests for the payment service", "should_trigger": false},
+  {"query": "review my code for security issues", "should_trigger": false},
+  {"query": "design the architecture for the new microservice", "should_trigger": false},
+  {"query": "what's the best way to structure this Go project?", "should_trigger": false},
+  {"query": "add BDD tests for the user registration flow", "should_trigger": false},
+  {"query": "do a code review of my changes before I merge", "should_trigger": false},
+  {"query": "create a plan for implementing the feature", "should_trigger": false},
+  {"query": "check my test coverage gaps", "should_trigger": false},
+  {"query": "explain how the scheduler goroutine pool works", "should_trigger": false}
+]
