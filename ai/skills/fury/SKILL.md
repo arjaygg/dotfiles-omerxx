@@ -21,7 +21,7 @@ triggers:
   - test strategy
   - ensure test coverage
   - mutation test
-version: 3.0.0
+version: 3.1.0
 model: sonnet
 allowed-tools:
   - Read
@@ -114,17 +114,35 @@ If there is even a 1% chance this task requires tests, write the tests FIRST bef
 Mark `context` in_progress. Load in parallel:
 
 ```typescript
-const [agentsGuide, testingPatterns, golangGuide] = await Promise.all([
-  Serena.readMemory("ai_agent_testing_best_practices"),
-  Serena.readMemory("golang_unit_testing_patterns"),
-  Serena.readMemory("project_testing_conventions"),
+const [agentsGuide, testingPatterns, golangGuide, guidance] = await Promise.all([
+  Serena.readMemory("ai_agent_testing_best_practices").catch(() => null),
+  Serena.readMemory("golang_unit_testing_patterns").catch(() => null),
+  Serena.readMemory("project_testing_conventions").catch(() => null),
+  Read("AGENTS.md").catch(() => null),
 ]);
-const guidance = await Read("AGENTS.md");
+
+// BDD discovery: find any project-specific BDD/mutation memories and docs.
+// This picks up e2e_bdd_findings_*, mutation_testing_patterns, and similar
+// memories written by prior fury/ironman sessions in this project.
+const allMemories = await Serena.listMemories({});
+const bddMemoryNames = (allMemories?.memories ?? []).filter(m =>
+  /bdd|mutation_testing/.test(m)
+);
+const bddContext = bddMemoryNames.length > 0
+  ? await Promise.all(bddMemoryNames.slice(0, 4).map(m =>
+      Serena.readMemory(m).catch(() => null)
+    ))
+  : [];
+
+// Try reading bdd-migration-guide.md if this project has a Godog harness.
+let bddGuide = null;
+try { bddGuide = await Read("docs/guides/bdd-migration-guide.md"); } catch {}
 ```
 
 Key references:
 - `docs/guides/golang-unit-testing-guide.md` — authority on Go testing patterns
 - `docs/guides/ai-agent-testing-best-practices.md` — how to test AI agents
+- `docs/guides/bdd-migration-guide.md` — Godog BDD harness & Make targets (if present)
 
 Mark `context` completed.
 
