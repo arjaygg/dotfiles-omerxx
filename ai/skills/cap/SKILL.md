@@ -33,7 +33,7 @@ triggers:
   - do the full feature
   - run cap workflow
   - stark fury ironman hawk
-version: 3.1.0
+version: 3.2.0
 model: opus
 allowed-tools:
   - Agent
@@ -93,6 +93,19 @@ Cap does **not stop midway**. Once invoked:
 
 ---
 
+## Mode Detection
+
+At invocation, check `$ARGUMENTS` for `--mode`:
+
+| Mode | When to use | Gate behavior |
+|---|---|---|
+| `feature` (default) | Building new functionality | Code health gate ≥9.5 enforced in Step 1.5 |
+| `uplift` (`--mode uplift`) | Refactoring code to improve health | Gate skipped — the cap run IS the gate-clearing work |
+
+If no `--mode` argument: default to `feature` mode.
+
+---
+
 ## Instructions
 
 ### Step 0 — Load Context and Create Task List
@@ -111,6 +124,7 @@ Create the master `TodoWrite` list for this workflow:
 ```
 TodoWrite([
   { id: "scope",     content: "Define feature scope and acceptance criteria", status: "pending" },
+  { id: "preflight", content: "PRE-FLIGHT — code health gate on in-scope files (feature mode)", status: "pending" },
   { id: "plan",      content: "PLAN phase — Stark writes the architectural plan", status: "pending" },
   { id: "tests",     content: "TEST phase — Fury writes failing tests", status: "pending" },
   { id: "implement", content: "IMPLEMENT phase — Ironman makes tests pass", status: "pending" },
@@ -136,6 +150,44 @@ If unclear, ask the user **one** clarifying question before proceeding. Do not a
 determine DDD context boundaries and SOLID violations before planning begins.
 
 Mark `scope` completed.
+
+---
+
+### Step 1.5 — Code Health Pre-flight (feature mode only)
+
+Mark `preflight` in_progress.
+
+**Skip this step entirely if running in `uplift` mode.**
+
+Run the code health gate on files in scope:
+
+```bash
+# Use the packages identified in Step 1 scope
+claude /code-health --gate 9.5 <AFFECTED_PACKAGES>
+```
+
+**If gate passes (score ≥ 9.5):** mark `preflight` completed, proceed to Stark.
+
+**If gate fails (score < 9.5):**
+
+Emit this warning and halt:
+```
+⚠️  Code Health Pre-flight FAILED
+Score: X.X / 10 (target ≥ 9.5)
+Affected files: <list worst files from report>
+
+Recommended action:
+  Run /cap --mode uplift to refactor the affected files first,
+  then retry /cap (feature mode) once health is above 9.5.
+
+To bypass (use only when deadline pressure is justified):
+  Run /cap --mode uplift to note the bypass, then continue.
+```
+
+Do **not** proceed to Stark if the gate fails in feature mode. The pre-flight exists to catch
+complexity before adding more code to already-complex files.
+
+Mark `preflight` completed.
 
 ---
 
@@ -274,8 +326,23 @@ Validation gates:
 - [ ] `go test -race ./...` — clean
 - [ ] No TBD comments in implementation
 - [ ] Implementation matches plan structure (correct packages, correct interfaces)
+- [ ] Coverage regression check: run `make coverage-gate` (if available) or compare coverage delta vs. baseline
 
-If any gate fails: loop back to Ironman with specific failure output.
+**Coverage regression check:**
+```bash
+# If make coverage-gate target exists:
+make coverage-gate 2>/dev/null || true
+
+# Otherwise, capture current coverage and compare to baseline manually:
+go test ./... -coverprofile=/tmp/cap-cov.out > /dev/null 2>&1
+CURRENT=$(go tool cover -func=/tmp/cap-cov.out | grep total | awk '{print $3}' | tr -d '%')
+echo "Current coverage: ${CURRENT}%"
+```
+
+If coverage regressed by >2% from baseline: include this in the Hawk review context as a finding.
+Do not block ironman completion for coverage regression — hawk will surface it.
+
+If any other gate fails: loop back to Ironman with specific failure output.
 
 Mark `implement` completed.
 

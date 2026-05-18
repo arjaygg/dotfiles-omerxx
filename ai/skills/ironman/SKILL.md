@@ -38,7 +38,7 @@ triggers:
   - make it compile
   - get it working
   - refactor
-version: 2.2.0
+version: 2.3.0
 model: sonnet
 allowed-tools:
   - Read
@@ -371,6 +371,41 @@ go test -cover ./...
 
 ---
 
+### Step 5b — Code Health Self-Correction (after tests pass)
+
+Once `go test ./...` is green, run the code health gate on modified files:
+
+```bash
+# Identify modified .go files (excluding test files)
+MODIFIED=$(git diff --name-only HEAD | grep '\.go$' | grep -v '_test\.go' || true)
+[ -z "$MODIFIED" ] && MODIFIED="./..."
+
+claude /code-health --gate 9.5 $MODIFIED
+```
+
+**If the gate passes (exit 0):** proceed to Step 6.
+
+**If the gate fails (exit 1 — score < 9.5):** enter a self-correction loop:
+1. Read the health report output to identify the top 1-2 failing biomarkers and the worst files
+2. Apply targeted refactors to those files ONLY:
+   - Brain/Complex Method → extract sub-function(s) to reduce CCN
+   - Large Method → split into smaller methods (each ≤ 50 LOC)
+   - Nested Complexity → early-return guard clauses, or extract inner logic
+   - DRY Violation → extract shared logic into a helper
+3. Run `go test ./...` to confirm tests still pass after refactor
+4. Re-run `claude /code-health --gate 9.5 $MODIFIED`
+5. If still failing after **2 self-correction iterations**: log warning and continue:
+   ```
+   ⚠️  Code health self-correction: still below 9.5 after 2 attempts. Proceeding to review.
+   Hawk will flag remaining health issues.
+   ```
+
+**Self-correction rules:**
+- Refactor only modified files — do not touch unrelated code
+- Never change behavior (tests are the contract; they must stay green)
+- Never break public interfaces to improve score
+- The 2-iteration cap prevents infinite loops; hawk catches what ironman couldn't fix
+
 ### Step 6 — Verify Against Plan
 
 Before finishing, check that implementation matches plan:
@@ -533,6 +568,7 @@ If interrupted or hitting a blocker:
 
 - [ ] All failing tests now pass: `go test ./...` ✓
 - [ ] Race condition test passes: `go test -race ./...` ✓
+- [ ] Code health gate: score ≥ 9.5 on modified files (or self-correction attempted, max 2x)
 - [ ] All components from plan are implemented
 - [ ] All error types from plan are defined
 - [ ] Code follows project patterns (discovered in Step 2)

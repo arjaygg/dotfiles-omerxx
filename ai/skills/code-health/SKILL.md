@@ -36,7 +36,7 @@ triggers:
   - where's the technical debt
   - what should I refactor
   - show me refactor priorities
-version: 1.0.0
+version: 1.1.0
 model: sonnet
 allowed-tools:
   - Bash
@@ -56,6 +56,14 @@ Never stops without a complete scored report.
 - `/code-health` → score all packages in the current project
 - `/code-health pkg/scheduler/` → score a specific package
 - `/code-health --hotspots` → include git churn analysis (hotspot identification)
+- `/code-health --gate 9.5` → score and exit 1 if overall score < 9.5 (CI/gate use)
+- `/code-health pkg/worker/ --gate 9.5` → gate check on a specific package
+
+**Bash-callable gate example (for use in ironman self-correction or cap pre-flight):**
+```bash
+claude /code-health --gate 9.5 pkg/worker/ || echo "GATE FAILED: health below 9.5"
+```
+Exit codes: `0` = score ≥ threshold (or no `--gate` set), `1` = score < threshold.
 
 ---
 
@@ -87,6 +95,7 @@ Start at 10.0, apply penalties, clamp to [1.0, 10.0].
 - If `$ARGUMENTS` contains a path: run against that path only
 - If `$ARGUMENTS` is empty or `.`: run against `./...`
 - If `$ARGUMENTS` contains `--hotspots`: enable git churn analysis in Step 3
+- If `$ARGUMENTS` contains `--gate <N>`: record the threshold value; after Step 4 output, exit 1 if overall score < N, exit 0 otherwise
 
 ### Step 2 — Run Code Health Linters
 
@@ -166,6 +175,24 @@ Refactor Queue (priority order):
   1. <file> — <worst biomarker> — <why it matters>
   2. ...
 ```
+
+### Step 4b — Gate Check (when `--gate` is set)
+
+After outputting the report:
+
+1. Compare the computed `score` against the `--gate` threshold
+2. If `score < threshold`: append to output:
+   ```
+   GATE RESULT: FAIL — score X.X < threshold Y.Y
+   ```
+   Then signal exit code 1 (failure).
+3. If `score >= threshold`: append:
+   ```
+   GATE RESULT: PASS — score X.X >= threshold Y.Y
+   ```
+   Exit code 0.
+
+When the gate fails, do NOT provide a list of recommendations or start refactoring — the caller decides what to do with the exit code.
 
 ### Step 5 — Interpretation
 
