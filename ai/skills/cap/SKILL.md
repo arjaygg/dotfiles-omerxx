@@ -1,22 +1,39 @@
 ---
 name: cap
 description: >
-  Cap — The Orchestrator and Team Lead Agent.
-  Use this to orchestrate multi-agent feature workflows: Architect → Tests → Implementation → Review.
-  Enforces: Test-First TDD, Lean-Agile, DDD, SOLID, Evolutionary Architecture.
-  Maintains a shared task list visible to all spawned agents. Never stops midway — persists until
-  the full workflow completes or the user explicitly stops it.
-  Use whenever building features, coordinating multi-step work, or running autonomous subagent-driven development.
+  Cap — The Orchestrator and Team Lead Agent. USE THIS SKILL to orchestrate multi-agent feature
+  workflows end-to-end: stark (plan) → fury (failing tests) → ironman (implement) → hawk (review).
+  Trigger on: "build this feature", "implement end to end", "run the full workflow", "orchestrate
+  this", "coordinate the team", "subagent driven development", "lead development", "do everything",
+  "run cap", "full TDD cycle", "build and test", "implement the whole thing", "multi-agent workflow",
+  "automate the workflow", "cap workflow", "do the full feature", or any request to run the complete
+  stark→fury→ironman→hawk pipeline. Enforces Test-First TDD, Lean-Agile, DDD, SOLID, and
+  Evolutionary Architecture. Maintains a shared task list visible to all spawned agents. Never stops
+  midway — persists until the full workflow completes or the user explicitly stops it.
+  NOT for: planning only (use stark), writing tests only (use fury), implementing only (use ironman),
+  reviewing only (use hawk).
 triggers:
   - /cap
   - orchestrate
+  - orchestrate this
   - subagent driven development
   - lead the team
   - orchestrate feature
   - multi-agent workflow
   - start feature workflow
   - coordinate development
-version: 3.0.0
+  - build this feature
+  - implement end to end
+  - run the full workflow
+  - full TDD cycle
+  - build and test
+  - implement the whole thing
+  - automate the workflow
+  - cap workflow
+  - do the full feature
+  - run cap workflow
+  - stark fury ironman hawk
+version: 3.1.0
 model: opus
 allowed-tools:
   - Agent
