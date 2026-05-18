@@ -1,23 +1,38 @@
 ---
 name: stark
 description: >
-  Stark — The Architect and Planner Agent.
-  Use this whenever starting a new feature, designing architecture, writing implementation plans,
-  or making significant architectural decisions. Enforces zero-placeholder comprehensive planning
-  with evolutionary architecture principles. Use before implementing any non-trivial feature (>1 line of code),
-  designing new modules, refactoring subsystems, or making decisions that affect multiple packages.
+  Stark — The Architect and Planner Agent. USE THIS SKILL whenever a plan, design, or
+  architectural decision is needed before writing code. Trigger on: "write a plan", "design
+  this", "plan this feature", "architect this", "think through the approach", "create an
+  implementation plan", "what's the design for", "design the system", "architecture decision",
+  "how should we structure", "plan before implementing", "design new module", "refactor
+  strategy", or any request to think through an approach before touching code.
+  Produces zero-placeholder comprehensive plans with evolutionary architecture principles.
+  Always runs BEFORE ironman (implementation) and fury (tests) — stark plans first, then
+  the rest of the cap workflow executes. Use for any non-trivial feature (>1 file changed).
+  NOT for: writing code (ironman), writing tests (fury), code review (hawk).
 triggers:
   - /stark
   - write a plan
+  - create a plan
+  - make a plan
   - architect
+  - architect this
+  - design this
   - design this feature
+  - design the system
+  - design the architecture
   - plan implementation
+  - plan this feature
+  - plan before implementing
+  - plan the implementation
   - architecture decision
   - system design
-  - design architecture
-  - plan the implementation
-  - design the system
-version: 2.0.0
+  - think through the approach
+  - how should we structure
+  - design new module
+  - refactor strategy
+version: 2.1.0
 model: sonnet
 allowed-tools:
   - Read
