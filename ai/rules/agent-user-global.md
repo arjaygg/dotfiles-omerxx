@@ -138,6 +138,17 @@ When spawning subagents for multi-step work:
 
 Never abandon a `TaskCreate` list — orphaned lists accumulate across sessions. Mark cancelled tasks with status `cancelled`.
 
+## Agent Spawning — Fork vs Fresh
+
+When spawning a subagent for research or codebase exploration, **prefer a fork** (no `subagent_type` in Claude Code; equivalent: pass full context explicitly in other tools) over a fresh isolated agent. Forks inherit the parent session's loaded tool context and constraints; fresh agents start cold and will skip session init, falling back to shell primitives that hooks block.
+
+| Situation | Approach |
+|-----------|----------|
+| Search / explore / find in codebase | Fork — inherit context |
+| Second opinion / independent review | Fresh agent — isolation is the point |
+| Specialized tool set (e.g. `bmm-*`) | Fresh agent + include init mandate in prompt |
+
+**When spawning a fresh agent that touches project files:** always include the pctx init mandate in the prompt (call `Serena.initialInstructions()` + `LeanCtx.ctxIntent()` before any file access). Without it, the agent will use `ls`/`grep` via shell and trigger hook blocks.
 
 ---
 
