@@ -1,20 +1,127 @@
-# Hook enforcement: "block" (exit 1) or "off" (exit 0). No "warn" level.
-# Hooks either block or they don't. Advisory messages use exit 0 + stdout.
+# Hook enforcement configuration
+# Loaded by: pre-tool-gate-v2.sh (sections), hook-rule-loader.sh (rule.* / read-guard.*)
 #
-# Consolidated 2026-04-01: 6 PreToolUse → 1 (pre-tool-gate-v2.sh), 4 PostToolUse → 1 (post-tool-analytics.sh)
-# See plans/curious-zooming-moonbeam.md for architecture rationale.
+# Enforcement levels for script sections:
+#   block  → exit 1 + BLOCKED message (tool is halted)
+#   warn   → exit 0 + HINT message (advisory only, tool proceeds)
+#   off    → disabled
+#
+# Consolidated 2026-04-01: 6 PreToolUse → 1 (pre-tool-gate-v2.sh)
+# Extended 2026-05-21: added declarative rule.* and read-guard.* for hook-rule-loader.sh
+# Architecture: plans/2026-05-21-hook-library-design.md
 
-# --- PreToolUse (pre-tool-gate-v2.sh) ---
-# Individual concerns are sections within the consolidated script.
-# These flags allow disabling specific checks without editing the script.
+# ─── Section-level toggles (pre-tool-gate-v2.sh) ────────────────────────────
+
 serena-tool-priority: block      # Serena hints for Grep/Glob/Read
 bash-tool-gate: block            # grep/find/ls in Bash → dedicated tools
 edit-without-read: block         # Edit files must be Read first
 
-# --- Session lifecycle ---
+# ─── Session lifecycle ────────────────────────────────────────────────────────
+
 duplicate-session-check: block   # block duplicate sessions; off to disable
 session-duration-guard: block    # block at 500 turns; warn at 100+; off to disable
 
-# --- Stop event ---
+# ─── Stop event ───────────────────────────────────────────────────────────────
+
 todo-gate: block                 # block incomplete todos on session end
 drift-guard: off                 # off = disabled (re-enable when needed)
+
+# ─── Declarative bash rules (hook-rule-loader.sh: check_bash_cmd_rules) ─────
+# Each rule must have: action, pattern (ERE), message
+# Optional: tool (informational — shown in BLOCKED message)
+# Pattern is matched against the full Bash command string with: echo "$CMD" | grep -qE "$pattern"
+
+# sed in-place → use Edit tool
+rule.bash-sed-inplace.action: block
+rule.bash-sed-inplace.pattern: ^sed[[:space:]]+(-i|--in-place)
+rule.bash-sed-inplace.message: Use the Edit tool for in-place file edits, not 'sed -i'
+rule.bash-sed-inplace.tool: Edit
+
+# sed -n extract lines → use Read with offset/limit
+rule.bash-sed-extract.action: block
+rule.bash-sed-extract.pattern: ^sed[[:space:]]+-n[[:space:]]+'[0-9]+,[0-9]+p'
+rule.bash-sed-extract.message: Use Read(file_path, offset: N, limit: M) instead of 'sed -n N,Mp'
+rule.bash-sed-extract.tool: Read
+
+# awk rewrite to file → use Edit or Write
+rule.bash-awk-file.action: block
+rule.bash-awk-file.pattern: ^awk[[:space:]].+>[[:space:]]
+rule.bash-awk-file.message: Use the Edit or Write tool for file rewrites, not awk output redirect
+rule.bash-awk-file.tool: Edit
+
+# echo redirect (create/append file) → use Write
+rule.bash-echo-redirect.action: block
+rule.bash-echo-redirect.pattern: ^echo[[:space:]].+>
+rule.bash-echo-redirect.message: Use the Write tool to create or append to files, not 'echo >'
+rule.bash-echo-redirect.tool: Write
+
+# printf redirect → use Write
+rule.bash-printf-redirect.action: block
+rule.bash-printf-redirect.pattern: ^printf[[:space:]].+>
+rule.bash-printf-redirect.message: Use the Write tool instead of 'printf > file'
+rule.bash-printf-redirect.tool: Write
+
+# cat heredoc (file creation) → use Write
+rule.bash-cat-heredoc.action: block
+rule.bash-cat-heredoc.pattern: cat[[:space:]]+(>|<<)
+rule.bash-cat-heredoc.message: Use the Write tool to create files, not 'cat <<EOF' or 'cat >'
+rule.bash-cat-heredoc.tool: Write
+
+# tee (write to file) → use Write tool
+rule.bash-tee.action: block
+rule.bash-tee.pattern: \|[[:space:]]*tee[[:space:]]
+rule.bash-tee.message: Use the Write tool to write file contents, not 'tee'
+rule.bash-tee.tool: Write
+
+# python one-liner file read → use Read tool (advisory)
+rule.bash-python-read.action: warn
+rule.bash-python-read.pattern: python3?[[:space:]]+-c[[:space:]]+'.*open\(
+rule.bash-python-read.message: Use the Read tool to read file contents, not Python one-liners
+rule.bash-python-read.tool: Read
+
+# node -e readFile → use Read tool (advisory)
+rule.bash-node-read.action: warn
+rule.bash-node-read.pattern: node[[:space:]]+-e[[:space:]]+'.*readFile
+rule.bash-node-read.message: Use the Read tool to read file contents, not node -e
+rule.bash-node-read.tool: Read
+
+# cp --force on source files → advisory
+rule.bash-cp-overwrite.action: warn
+rule.bash-cp-overwrite.pattern: ^cp[[:space:]]+(-f|--force)[[:space:]]
+rule.bash-cp-overwrite.message: If overwriting a tracked file, prefer Read + Write for auditability
+rule.bash-cp-overwrite.tool: Write
+
+# mv rename source files → suggest Serena.renameSymbol
+rule.bash-mv-rename.action: warn
+rule.bash-mv-rename.pattern: ^mv[[:space:]].+\.(go|ts|tsx|js|py|rs|java|kt|cs)
+rule.bash-mv-rename.message: Renaming source files? Use Serena.renameSymbol for symbol-aware rename across all references
+rule.bash-mv-rename.tool: mcp__serena__rename_symbol
+
+# wc -l file → use Read (advisory)
+rule.bash-wc-lines.action: warn
+rule.bash-wc-lines.pattern: ^wc[[:space:]]+-l[[:space:]]
+rule.bash-wc-lines.message: To check file length, Read with a large limit or use LeanCtx.ctxRead
+rule.bash-wc-lines.tool: Read
+
+# ─── Declarative read-path guards (hook-rule-loader.sh: check_read_path_rules) ──
+# path_pattern is a shell glob matched with case statement.
+
+# Repomix output files
+read-guard.repomix-output.action: block
+read-guard.repomix-output.path_pattern: *repomix-output*
+read-guard.repomix-output.message: Repomix output is for LLM context - use LeanCtx.ctxSearch instead of reading directly
+
+# go.sum hash file
+read-guard.go-sum.action: block
+read-guard.go-sum.path_pattern: */go.sum
+read-guard.go-sum.message: go.sum is a hash file - grep for specific entries or check go.mod
+
+# node_modules
+read-guard.node-modules.action: block
+read-guard.node-modules.path_pattern: */node_modules/*
+read-guard.node-modules.message: Do not read node_modules directly - use npm ls or check package.json
+
+# vendor/ Go source (advisory)
+read-guard.vendor-go.action: warn
+read-guard.vendor-go.path_pattern: */vendor/*.go
+read-guard.vendor-go.message: Reading vendored Go files - prefer Serena.findSymbol or go doc
