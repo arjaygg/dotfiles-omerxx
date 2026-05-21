@@ -7,11 +7,9 @@ description: >
   Complement with /hawk for Go-specific deep architectural analysis.
 triggers:
   - /pr-review
-  - review this PR
-  - review PR
-  - review pull request
-  - PR review
-  - check this PR
+  - 4-agent pr review
+  - parallel pr review
+  - structured pr review
 version: 1.0.0
 model: sonnet
 allowed-tools:
