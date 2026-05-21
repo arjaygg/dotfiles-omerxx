@@ -2,14 +2,19 @@
 
 ## Current Focus
 
-Insights action plan (2026-05-21) — implementing findings from 28-day Claude Code usage report.
-Branch: `insights-action-plan`
+Autonomous watchdog loop — committing + shipping to main.
+Branch: `feat/autonomous-watchdog-loop`
 
 ## Completed This Session
 
-- Added Investigation Depth rule to `ai/rules/agent-user-global.md`
-- Created `/migration-watchdog` skill at `ai/skills/migration-watchdog/SKILL.md`
-- Created `env-preflight.sh` hook + registered in `settings.json`
-- Created `plans/auc-conversion-claude-md-patch.md` (ready to apply in auc-conversion repo)
-- Created `decisions/0005-autonomous-watchdog-loop.md` (horizon architecture)
-- Awaiting: commit + PR, then apply auc-conversion patch
+- Investigation Depth rule → `ai/rules/agent-user-global.md` (PR #193, merged)
+- `/migration-watchdog` skill + `env-preflight.sh` hook (PR #193, merged)
+- `decisions/0005-autonomous-watchdog-loop.md` (PR #193, merged)
+- auc-conversion CLAUDE.md patch (PR #728, merged)
+- `ai/skills/migration-watchdog-auto/SKILL.md` (CronCreate tick executor)
+- `ai/skills/watchdog-remediate/SKILL.md` (4 pre-approved playbooks)
+- `ai/skills/watchdog-cron-setup/SKILL.md` (one-time setup + teardown)
+
+## Next
+
+Commit 3 new skills → push → PR → admin merge
