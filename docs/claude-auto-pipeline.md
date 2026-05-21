@@ -88,22 +88,18 @@ jobs:
       ADMIN_GITHUB_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
 ```
 
-Also install the gates workflow — create `.github/workflows/claude-auto-gates.yml`:
+Also install the gates workflow — **copy** `claude-auto-gates.yml` directly into the target repo at `.github/workflows/claude-auto-gates.yml`:
 
-```yaml
-name: claude-auto-gates
-
-on:
-  pull_request:
-    branches: [main]
-
-jobs:
-  claude-auto-coverage-gate:
-    uses: arjaygg/.dotfiles/.github/workflows/claude-auto-gates.yml@main
-    # or copy the full gates workflow directly
+```bash
+curl -sSf https://raw.githubusercontent.com/arjaygg/.dotfiles/main/.github/workflows/claude-auto-gates.yml \
+  > .github/workflows/claude-auto-gates.yml
+git add .github/workflows/claude-auto-gates.yml
+git commit -m "ci: add claude-auto gates workflow"
 ```
 
-Or copy the full `claude-auto-gates.yml` from dotfiles directly into the target repo.
+> **Why copy, not `uses:`**: The gates workflow is triggered by `pull_request` events in the target
+> repo. Reusable workflows (`workflow_call`) cannot be invoked by `pull_request` triggers — they
+> require a separate dispatch. The file must live in the target repo.
 
 ## Using the pipeline
 

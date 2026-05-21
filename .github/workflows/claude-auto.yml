@@ -109,180 +109,41 @@ jobs:
           echo "branch=$BRANCH"   >> "$GITHUB_OUTPUT"
           echo "slug=$SLUG"        >> "$GITHUB_OUTPUT"
 
+      - name: Checkout dotfiles skills
+        uses: actions/checkout@v4
+        with:
+          repository: arjaygg/.dotfiles
+          ref: main
+          path: .dotfiles-skills
+          sparse-checkout: |
+            ai/skills/claude-auto
+          sparse-checkout-cone-mode: false
+
       - name: Run autonomous pipeline
-        run: |
-          claude --dangerously-skip-permissions -p "$(cat <<'ORCHESTRATOR_EOF'
-          You are the claude-auto orchestrator. Your job is to implement a GitHub issue
-          end-to-end: branch → implement → test → review → PR → CI → merge → cleanup → comment.
-
-          ## Context
-          - Repository: ${{ github.repository }}
-          - Issue #${{ env.ISSUE_NUMBER }}: ${{ steps.issue.outputs.title }}
-          - Branch to create: ${{ steps.issue.outputs.branch }}
-          - Max test iterations: ${{ env.MAX_TEST_ITERATIONS }}
-          - Diff size max: ${{ env.DIFF_SIZE_MAX }} lines (fail-fast if exceeded without 'large-diff-ok' label)
-
-          ## Issue body
-          ${{ steps.issue.outputs.body }}
-
-          ## Phase 1 — Setup
-          Create the feature branch and configure git:
-          ```bash
-          git checkout -b ${{ steps.issue.outputs.branch }} main
-          ```
-
-          ## Phase 2 — Implement + Test loop (max ${{ env.MAX_TEST_ITERATIONS }} iterations)
-          1. Read the issue body carefully. Identify what files need to change and why.
-          2. Implement the minimum change that satisfies the issue.
-          3. Run the project test suite. Detect the test runner automatically:
-             - Go: `go test ./...`
-             - Node: `npm test` or `yarn test`
-             - Python: `pytest` or `python -m pytest`
-             - Ruby: `bundle exec rspec`
-             - Generic: look for `Makefile` targets (make test, make check)
-          4. If tests fail: parse the failure output, fix the root cause, repeat.
-          5. Stop when all tests pass OR after ${{ env.MAX_TEST_ITERATIONS }} iterations.
-          6. If still failing after max iterations: post a comment on issue #${{ env.ISSUE_NUMBER }}
-             explaining what was tried and what failed, then exit with code 1.
-
-          ## Phase 3 — Parallel review (3 agents)
-          Spawn 3 parallel Agent calls simultaneously. Pass changed files list to each.
-          Each agent returns a JSON array of findings: [{severity, category, file, line, description, fix}].
-
-          ### Security agent prompt
-          Review these changed files for security issues:
-          - OWASP Top 10: injection (SQL/cmd/LDAP), broken auth, sensitive data exposure, XXE,
-            broken access control, security misconfiguration, XSS, insecure deserialization,
-            known vulnerable components, insufficient logging
-          - Hardcoded secrets, tokens, passwords, API keys
-          - Missing input validation at system boundaries
-          - Missing authorization checks on new endpoints/functions
-          Return JSON array of findings. Empty array if none.
-
-          ### Performance agent prompt
-          Review these changed files for performance issues:
-          - N+1 database queries (loop + query pattern)
-          - Missing indexes for new query patterns
-          - Unbounded loops or O(n²) algorithms where n could be large
-          - Missing caching on hot read paths
-          - Memory leaks (unclosed resources, growing unbounded collections)
-          - Blocking calls in async/concurrent contexts
-          Return JSON array of findings. Empty array if none.
-
-          ### Style agent prompt
-          Review these changed files for style/maintainability issues:
-          - Naming: unclear variable/function names, non-idiomatic casing for the language
-          - Missing or stale documentation on exported/public symbols
-          - Functions longer than 40 lines (candidates to extract)
-          - Copy-paste code (3+ identical blocks → extract helper)
-          - Magic numbers/strings (should be named constants)
-          - Language idioms: use standard library patterns, avoid reinventing wheels
-          Return JSON array of findings. Empty array if none.
-
-          After all 3 agents complete:
-          - Apply CRITICAL and HIGH findings immediately (edit files to fix)
-          - Log MEDIUM and LOW findings in the PR description under "## Review findings"
-          - Re-run tests after applying fixes to confirm nothing broke
-
-          ## Phase 4 — Diff size gate (self-check)
-          Before opening the PR, run:
-          ```bash
-          CHANGED_LINES=$(git diff main...HEAD --stat | tail -1 | awk '{print $1}')
-          ```
-          If CHANGED_LINES > ${{ env.DIFF_SIZE_MAX }}: check if the issue has label 'large-diff-ok'.
-          If not: post a comment on issue #${{ env.ISSUE_NUMBER }} explaining the diff is too large,
-          then exit with code 1. The coverage-gate and diff-size-gate required checks will also
-          block the merge independently.
-
-          ## Phase 5 — Commit and push
-          ```bash
-          git add -A
-          git commit -m "feat: ${{ steps.issue.outputs.title }}
-
-          Closes #${{ env.ISSUE_NUMBER }}
-
-          Co-authored-by: claude-auto[bot] <claude-auto[bot]@users.noreply.github.com>"
-          git push origin ${{ steps.issue.outputs.branch }}
-          ```
-
-          ## Phase 6 — Create PR
-          ```bash
-          gh pr create \
-            --title "feat: ${{ steps.issue.outputs.title }}" \
-            --body "## Summary
-          Automated implementation of #${{ env.ISSUE_NUMBER }}.
-
-          ## Changes
-          <!-- describe what changed and why -->
-
-          ## Review findings
-          <!-- security/performance/style findings from parallel review -->
-
-          ## Test results
-          All tests passing after N iteration(s).
-
-          Closes #${{ env.ISSUE_NUMBER }}" \
-            --base main \
-            --head ${{ steps.issue.outputs.branch }}
-          ```
-          Capture the PR number from the output.
-
-          ## Phase 7 — Wait for CI and fix Bugbot findings
-          Poll CI for up to 20 minutes (check every 60s):
-          ```bash
-          PR_NUM=$(gh pr view ${{ steps.issue.outputs.branch }} --json number -q '.number')
-          for i in $(seq 1 20); do
-            STATUS=$(gh pr checks "$PR_NUM" --json name,state \
-              --jq '[.[] | select(.state != "SUCCESS" and .state != "SKIPPED")] | length')
-            if [ "$STATUS" = "0" ]; then echo "CI_GREEN=true"; break; fi
-            # Check for new Bugbot/bot review comments and fix them
-            BUGBOT=$(gh pr view "$PR_NUM" --json comments \
-              --jq '.comments[] | select(.author.login | test("bot|bugbot|github-actions"; "i")) | .body' \
-              2>/dev/null | tail -500)
-            if [ -n "$BUGBOT" ]; then
-              # Feed Bugbot findings back to Claude for fixing
-              echo "BUGBOT_FINDINGS=$BUGBOT"
-            fi
-            sleep 60
-          done
-          ```
-          If Bugbot findings were found: fix them (edit files, commit, push), then re-poll.
-          If CI is still not green after 20 minutes: post a comment on the issue and exit 1.
-          Skip the coverage-gate and diff-size-gate check names — they're always required and
-          handled by the separate gates workflow.
-
-          ## Phase 8 — Admin merge
-          Once all non-gate checks are green:
-          ```bash
-          gh pr merge "$PR_NUM" --squash --admin \
-            --subject "feat: ${{ steps.issue.outputs.title }} (#$PR_NUM)"
-          ```
-
-          ## Phase 9 — Cleanup
-          ```bash
-          git checkout main
-          git pull origin main
-          git branch -d ${{ steps.issue.outputs.branch }} 2>/dev/null || true
-          ```
-
-          ## Phase 10 — Close issue with summary comment
-          ```bash
-          gh issue comment ${{ env.ISSUE_NUMBER }} --body "## claude-auto pipeline complete
-
-          **PR merged:** #$PR_NUM
-          **Branch:** \`${{ steps.issue.outputs.branch }}\`
-          **Test iterations:** N
-          **Review findings applied:** X critical/high, Y medium/low logged
-
-          Changes are now on \`main\`. Closing issue."
-
-          gh issue close ${{ env.ISSUE_NUMBER }} --reason completed
-          ```
-          ORCHESTRATOR_EOF
-          )"
         env:
           GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          ISSUE_TITLE: ${{ steps.issue.outputs.title }}
+          ISSUE_BODY: ${{ steps.issue.outputs.body }}
+          ISSUE_BRANCH: ${{ steps.issue.outputs.branch }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Write context block to temp file (env vars isolate special chars in body)
+          cat > /tmp/pipeline-prompt.md << CONTEXT_EOF
+          ## Pipeline Context
+          - Repository: ${REPO}
+          - Issue #${ISSUE_NUMBER}: ${ISSUE_TITLE}
+          - Branch to create: ${ISSUE_BRANCH}
+          - Max test iterations: ${MAX_TEST_ITERATIONS}
+          - Diff size max: ${DIFF_SIZE_MAX} lines
+
+          ## Issue Body
+
+          CONTEXT_EOF
+          printf '%s\n\n---\n\n' "$ISSUE_BODY" >> /tmp/pipeline-prompt.md
+          # Append phase instructions — single source of truth in SKILL.md
+          cat .dotfiles-skills/ai/skills/claude-auto/SKILL.md >> /tmp/pipeline-prompt.md
+          claude --dangerously-skip-permissions -p "$(cat /tmp/pipeline-prompt.md)"
 
       - name: Post failure comment on error
         if: failure()
