@@ -13,5 +13,5 @@
 
 ## Backlog
 
-- [ ] Apply auc-conversion CLAUDE.md patch (see plans/auc-conversion-claude-md-patch.md)
-- [ ] Implement autonomous watchdog loop (see decisions/0005-autonomous-watchdog-loop.md)
+- [x] Apply auc-conversion CLAUDE.md patch (auc-conversion PR #728, merged 2026-05-21)
+- [x] Implement autonomous watchdog loop (see decisions/0005-autonomous-watchdog-loop.md)
