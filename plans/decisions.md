@@ -66,3 +66,10 @@ Durable record: `decisions/0003-universal-constitution-loading.md`
 ## ADL-010 — 2026-04-20 session initialization housekeeping
 
 Loaded Serena manual + project memories, processed and deleted `plans/session-handoff.md`, and kept active plan context unchanged pending next user task.
+
+---
+
+## ADL-011 — Insights action plan: skip CLAUDE.md text additions, use hooks
+
+2026-05-21 — Report suggested 3 CLAUDE.md additions. "Tool Priority Rules" skipped: already enforced by `pre-tool-gate-v2.sh` + `ai/rules/tool-priority.md` — text-only additions have weak adherence without hooks. Net-new rules that ARE missing enforcement (Investigation Depth, Migration Verification) added where they belong: Investigation Depth → user-global `agent-user-global.md`; Migration Verification → auc-conversion project CLAUDE.md (project-specific, in patch doc).
+Durable record: `decisions/0005-autonomous-watchdog-loop.md`
