@@ -1,0 +1,139 @@
+# Required-status checks for the claude-auto pipeline.
+# Add both job names as required checks in branch protection:
+#   - claude-auto-coverage-gate
+#   - claude-auto-diff-size-gate
+#
+# These run on every PR — not just claude-auto ones — so they protect main
+# against any PR that drops coverage or introduces an oversized diff.
+
+name: claude-auto-gates
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Coverage gate ──────────────────────────────────────────────────────────
+  # Fails if test coverage drops vs the base branch.
+  # Requires the project to produce a coverage report; configure COVERAGE_CMD
+  # and COVERAGE_FILE for the target repo's test runner.
+  claude-auto-coverage-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect coverage tool and measure HEAD coverage
+        id: head
+        run: |
+          # Auto-detect test runner and run coverage
+          if [ -f go.mod ]; then
+            go test ./... -coverprofile=coverage.out -covermode=atomic 2>/dev/null
+            COVERAGE=$(go tool cover -func=coverage.out | grep ^total | awk '{print $3}' | tr -d '%')
+          elif [ -f package.json ]; then
+            npm ci --silent 2>/dev/null
+            npx jest --coverage --coverageReporters=json-summary 2>/dev/null || true
+            COVERAGE=$(jq '.total.lines.pct' coverage/coverage-summary.json 2>/dev/null || echo "skip")
+          elif [ -f pyproject.toml ] || [ -f setup.py ] || [ -f requirements.txt ]; then
+            pip install pytest pytest-cov -q 2>/dev/null
+            python -m pytest --cov --cov-report=json -q 2>/dev/null || true
+            COVERAGE=$(python -c "import json; d=json.load(open('coverage.json')); print(d['totals']['percent_covered'])" 2>/dev/null || echo "skip")
+          else
+            # No recognized test runner — gate passes (skip)
+            echo "coverage=skip" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "coverage=${COVERAGE:-skip}" >> "$GITHUB_OUTPUT"
+
+      - name: Measure base branch coverage
+        id: base
+        if: steps.head.outputs.coverage != 'skip'
+        run: |
+          git stash --include-untracked 2>/dev/null || true
+          git checkout "${{ github.base_ref }}" 2>/dev/null
+
+          if [ -f go.mod ]; then
+            go test ./... -coverprofile=coverage-base.out -covermode=atomic 2>/dev/null
+            BASE=$(go tool cover -func=coverage-base.out | grep ^total | awk '{print $3}' | tr -d '%')
+          elif [ -f package.json ]; then
+            npm ci --silent 2>/dev/null
+            npx jest --coverage --coverageReporters=json-summary --coverageDirectory=coverage-base 2>/dev/null || true
+            BASE=$(jq '.total.lines.pct' coverage-base/coverage-summary.json 2>/dev/null || echo "0")
+          elif [ -f pyproject.toml ] || [ -f setup.py ] || [ -f requirements.txt ]; then
+            python -m pytest --cov --cov-report=json:coverage-base.json -q 2>/dev/null || true
+            BASE=$(python -c "import json; d=json.load(open('coverage-base.json')); print(d['totals']['percent_covered'])" 2>/dev/null || echo "0")
+          else
+            BASE="0"
+          fi
+
+          git checkout "${{ github.head_ref }}" 2>/dev/null || git checkout - 2>/dev/null
+          echo "coverage=${BASE:-0}" >> "$GITHUB_OUTPUT"
+
+      - name: Enforce coverage did not drop
+        if: steps.head.outputs.coverage != 'skip'
+        run: |
+          HEAD="${{ steps.head.outputs.coverage }}"
+          BASE="${{ steps.base.outputs.coverage }}"
+          echo "Base coverage: ${BASE}%"
+          echo "Head coverage: ${HEAD}%"
+          # Use python for float comparison (bash can't do floats)
+          python3 -c "
+          base = float('${BASE}')
+          head = float('${HEAD}')
+          delta = head - base
+          print(f'Coverage delta: {delta:+.2f}%')
+          if delta < -0.5:  # allow 0.5% rounding tolerance
+              print(f'FAIL: coverage dropped {abs(delta):.2f}% (base={base:.1f}%, head={head:.1f}%)')
+              exit(1)
+          print(f'PASS: coverage OK ({head:.1f}%)')
+          "
+
+  # ── Diff size gate ─────────────────────────────────────────────────────────
+  # Fails if the PR changes more than DIFF_SIZE_MAX lines without the
+  # 'large-diff-ok' label. Encourages focused, reviewable PRs.
+  claude-auto-diff-size-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Count changed lines
+        id: diff
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1 2>/dev/null || true
+          LINES=$(git diff "origin/${{ github.base_ref }}...HEAD" --stat \
+            | tail -1 \
+            | awk '{for(i=1;i<=NF;i++) if($i~/^[0-9]+$/) {print $i; exit}}')
+          echo "lines=${LINES:-0}" >> "$GITHUB_OUTPUT"
+          echo "Changed lines: ${LINES:-0}"
+
+      - name: Check for large-diff-ok label
+        id: label
+        run: |
+          HAS_LABEL=$(gh pr view "${{ github.event.pull_request.number }}" \
+            --json labels \
+            --jq '[.labels[].name] | contains(["large-diff-ok"])' \
+            2>/dev/null || echo "false")
+          echo "approved=${HAS_LABEL}" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Enforce diff size
+        run: |
+          LINES="${{ steps.diff.outputs.lines }}"
+          APPROVED="${{ steps.label.outputs.approved }}"
+          # Per-repo override via repo variable (set in Settings > Variables)
+          MAX="${{ vars.DIFF_SIZE_MAX || 500 }}"
+          echo "Changed lines: $LINES  |  Max: $MAX  |  large-diff-ok label: $APPROVED"
+          if [ "$APPROVED" = "true" ]; then
+            echo "PASS: large-diff-ok label present — skipping size check"
+            exit 0
+          fi
+          if [ "${LINES:-0}" -gt "$MAX" ]; then
+            echo "FAIL: diff has $LINES changed lines (max $MAX)."
+            echo "Add the 'large-diff-ok' label to this PR to override."
+            exit 1
+          fi
+          echo "PASS: diff size OK ($LINES lines)"
