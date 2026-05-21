@@ -227,6 +227,15 @@ Patterns and recipes: `ai/rules/monitor-patterns.md`
 
 ---
 
+## Investigation Depth
+
+These rules apply to root-cause analyses, debugging sessions, and any request for a recommendation. They target the most common failure mode: concluding too early without enough evidence.
+
+- **Multi-source before conclusion:** For any RCA or investigation, check at least two independent log/signal sources (e.g., app logs AND K8s events AND DB logs) before concluding. A single source is not enough.
+- **Show your work:** Explicitly state what was checked and what was NOT yet checked. Do not declare a root cause without listing both. Format: "Checked: [X, Y]. Not yet checked: [Z]."
+- **Lead with the recommendation:** When asked for a recommendation, state the concrete recommendation first, then provide the supporting analysis. Never bury the answer in analysis.
+- **Never assume exit 0 = success:** For deployment and migration operations, always verify actual artifacts (indexes created, row counts match, pods healthy, API responding) even when the command exits 0.
+
 ## Compound Request Echo-Back
 
 For any request containing 2+ distinct actions joined by AND/THEN/ALSO/PLUS, before taking any action:
