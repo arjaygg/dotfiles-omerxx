@@ -9,9 +9,7 @@
 - [x] Fork-vs-fresh-agent rule for subagent spawning (dotfiles PR #192, merged 2026-05-21)
 - [x] Housekeeping: deleted stale plan artifacts and session-handoff
 
-## In Progress
-
-- [ ] insights-action-plan PR (branch ready, awaiting commit)
+- [x] Insights action plan (dotfiles PR #193, merged 2026-05-21)
 
 ## Backlog
 
