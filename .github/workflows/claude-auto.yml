@@ -1,0 +1,159 @@
+# Reusable workflow: autonomous Claude PR pipeline triggered by 'claude-auto' issue label.
+# Call this from any target repo with:
+#   uses: arjaygg/.dotfiles/.github/workflows/claude-auto.yml@main
+#   secrets:
+#     CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+#     ADMIN_GITHUB_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+
+name: claude-auto
+
+on:
+  workflow_call:
+    inputs:
+      issue_number:
+        required: true
+        type: number
+        description: "GitHub issue number that triggered the pipeline"
+      diff_size_max:
+        required: false
+        type: number
+        default: 500
+        description: "Max changed lines before requiring 'large-diff-ok' label"
+      max_test_iterations:
+        required: false
+        type: number
+        default: 5
+        description: "Max fix-test loop iterations before aborting"
+    secrets:
+      CLAUDE_API_KEY:
+        required: true
+        description: "Anthropic API key for headless claude invocations"
+      ADMIN_GITHUB_TOKEN:
+        required: true
+        description: "PAT with repo+workflow scope for admin merge"
+
+  # Also directly triggerable on issues in the dotfiles repo itself
+  issues:
+    types: [labeled]
+
+jobs:
+  # ── Guard: only run when the label is 'claude-auto' ───────────────────────
+  check-label:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      issue_number: ${{ steps.check.outputs.issue_number }}
+    steps:
+      - id: check
+        run: |
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            LABEL="${{ github.event.label.name }}"
+            NUM="${{ github.event.issue.number }}"
+          else
+            # workflow_call: inputs already validated
+            LABEL="claude-auto"
+            NUM="${{ inputs.issue_number }}"
+          fi
+          if [ "$LABEL" = "claude-auto" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "issue_number=$NUM" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ── Main orchestration job ─────────────────────────────────────────────────
+  orchestrate:
+    needs: check-label
+    if: needs.check-label.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    env:
+      ISSUE_NUMBER: ${{ needs.check-label.outputs.issue_number }}
+      DIFF_SIZE_MAX: ${{ inputs.diff_size_max || 500 }}
+      MAX_TEST_ITERATIONS: ${{ inputs.max_test_iterations || 5 }}
+      GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+      ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "claude-auto[bot]"
+          git config user.email "claude-auto[bot]@users.noreply.github.com"
+
+      - name: Fetch issue details
+        id: issue
+        run: |
+          ISSUE_JSON=$(gh api repos/${{ github.repository }}/issues/$ISSUE_NUMBER)
+          TITLE=$(echo "$ISSUE_JSON" | jq -r '.title')
+          BODY=$(echo "$ISSUE_JSON"  | jq -r '.body // ""')
+          # Sanitize for use as branch slug (lowercase, spaces→hyphens, strip specials)
+          SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/-\+/-/g' | sed 's/^-\|-$//g' | cut -c1-40)
+          BRANCH="feat/claude-auto-${ISSUE_NUMBER}-${SLUG}"
+          echo "title=$TITLE"      >> "$GITHUB_OUTPUT"
+          echo "body<<BODY_EOF"    >> "$GITHUB_OUTPUT"
+          echo "$BODY"             >> "$GITHUB_OUTPUT"
+          echo "BODY_EOF"          >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH"   >> "$GITHUB_OUTPUT"
+          echo "slug=$SLUG"        >> "$GITHUB_OUTPUT"
+
+      - name: Checkout dotfiles skills
+        uses: actions/checkout@v4
+        with:
+          repository: arjaygg/.dotfiles
+          ref: main
+          path: .dotfiles-skills
+          sparse-checkout: |
+            ai/skills/claude-auto
+          sparse-checkout-cone-mode: false
+
+      - name: Run autonomous pipeline
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          ISSUE_TITLE: ${{ steps.issue.outputs.title }}
+          ISSUE_BODY: ${{ steps.issue.outputs.body }}
+          ISSUE_BRANCH: ${{ steps.issue.outputs.branch }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Write context block to temp file (env vars isolate special chars in body)
+          cat > /tmp/pipeline-prompt.md << CONTEXT_EOF
+          ## Pipeline Context
+          - Repository: ${REPO}
+          - Issue #${ISSUE_NUMBER}: ${ISSUE_TITLE}
+          - Branch to create: ${ISSUE_BRANCH}
+          - Max test iterations: ${MAX_TEST_ITERATIONS}
+          - Diff size max: ${DIFF_SIZE_MAX} lines
+
+          ## Issue Body
+
+          CONTEXT_EOF
+          printf '%s\n\n---\n\n' "$ISSUE_BODY" >> /tmp/pipeline-prompt.md
+          # Append phase instructions — single source of truth in SKILL.md
+          cat .dotfiles-skills/ai/skills/claude-auto/SKILL.md >> /tmp/pipeline-prompt.md
+          claude --dangerously-skip-permissions -p "$(cat /tmp/pipeline-prompt.md)"
+
+      - name: Post failure comment on error
+        if: failure()
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body "## claude-auto pipeline failed
+
+          The automated pipeline encountered an error and could not complete.
+
+          **Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          Please review the run logs and either fix the issue description or implement manually."
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
