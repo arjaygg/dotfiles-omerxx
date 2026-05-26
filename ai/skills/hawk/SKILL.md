@@ -1,14 +1,12 @@
 ---
 name: hawk
 description: >
-  Hawk — adversarial multi-agent code reviewer for Go codebases.
-  Use this whenever reviewing Go code, checking code quality, reviewing
-  changed files, running a code review, check my code, hawk review,
-  reviewing before a commit, or reviewing this PR locally.
-  Spawns 4 parallel specialized agents: Architecture, Quality, Resilience, Security.
-  Never stops until all agents complete and findings are aggregated.
-  For complete PR review coverage, pair hawk with fury: hawk reviews code quality,
-  fury validates test coverage and writes missing tests.
+  Hawk — Go code reviewer. Default: single focused agent covering Architecture, Quality,
+  Resilience, and Security in one pass. Fast, cheap, and well-calibrated.
+  Use --adversarial for parallel multi-agent cross-checking on security-critical or
+  pre-release reviews. Pair with fury for test coverage.
+  Triggers: hawk review, /hawk, review my code, review my changes, check my code,
+  code review, review changed files, reviewing before a commit, review this locally.
 triggers:
   - hawk review
   - /hawk
@@ -19,7 +17,7 @@ triggers:
   - review changed files
   - reviewing before a commit
   - review this locally
-version: 2.0.0
+version: 3.0.0
 model: sonnet
 allowed-tools:
   - Read
@@ -39,10 +37,10 @@ allowed-tools:
 disable_model_invocation: false
 ---
 
-# Hawk — Adversarial Multi-Agent Code Reviewer
+# Hawk — Go Code Reviewer
 
-Adversarial, multi-agent code reviewer. Spawns 4 parallel Explore subagents (Architecture, Quality,
-Resilience, Security), coordinates cross-cutting findings, and produces a severity-ranked findings table.
+Single-agent Go code reviewer covering Architecture, Quality, Resilience, and Security in one
+pass. Use `--adversarial` to opt into 4-agent parallel cross-checking for adversarial depth.
 
 **Linting/quality gates** (not handled here — already in CI pre-push):
 `golangci-lint --fix`, `gosec`, `govulncheck`, `go-test-short`.
@@ -52,8 +50,8 @@ Resilience, Security), coordinates cross-cutting findings, and produces a severi
 ## Persistence Directive
 
 Hawk does **not stop midway**. Once invoked:
-- Launch all 4 agents and wait for all to complete — do not report partial results
-- Aggregate, deduplicate, and rank all findings before returning
+- Complete the review before returning results
+- Aggregate, filter, and rank all findings before reporting
 - Use `TodoWrite` to track progress
 - Report progress via `TaskUpdate` if `CLAUDE_CODE_TASK_LIST_ID` is set
 
@@ -77,9 +75,9 @@ At session start:
    TodoWrite([
      { id: "scope",    content: "Determine scope and load context", status: "pending" },
      { id: "impact",   content: "Run impact analysis on changed files", status: "pending" },
-     { id: "agents",   content: "Launch 4 parallel review agents", status: "pending" },
+     { id: "review",   content: "Run review agent(s)", status: "pending" },
      { id: "advisor",  content: "Call advisor before finalizing CRITICAL findings", status: "pending" },
-     { id: "aggregate",content: "Aggregate, deduplicate, and rank all findings", status: "pending" },
+     { id: "aggregate",content: "Filter and rank all findings", status: "pending" },
      { id: "report",   content: "Output findings table and summary", status: "pending" },
    ])
    ```
@@ -90,10 +88,11 @@ At session start:
 
 ## When to Use
 
-- `/hawk` → review all changed `.go` files in current diff
+- `/hawk` → review all changed `.go` files (single-agent, fast)
 - `/hawk pkg/scheduler/` → review a specific package
-- `/hawk --deep` → switch all agents to Opus for security-critical or pre-release reviews
-- `/hawk --post-pr` → CRITICAL/HIGH posted as inline review comments at file:line; MEDIUM/LOW as a block summary table
+- `/hawk --adversarial` → spawn 4 parallel agents for cross-checking (security-critical, pre-release)
+- `/hawk --deep` → switch to Opus for deeper reasoning
+- `/hawk --post-pr` → CRITICAL/HIGH posted as inline review comments; MEDIUM/LOW as block summary
 - `/hawk --post-pr=block` → all findings as a single block comment (overrides inline behavior)
 - `/hawk --effort low` → pre-commit quick check (high-confidence findings only, ≥ 0.85)
 - `/hawk --effort max` → exhaustive pre-release audit (includes uncertain findings flagged `[?]`)
@@ -108,7 +107,8 @@ Mark `scope` in_progress.
 
 - If `$ARGUMENTS` contains a path: filter to that path prefix
 - If `$ARGUMENTS` is empty: use the injected diff above
-- If `--deep` flag: set `model=opus` for all spawned agents
+- If `--deep` flag: set `model=opus` for spawned agent(s)
+- If `--adversarial` flag: set `ADVERSARIAL=true`
 - If no changed `.go` files: stop with "No changed Go files found. Pass a path argument or stage some changes."
 
 Parse `--effort <level>` from `$ARGUMENTS` (default: `high`):
@@ -134,16 +134,89 @@ Mark `scope` completed.
 
 Mark `impact` in_progress. Report: "Hawk: analyzing impact radius"
 
-For each changed file, identify the 2-level reverse dependency list to pass to agents as "impact radius."
-Agents must flag issues in DOWNSTREAM packages if a changed interface could break them.
+For each changed file, identify the 2-level reverse dependency list to pass to the review agent(s)
+as "impact radius." Flag issues in DOWNSTREAM packages if a changed interface could break them.
 
 Mark `impact` completed.
 
 ---
 
-### Step 3 — Launch 4 Parallel Agents
+### Step 3 — Run Review
 
-Mark `agents` in_progress. Report: "Hawk: launching Architecture, Quality, Resilience, Security agents"
+Mark `review` in_progress.
+
+#### Default mode (single-agent)
+
+Spawn one combined review agent with the following prompt:
+
+---
+
+You are a Go code reviewer. Review all changed files covering Architecture, Quality, Resilience,
+and Security. Return a **complete JSON array** of findings — never respond with "done" or a
+summary without content.
+
+**Architecture checks:**
+1. **Repository pattern violation:** Direct DB/GORM access outside `pkg/repo/` → HIGH
+2. **Missing factory constructor:** Exported struct instantiated with `{}` outside tests → MEDIUM
+3. **K8s manifest in wrong repo:** `*.yaml` with `kind: Deployment|Service` → HIGH
+4. **OSS compliance:** Raw `prometheus.io/client_golang` without internal wrapper → HIGH
+5. **Circular imports:** Packages importing each other → CRITICAL
+6. **Downstream blast radius:** Changed interface used by downstream packages → MEDIUM warning
+
+**Quality checks:**
+1. **Missing table-driven tests:** Repeated `t.Run()` without a slice of test cases → MEDIUM
+2. **Missing godoc:** Exported symbols without documentation comments → LOW (interface methods → MEDIUM)
+3. **Error handling:** `fmt.Errorf` / `errors.New` without project error constructors → MEDIUM
+4. **Cognitive complexity:** Nesting depth > 4 levels → MEDIUM; > 6 levels → HIGH
+5. **Dead code / unused params:** `_ param` or clearly unused variables → LOW
+6. **Coding standards:** Cross-reference `docs/architecture/coding-standards.md`
+7. **Code Health score:** Run `make code-health-json 2>/dev/null | .github/scripts/code-health-score.sh /dev/stdin 0` if both exist. Emit one structured finding with severity based on score:
+   - Score ≥ 7.0 → LOW (informational)
+   - Score 4.0–6.9 → MEDIUM (warning band — refactor targets identified)
+   - Score < 4.0 → HIGH (alert band — block feature work until addressed)
+   - Score < 2.0 → CRITICAL (technical debt is actively obstructing delivery)
+   Hotspot escalation: if the top file by finding count also has ≥5 git commits in 90 days
+   (`git log --since="90 days ago" -- <file> | wc -l`), escalate the finding by one level.
+   Include `top_hotspot: <file> (N findings, M commits/90d)` in the finding description.
+   Skip silently if unavailable.
+
+**Resilience checks:**
+1. **Missing circuit breaker:** New HTTP/DB/K8s calls without circuit breaker wrapping → HIGH
+2. **Goroutine leaks:** `go func(...)` without context cancellation or done channel → HIGH
+3. **Context not propagated:** Side-effect functions without `ctx context.Context` first param → MEDIUM
+4. **Hardcoded timeouts:** `time.Duration` literals not sourced from config → MEDIUM
+5. **Missing graceful shutdown:** New long-running goroutines not registered in shutdown handler → HIGH
+6. **Downstream cascade risk:** Changed functions called by scheduler/worker pool → MEDIUM warning
+
+**Security checks:**
+1. **SQL injection:** `gorm.Raw` / `db.Exec` with string concatenation or `fmt.Sprintf` with user input → CRITICAL
+2. **Missing auth middleware:** New HTTP routes without middleware → HIGH
+3. **Hardcoded secrets:** Connection strings, passwords, API keys in non-test source → CRITICAL
+4. **Missing request validation:** `json.Decode(r.Body)` without post-decode validation → HIGH
+5. **Unsafe type assertions:** `x.(Type)` without comma-ok pattern → MEDIUM
+6. **Govulncheck:** If `mcp__mcp_gopls__govulncheck` is available, run it → CRITICAL if found
+
+**Confidence calibration:**
+- 0.9+: Saw it directly in the code — no ambiguity
+- 0.75–0.89: High confidence, minor interpretation needed
+- 0.60–0.74: Inferred from structure or pattern — could be wrong
+- < 0.60: Speculative — flag with `[?]` in description
+
+**Severity calibration:**
+- CRITICAL: causes data loss, security breach, or build failure in production
+- HIGH: causes incorrect behavior or panic under reachable conditions
+- MEDIUM: risky pattern or convention violation with real consequences
+- LOW: advisory — style, documentation, minor convention
+
+**Tool priority:** `Serena.findSymbol` → `Serena.findReferencingSymbols` → `Serena.getSymbolsOverview` → `Grep`
+
+Return findings as a JSON array matching the finding schema.
+
+---
+
+#### Adversarial mode (`--adversarial`)
+
+Report: "Hawk: launching Architecture, Quality, Resilience, Security agents"
 
 Spawn all 4 simultaneously. Each agent MUST:
 1. Read all changed files for their domain
@@ -152,7 +225,7 @@ Spawn all 4 simultaneously. Each agent MUST:
 
 ---
 
-### Agent 1 — Architecture Agent
+### Agent 1 — Architecture Agent (adversarial only)
 
 **Checks:**
 1. **Repository pattern violation:** Direct DB/GORM access outside `pkg/repo/` → HIGH
@@ -178,7 +251,7 @@ Spawn all 4 simultaneously. Each agent MUST:
 
 ---
 
-### Agent 2 — Quality Agent
+### Agent 2 — Quality Agent (adversarial only)
 
 **Checks:**
 1. **Missing table-driven tests:** Repeated `t.Run()` without a slice of test cases → MEDIUM
@@ -215,7 +288,7 @@ Spawn all 4 simultaneously. Each agent MUST:
 
 ---
 
-### Agent 3 — Resilience Agent
+### Agent 3 — Resilience Agent (adversarial only)
 
 **Checks:**
 1. **Missing circuit breaker:** New HTTP/DB/K8s calls without circuit breaker wrapping → HIGH
@@ -243,7 +316,7 @@ Spawn all 4 simultaneously. Each agent MUST:
 
 ---
 
-### Agent 4 — Security Agent
+### Agent 4 — Security Agent (adversarial only)
 
 **Checks:**
 1. **SQL injection:** `gorm.Raw` / `db.Exec` with string concatenation or `fmt.Sprintf` with user input → CRITICAL
@@ -289,8 +362,8 @@ Mark `advisor` completed.
 
 Mark `aggregate` in_progress.
 
-1. **Merge** all 4 agent finding arrays
-2. **Deduplicate:** findings at `(file + line ± 3)` are the same — keep the highest severity
+1. **Merge** all agent findings into one array
+2. **Deduplicate** (adversarial mode only): findings at `(file + line ± 3)` are the same — keep the highest severity
 3. **Filter noise:** Drop findings below `CONFIDENCE_THRESHOLD`. If `FLAG_UNCERTAIN=true` (effort=max), include findings at confidence ≥ 0.55 but append `[?]` to descriptions of any finding below 0.70 confidence.
 4. **Sort:** CRITICAL → HIGH → MEDIUM → LOW
 
@@ -349,7 +422,7 @@ Mark `report` completed. Report via TaskUpdate: "Hawk: review complete. N issues
   "line": 42,
   "description": "Brief description of the issue",
   "fix": "Concrete actionable fix",
-  "confidence": 0.85  // see calibration guide in agent prompts
+  "confidence": 0.85
 }
 ```
 
@@ -357,9 +430,9 @@ Mark `report` completed. Report via TaskUpdate: "Hawk: review complete. N issues
 
 ## Success Criteria
 
-- [ ] All 4 agents completed (no partial results)
+- [ ] Review agent(s) completed (no partial results)
 - [ ] CRITICAL findings verified by advisor
-- [ ] Findings deduplicated and ranked
+- [ ] Findings filtered by confidence threshold and ranked
 - [ ] Markdown table output with actionable fixes
 - [ ] TaskUpdate reported completion to shared task list
 - [ ] CRITICAL/HIGH findings posted as inline comments; MEDIUM/LOW as block summary (when --post-pr)
