@@ -344,15 +344,27 @@ Spawn all 4 simultaneously. Each agent MUST:
 
 ---
 
-### Step 4 — Advisor Gate for CRITICAL Findings
+### Step 4 — Advisor Gate (Batch Calibration)
 
 Mark `advisor` in_progress.
 
-**Call `advisor` before finalizing any CRITICAL findings.**
-Ask the advisor to verify: Is the finding real? Could it be a false positive (e.g., SQL parameterization
-is present but in a non-obvious form)? The CRITICAL label raises team alarm — it should be correct.
+If there are **no CRITICAL or HIGH findings**, skip this step entirely — mark `advisor` completed and proceed.
 
-Incorporate advisor feedback. Downgrade to HIGH if advisor identifies a false positive with clear reasoning.
+Otherwise, collect all CRITICAL and HIGH findings into a single list and call `advisor` **once** with
+the complete list. Per-finding calls are forbidden — one batch call gives the advisor cross-finding
+context and ensures consistent calibration.
+
+Advisor prompt:
+> "Review these N findings (X critical, Y high). For each finding:
+> 1. Is it real or a false positive? (e.g., is SQL parameterization already present in a non-obvious form?)
+> 2. Is the severity correct — should any HIGH be promoted to CRITICAL, or any CRITICAL downgraded?
+> 3. Are there patterns across findings that suggest a systemic problem rather than isolated bugs?
+> Apply the same calibration standard across all findings."
+
+Incorporate advisor feedback:
+- Downgrade CRITICAL → HIGH for confirmed false positives (requires explicit advisor reasoning)
+- Promote HIGH → CRITICAL when advisor identifies under-reported severity
+- If advisor notes a systemic pattern, carry that note into the executive summary (Step 6)
 
 Mark `advisor` completed.
 
