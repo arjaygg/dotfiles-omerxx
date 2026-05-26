@@ -93,7 +93,8 @@ At session start:
 - `/hawk` → review all changed `.go` files in current diff
 - `/hawk pkg/scheduler/` → review a specific package
 - `/hawk --deep` → switch all agents to Opus for security-critical or pre-release reviews
-- `/hawk --post-pr` → print findings AND post as GitHub PR comment via `gh pr review --comment`
+- `/hawk --post-pr` → CRITICAL/HIGH posted as inline review comments at file:line; MEDIUM/LOW as a block summary table
+- `/hawk --post-pr=block` → all findings as a single block comment (overrides inline behavior)
 - `/hawk --effort low` → pre-commit quick check (high-confidence findings only, ≥ 0.85)
 - `/hawk --effort max` → exhaustive pre-release audit (includes uncertain findings flagged `[?]`)
 
@@ -287,7 +288,28 @@ Print as markdown table:
 
 Then: `Hawk found N issues: X critical, Y high, Z medium, W low.`
 
-If `--post-pr`: pipe to `gh pr review --comment -b "$(findings)"`.
+If `--post-pr`:
+- Detect PR number: `gh pr view --json number --jq '.number' 2>/dev/null`
+- Detect repo: `gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null`
+- Get head SHA: `gh pr view <N> --json headRefOid --jq '.headRefOid'`
+
+If `--post-pr=block`: post everything as one block comment:
+  `gh pr review <N> --comment -b "<full findings table>"`
+
+Otherwise (default `--post-pr`):
+  For each CRITICAL or HIGH finding, post an inline review comment:
+  ```bash
+  gh api repos/<owner>/<repo>/pulls/<N>/comments \
+    --method POST \
+    --field body="**[hawk] SEVERITY — CATEGORY**\n\nDESCRIPTION\n\n**Fix:** FIX" \
+    --field commit_id="<head SHA>" \
+    --field path="FILE" \
+    --field line=LINE \
+    --field side="RIGHT"
+  ```
+  Then post MEDIUM/LOW findings (if any) as one block comment:
+  `gh pr review <N> --comment -b "<MEDIUM/LOW table only>"`
+  If no MEDIUM/LOW findings, skip the block comment entirely.
 
 Mark `report` completed. Report via TaskUpdate: "Hawk: review complete. N issues found."
 
@@ -316,3 +338,4 @@ Mark `report` completed. Report via TaskUpdate: "Hawk: review complete. N issues
 - [ ] Findings deduplicated and ranked
 - [ ] Markdown table output with actionable fixes
 - [ ] TaskUpdate reported completion to shared task list
+- [ ] CRITICAL/HIGH findings posted as inline comments; MEDIUM/LOW as block summary (when --post-pr)
