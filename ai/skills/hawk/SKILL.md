@@ -94,6 +94,8 @@ At session start:
 - `/hawk pkg/scheduler/` → review a specific package
 - `/hawk --deep` → switch all agents to Opus for security-critical or pre-release reviews
 - `/hawk --post-pr` → print findings AND post as GitHub PR comment via `gh pr review --comment`
+- `/hawk --effort low` → pre-commit quick check (high-confidence findings only, ≥ 0.85)
+- `/hawk --effort max` → exhaustive pre-release audit (includes uncertain findings flagged `[?]`)
 
 ---
 
@@ -107,6 +109,15 @@ Mark `scope` in_progress.
 - If `$ARGUMENTS` is empty: use the injected diff above
 - If `--deep` flag: set `model=opus` for all spawned agents
 - If no changed `.go` files: stop with "No changed Go files found. Pass a path argument or stage some changes."
+
+Parse `--effort <level>` from `$ARGUMENTS` (default: `high`):
+
+| `--effort` | `CONFIDENCE_THRESHOLD` | `FLAG_UNCERTAIN` |
+|---|---|---|
+| `low` | 0.85 | false |
+| `medium` | 0.75 | false |
+| `high` *(default)* | 0.70 | false |
+| `max` | 0.55 | true |
 
 Load context in parallel:
 ```
@@ -150,6 +161,12 @@ Spawn all 4 simultaneously. Each agent MUST:
 5. **Circular imports:** Packages importing each other → CRITICAL
 6. **Downstream blast radius:** Changed interface used by downstream packages → MEDIUM warning
 
+**Confidence calibration:**
+- 0.9+: Saw it directly in the code — no ambiguity
+- 0.75–0.89: High confidence, minor interpretation needed
+- 0.60–0.74: Inferred from structure or pattern — could be wrong
+- < 0.60: Speculative — flag with `[?]` in description
+
 **Tool priority:** `Serena.findSymbol` → `Serena.findReferencingSymbols` → `Serena.getSymbolsOverview` → `Grep`
 
 ---
@@ -175,6 +192,12 @@ Spawn all 4 simultaneously. Each agent MUST:
    Include `top_hotspot: <file> (N findings, M commits/90d)` in the finding description.
    If `make code-health-json` or the scorer script is not available, skip silently.
 
+**Confidence calibration:**
+- 0.9+: Saw it directly in the code — no ambiguity
+- 0.75–0.89: High confidence, minor interpretation needed
+- 0.60–0.74: Inferred from structure or pattern — could be wrong
+- < 0.60: Speculative — flag with `[?]` in description
+
 **Tool priority:** `Serena.getSymbolsOverview` → `Serena.findReferencingSymbols` → `Grep`
 
 ---
@@ -191,6 +214,12 @@ Spawn all 4 simultaneously. Each agent MUST:
 
 **Before checking, read peer messages** — Security agent may have flagged shared data-access issues.
 
+**Confidence calibration:**
+- 0.9+: Saw it directly in the code — no ambiguity
+- 0.75–0.89: High confidence, minor interpretation needed
+- 0.60–0.74: Inferred from structure or pattern — could be wrong
+- < 0.60: Speculative — flag with `[?]` in description
+
 **Tool priority:** `Serena.findSymbol` → `Serena.findReferencingSymbols` → `Grep`
 
 ---
@@ -206,6 +235,12 @@ Spawn all 4 simultaneously. Each agent MUST:
 6. **Govulncheck:** If `mcp__mcp_gopls__govulncheck` is available, run it → CRITICAL if found
 
 **Always post cross-cutting findings** to Resilience agent — data access vulnerabilities share blast radius.
+
+**Confidence calibration:**
+- 0.9+: Saw it directly in the code — no ambiguity
+- 0.75–0.89: High confidence, minor interpretation needed
+- 0.60–0.74: Inferred from structure or pattern — could be wrong
+- < 0.60: Speculative — flag with `[?]` in description
 
 **Tool priority:** `Serena.getSymbolsOverview` → `Grep` → `Serena.findReferencingSymbols`
 
@@ -231,7 +266,7 @@ Mark `aggregate` in_progress.
 
 1. **Merge** all 4 agent finding arrays
 2. **Deduplicate:** findings at `(file + line ± 3)` are the same — keep the highest severity
-3. **Filter noise:** Drop if ALL true: reported by 1 agent, confidence < 0.7, severity = LOW, category = quality
+3. **Filter noise:** Drop findings below `CONFIDENCE_THRESHOLD`. If `FLAG_UNCERTAIN=true` (effort=max), include findings at confidence ≥ 0.55 but append `[?]` to descriptions of any finding below 0.70 confidence.
 4. **Sort:** CRITICAL → HIGH → MEDIUM → LOW
 
 Mark `aggregate` completed. Report via TaskUpdate: "Hawk: N findings (X critical, Y high, Z medium, W low)"
@@ -268,7 +303,7 @@ Mark `report` completed. Report via TaskUpdate: "Hawk: review complete. N issues
   "line": 42,
   "description": "Brief description of the issue",
   "fix": "Concrete actionable fix",
-  "confidence": 0.85
+  "confidence": 0.85  // see calibration guide in agent prompts
 }
 ```
 
