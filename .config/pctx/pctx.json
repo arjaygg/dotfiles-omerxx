@@ -19,7 +19,10 @@
       "command": "/opt/homebrew/bin/qmd",
       "args": [
         "mcp"
-      ]
+      ],
+      "env": {
+        "PATH": "/opt/homebrew/bin:/Users/axos-agallentes/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+      }
     },
     {
       "name": "lean-ctx",
