@@ -87,6 +87,16 @@ Use `pctx execute_typescript` when 2+ operations are planned or when data proces
 > - If 2+ Read/Grep/Glob ops are independent → fire them in **parallel**.
 > - Never make a sequential Serena call when a batch would work.
 
+### lean-ctx: native MCP vs pctx
+
+lean-ctx is registered **both** as a native MCP server (`mcp__lean-ctx__*`) and as a pctx sub-server (`LeanCtx.*` in `execute_typescript`). Serena, Repomix, and Qmd are **pctx-only** — no native registration, no decision needed.
+
+| Situation | Use |
+|---|---|
+| Single lean-ctx call, no output filtering needed | `mcp__lean-ctx__ctx_read` / `ctx_search` / `ctx_shell` directly |
+| 2+ calls (any mix of LeanCtx / Serena / Repomix / Qmd) | `mcp__pctx__execute_typescript` with `Promise.all()` |
+| Need to filter/reduce output before it hits context | `mcp__pctx__execute_typescript` (do it in TypeScript) |
+
 ### Code Mode Usage (pctx)
 - MUST define a `run()` function.
 - Parallelize independent ops with `Promise.all()`.

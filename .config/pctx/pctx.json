@@ -34,7 +34,7 @@
     },
     {
       "name": "repomix",
-      "command": "repomix",
+      "command": "/Users/axos-agallentes/homebrew/bin/repomix",
       "args": [
         "--mcp"
       ]
