@@ -375,7 +375,31 @@ Mark `aggregate` completed. Report via TaskUpdate: "Hawk: N findings (X critical
 
 Mark `report` in_progress.
 
-Print as markdown table:
+#### 6a — Generate Executive Summary
+
+Before printing any findings, compose a 3-sentence executive summary:
+
+1. **What changed:** Infer from changed file paths and finding categories (e.g., "This diff adds a new HTTP handler in `pkg/api/` and updates the scheduler").
+2. **Primary concern:** Describe the dominant finding theme, or "No significant issues found" if clean.
+3. **Verdict:** Derive deterministically from the ranked findings:
+
+| Condition | Verdict |
+|-----------|---------|
+| Any CRITICAL finding | **Request changes** — critical issues found |
+| HIGH ≥ 2 | **Request changes** |
+| HIGH = 1 | **Needs work** before merge |
+| MEDIUM only (no HIGH/CRITICAL) | **Approve** with minor suggestions |
+| LOW only, or no findings | **LGTM** |
+
+Print the summary as a blockquote before the findings table:
+
+```
+> **Hawk review** · X critical · Y high · Z medium · W low
+>
+> [Sentence 1: what changed]. [Sentence 2: primary concern]. **Verdict: [VERDICT]**
+```
+
+#### 6b — Print Findings Table
 
 ```
 | Severity | Category | File:Line | Description | Fix |
@@ -383,18 +407,20 @@ Print as markdown table:
 | CRITICAL | security | pkg/repo/query.go:42 | ... | ... |
 ```
 
-Then: `Hawk found N issues: X critical, Y high, Z medium, W low.`
+#### 6c — Post to PR (if `--post-pr`)
 
-If `--post-pr`:
 - Detect PR number: `gh pr view --json number --jq '.number' 2>/dev/null`
 - Detect repo: `gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null`
 - Get head SHA: `gh pr view <N> --json headRefOid --jq '.headRefOid'`
 
-If `--post-pr=block`: post everything as one block comment:
-  `gh pr review <N> --comment -b "<full findings table>"`
+If `--post-pr=block`: post summary + full findings table as one block comment:
+  `gh pr review <N> --comment -b "<summary blockquote>\n\n<full findings table>"`
 
 Otherwise (default `--post-pr`):
-  For each CRITICAL or HIGH finding, post an inline review comment:
+  Post the summary as a standalone block comment first:
+  `gh pr review <N> --comment -b "<summary blockquote>"`
+
+  Then for each CRITICAL or HIGH finding, post an inline review comment:
   ```bash
   gh api repos/<owner>/<repo>/pulls/<N>/comments \
     --method POST \
@@ -433,6 +459,7 @@ Mark `report` completed. Report via TaskUpdate: "Hawk: review complete. N issues
 - [ ] Review agent(s) completed (no partial results)
 - [ ] CRITICAL findings verified by advisor
 - [ ] Findings filtered by confidence threshold and ranked
+- [ ] Executive summary with verdict printed before findings table
 - [ ] Markdown table output with actionable fixes
 - [ ] TaskUpdate reported completion to shared task list
-- [ ] CRITICAL/HIGH findings posted as inline comments; MEDIUM/LOW as block summary (when --post-pr)
+- [ ] Summary + CRITICAL/HIGH as inline comments; MEDIUM/LOW as block summary (when --post-pr)
