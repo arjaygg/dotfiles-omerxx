@@ -109,7 +109,7 @@ Mark `scope` in_progress.
 - If `$ARGUMENTS` is empty: use the injected diff above
 - If `--deep` flag: set `model=opus` for spawned agent(s)
 - If `--adversarial` flag: set `ADVERSARIAL=true`
-- If no changed `.go` files: stop with "No changed Go files found. Pass a path argument or stage some changes."
+- If no changed `.go` files AND no relevant non-Go files: stop with "No changed files found. Pass a path argument or stage some changes."
 
 Parse `--effort <level>` from `$ARGUMENTS` (default: `high`):
 
@@ -119,6 +119,11 @@ Parse `--effort <level>` from `$ARGUMENTS` (default: `high`):
 | `medium` | 0.75 | false |
 | `high` *(default)* | 0.70 | false |
 | `max` | 0.55 | true |
+
+Also collect relevant non-Go files changed in the same diff (pass to the review agent alongside Go files):
+```
+!git diff HEAD --name-only 2>/dev/null | grep -E '\.(sql|yaml|yml|toml|json)$|Dockerfile|dockerfile' || true
+```
 
 Load context in parallel:
 ```
@@ -195,6 +200,13 @@ summary without content.
 4. **Missing request validation:** `json.Decode(r.Body)` without post-decode validation → HIGH
 5. **Unsafe type assertions:** `x.(Type)` without comma-ok pattern → MEDIUM
 6. **Govulncheck:** If `mcp__mcp_gopls__govulncheck` is available, run it → CRITICAL if found
+
+**Non-Go file checks** (for any relevant non-Go files passed alongside Go files):
+- **SQL files:** raw queries without parameterization or string-concatenated queries → CRITICAL
+- **Dockerfiles:** `COPY . .` that may expose secrets, running as root without `USER` directive → HIGH
+- **K8s YAML:** missing `resources.limits`, missing `securityContext`, `privileged: true` → MEDIUM
+- **Config files (`.toml`, `.json`):** hardcoded secrets, connection strings, API keys → CRITICAL
+  Skip if no relevant non-Go files were found in the diff.
 
 **Confidence calibration:**
 - 0.9+: Saw it directly in the code — no ambiguity
@@ -375,7 +387,10 @@ Mark `advisor` completed.
 Mark `aggregate` in_progress.
 
 1. **Merge** all agent findings into one array
-2. **Deduplicate** (adversarial mode only): findings at `(file + line ± 3)` are the same — keep the highest severity
+2. **Deduplicate** (adversarial mode only): a finding is a duplicate if it matches on EITHER
+   `(file + line ± 3)` OR `(file + category + first 20 chars of description normalized to lowercase)`.
+   Keep the highest severity instance. The second criterion catches semantic duplicates where two agents
+   flag the same issue at slightly different lines.
 3. **Filter noise:** Drop findings below `CONFIDENCE_THRESHOLD`. If `FLAG_UNCERTAIN=true` (effort=max), include findings at confidence ≥ 0.55 but append `[?]` to descriptions of any finding below 0.70 confidence.
 4. **Sort:** CRITICAL → HIGH → MEDIUM → LOW
 
@@ -401,7 +416,8 @@ Before printing any findings, compose a 3-sentence executive summary:
 | HIGH ≥ 2 | **Request changes** |
 | HIGH = 1 | **Needs work** before merge |
 | MEDIUM only (no HIGH/CRITICAL) | **Approve** with minor suggestions |
-| LOW only, or no findings | **LGTM** |
+| LOW only | **Approve** with minor notes |
+| No findings | **LGTM** — no issues found |
 
 Print the summary as a blockquote before the findings table:
 
@@ -413,6 +429,10 @@ Print the summary as a blockquote before the findings table:
 
 #### 6b — Print Findings Table
 
+If there are **no findings** after filtering, skip the table entirely. The executive summary
+blockquote from 6a is the complete output — do not print an empty table.
+
+Otherwise, print the findings table:
 ```
 | Severity | Category | File:Line | Description | Fix |
 |----------|----------|-----------|-------------|-----|
