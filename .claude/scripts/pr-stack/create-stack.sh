@@ -102,16 +102,10 @@ else
     print_warning "No 'origin' remote configured; skipping fetch"
 fi
 
-# Check if base branch is up to date with remote
+# Warn if local base is behind remote (informational only — worktree uses remote tip directly)
 BASE_BEHIND=$(git rev-list --count "$BASE_BRANCH..origin/$BASE_BRANCH" 2>/dev/null || echo "0")
 if [ "$BASE_BEHIND" -gt 0 ]; then
-    print_warning "Local $BASE_BRANCH is $BASE_BEHIND commit(s) behind origin/$BASE_BRANCH"
-    print_info "Auto-updating base branch ref for worktree creation..."
-    if git remote get-url origin >/dev/null 2>&1; then
-        git fetch origin "$BASE_BRANCH:$BASE_BRANCH" 2>/dev/null || print_warning "Could not fast-forward $BASE_BRANCH without checkout."
-    else
-        print_warning "No 'origin' remote configured; cannot fast-forward $BASE_BRANCH"
-    fi
+    print_warning "Local $BASE_BRANCH is $BASE_BEHIND commit(s) behind origin/$BASE_BRANCH (worktree will use remote tip)"
 fi
 
 # Worktree creation (always); paths are relative to REPO_ROOT
@@ -137,7 +131,15 @@ if ! grep -q "^.trees/" .gitignore 2>/dev/null; then
     print_info "Added .trees/ to .gitignore"
 fi
 
-if git worktree add -b "$NEW_BRANCH" "$WORKTREE_PATH" "$BASE_BRANCH"; then
+# Use origin/$BASE_BRANCH if available so worktree always starts from the remote tip,
+# avoiding stale local refs when the base branch is currently checked out.
+if git rev-parse "origin/$BASE_BRANCH" >/dev/null 2>&1; then
+    BASE_REF="origin/$BASE_BRANCH"
+else
+    BASE_REF="$BASE_BRANCH"
+fi
+
+if git worktree add -b "$NEW_BRANCH" "$WORKTREE_PATH" "$BASE_REF"; then
     WORKTREE_ABS_PATH="$(cd "$WORKTREE_PATH" && pwd)"
         
     print_info "Setting up worktree configuration..."
@@ -216,6 +218,11 @@ echo ""
 
 # Track in Charcoal (single source of truth for stack relationships)
 print_info "Tracking branch in Charcoal..."
-gt branch track "$NEW_BRANCH" --parent "$BASE_BRANCH"
-
-print_success "Stack updated. Run './scripts/stack status' to see your PR stack"
+# Repair stale refs before tracking to prevent merge-base failures on orphaned branches
+gt repo fix 2>/dev/null || true
+if ! gt branch track "$NEW_BRANCH" --parent "$BASE_BRANCH" 2>/dev/null; then
+    print_warning "Charcoal tracking failed — worktree created but not in stack graph."
+    print_info "Fix manually: gt branch track $NEW_BRANCH --parent $BASE_BRANCH"
+else
+    print_success "Stack updated. Run './scripts/stack status' to see your PR stack"
+fi
