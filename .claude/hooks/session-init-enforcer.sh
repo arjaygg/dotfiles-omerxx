@@ -33,7 +33,7 @@ if $_MISSING_SERENA; then
     _STEPS+="  - Serena.initialInstructions()\n"
 fi
 if $_MISSING_CTX; then
-    _STEPS+="  - LeanCtx.ctxIntent({ query: '<describe the current task>' })\n"
+    _STEPS+="  - LeanCtx.ctxCall({ name: \"ctx_intent\", arguments: { query: \"<describe the current task>\" } })\n"
 fi
 
 cat <<EOF | python3 -c 'import json,sys; m=sys.stdin.read().strip(); print(json.dumps({"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":m}}))'
