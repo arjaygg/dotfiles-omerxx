@@ -189,6 +189,9 @@ Watch for these patterns — they indicate the tool priority rules are being ign
 | `Bash(find . -name ...)` | Blocked; use `Glob` |
 | `Bash(ls dir/)` | Use `Glob("dir/*")` |
 | `Bash(sed -i ...)` or `Bash(awk)` for file edit | Use `Edit(file, old_string, new_string)` |
+| `LeanCtx.ctxSearch` for "where is X?", "what calls Y?" | `Serena.findSymbol` / `Serena.findReferencingSymbols` |
+| `LeanCtx.ctxRead` to browse a package | `Serena.getSymbolsOverview` first, then `Read` with limit if needed |
+| Defaulting to lean-ctx for any code navigation | lean-ctx has no symbol index — use Serena for code, lean-ctx for text |
 
 If you find yourself reaching for Grep, ask: **"Is this a symbol lookup or a pattern search?"**
 - Symbol lookup (known name) → `Serena.findSymbol`
@@ -196,9 +199,28 @@ If you find yourself reaching for Grep, ask: **"Is this a symbol lookup or a pat
 - Pattern search (text, non-code) → `Grep tool` is acceptable
 - Finding a file → `Serena.findFile` or `Glob`
 
+If you find yourself reaching for `LeanCtx.ctxSearch` or `LeanCtx.ctxRead` for **code** navigation, stop:
+- **lean-ctx is a file-access layer, not a code intelligence layer** — it has no symbol index
+- "Where is X defined?", "What calls Y?", "What's in this package?" → **Serena first**
+- lean-ctx is correct only for text/regex patterns across non-code files, or reading a file before editing
+
 ## 10. Extended Tool Ecosystem Routing
 
 These rules cover the tools that `tool-priority.md` did not originally address: QMD, LeanCtx, and web research. Many overlap — use the routing table to pick the right one.
+
+### Code Exploration (browsing source, finding symbols, tracing references)
+
+**Priority order: Serena → Repomix → LeanCtx**
+
+| Task | 1st Priority | 2nd Priority | Avoid |
+|---|---|---|---|
+| **"Where is X defined?"** | `Serena.findSymbol` | `Serena.searchForPattern` | `LeanCtx.ctxSearch` |
+| **"What calls Y?"** | `Serena.findReferencingSymbols` | `Serena.searchForPattern` | `LeanCtx.ctxSearch` |
+| **"What's in this package?"** | `Serena.getSymbolsOverview` | `Serena.listDir` | `LeanCtx.ctxTree` |
+| **"Show me how X is used broadly"** | `Repomix --compress --include "pkg/X/**"` | `Serena.findReferencingSymbols` | `LeanCtx.ctxRead` on every file |
+| **Text pattern across non-code files** | `LeanCtx.ctxSearch` | `Grep tool` | — |
+
+**Rule:** lean-ctx is a file-access layer (read, compress, cache). It has no symbol index. For any task phrased as navigation ("where", "what calls", "what's in"), Serena is the correct first call. LeanCtx is correct for text patterns and file reads — not code structure exploration.
 
 ### Documentation & Knowledge Lookup
 
