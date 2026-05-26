@@ -168,6 +168,12 @@ Spawn all 4 simultaneously. Each agent MUST:
 - 0.60–0.74: Inferred from structure or pattern — could be wrong
 - < 0.60: Speculative — flag with `[?]` in description
 
+**Severity calibration:**
+- CRITICAL: causes data loss, security breach, or build failure in production
+- HIGH: causes incorrect behavior or panic under reachable conditions
+- MEDIUM: risky pattern or convention violation with real consequences
+- LOW: advisory — style, documentation, minor convention
+
 **Tool priority:** `Serena.findSymbol` → `Serena.findReferencingSymbols` → `Serena.getSymbolsOverview` → `Grep`
 
 ---
@@ -199,6 +205,12 @@ Spawn all 4 simultaneously. Each agent MUST:
 - 0.60–0.74: Inferred from structure or pattern — could be wrong
 - < 0.60: Speculative — flag with `[?]` in description
 
+**Severity calibration:**
+- CRITICAL: causes data loss, security breach, or build failure in production
+- HIGH: causes incorrect behavior or panic under reachable conditions
+- MEDIUM: risky pattern or convention violation with real consequences
+- LOW: advisory — style, documentation, minor convention
+
 **Tool priority:** `Serena.getSymbolsOverview` → `Serena.findReferencingSymbols` → `Grep`
 
 ---
@@ -221,6 +233,12 @@ Spawn all 4 simultaneously. Each agent MUST:
 - 0.60–0.74: Inferred from structure or pattern — could be wrong
 - < 0.60: Speculative — flag with `[?]` in description
 
+**Severity calibration:**
+- CRITICAL: causes data loss, security breach, or build failure in production
+- HIGH: causes incorrect behavior or panic under reachable conditions
+- MEDIUM: risky pattern or convention violation with real consequences
+- LOW: advisory — style, documentation, minor convention
+
 **Tool priority:** `Serena.findSymbol` → `Serena.findReferencingSymbols` → `Grep`
 
 ---
@@ -242,6 +260,12 @@ Spawn all 4 simultaneously. Each agent MUST:
 - 0.75–0.89: High confidence, minor interpretation needed
 - 0.60–0.74: Inferred from structure or pattern — could be wrong
 - < 0.60: Speculative — flag with `[?]` in description
+
+**Severity calibration:**
+- CRITICAL: causes data loss, security breach, or build failure in production
+- HIGH: causes incorrect behavior or panic under reachable conditions
+- MEDIUM: risky pattern or convention violation with real consequences
+- LOW: advisory — style, documentation, minor convention
 
 **Tool priority:** `Serena.getSymbolsOverview` → `Grep` → `Serena.findReferencingSymbols`
 
