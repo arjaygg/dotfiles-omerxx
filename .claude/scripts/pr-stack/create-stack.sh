@@ -218,7 +218,21 @@ echo ""
 
 # Track in Charcoal (single source of truth for stack relationships)
 print_info "Tracking branch in Charcoal..."
-# Repair stale refs before tracking to prevent merge-base failures on orphaned branches
+# Flush stale packed-refs entries (e.g. after a force-push on trunk) so merge-base succeeds
+git pack-refs --all 2>/dev/null || true
+# Remove branch-metadata refs for branches disconnected from trunk (orphaned after force-push)
+TRUNK="${BASE_BRANCH:-main}"
+git for-each-ref --format='%(refname)' refs/branch-metadata/ 2>/dev/null | while IFS= read -r meta_ref; do
+  b="${meta_ref#refs/branch-metadata/}"
+  if git rev-parse --verify "$b" >/dev/null 2>&1; then
+    if ! git merge-base "$TRUNK" "$b" >/dev/null 2>&1; then
+      git update-ref -d "$meta_ref" 2>/dev/null || true
+    fi
+  else
+    git update-ref -d "$meta_ref" 2>/dev/null || true
+  fi
+done
+# Repair any remaining stale refs
 gt repo fix 2>/dev/null || true
 if ! gt branch track "$NEW_BRANCH" --parent "$BASE_BRANCH" 2>/dev/null; then
     print_warning "Charcoal tracking failed — worktree created but not in stack graph."
