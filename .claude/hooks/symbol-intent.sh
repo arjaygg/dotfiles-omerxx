@@ -16,6 +16,6 @@ SYMBOL=$(echo "$USER_INPUT" | sed -nE \
 
 if [ -n "$SYMBOL" ]; then
   echo "" >&2
-  echo "[SYMBOL LOOKUP] \"$SYMBOL\" → Serena.findSymbol({ name: \"$SYMBOL\" }) first. No grep." >&2
+  echo "[SYMBOL LOOKUP] \"$SYMBOL\" → Serena.findSymbol({ name_path_pattern: \"$SYMBOL\" }) first. No grep." >&2
   echo "" >&2
 fi

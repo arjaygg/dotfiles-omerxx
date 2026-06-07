@@ -1,0 +1,40 @@
+---
+description: "lean-ctx: context compression layer. Tools replace native Read/Grep/Shell — see tool descriptions."
+globs: **/*
+alwaysApply: true
+---
+
+# lean-ctx — Context Engineering Layer
+<!-- lean-ctx-rules-v10 -->
+
+## Mode: Hybrid (MCP reads + CLI shell)
+
+MCP tools for reads/search (cached, token-efficient):
+- `ctx_read(path, mode)` instead of `Read`
+- `ctx_search(pattern, path)` instead of `Grep`
+
+CLI for shell (no MCP schema overhead):
+- `lean-ctx -c "<cmd>"` instead of raw Shell
+- `lean-ctx ls [path]` instead of `ls`/`find`
+
+## Mode Selection
+- Editing → `full` then `diff` for re-reads
+- Context only → `map` or `signatures`
+- Large file → `aggressive` or `entropy`
+- Specific lines → `lines:N-M`
+- Unsure → `auto`
+
+## File Editing
+Use native Edit/StrReplace. Write/Delete/Glob → use normally.
+If Edit fails, use `ctx_edit(path, old_string, new_string)` immediately.
+<!-- /lean-ctx -->
+
+<!-- lean-ctx-compression -->
+OUTPUT STYLE: dense
+- Each statement = one atomic fact line
+- Use abbreviations: fn, cfg, impl, deps, req, res, ctx, err, ret
+- Diff lines only (+/-/~), never repeat unchanged code
+- Symbols: -> (causes), + (adds), − (removes), ~ (modifies), :. (therefore)
+- No narration, no filler, no hedging
+- BUDGET: ≤200 tokens per response unless code block required
+<!-- /lean-ctx-compression -->

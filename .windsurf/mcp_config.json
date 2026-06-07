@@ -1,7 +1,13 @@
 {
   "mcpServers": {
+    "lean-ctx": {
+      "command": "lean-ctx",
+      "env": {
+        "LEAN_CTX_DATA_DIR": "/Users/axos-agallentes/.lean-ctx",
+        "LEAN_CTX_FULL_TOOLS": "1"
+      }
+    },
     "pctx": {
-      "command": "pctx",
       "args": [
         "mcp",
         "start",
@@ -9,7 +15,8 @@
         "--stdio",
         "-c",
         "/Users/axos-agallentes/.config/pctx/pctx.json"
-      ]
+      ],
+      "command": "pctx"
     }
   }
 }
