@@ -36,7 +36,7 @@ fi
 
 # Install headroom-ai context compression tool (idempotent)
 if ! command -v headroom &> /dev/null; then
-    uv tool install "headroom-ai[proxy,code,memory,mcp]"
+    uv tool install "headroom-ai[proxy,code,memory]"
 fi
 
 # Symlink all shared skills from the Unified AI Hub into an agent's user-scoped
