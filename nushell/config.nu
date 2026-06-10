@@ -962,6 +962,9 @@ use ~/projects/nu_scripts/aliases/eza/eza-aliases.nu *
 use ~/projects/nu_scripts/aliases/bat/bat-aliases.nu *
 use ~/projects/nu_scripts/aliases/docker/docker-aliases.nu *
 
+# Headroom context compression
+alias hclaude = headroom wrap claude
+
 # Claude Code Multi-Backend Aliases
 alias claude = bash ~/.dotfiles/.claude/scripts/claude-launch.sh native
 alias claude-gemini = bash ~/.dotfiles/.claude/scripts/claude-launch.sh gemini

@@ -34,6 +34,11 @@ if ! command -v notebooklm-mcp &> /dev/null; then
     uv tool install notebooklm-mcp-cli
 fi
 
+# Install headroom-ai context compression tool (idempotent)
+if ! command -v headroom &> /dev/null; then
+    uv tool install "headroom-ai[proxy,code,memory,mcp]"
+fi
+
 # Symlink all shared skills from the Unified AI Hub into an agent's user-scoped
 # skills directory. Existing real directories are preserved so tool-managed
 # folders like ~/.codex/skills/.system are not overwritten.
