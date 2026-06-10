@@ -81,6 +81,7 @@ alias v="$HOME/.nix-profile/bin/nvim"
 
 # Headroom context compression (https://github.com/chopratejas/headroom)
 export HEADROOM_CONTEXT_TOOL=lean-ctx
+export HEADROOM_NO_SUBSCRIPTION_TRACKING=1
 alias hclaude="headroom wrap claude"
 
 # Claude Code
