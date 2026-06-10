@@ -1,10 +1,23 @@
 ---
 name: lit-ingest
-description: "Parse a binary document (PDF, DOCX, XLSX, PPTX, image) with LiteParse and ingest it into
-  the claude-pdf-context QMD collection so it becomes searchable by all agents via mcp__qmd__*."
+description: >
+  Parse a binary document (PDF, DOCX, XLSX, PPTX, image) with LiteParse and ingest it into
+  the claude-pdf-context QMD collection so it becomes searchable by all agents via mcp__qmd__*.
+  USE THIS SKILL when user says "add this PDF to my docs", "index this file", "make this
+  searchable", "ingest this document", "add to my knowledge base", or references a binary file
+  that QMD returns no results for.
 version: 1.0
 triggers:
-  - "/lit-ingest"
+  - /lit-ingest
+  - add this PDF to my docs
+  - index this file
+  - make this file searchable
+  - ingest this document
+  - add to my knowledge base
+  - add this to my docs
+  - ingest this PDF
+  - ingest this report
+  - add this report to my docs
 ---
 
 # LiteParse Ingest Skill
@@ -38,9 +51,9 @@ npm i -g @llamaindex/liteparse
    - Default: derive from the filename (e.g., `Q3-Report.pdf` → `q3-report`)
    - User can override: "ingest as 'migration-spec'"
 
-3. **Run the ingest script:**
+3. **Run the ingest script** (use Bash tool directly — ctxShell allowlist blocks custom scripts):
    ```
-   LeanCtx.ctxShell({ command: "~/.dotfiles/scripts/lit-ingest.sh \"<file-path>\" \"<slug>\"" })
+   Bash: ~/.dotfiles/scripts/lit-ingest.sh "<file-path>" "<slug>"
    ```
 
 4. **Confirm success** — output should end with:
