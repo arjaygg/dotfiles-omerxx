@@ -964,7 +964,7 @@ use ~/projects/nu_scripts/aliases/docker/docker-aliases.nu *
 
 # Headroom context compression — bake required env vars so they're set regardless of shell state
 def --wrapped hclaude [...rest] {
-    with-env { HEADROOM_NO_SUBSCRIPTION_TRACKING: "1", HEADROOM_CONTEXT_TOOL: "lean-ctx" } {
+    with-env { HEADROOM_NO_SUBSCRIPTION_TRACKING: "1", HEADROOM_CONTEXT_TOOL: "lean-ctx", HEADROOM_PORT: "8788" } {
         ^headroom wrap claude ...$rest
     }
 }
