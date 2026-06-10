@@ -164,6 +164,13 @@ if git worktree add -b "$NEW_BRANCH" "$WORKTREE_PATH" "$BASE_REF"; then
         fi
     done
 
+    # Copy .claude/hooks even when .claude is tracked in git (hooks may be untracked/gitignored)
+    if [ -d ".claude/hooks" ] && [ ! -d "$WORKTREE_PATH/.claude/hooks" ]; then
+        mkdir -p "$WORKTREE_PATH/.claude"
+        cp -r ".claude/hooks" "$WORKTREE_PATH/.claude/hooks"
+        print_info "Copied .claude/hooks"
+    fi
+
     if [ -f .mcp.json ]; then
         sed "s|\"--project\", \"[^\"]*\"|\"--project\", \"$WORKTREE_ABS_PATH\"|g" .mcp.json > "$WORKTREE_PATH/.mcp.json"
         print_info "Copied and updated .mcp.json"
