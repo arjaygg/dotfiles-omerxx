@@ -40,5 +40,8 @@ echo "Parsing: $FILE"
 lit parse "$FILE" --format markdown -o "$OUT_FILE"
 
 echo "Ingested: $OUT_FILE"
+echo "Updating QMD index..."
+qmd update
+qmd embed
 echo "Collection: claude-pdf-context"
 echo "Query with: mcp__qmd__search({ collection: \"claude-pdf-context\", query: \"...\" })"
