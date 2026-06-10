@@ -79,6 +79,10 @@ export GOPATH="$HOME/go"
 # VIM
 alias v="$HOME/.nix-profile/bin/nvim"
 
+# Headroom context compression (https://github.com/chopratejas/headroom)
+export HEADROOM_CONTEXT_TOOL=lean-ctx
+alias hclaude="headroom wrap claude"
+
 # Claude Code
 alias claude="~/.dotfiles/.claude/scripts/claude-launch.sh native"
 alias claude-gemini="~/.dotfiles/.claude/scripts/claude-launch.sh gemini"

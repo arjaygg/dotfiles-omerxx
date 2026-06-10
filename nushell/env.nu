@@ -98,7 +98,7 @@ path add "/opt/homebrew/sbin"
 path add ($env.HOME | path join ".turso")
 path add ($env.HOME | path join ".local/share/mise/shims")
 path add ($env.HOME | path join ".cargo/bin")
-path add "/Users/omerxx/.local/bin"
+path add ($env.HOME | path join ".local/bin")
 
 
 # To load from a custom file you can use:
@@ -120,4 +120,5 @@ mkdir ~/.cache/carapace
 carapace _carapace nushell | save --force ~/.cache/carapace/init.nu
 
 $env.EDITOR = "nvim"
+$env.HEADROOM_CONTEXT_TOOL = "lean-ctx"
 $env.REF_API_KEY = "ref-e12567ea1d5b4c4bb0c8"
