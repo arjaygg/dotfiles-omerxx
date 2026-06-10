@@ -963,9 +963,9 @@ use ~/projects/nu_scripts/aliases/bat/bat-aliases.nu *
 use ~/projects/nu_scripts/aliases/docker/docker-aliases.nu *
 
 # Headroom context compression — bake required env vars so they're set regardless of shell state
-def hclaude [...args: string] {
+def --wrapped hclaude [...rest] {
     with-env { HEADROOM_NO_SUBSCRIPTION_TRACKING: "1", HEADROOM_CONTEXT_TOOL: "lean-ctx" } {
-        headroom wrap claude ...$args
+        ^headroom wrap claude ...$rest
     }
 }
 
