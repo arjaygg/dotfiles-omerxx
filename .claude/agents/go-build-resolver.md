@@ -1,0 +1,1 @@
+../../ai/agents/go-build-resolver.md
