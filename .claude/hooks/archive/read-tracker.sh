@@ -7,15 +7,7 @@ set -euo pipefail
 
 INPUT=$(cat)
 
-FILE_PATH=$(echo "$INPUT" | python3 -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    ti = d.get('tool_input', {})
-    print(ti.get('file_path', ''))
-except:
-    print('')
-" 2>/dev/null || echo "")
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null)
 
 [[ -z "$FILE_PATH" ]] && exit 0
 

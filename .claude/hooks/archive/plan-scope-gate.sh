@@ -10,6 +10,9 @@
 # The agent can modify the file to add files in scope — this is documented
 # behavior and tracked in plans/2026-03-30-plan-enforcement-rfc.md.
 
+# Fast path: no plan-state.json means no scope enforcement needed
+[[ -f plans/plan-state.json ]] || exit 0
+
 # Claude Code passes tool input via stdin as JSON:
 # { "tool_name": "Edit", "tool_input": { "file_path": "...", ... } }
 input=$(cat)
@@ -24,10 +27,10 @@ STEP=$(echo "$STATE" | jq -r '.step_title // "unknown step"')
 [ -z "$EXPECTED" ] && exit 0
 
 if ! echo "$EXPECTED" | grep -qF "$FILE"; then
-  echo "BLOCKED: '$FILE' is not in scope for current step: '$STEP'"
-  echo "Expected files: $(echo "$EXPECTED" | tr '\n' ' ')"
-  echo "To add a file to scope: update plans/plan-state.json expected_files[]"
-  exit 1
+  _expected_list=$(echo "$EXPECTED" | tr '\n' ' ')
+  python3 -c "import json,sys; print(json.dumps({'decision':'block','reason':sys.argv[1]}))" \
+    "BLOCKED: '$FILE' is not in scope for current step: '$STEP'. Expected files: $_expected_list. To add a file to scope: update plans/plan-state.json expected_files[]"
+  exit 0
 fi
 
 exit 0
