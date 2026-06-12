@@ -1,27 +1,23 @@
 ---
 name: ci-watch
-description: "Fire-and-forget CI monitor. Launches a headless background agent that polls GitHub Actions
-  and writes status to plans/ci-status.md. Returns within 5 seconds. On green: deploys to DEV and
-  sends a macOS notification. Check status with /ci-status."
-version: 1.0
+description: "Fire-and-forget CI monitor. Uses a background shell poller (zero LLM tokens while running) that watches GitHub Actions and writes status to plans/ci-status.md. Returns within 5 seconds. On green: deploys to DEV and sends a macOS notification. On failure: sends alert. Check status with /ci-status."
+version: 2.0
 triggers:
   - "/ci-watch"
 ---
 
 # CI Watch Skill
 
-Launches a background headless Claude agent to monitor CI for the current PR. Returns immediately
-— the agent runs independently and writes results to `plans/ci-status.md`.
+Launches a background shell polling loop to monitor CI for the current PR. Returns immediately
+— the loop runs independently and writes results to `plans/ci-status.md`. No LLM turns are
+consumed while CI is running (Monitor fires only on change).
 
 ## Instructions
 
 ### Step 1 — Detect current PR
 
-Run these to get branch and PR number:
-
 ```bash
 BRANCH=$(git branch --show-current)
-PR_URL=$(gh pr view --json url --jq '.url' 2>/dev/null || echo "")
 PR_NUMBER=$(gh pr view --json number --jq '.number' 2>/dev/null || echo "")
 REPO=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null || echo "")
 ```
@@ -38,75 +34,108 @@ Write to `plans/ci-status.md`:
 **PR:** #<PR_NUMBER> — <BRANCH>
 **Repo:** <REPO>
 **Started:** <timestamp>
-**Status:** WATCHING — background agent running (PID: pending)
+**Status:** WATCHING — background shell poller running
 ```
 
-### Step 3 — Launch background agent
+### Step 3 — Launch background shell poller
 
-Use `Bash` with `run_in_background: true`. Build the prompt with shell variables so
-placeholders are substituted by the shell — do NOT hand-edit `<PR_NUMBER>`-style
-placeholders inside a quoted heredoc (a quoted delimiter suppresses expansion, and
-unsubstituted placeholders have silently broken past runs). Avoid zsh reserved
-variable names (`status`, `path`, `options`) in this script.
+Use `Bash` with `run_in_background: true`. The poller uses a poll-and-diff loop (zero tokens
+while silent; writes to `plans/ci-status.md` only on state change).
 
 ```bash
-PR_NUM="<set from Step 1>"        # e.g. 877
-REPO_SLUG="<set from Step 1>"     # e.g. axos-financial/auc-conversion
-BRANCH_NAME="<set from Step 1>"   # e.g. chore/my-branch
+PR_NUM="<set from Step 1>"
+REPO_SLUG="<set from Step 1>"
+BRANCH_NAME="<set from Step 1>"
+STATUS_FILE="$(pwd)/plans/ci-status.md"
+LOG_FILE="/tmp/ci-watch-${PR_NUM}.log"
+MAX_POLLS=30   # 30 × 30s = 15 min
 
-AGENT_PROMPT=$(cat <<EOF
-You are a CI monitoring agent. Your job:
+mkdir -p "$(pwd)/plans"
 
-1. Poll GitHub Actions for PR #${PR_NUM} in repo ${REPO_SLUG}, max 10 times at 90-second intervals.
-2. After each poll, write current status to plans/ci-status.md:
-   - Include: timestamp, run status, conclusion, run URL
-   - Format: "**Status:** <IN_PROGRESS|SUCCESS|FAILURE> | Last checked: <time>"
-3. If all checks pass (conclusion: success):
-   a. Write "**Status:** SUCCESS — deploying to DEV" to plans/ci-status.md
-   b. Run: gh workflow run deploy-dev.yml --repo ${REPO_SLUG} (if workflow exists, else skip)
-   c. Send macOS notification: osascript -e 'display notification "CI passed — DEV deploy triggered" with title "ci-watch"'
-   d. Write final status to plans/ci-status.md and exit
-4. If any check fails (conclusion: failure/cancelled):
-   a. Write "**Status:** FAILED — <run URL>" to plans/ci-status.md
-   b. Send macOS notification: osascript -e 'display notification "CI FAILED on ${BRANCH_NAME}" with title "ci-watch" sound name "Basso"'
-   c. Exit
-5. After 10 polls with no conclusion, write "**Status:** TIMEOUT — 15 minutes elapsed, no result" and exit.
+LAST=""
+POLL=0
+while [ "$POLL" -lt "$MAX_POLLS" ]; do
+  POLL=$(( POLL + 1 ))
+  TS=$(date '+%Y-%m-%d %H:%M:%S')
 
-Poll command:
-  gh run list --repo ${REPO_SLUG} --branch ${BRANCH_NAME} --limit 3 \
+  NOW=$(gh run list \
+    --repo "${REPO_SLUG}" \
+    --branch "${BRANCH_NAME}" \
+    --limit 3 \
     --json databaseId,status,conclusion,url \
-    --jq '.[] | {id:.databaseId, status:.status, conclusion:.conclusion, url:.url}'
+    --jq '.[] | "\(.databaseId)|\(.status)|\(.conclusion)|\(.url)"' \
+    2>/dev/null || echo "")
 
-Current working directory: $(pwd)
-EOF
-)
+  if [ "$NOW" != "$LAST" ] && [ -n "$NOW" ]; then
+    LAST="$NOW"
 
-# Guard: refuse to launch if any placeholder survived substitution
-case "$AGENT_PROMPT" in
-  *'<PR_NUMBER>'*|*'<REPO>'*|*'<BRANCH>'*|*'<set from Step 1>'*)
-    echo "ci-watch: unsubstituted placeholder in agent prompt — aborting" >&2
-    exit 1;;
-esac
+    # Parse first run's conclusion
+    FIRST=$(echo "$NOW" | head -1)
+    RUN_STATUS=$(echo "$FIRST" | cut -d'|' -f2)
+    RUN_CONCLUSION=$(echo "$FIRST" | cut -d'|' -f3)
+    RUN_URL=$(echo "$FIRST" | cut -d'|' -f4)
 
-claude -p "$AGENT_PROMPT" \
-  --allowedTools "Bash,Read,Write" \
-  --output-format stream-json \
-  >> "/tmp/ci-watch-${PR_NUM}.log" 2>&1
+    cat > "$STATUS_FILE" <<STATUSEOF
+# CI Watch Status
+
+**PR:** #${PR_NUM} — ${BRANCH_NAME}
+**Repo:** ${REPO_SLUG}
+**Last checked:** ${TS} (poll ${POLL}/${MAX_POLLS})
+**Run status:** ${RUN_STATUS} | ${RUN_CONCLUSION}
+**URL:** ${RUN_URL}
+STATUSEOF
+
+    if [ "$RUN_CONCLUSION" = "success" ]; then
+      echo "${TS} [SUCCESS] ${RUN_URL}" >> "$LOG_FILE"
+      # Trigger DEV deploy if workflow exists
+      gh workflow run deploy-dev.yml --repo "${REPO_SLUG}" >/dev/null 2>&1 || true
+      osascript -e "display notification \"CI passed — DEV deploy triggered\" with title \"ci-watch PR #${PR_NUM}\"" 2>/dev/null || true
+      echo "**Status:** SUCCESS" >> "$STATUS_FILE"
+      exit 0
+    elif [ "$RUN_CONCLUSION" = "failure" ] || [ "$RUN_CONCLUSION" = "cancelled" ]; then
+      echo "${TS} [${RUN_CONCLUSION^^}] ${RUN_URL}" >> "$LOG_FILE"
+      osascript -e "display notification \"CI ${RUN_CONCLUSION} on ${BRANCH_NAME}\" with title \"ci-watch PR #${PR_NUM}\" sound name \"Basso\"" 2>/dev/null || true
+      echo "**Status:** FAILED — see ${RUN_URL}" >> "$STATUS_FILE"
+      exit 0
+    fi
+  fi
+
+  sleep 30
+done
+
+# Timeout
+TS=$(date '+%Y-%m-%d %H:%M:%S')
+echo "**Status:** TIMEOUT — ${MAX_POLLS} polls elapsed with no conclusion. Last: ${LAST}" >> "$STATUS_FILE"
+osascript -e "display notification \"CI watch timed out for PR #${PR_NUM}\" with title \"ci-watch\"" 2>/dev/null || true
 ```
 
-Note: the `<IN_PROGRESS|...>`, `<time>`, and `<run URL>` tokens are intentional — they
-are instructions TO the agent, not shell placeholders; the guard only checks the three
-launch parameters.
+### Step 4 — Optionally set up Monitor for in-session notification
 
-### Step 4 — Report to user
+If the user is actively working in this session and wants a notification when CI completes,
+start a Monitor watch on `plans/ci-status.md`:
 
-After launching the background agent, immediately tell the user:
+```
+Monitor: tail -f plans/ci-status.md | grep --line-buffered -E "(SUCCESS|FAILED|TIMEOUT)"
+persistent: false
+timeout_ms: 900000
+```
+
+This costs zero tokens while silent, and fires a notification in-session when the poller
+writes a final status line.
+
+### Step 5 — Report to user
 
 ```
 CI watch started for PR #<PR_NUMBER> (<BRANCH>).
 Status file: plans/ci-status.md
 Log: /tmp/ci-watch-<PR_NUMBER>.log
-Check progress with /ci-status
+Check anytime with /ci-status
 ```
 
-Return immediately — do not wait for CI results.
+Return immediately.
+
+## Related
+
+- `/ci-status` — read current ci-status.md
+- `/ci-monitor` — cicd-monitor agent with webhook support (for complex pipelines)
+- Monitor patterns: `/monitor-patterns` skill (`ai/skills/monitor-patterns/SKILL.md`)

@@ -68,19 +68,12 @@ setup_mcp() {
     lean-ctx doctor --fix 2>/dev/null || true
 }
 
-# Assert deliberate config settings (e.g. allow_auto_reroot) — lean-ctx
-# rewrites config.toml on setup/repair/update, so re-apply on every run.
-ensure_config() {
-    bash "$(dirname "${BASH_SOURCE[0]}")/ensure-config.sh" || true
-}
-
 main() {
     if already_installed; then
         local current
         current="$(lean-ctx --version 2>/dev/null | head -1 || echo 'unknown')"
         echo "lean-ctx already installed: ${current}"
         echo "Run 'lean-ctx doctor' to verify configuration."
-        ensure_config
         exit 0
     fi
 
@@ -96,7 +89,6 @@ main() {
     install_binary "$platform" "$version"
     ensure_path
     setup_mcp
-    ensure_config
     echo "lean-ctx v${version} installed and configured."
 }
 

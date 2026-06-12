@@ -4,6 +4,11 @@ description: "Parallel 4-subagent health check for auc-conversion migrations. Di
   app-logs, and metrics agents concurrently, synthesizes a unified status report, and performs RCA
   when anomalies are detected. Use after deploying a release or when a migration is running."
 version: 1.0
+disable-model-invocation: true
+disallowed-tools:
+  - Edit
+  - Write
+  - MultiEdit
 triggers:
   - "/migration-watchdog"
 ---
