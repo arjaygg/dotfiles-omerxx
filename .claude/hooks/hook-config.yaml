@@ -25,7 +25,8 @@ session-duration-guard: block    # block at 500 turns; warn at 100+; off to disa
 
 # ─── Stop event ───────────────────────────────────────────────────────────────
 
-todo-gate: block                 # block incomplete todos on session end
+task-gate: warn                  # warn on orphaned tasks/bg-work/crons on session end
+todo-gate: off                   # retired: replaced by task-gate (event-driven, O(1), jq not python3)
 drift-guard: off                 # off = disabled (re-enable when needed)
 
 # ─── Declarative bash rules (hook-rule-loader.sh: check_bash_cmd_rules) ─────

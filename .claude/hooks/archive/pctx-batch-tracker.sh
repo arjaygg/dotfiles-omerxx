@@ -12,23 +12,9 @@ _EXIT_CODE=$(hook_exit_code "$_HOOK_NAME" 2>/dev/null || echo 2)
 
 INPUT=$(cat)
 
-TOOL_NAME=$(echo "$INPUT" | python3 -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    print(d.get('tool_name', ''))
-except:
-    print('')
-" 2>/dev/null || echo "")
-
-SESSION_ID=$(echo "$INPUT" | python3 -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    print(d.get('session_id', 'default'))
-except:
-    print('default')
-" 2>/dev/null || echo "default")
+IFS=$'\001' read -r TOOL_NAME SESSION_ID < <(
+    echo "$INPUT" | jq -r '[.tool_name // "", .session_id // "default"] | join("\u0001")' 2>/dev/null || printf '\001default'
+)
 
 # --- If this IS a pctx execute_typescript call, reset the counter (batched path) ---
 if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then
@@ -56,13 +42,13 @@ fi
 COUNT=0
 [[ -f "$TRACKER" ]] && COUNT=$(wc -l < "$TRACKER" | tr -d ' ')
 
-if [[ "$COUNT" -ge 2 ]]; then
+if [[ "$COUNT" -ge 3 ]]; then
     echo "BATCH HINT: You've made $COUNT sequential Serena/pctx MCP calls in the last 60s."
     echo "  Consider batching into one pctx execute_typescript call with Promise.all()."
-    echo "  See: pctx-unified-rules.md §2 'Batching & Code Mode'"
+    echo "  See: tool-priority.md §2 'Batching & Code Mode'"
     # Reset after warning to avoid repeated noise
     rm -f "$TRACKER" 2>/dev/null || true
-    hook_metric "$_HOOK_NAME" "$TOOL_NAME" "$_EXIT_CODE" 2>/dev/null || true
+    hook_metric "$_HOOK_NAME" "$TOOL_NAME" 0 2>/dev/null || true
     exit 0
 fi
 

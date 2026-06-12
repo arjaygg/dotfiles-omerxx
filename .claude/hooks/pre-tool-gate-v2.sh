@@ -284,12 +284,19 @@ fi
 # ============================================================
 # SECTION 3: Edit guards
 # ============================================================
-# 3a. Edit/MultiEdit without read check
-if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "MultiEdit" ]]; then
+# 3a. Edit/MultiEdit (always) or Write to existing files — require prior Read in this session.
+# Write to a *new* file is allowed. The standalone read-before-write-guard.sh has been
+# removed (ADL-013 fix): it blocked blindly with exit 2 and no read-log check.
+if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "MultiEdit" ]] || \
+   [[ "$TOOL_NAME" == "Write" && -n "$FILE_PATH" && -f "$FILE_PATH" ]]; then
     if [[ -n "$FILE_PATH" ]]; then
         READ_LOG="/tmp/.claude-read-log-$(id -u)"
         if [[ ! -f "$READ_LOG" ]] || ! grep -qF "$FILE_PATH" "$READ_LOG" 2>/dev/null; then
-            _deny "BLOCKED: Editing '$FILE_PATH' without reading it first. Use Read (or Serena.getSymbolsOverview) to understand the file before editing."
+            if [[ "$TOOL_NAME" == "Write" ]]; then
+                _deny "BLOCKED: Overwriting existing '$FILE_PATH' without reading it first. Read it first to avoid data loss."
+            else
+                _deny "BLOCKED: Editing '$FILE_PATH' without reading it first. Use Read (or Serena.getSymbolsOverview) to understand the file before editing."
+            fi
         fi
     fi
 fi

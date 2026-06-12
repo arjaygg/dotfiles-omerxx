@@ -28,9 +28,24 @@ if [[ "$_CWD" == */.trees/* ]]; then
     fi
 fi
 
-# 2. K8s auth check: can we reach the cluster?
+# 2. K8s auth check: cached 60s TTL to avoid blocking every PROD prompt
 if command -v kubectl >/dev/null 2>&1; then
-    if ! kubectl auth can-i get pods -n auc-conversion --request-timeout=3s >/dev/null 2>&1; then
+    _K8S_CACHE="/tmp/.claude-k8s-auth-$(id -u)"
+    _K8S_OK=0
+    _NOW=$(date +%s)
+    if [[ -f "$_K8S_CACHE" ]]; then
+        _MTIME=$(stat -f %m "$_K8S_CACHE" 2>/dev/null || echo "0")
+        if [[ $(( _NOW - _MTIME )) -lt 60 ]]; then
+            _K8S_OK=$(cat "$_K8S_CACHE" 2>/dev/null || echo "1")
+        else
+            kubectl auth can-i get pods -n auc-conversion --request-timeout=3s >/dev/null 2>&1 && _K8S_OK=0 || _K8S_OK=1
+            echo "$_K8S_OK" > "$_K8S_CACHE"
+        fi
+    else
+        kubectl auth can-i get pods -n auc-conversion --request-timeout=3s >/dev/null 2>&1 && _K8S_OK=0 || _K8S_OK=1
+        echo "$_K8S_OK" > "$_K8S_CACHE"
+    fi
+    if [[ "$_K8S_OK" == "1" ]]; then
         _WARNINGS+=("⚠️  kubectl: cannot reach auc-conversion namespace (auth failure or no cluster context). Run: kubectl config get-contexts")
     fi
 fi

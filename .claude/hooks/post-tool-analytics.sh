@@ -79,7 +79,8 @@ if [[ "$LINE_COUNT" -gt 0 ]]; then
         OMITTED=$(( LINE_COUNT - 80 ))
         COMPACTED=$(printf '%s\n\n... %d lines omitted (use grep/search to find specific content) ...\n\n%s' \
             "$HEAD" "$OMITTED" "$TAIL")
-        echo "$COMPACTED" | jq -Rs '{"type": "text", "text": .}'
+        echo "$COMPACTED" | jq -Rs '{"updatedToolOutput": .}'
+        exit 0
     fi
 fi
 
@@ -92,12 +93,12 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
         git\ status*|git\ branch*|git\ diff\ --stat*|git\ log\ --oneline*|ls*|pwd*|which*|echo*) ;;
         *)
             if [[ "$LINE_COUNT" -gt 200 ]]; then
-                echo "OUTPUT WARNING: Bash produced $LINE_COUNT lines — significant context consumption."
-                echo "  For data-heavy commands, use context-mode MCP tools:"
-                echo "    mcp__context-mode__ctx_batch_execute — runs commands + auto-indexes output"
-                echo "    mcp__context-mode__ctx_execute — processes data in sandbox"
+                echo "OUTPUT WARNING: Bash produced $LINE_COUNT lines — significant context consumption." >&2
+                echo "  For data-heavy commands, use context-mode MCP tools:" >&2
+                echo "    mcp__context-mode__ctx_batch_execute — runs commands + auto-indexes output" >&2
+                echo "    mcp__context-mode__ctx_execute — processes data in sandbox" >&2
             elif [[ "$LINE_COUNT" -gt 50 ]]; then
-                echo "OUTPUT HINT: Bash produced $LINE_COUNT lines. For commands with large output, consider context-mode MCP tools to keep raw data out of context."
+                echo "OUTPUT HINT: Bash produced $LINE_COUNT lines. For commands with large output, consider context-mode MCP tools to keep raw data out of context." >&2
             fi
             ;;
     esac
@@ -106,7 +107,7 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
     if [[ "${EXIT_CODE:-0}" != "0" ]]; then
         if echo "$CMD" | grep -qiE '(go test|pytest|npm test|npx jest|dotnet test|cargo test)'; then
             if echo "$OUTPUT" | grep -q '\[lean-ctx:' || [[ "$LINE_COUNT" -lt 10 ]]; then
-                echo "RTK_DIAGNOSTIC_HINT: Test failed but output was compressed by rtk. To see full error details, re-run with: rtk proxy $CMD"
+                echo "RTK_DIAGNOSTIC_HINT: Test failed but output was compressed by rtk. To see full error details, re-run with: rtk proxy $CMD" >&2
             fi
         fi
     fi
@@ -146,9 +147,9 @@ if [[ "$TOOL_NAME" == mcp__serena__* || "$TOOL_NAME" == mcp__pctx__* ]]; then
         COUNT=0
         [[ -f "$TRACKER" ]] && COUNT=$(wc -l < "$TRACKER" | tr -d ' ')
         if [[ "$COUNT" -ge 2 ]]; then
-            echo "BATCH HINT: You've made $COUNT sequential Serena/pctx MCP calls in the last 60s."
-            echo "  Consider batching into one pctx execute_typescript call with Promise.all()."
-            echo "  See: pctx-unified-rules.md section 2 'Batching & Code Mode'"
+            echo "BATCH HINT: You've made $COUNT sequential Serena/pctx MCP calls in the last 60s." >&2
+            echo "  Consider batching into one pctx execute_typescript call with Promise.all()." >&2
+            echo "  See: pctx-unified-rules.md section 2 'Batching & Code Mode'" >&2
             rm -f "$TRACKER" 2>/dev/null || true
         fi
     fi
@@ -171,7 +172,7 @@ if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then
     REMINDER_FLAG="/tmp/.claude-pctx-reminder-$(id -u)"
     if [[ ! -f "$REMINDER_FLAG" ]]; then
         touch "$REMINDER_FLAG"
-        echo "BATCH CHECK: Was this the only Serena/MCP operation needed this turn? If 2+ ops are coming, combine them into one execute_typescript call."
+        echo "BATCH CHECK: Was this the only Serena/MCP operation needed this turn? If 2+ ops are coming, combine them into one execute_typescript call." >&2
     fi
 fi
 

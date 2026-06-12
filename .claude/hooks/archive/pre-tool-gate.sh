@@ -7,31 +7,21 @@ set -euo pipefail
 
 INPUT=$(cat)
 
-# Parse all fields in one python3 call — tool_name at top level, rest inside tool_input
+# Parse all fields in one jq call — tool_name at top level, rest inside tool_input
 # Use \001 (non-whitespace) as separator so bash read preserves empty fields
 IFS=$'\001' read -r TOOL_NAME FILE_PATH CMD LIMIT < <(
-    echo "$INPUT" | python3 -c "
-import sys, json
-SEP = '\x01'
-try:
-    d = json.load(sys.stdin)
-    tool_name = d.get('tool_name', '')
-    ti = d.get('tool_input', {})
-    file_path = ti.get('file_path', ti.get('path', ''))
-    command = ti.get('command', '')
-    limit = str(ti.get('limit', ''))
-    print(SEP.join([tool_name, file_path, command, limit]))
-except:
-    print(SEP * 3)
-" 2>/dev/null || printf '\001\001\001'
+    echo "$INPUT" | jq -r '[.tool_name // "", .tool_input.file_path // .tool_input.path // "", .tool_input.command // "", (.tool_input.limit // "" | tostring)] | join("\u0001")' 2>/dev/null || printf '\001\001\001'
 )
+
+# --- Source hook-metrics for hook_block() and hook_metric() ---
+_GATE_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_GATE_SCRIPT_DIR}/hook-metrics.sh" 2>/dev/null || true
 
 # --- Block reads of known-large lock files ---
 LOCK_FILES=("package-lock.json" "yarn.lock" "Cargo.lock" "pnpm-lock.yaml" "composer.lock" "Gemfile.lock")
 for lock in "${LOCK_FILES[@]}"; do
     if [[ "$FILE_PATH" == *"$lock" ]]; then
-        echo "BLOCKED: Reading $lock directly wastes tokens. Use Grep to search for specific entries instead."
-        exit 1
+        hook_block "pre-tool-gate" "$TOOL_NAME" "BLOCKED: Reading $lock directly wastes tokens. Use grep/search for specific entries instead."
     fi
 done
 
@@ -39,8 +29,8 @@ done
 if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" && -f "$FILE_PATH" ]]; then
     FILE_SIZE=$(stat -f%z "$FILE_PATH" 2>/dev/null || stat -c%s "$FILE_PATH" 2>/dev/null || echo 0)
     if [[ "$FILE_SIZE" -gt 102400 && -z "$LIMIT" ]]; then
-        echo "BLOCKED: $FILE_PATH is $(( FILE_SIZE / 1024 ))KB. Use Read with limit/offset or Grep to read only the relevant section."
-        exit 1
+        echo "WARNING: $FILE_PATH is $(( FILE_SIZE / 1024 ))KB. Consider using limit/offset or grep to read only the relevant section."
+        exit 0
     fi
 fi
 
@@ -48,71 +38,41 @@ fi
 # Reading a whole .go file is almost always unnecessary — Serena.getSymbolsOverview
 # gives the structure without flooding the context window.
 if [[ "$TOOL_NAME" == "Read" && "$FILE_PATH" == *.go && -z "$LIMIT" ]]; then
-    echo "BLOCKED: Reading entire .go file '$FILE_PATH' without limit/offset. Use Serena.getSymbolsOverview to understand structure, then Read with limit/offset for the specific symbol."
-    exit 1
+    echo "WARNING: Reading entire .go file '$FILE_PATH' without limit/offset. Prefer Serena.getSymbolsOverview to understand structure, then Read with limit/offset for the specific symbol."
+    exit 0
 fi
 
 # --- Block/Warn when using Bash instead of a dedicated native tool ---
 # Uses configurable enforcement from hook-config.yaml via hook-metrics.sh
-# NOTE: source + setup done at top level to match other hooks (serena-tool-priority, etc.)
-_BGATE_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${_BGATE_SCRIPT_DIR}/hook-metrics.sh" 2>/dev/null || true
 _BGATE_HOOK_NAME="bash-tool-gate"
-_BGATE_EXIT_CODE=$(hook_exit_code "$_BGATE_HOOK_NAME" 2>/dev/null || echo 2)
+_BGATE_LEVEL=$(hook_enforcement_level "$_BGATE_HOOK_NAME" 2>/dev/null || echo "block")
 
-if [[ "$TOOL_NAME" == "Bash" && "$_BGATE_EXIT_CODE" -ne 0 ]]; then
-    _bgate_label() {
-        [[ "$_BGATE_EXIT_CODE" -eq 1 ]] && echo "BLOCKED" || echo "WARNING"
-    }
-
-    # Block: cat → use Read tool
-    if [[ "$CMD" == cat\ * ]]; then
-        echo "$(_bgate_label): Use the Read tool instead of 'cat'. It's token-efficient, reviewable, and supports limit/offset."
-        hook_metric "$_BGATE_HOOK_NAME" "Bash" "$_BGATE_EXIT_CODE" 2>/dev/null || true
-        exit "$_BGATE_EXIT_CODE"
-    fi
-
-    # Block: head/tail → use Read tool with limit/offset
-    if [[ "$CMD" == head\ * || "$CMD" == tail\ * ]]; then
-        echo "$(_bgate_label): Use the Read tool with limit/offset instead of 'head'/'tail'."
-        hook_metric "$_BGATE_HOOK_NAME" "Bash" "$_BGATE_EXIT_CODE" 2>/dev/null || true
-        exit "$_BGATE_EXIT_CODE"
-    fi
+if [[ "$TOOL_NAME" == "Bash" && "$_BGATE_LEVEL" != "off" ]]; then
+    # Note: cat, head, tail, rg are already blocked by settings.json deny list.
+    # Only grep, find, ls, and git-commit-on-main need hook enforcement.
 
     # Block: grep (but not git grep) → use Grep tool or Serena.searchForPattern
+    # Also in settings.json deny list (Bash(grep *), Bash(grep -*)) — kept here as defense-in-depth
     if [[ ( "$CMD" == grep\ * || "$CMD" == grep\ -* ) && "$CMD" != *"git grep"* ]]; then
-        echo "$(_bgate_label): Use the Grep tool (ripgrep-backed, gitignore-aware) or Serena.searchForPattern instead of 'grep'."
-        hook_metric "$_BGATE_HOOK_NAME" "Bash" "$_BGATE_EXIT_CODE" 2>/dev/null || true
-        exit "$_BGATE_EXIT_CODE"
-    fi
-
-    # Block: rg → use Grep tool
-    if [[ "$CMD" == rg\ * || "$CMD" == rg\ -* ]]; then
-        echo "$(_bgate_label): Use the Grep tool instead of 'rg'. It is gitignore-aware and token-efficient."
-        hook_metric "$_BGATE_HOOK_NAME" "Bash" "$_BGATE_EXIT_CODE" 2>/dev/null || true
-        exit "$_BGATE_EXIT_CODE"
+        hook_block "$_BGATE_HOOK_NAME" "Bash" "BLOCKED: Use the Grep tool (ripgrep-backed, gitignore-aware) or Serena.searchForPattern instead of 'grep'."
     fi
 
     # Block: find → use Glob or Serena.findFile
+    # Also in settings.json deny list (Bash(find . *), Bash(find / *)) — kept here as defense-in-depth
     if [[ "$CMD" == find\ .* || "$CMD" == find\ /* ]]; then
-        echo "$(_bgate_label): Use the Glob tool or Serena.findFile instead of 'find'. They are project-aware and faster."
-        hook_metric "$_BGATE_HOOK_NAME" "Bash" "$_BGATE_EXIT_CODE" 2>/dev/null || true
-        exit "$_BGATE_EXIT_CODE"
+        hook_block "$_BGATE_HOOK_NAME" "Bash" "BLOCKED: Use the Glob tool or Serena.findFile instead of 'find'. They are project-aware and faster."
     fi
 
     # Block: plain ls (not ls -l* which is used for symlink inspection)
     if [[ ( "$CMD" == ls\ * || "$CMD" == "ls" ) && "$CMD" != ls\ -l* ]]; then
-        echo "$(_bgate_label): Use Glob or Serena.listDir instead of 'ls'. They are structured and token-efficient."
-        hook_metric "$_BGATE_HOOK_NAME" "Bash" "$_BGATE_EXIT_CODE" 2>/dev/null || true
-        exit "$_BGATE_EXIT_CODE"
+        hook_block "$_BGATE_HOOK_NAME" "Bash" "BLOCKED: Use Glob or Serena.listDir instead of 'ls'. They are structured and token-efficient."
     fi
 
     # Block: git commit on main branch
     if [[ "$CMD" == git\ commit* ]]; then
         CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
         if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
-            echo "BLOCKED: You are about to commit directly to '$CURRENT_BRANCH'. Create a feature branch first: stack create <name> $CURRENT_BRANCH"
-            exit 1
+            hook_block "$_BGATE_HOOK_NAME" "Bash" "BLOCKED: Committing directly to '$CURRENT_BRANCH'. Create a feature branch first: stack create <name> $CURRENT_BRANCH"
         fi
     fi
 fi
@@ -164,24 +124,21 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]]; then
         fi
         case "$_ATOMIC_STATE" in
             blocked)
-                echo "BLOCKED: Mixed concerns detected in staged files (state: blocked)."
                 _DIAG=$("$HOME/.dotfiles/scripts/ai/atomic-status.sh" --verbose 2>&1 1>/dev/null || true)
-                [[ -n "$_DIAG" ]] && echo "$_DIAG" | sed 's/^/  /'
-                echo "  Commit or checkpoint current work before editing more files."
-                exit 1
+                _REASON="BLOCKED: Mixed concerns detected in staged files (state: blocked). Commit or checkpoint current work before editing more files."
+                [[ -n "$_DIAG" ]] && _REASON="$_REASON $_DIAG"
+                hook_block "pre-tool-gate" "$TOOL_NAME" "$_REASON"
                 ;;
             overgrown)
-                echo "BLOCKED: Working tree is overgrown (state: overgrown)."
                 _DIAG=$("$HOME/.dotfiles/scripts/ai/atomic-status.sh" --verbose 2>&1 1>/dev/null || true)
+                echo "WARNING: Working tree is overgrown (state: overgrown)."
                 [[ -n "$_DIAG" ]] && echo "$_DIAG" | sed 's/^/  /'
                 echo "  Consider committing a subset before continuing."
                 echo "  Run: ~/.dotfiles/scripts/ai/commit.sh -m 'subject' -m 'why'"
-                exit 1
                 ;;
             ready_to_commit)
-                echo "BLOCKED: Changes are ready to commit (state: ready_to_commit)."
+                echo "WARNING: Changes are ready to commit (state: ready_to_commit)."
                 echo "  Run: ~/.dotfiles/scripts/ai/commit.sh -m 'subject' -m 'why'"
-                exit 1
                 ;;
         esac
     fi
@@ -191,8 +148,7 @@ fi
 if [[ "$TOOL_NAME" == "Bash" && "$CMD" == git\ commit* ]]; then
     _ATOMIC_HOOKS=$(git config --local core.hooksPath 2>/dev/null || echo "")
     if [[ "$_ATOMIC_HOOKS" == "$HOME/.dotfiles/git/hooks" ]]; then
-        echo "BLOCKED: Use '~/.dotfiles/scripts/ai/commit.sh -m \"subject\" -m \"why\"' instead of raw git commit."
-        exit 1
+        hook_block "pre-tool-gate" "Bash" "BLOCKED: Use '~/.dotfiles/scripts/ai/commit.sh -m \"subject\" -m \"why\"' instead of raw git commit."
     fi
 fi
 
