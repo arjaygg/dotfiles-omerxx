@@ -1,20 +1,30 @@
 # Active Context
 
-## Current Focus
+plan: plans/2026-06-12-ai-primitives-upgrade.md
+step: 0 of 19
+focus: plan written — awaiting user review before Wave 1 execution
 
-Autonomous watchdog loop — committing + shipping to main.
-Branch: `feat/autonomous-watchdog-loop`
+## Current Focus (2026-06-12)
 
-## Completed This Session
+AI primitives audit (`/autoresearch` analysis run, ultracode): audited all skills,
+hooks, agents, rules, and MCP/cross-tool configs; researched current Claude Code /
+Codex / Gemini CLI capabilities; produced verified improvement plan.
 
-- Investigation Depth rule → `ai/rules/agent-user-global.md` (PR #193, merged)
-- `/migration-watchdog` skill + `env-preflight.sh` hook (PR #193, merged)
-- `decisions/0005-autonomous-watchdog-loop.md` (PR #193, merged)
-- auc-conversion CLAUDE.md patch (PR #728, merged)
-- `ai/skills/migration-watchdog-auto/SKILL.md` (CronCreate tick executor)
-- `ai/skills/watchdog-remediate/SKILL.md` (4 pre-approved playbooks)
-- `ai/skills/watchdog-cron-setup/SKILL.md` (one-time setup + teardown)
+Workflow `ai-primitives-audit` (wf_6bbf6240-70d): 32 agents, 4 dimensions,
+20 proposals — all survived adversarial verification (6 keep, 14 modify).
+
+## Carried Over (from 2026-06-10 handoff)
+
+- Untracked skills in .claude/skills/ still need promotion to ai/skills/ + symlink +
+  commit (covered by plan Wave 1, Step 1).
+- .bak litter in .claude/skills/lean-ctx/ and .cursor/hooks/ (same step).
+
+## Known Defect (discovered this session)
+
+`read-before-write-guard.sh` + hooks that touch `plans/*.md` per prompt deadlock
+native Write on existing plans files (Read always returns stale marker).
+Fix scheduled as plan Wave 1 step; workaround: rm + Write, or LeanCtx.ctxEdit.
 
 ## Next
 
-Commit 3 new skills → push → PR → admin merge
+User reviews plan → execute Wave 1 on a stack branch (NOT main).

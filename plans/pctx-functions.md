@@ -1,4 +1,4 @@
-# pctx Functions — 2026-05-16
+# pctx Functions — 2026-06-12 (refreshed; namespaces unchanged: Serena 19 tools, Qmd query/get/multiGet/status, LeanCtx 11 tools, Repomix 8 tools)
 
 Namespaces: Serena, Qmd, LeanCtx, Repomix
 
