@@ -1,1 +1,1 @@
-/Users/axos-agallentes/.dotfiles/ai/commands/resource-guard.md
+../../ai/commands/resource-guard.md
