@@ -83,6 +83,13 @@ If unclear, default to `feature/`.
 - Do NOT remove if uncommitted changes unless explicitly told to proceed.
 - Remove with `git worktree remove <path>`, optionally delete branch.
 
+### When asked to "create a branch" or "switch to a branch"
+- A branch request ALWAYS means creating/switching the actual git branch
+  (`git switch -c`, `gt`, or stack-create). A worktree name or directory is
+  NEVER a substitute for branch creation.
+- If the request is ambiguous, create both branch and worktree per the
+  conventions above — do not debate naming with the user instead of acting.
+
 ## Plan Documents
 
 When working from a dated plan file (`plans/YYYY-MM-DD-<context>.md`):
@@ -235,6 +242,18 @@ These rules apply to root-cause analyses, debugging sessions, and any request fo
 - **Show your work:** Explicitly state what was checked and what was NOT yet checked. Do not declare a root cause without listing both. Format: "Checked: [X, Y]. Not yet checked: [Z]."
 - **Lead with the recommendation:** When asked for a recommendation, state the concrete recommendation first, then provide the supporting analysis. Never bury the answer in analysis.
 - **Never assume exit 0 = success:** For deployment and migration operations, always verify actual artifacts (indexes created, row counts match, pods healthy, API responding) even when the command exits 0.
+- **Diagnose vs fix:** When the request is diagnosis/investigation, deliver root-cause analysis ONLY and present proposed fixes as options. Do NOT apply any fix until explicitly approved. If unsure which mode the user wants, ask before changing anything.
+- **Write findings incrementally:** During long investigations, write findings to a file section-by-section (≤110 lines per write) instead of one large response or one monolithic Write — large single outputs hit token limits, lose transcript detail, and stall background workflow watchdogs.
+
+## Skill Tool Semantics
+
+The Skill tool only loads instructions into the current context — it does NOT execute
+anything and is NOT a background process.
+
+- Never report a skill as "running in the background" after invoking the Skill tool.
+- Background work exists only when spawned via `Bash(run_in_background: true)`,
+  `Agent`, or `Monitor` — report its real task/agent id as evidence.
+- After loading a skill, execute its steps directly and report actual status.
 
 ## Compound Request Echo-Back
 

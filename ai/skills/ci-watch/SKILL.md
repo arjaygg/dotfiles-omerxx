@@ -43,41 +43,60 @@ Write to `plans/ci-status.md`:
 
 ### Step 3 — Launch background agent
 
-Use `Bash` with `run_in_background: true`:
+Use `Bash` with `run_in_background: true`. Build the prompt with shell variables so
+placeholders are substituted by the shell — do NOT hand-edit `<PR_NUMBER>`-style
+placeholders inside a quoted heredoc (a quoted delimiter suppresses expansion, and
+unsubstituted placeholders have silently broken past runs). Avoid zsh reserved
+variable names (`status`, `path`, `options`) in this script.
 
 ```bash
-claude -p "$(cat <<'AGENT_PROMPT'
+PR_NUM="<set from Step 1>"        # e.g. 877
+REPO_SLUG="<set from Step 1>"     # e.g. axos-financial/auc-conversion
+BRANCH_NAME="<set from Step 1>"   # e.g. chore/my-branch
+
+AGENT_PROMPT=$(cat <<EOF
 You are a CI monitoring agent. Your job:
 
-1. Poll GitHub Actions for PR #<PR_NUMBER> in repo <REPO>, max 10 times at 90-second intervals.
+1. Poll GitHub Actions for PR #${PR_NUM} in repo ${REPO_SLUG}, max 10 times at 90-second intervals.
 2. After each poll, write current status to plans/ci-status.md:
    - Include: timestamp, run status, conclusion, run URL
    - Format: "**Status:** <IN_PROGRESS|SUCCESS|FAILURE> | Last checked: <time>"
 3. If all checks pass (conclusion: success):
    a. Write "**Status:** SUCCESS — deploying to DEV" to plans/ci-status.md
-   b. Run: gh workflow run deploy-dev.yml --repo <REPO> (if workflow exists, else skip)
+   b. Run: gh workflow run deploy-dev.yml --repo ${REPO_SLUG} (if workflow exists, else skip)
    c. Send macOS notification: osascript -e 'display notification "CI passed — DEV deploy triggered" with title "ci-watch"'
    d. Write final status to plans/ci-status.md and exit
 4. If any check fails (conclusion: failure/cancelled):
    a. Write "**Status:** FAILED — <run URL>" to plans/ci-status.md
-   b. Send macOS notification: osascript -e 'display notification "CI FAILED on <BRANCH>" with title "ci-watch" sound name "Basso"'
+   b. Send macOS notification: osascript -e 'display notification "CI FAILED on ${BRANCH_NAME}" with title "ci-watch" sound name "Basso"'
    c. Exit
 5. After 10 polls with no conclusion, write "**Status:** TIMEOUT — 15 minutes elapsed, no result" and exit.
 
 Poll command:
-  gh run list --repo <REPO> --branch <BRANCH> --limit 3 \
+  gh run list --repo ${REPO_SLUG} --branch ${BRANCH_NAME} --limit 3 \
     --json databaseId,status,conclusion,url \
     --jq '.[] | {id:.databaseId, status:.status, conclusion:.conclusion, url:.url}'
 
 Current working directory: $(pwd)
-AGENT_PROMPT
-)" \
+EOF
+)
+
+# Guard: refuse to launch if any placeholder survived substitution
+case "$AGENT_PROMPT" in
+  *'<PR_NUMBER>'*|*'<REPO>'*|*'<BRANCH>'*|*'<set from Step 1>'*)
+    echo "ci-watch: unsubstituted placeholder in agent prompt — aborting" >&2
+    exit 1;;
+esac
+
+claude -p "$AGENT_PROMPT" \
   --allowedTools "Bash,Read,Write" \
   --output-format stream-json \
-  >> /tmp/ci-watch-<PR_NUMBER>.log 2>&1
+  >> "/tmp/ci-watch-${PR_NUM}.log" 2>&1
 ```
 
-Note: Replace `<PR_NUMBER>`, `<REPO>`, and `<BRANCH>` with the actual values before launching.
+Note: the `<IN_PROGRESS|...>`, `<time>`, and `<run URL>` tokens are intentional — they
+are instructions TO the agent, not shell placeholders; the guard only checks the three
+launch parameters.
 
 ### Step 4 — Report to user
 

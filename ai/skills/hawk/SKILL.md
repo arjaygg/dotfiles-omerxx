@@ -452,7 +452,19 @@ Otherwise (default `--post-pr`):
   Post the summary as a standalone block comment first:
   `gh pr review <N> --comment -b "<summary blockquote>"`
 
-  Then for each CRITICAL or HIGH finding, post an inline review comment:
+  **Validate line anchors against the diff before posting inline.** GitHub rejects
+  (HTTP 422) review comments whose `line` is not part of the PR's diff hunks. Fetch
+  the changed line ranges first:
+  ```bash
+  # Map of changed (RIGHT-side) line ranges per file
+  gh pr diff <N> | awk '
+    /^\+\+\+ b\//   { file = substr($2, 3) }
+    /^@@/           { split($3, a, ","); start = substr(a[1], 2);
+                      len = (a[2] == "" ? 1 : a[2]); print file ":" start "-" start+len-1 }'
+  ```
+
+  Then for each CRITICAL or HIGH finding **whose `file:line` falls inside a hunk range**,
+  post an inline review comment:
   ```bash
   gh api repos/<owner>/<repo>/pulls/<N>/comments \
     --method POST \
@@ -462,9 +474,13 @@ Otherwise (default `--post-pr`):
     --field line=LINE \
     --field side="RIGHT"
   ```
-  Then post MEDIUM/LOW findings (if any) as one block comment:
-  `gh pr review <N> --comment -b "<MEDIUM/LOW table only>"`
-  If no MEDIUM/LOW findings, skip the block comment entirely.
+
+  CRITICAL/HIGH findings **outside** any hunk are never dropped and never posted inline —
+  include them in the block comment table below with their `file:line` references.
+
+  Then post MEDIUM/LOW findings plus any out-of-hunk CRITICAL/HIGH findings as one block comment:
+  `gh pr review <N> --comment -b "<table of remaining findings>"`
+  If there are none, skip the block comment entirely.
 
 Mark `report` completed. Report via TaskUpdate: "Hawk: review complete. N issues found."
 
