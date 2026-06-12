@@ -42,5 +42,15 @@ Move all universal agent rules to `ai/rules/` and load them at user scope:
 ## Consequences
 
 - `validate-agent-guidance.sh` updated with 7 new checks (file existence + import chain for Claude and Gemini).
+
+## Amendment — 2026-06-12
+
+**`global-developer-guidelines.md` deleted.**
+
+The file was a symlink alias to `agent-user-global.md` with no unique content. Deleted in the Step 4 cleanup of the AI primitives upgrade plan. Cascading changes:
+- Removed `@../ai/rules/global-developer-guidelines.md` from `.claude/CLAUDE.md`
+- Removed the same import from `.gemini/GEMINI.md`
+- Removed broken `@../ai/rules/global-developer-guidelines.md` from `.cursor/rules.md`
+- Removed 3 stale checks from `validate-agent-guidance.sh` (file existence + import chain for the deleted file)
 - `AGENTS.md` is now leaner and dotfiles-specific. Tool priority rules are no longer duplicated between AGENTS.md and user-global adapters.
 - Any new universal rule should be added to `ai/rules/` and referenced from `.claude/CLAUDE.md` and `.gemini/GEMINI.md`.
