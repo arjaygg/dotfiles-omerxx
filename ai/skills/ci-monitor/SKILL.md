@@ -81,4 +81,4 @@ Call `TaskStop` on the Monitor's task ID, or stop the persistent monitor via `/t
 ## Related
 
 - cicd-monitor agent: `~/.dotfiles/.claude/agents/cicd-monitor.md` (webhook Mode B only)
-- Monitor patterns: `ai/rules/monitor-patterns.md`
+- Monitor patterns: `/monitor-patterns` skill (`ai/skills/monitor-patterns/SKILL.md`)

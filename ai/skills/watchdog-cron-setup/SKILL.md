@@ -4,6 +4,7 @@ description: "One-time setup: initialize watchdog state file and register a dura
   that runs /migration-watchdog-auto every 15 minutes. Use /watchdog-cron-teardown to stop it.
   Job auto-expires after 7 days — re-run this skill to renew. Requires active Claude session."
 version: 1.0
+disable-model-invocation: true
 triggers:
   - "/watchdog-cron-setup"
 ---
@@ -71,7 +72,7 @@ Use `CronCreate` with these exact parameters:
 ```
 CronCreate(
   cron: "7,22,37,52 * * * *",   # every 15 min, offset to avoid :00/:30 crowding
-  prompt: "Run /migration-watchdog-auto — this is the autonomous watchdog tick. Execute the skill completely without waiting for user input.",
+  prompt: "/migration-watchdog-auto",
   recurring: true,
   durable: true                  # survives Claude restarts
 )

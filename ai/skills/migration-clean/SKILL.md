@@ -1,3 +1,8 @@
+---
+name: migration-clean
+description: Full migration reset — truncates KeyMap/Evidence/Audit tables, clears stale chunks, and resets ProcessLog before restarting a fresh full-load migration run in DEV.
+---
+
 # /migration-clean — Full Migration Reset
 
 Performs a complete cleanup of all migration state tables before restarting

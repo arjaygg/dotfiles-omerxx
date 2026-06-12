@@ -1,7 +1,8 @@
 ---
 name: auc-prod-db-monitor
-description: "Fire-and-forget 8-year autonomous AUC PROD DB smart monitor. Launches a headless background Claude Code agent that progressively polls the PROD DB for missing index bottlenecks, auto-fixes them safely, and creates GH Issues/PRs."
+description: "QUARANTINED — do not invoke until redesigned. Was: fire-and-forget 8-year autonomous AUC PROD DB smart monitor with hardcoded PROD CREATE INDEX instructions."
 version: 1.0
+disable-model-invocation: true
 triggers:
   - "/auc-prod-db-monitor"
   - "continue to monitor the auc prod db"

@@ -5,6 +5,7 @@ description: "Autonomous per-tick execution of the migration watchdog. Reads pri
   routes: HEALTHY=silent, DEGRADED=notify, FAILURE=remediate or escalate. Designed to be invoked by
   CronCreate every 15 minutes. Do NOT call manually — use /migration-watchdog for on-demand checks."
 version: 1.0
+disable-model-invocation: true
 triggers:
   - "/migration-watchdog-auto"
 ---

@@ -1,3 +1,13 @@
+---
+name: stack-ship
+description: Merge a stack branch and all dependents atomically with CI validation, conflict recovery, and audit logging.
+triggers:
+  - "/stack-ship"
+  - "merge the stack"
+  - "ship this stack"
+  - "ship the branch"
+---
+
 # Skill: stack-ship
 
 **Purpose:** Fully automated stack branch merge pipeline — merge a branch + all dependents atomically with conflict recovery and audit logging.
@@ -123,98 +133,7 @@ Executing...
 
 ## Phase 1 Implementation (Current)
 
-### Algorithm
-
-```bash
-#!/bin/bash
-set -euo pipefail
-
-DRY_RUN=0
-TARGET_BRANCH=$(git branch --show-current)
-
-# Parse args
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    --dry-run) DRY_RUN=1; shift ;;
-    --branch) TARGET_BRANCH="$2"; shift 2 ;;
-    *) echo "Unknown option: $1"; exit 1 ;;
-  esac
-done
-
-# 1. Validate preconditions
-if [[ "$TARGET_BRANCH" == "main" ]]; then
-  echo "❌ Cannot merge main branch"
-  exit 1
-fi
-
-if ! gh pr view "$TARGET_BRANCH" --json number >/dev/null 2>&1; then
-  echo "❌ No GitHub PR found for branch: $TARGET_BRANCH"
-  exit 1
-fi
-
-# 2. Build dependency graph
-# For now, simple: find parent via git merge-base
-PARENT=$(git merge-base --octopus "$TARGET_BRANCH" main 2>/dev/null || echo "main")
-if [[ "$PARENT" == "$TARGET_BRANCH" ]]; then
-  PARENT="main"
-fi
-
-# Find dependents: branches that have TARGET_BRANCH as ancestor
-DEPENDENTS=$(git branch --list --format='%(refname:short)' | \
-  while read branch; do
-    [[ "$branch" == "$TARGET_BRANCH" ]] && continue
-    if git merge-base --is-ancestor "$TARGET_BRANCH" "$branch" 2>/dev/null; then
-      echo "$branch"
-    fi
-  done)
-
-# 3. Build merge plan
-echo "Building dependency graph..."
-echo "  $TARGET_BRANCH (target) ← $PARENT"
-if [[ -n "$DEPENDENTS" ]]; then
-  echo "$DEPENDENTS" | sed 's/^/  /' | sed 's/^/↑ /'
-fi
-
-# 4. Validate CI is green
-echo "Checking CI status..."
-CI_STATUS=$(gh run list --branch "$TARGET_BRANCH" --limit 1 --json conclusion --jq '.[0].conclusion' 2>/dev/null || echo "unknown")
-if [[ "$CI_STATUS" != "success" ]] && [[ "$CI_STATUS" != "unknown" ]]; then
-  echo "⚠️  CI is not green (status: $CI_STATUS). Proceeding anyway..."
-fi
-
-# 5. Execute merge (or dry-run)
-if [[ $DRY_RUN -eq 1 ]]; then
-  echo ""
-  echo "Merge plan (dry-run):"
-  echo "  1. Merge $TARGET_BRANCH → $PARENT (via gh pr merge)"
-  if [[ -n "$DEPENDENTS" ]]; then
-    echo "$DEPENDENTS" | nl -v 2 | sed 's/^/  /'
-  fi
-  echo ""
-  echo "Would merge $(echo "$TARGET_BRANCH" | wc -l) branch(es). No changes made."
-  exit 0
-fi
-
-# Log operation
-LOG_DIR=".stack-ship"
-mkdir -p "$LOG_DIR"
-LOG_FILE="$LOG_DIR/log.jsonl"
-
-# Merge target branch
-echo "Merging $TARGET_BRANCH → $PARENT..."
-HASH_BEFORE=$(git rev-parse "$TARGET_BRANCH")
-gh pr merge "$TARGET_BRANCH" --rebase --delete-branch --auto --body "Merged via stack-ship" 2>/dev/null || true
-HASH_AFTER=$(git rev-parse "$TARGET_BRANCH" 2>/dev/null || echo "$HASH_BEFORE")
-
-# Log
-TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-echo "{\"timestamp\": \"$TIMESTAMP\", \"operation\": \"merge\", \"branch\": \"$TARGET_BRANCH\", \"parent\": \"$PARENT\", \"hash_before\": \"$HASH_BEFORE\", \"hash_after\": \"$HASH_AFTER\", \"status\": \"success\", \"actor\": \"$USER\"}" >> "$LOG_FILE"
-
-echo "✅ Merged $TARGET_BRANCH"
-echo ""
-echo "Merge log:"
-tail -5 "$LOG_FILE" | jq -r '.branch + " → " + .parent'
-```
+Run: `$HOME/.dotfiles/.claude/scripts/stack-ship.sh`
 
 ---
 

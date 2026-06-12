@@ -4,6 +4,10 @@ description: "Execute a pre-approved watchdog remediation playbook against auc-c
   a playbook type as argument: circuit-breaker | timeout-extend | stale-pods | db-locks.
   Records action taken and verifies outcome. Called by migration-watchdog-auto on FAILURE."
 version: 1.0
+arguments:
+  - name: playbook
+    description: "Remediation type: circuit-breaker | timeout-extend | stale-pods | db-locks"
+    required: false
 triggers:
   - "/watchdog-remediate"
 ---
