@@ -8,9 +8,6 @@ This file aggregates all user-global AI rules from `~/.dotfiles/ai/rules/`.
 ## Agent User Global Defaults  
 @../ai/rules/agent-user-global.md
 
-## Global Developer Guidelines
-@../ai/rules/global-developer-guidelines.md
-
 ## Context and Compaction Rules
 @../ai/rules/context-and-compaction.md
 

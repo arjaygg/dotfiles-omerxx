@@ -4,7 +4,6 @@ This file is the user-global Gemini entrypoint for this machine.
 
 @../ai/rules/agent-user-global.md
 @../ai/rules/tool-priority.md
-@../ai/rules/global-developer-guidelines.md
 
 ## Gemini-Specific Notes
 
