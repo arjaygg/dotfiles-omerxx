@@ -75,11 +75,25 @@ Machine-wide defaults live in `ai/rules/` and are loaded through tool-specific a
 
 Memory is helpful context. It is not the authoritative place to store repo policy.
 
+## Skill Distribution
+
+User-scoped skills live in `ai/skills/` (canonical source). Distribution to agent runtimes is:
+
+| Path | Who reads it | Notes |
+|---|---|---|
+| `~/.agents/skills` → `~/.dotfiles/ai/skills` | Codex ≥ 0.130.0, Gemini ≥ 0.42.0 | Single symlink; cross-tool standard |
+| `~/.codex/skills/` | Codex < 0.130.0 | Populated per-skill by `setup.sh`; legacy |
+| `~/.claude/skills/` | Claude Code | Relative symlinks → `ai/skills/` per skill |
+| `~/.cursor/skills/` | Cursor | Explicit subset (manual list in `setup.sh`) |
+
+`setup.sh` creates `~/.agents/skills` and maintains the legacy Codex path in parallel.
+See `decisions/0006-agents-skills-standard-path.md` for rationale.
+
 ## Tool Loading Model
 
 ### Claude Code
 
-- User-global layer: `.claude/CLAUDE.md` — imports `agent-user-global.md`, `tool-priority.md`, `global-developer-guidelines.md`, `context-and-compaction.md`
+- User-global layer: `.claude/CLAUDE.md` — imports `agent-user-global.md`, `tool-priority.md`, `context-and-compaction.md`, `qmd-usage.md`, `monitor-patterns.md`
 - Project layer: `CLAUDE.md`
 - Neutral project guide: `AGENTS.md`
 - Enforcement: `.claude/settings.json` and `.claude/hooks/`
@@ -88,7 +102,7 @@ Memory is helpful context. It is not the authoritative place to store repo polic
 
 ### Gemini CLI
 
-- User-global layer: `.gemini/GEMINI.md` — imports `agent-user-global.md`, `tool-priority.md`, `global-developer-guidelines.md`
+- User-global layer: `.gemini/GEMINI.md` — imports `agent-user-global.md`, `tool-priority.md`
 - Project discovery: `AGENTS.md` via `context.fileName`
 - Enforcement and config: `.gemini/settings.json`, `.gemini/mcp.json`
 
