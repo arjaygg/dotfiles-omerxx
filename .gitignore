@@ -45,6 +45,9 @@ plans/session-handoff.md
 # Backup files (never commit editor/script .bak artifacts)
 *.bak
 
+# TypeScript hook scaffolding (infrastructure for writing TS hooks; actual hooks live in bash)
+.claude/hooks/ts/
+
 # Accidental/self-referential stow symlinks
 .claude/commands/commands
 .claude/output-styles/output-styles
