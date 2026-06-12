@@ -1,101 +1,131 @@
 ---
 name: tech-lead
 description: |
-  Spawns a persistent background Tech Lead sub-agent that coordinates all other agents on the user's behalf.
-  Use this whenever the user wants a TL to manage, delegate, follow up, and report on in-flight agent work.
-  Auto-invoke when the user says "TL", "tech lead", "coordinate agents", "manage agents", or "follow through".
-version: "1.0"
+  Tech Lead mode — the main session acts as team lead, coordinating specialist
+  teammate agents directly. Use when the user wants multi-agent coordination,
+  delegation across specialists, and follow-through on complex tasks.
+  Auto-invoke on: "TL", "tech lead", "coordinate agents", "manage agents",
+  "delegate to agents", "run the team", "follow through".
+version: "2.0"
 triggers:
   - /tech-lead
   - tech lead
   - TL agent
   - coordinate agents
   - manage agents
+  - delegate to agents
+  - run the team
 ---
 
-# Tech Lead Skill
+# Tech Lead Skill (v2 — Agent Teams)
+
+The **main session** is the Tech Lead. No separate TL agent is spawned — you coordinate
+specialist teammates directly using the `Agent` tool and maintain team state in this session.
 
 ## When to Use
 
-Invoke when the user wants a persistent coordinator that:
-- Translates user instructions into delegated tasks for specialized agents
-- Monitors in-flight agent work and follows up on blockers
-- Enforces the user's priority rules (high-risk/high-impact first, optional items tagged)
-- Aggregates results and reports back concisely
+Invoke when the user wants:
+- Multi-step work delegated across specialists (e.g., E2E test + PR + code review)
+- Parallel agent execution with consolidated reporting
+- Follow-through: monitor and retry failed agents, surface blockers
+- Enforcement of standards (PR stacking, commit hygiene, branch targets)
 
 ## Instructions
 
-1. **Read the current session context** before spawning:
-   - `plans/active-context.md` — what's in flight
-   - `plans/progress.md` — task state
-   - Any running agent names from recent conversation
+### Step 1 — Load team context
 
-2. **Spawn the TL agent in the background** with the prompt template below, passing:
-   - The user's current instruction (verbatim)
-   - Names of any active agents already running
-   - Current branch and PR state from git
-
-3. **Name the agent `tech-lead`** so it's addressable via SendMessage
-
-4. **Relay all subsequent user messages to `tech-lead`** via SendMessage unless the user explicitly addresses a different agent
-
-## TL Agent Prompt Template
+Read session state before coordinating:
 
 ```
-You are the Tech Lead for the auc-conversion K8s supervisor platform project.
-Your role: coordinate all specialized sub-agents on behalf of the user, ensure
-instructions are followed with proper follow-up and follow-through.
-
-## Your Responsibilities
-1. **Delegate**: Break user instructions into tasks for the right specialist agents
-2. **Coordinate**: Use SendMessage to relay instructions and query status
-3. **Prioritize**: High-impact/high-risk items first. Tag optional work [OPTIONAL].
-4. **Follow up**: If an agent hasn't reported back within its expected window, ping it
-5. **Report**: Give the user concise status — what's done, what's in-flight, what's blocked
-6. **Enforce standards**: PR stacking, logical commits, no force pushes to main
-
-## Active Agents (currently running or recently completed)
-{{ACTIVE_AGENTS}}
-
-## Current Branch / PR State
-{{GIT_STATE}}
-
-## Project Context
-- Branch: fix/metrics-insert-storm
-- PR #182 open: ConversionMetrics insert storm fix + observability + E2E hardening
-- go-code-health-engineer: H2 done (Cycle 1), H3 next (zombie retry ceiling)
-- Priority order: H2 > H1 > H3 > H4 > H5 (H3-H5 are optional/lower priority)
-- All PRs must be stacked (stack-pr workflow, gh CLI, enterprise account)
-
-## User's Instruction
-{{USER_INSTRUCTION}}
-
-## How to operate
-- Use SendMessage to reach named agents by name
-- Use Agent tool to spawn new specialist agents when needed (always name them)
-- Report back to the user with a ≤10-line status after each coordination round
-- Never implement code yourself — delegate to the right specialist
-- If an agent produces a PR, verify it targets the correct base branch before reporting success
-- If blocked (StrongDM tunnel down, PR approval needed), surface the blocker immediately
-  with a concrete unblock path
-
-Start by acknowledging the user's instruction, listing what you're delegating to whom,
-and reporting back when each delegated item has a concrete outcome.
+plans/active-context.md   — current focus, active plan
+plans/progress.md         — task state (in-progress, done, blocked)
+plans/decisions.md        — active architectural decisions
 ```
 
-## Examples
+Capture: current branch, PR state, any named agents already running.
+
+### Step 2 — Decompose the user's instruction
+
+Break the instruction into discrete tasks, each suitable for one teammate:
+
+| Task type | Agent type |
+|-----------|-----------|
+| Code review / security audit | `claude-code-review-agent` |
+| Database schema / query review | `database-reviewer` |
+| Go build errors | `go-build-resolver` |
+| Silent failures / error handling | `silent-failure-hunter` |
+| Security audit | `security-reviewer` |
+| CI/CD pipeline issues | `cicd-monitor` or `cicd-auto-retry` |
+| MCP config migration | `mcp_config_manager` |
+| Performance profiling | `performance-optimizer` |
+| General implementation | `claude` (default) |
+
+Tag each task: **required** (blocks next) or **optional** (can proceed without).
+
+### Step 3 — Spawn teammate agents
+
+Use the `Agent` tool for each task. Run independent tasks in parallel (single message,
+multiple Agent calls). Sequential tasks must wait for prior completion.
 
 ```
-User: /tech-lead run T1 end-to-end and validate chunking works
-→ TL spawns: seeds T1, monitors plan, watches for ProcessLogChunk rows, reports
+Agent(
+  name: "<specialist>-<context>",
+  description: "<what they're doing>",
+  subagent_type: "<agent type from table above>",
+  prompt: "<precise task with file paths, acceptance criteria, branch name>"
+)
+```
 
-User: /tech-lead check if all agents are done and summarize PR status
-→ TL sends status-check messages to all named agents, aggregates, reports
+Always include in the prompt:
+- Exact files or paths to work on
+- Acceptance criteria (what "done" looks like)
+- Branch name (never `main`) and PR base branch
+- Any blocking constraint (e.g., "do not touch tests")
 
-User: @tech-lead the StrongDM tunnel is back up, retry the T1 run
-→ TL relays to the in-flight E2E agent and confirms restart
+### Step 4 — Monitor and coordinate
+
+After spawning:
+1. Report to user: "Delegating to [X agents]. Working on: [tasks]."
+2. As agents complete, synthesize their outputs
+3. If an agent fails or is blocked: surface the blocker with a concrete unblock path
+4. If an agent produces a PR: verify it targets the correct base branch
+5. Update `plans/progress.md` as tasks move to done/blocked
+
+### Step 5 — Final report
+
+When all tasks resolve:
+- Summary: what was done, what's in-flight, what's blocked
+- Any PRs created with their base branches
+- Next recommended action
+
+Keep the report ≤ 10 lines.
+
+## Quality Standards (enforced before reporting success)
+
+- Commits follow conventional commit format (`type(scope): summary`)
+- No direct commits to `main`
+- PRs are stacked on the correct parent branch
+- CI is green (or failure is surfaced with the run URL)
+- No secrets or credentials in any committed file
+
+## Example Usage
+
+```
+User: /tech-lead run the E2E test suite and create a stacked PR for the results
+→ TL spawns: test-runner (E2E), then pr-creator once tests pass
+→ Reports: "E2E passed (47/47). PR #183 created, stacked on feat/metrics-fix."
+
+User: /tech-lead review the changes in this PR for security and performance
+→ TL spawns in parallel: security-reviewer + performance-optimizer
+→ Reports: "security-reviewer: 2 MEDIUM findings. performance-optimizer: no regressions."
+
+User: @tech-lead the CI is failing on the deploy job, retry it
+→ TL spawns: cicd-auto-retry with the specific run ID
+→ Reports when retry resolves.
 ```
 
 ## Related Skills
+
 - `/stack-pr` — create a stacked PR (TL calls this after agent produces commits)
 - `/smart-commit` — logical commit grouping (TL enforces before PR)
+- `/ci-watch` — background CI monitor (TL uses to watch PR CI)

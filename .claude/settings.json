@@ -126,7 +126,6 @@
     "bmad-editorial-review-prose": "off",
     "bmad-shard-doc": "off",
     "bmad-index-docs": "off",
-    "bmad-bmad-master.agent": "off",
     "bmad-bmm-analyst.agent": "off",
     "bmad-bmm-architect.agent": "off",
     "bmad-bmm-dev.agent": "off",
@@ -164,7 +163,9 @@
     "bmad-bmm-testarch-test-design": "off",
     "bmad-bmm-testarch-test-review": "off",
     "bmad-bmm-testarch-ci": "off",
-    "bmad-bmm-testarch-automate": "off"
+    "bmad-bmm-testarch-automate": "off",
+    "bmad-bmad-master.agent": "off",
+    "bmad-bmm-master": "off"
   },
   "hooks": {
     "SessionStart": [
@@ -173,7 +174,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/session-init.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/session-init.sh"]
           },
           {
             "type": "command",
@@ -188,7 +190,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/instructions-loaded.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/instructions-loaded.sh"]
           }
         ]
       }
@@ -199,7 +202,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/pre-tool-gate-v2.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/pre-tool-gate-v2.sh"]
           }
         ]
       },
@@ -208,7 +212,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/pr-title-conventional-guard.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/pr-title-conventional-guard.sh"]
           }
         ]
       },
@@ -217,7 +222,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/git-commit-guard.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/git-commit-guard.sh"]
           }
         ]
       },
@@ -226,16 +232,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/pre-push-remote-check.sh\"'"
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/read-before-write-guard.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/pre-push-remote-check.sh"]
           }
         ]
       },
@@ -255,7 +253,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/post-tool-analytics.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/post-tool-analytics.sh"]
           }
         ]
       },
@@ -264,7 +263,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/post-read-auto-delete.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/post-read-auto-delete.sh"]
           }
         ]
       },
@@ -273,7 +273,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/prompt-score-commit.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-score-commit.sh"]
           }
         ]
       },
@@ -285,6 +286,16 @@
             "command": "/Users/axos-agallentes/homebrew/bin/node /Users/axos-agallentes/homebrew/lib/node_modules/context-mode/hooks/posttooluse.mjs"
           }
         ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/teammate-quality-gate.sh"]
+          }
+        ]
       }
     ],
     "Notification": [
@@ -293,7 +304,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/context-monitor.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/context-monitor.sh"]
           }
         ]
       }
@@ -304,23 +316,28 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/session-init-enforcer.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/session-init-enforcer.sh"]
           },
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/qmd-sync.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/qmd-sync.sh"]
           },
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/plans-healthcheck.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/plans-healthcheck.sh"]
           },
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/prompt-parallelism-hint.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-parallelism-hint.sh"]
           },
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/plan-todowrite-reminder.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/plan-todowrite-reminder.sh"]
           },
           {
             "type": "command",
@@ -328,23 +345,28 @@
           },
           {
             "type": "command",
-            "command": "bash -lc '$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh activity-start'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/tmux/scripts/claude-tmux-bridge.sh", "activity-start"]
           },
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/prompt-capture.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-capture.sh"]
           },
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/prompt-score-correction.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-score-correction.sh"]
           },
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/symbol-intent.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/symbol-intent.sh"]
           },
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/env-preflight.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/env-preflight.sh"]
           }
         ]
       }
@@ -355,7 +377,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/pre-compact.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/pre-compact.sh"]
           }
         ]
       },
@@ -375,15 +398,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/session-end.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/session-end.sh"]
           },
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/plan-completion-check.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/plan-completion-check.sh"]
           },
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/feedback-capture.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/feedback-capture.sh"]
           }
         ]
       },
@@ -392,7 +418,44 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/todo-gate.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/task-gate.sh"]
+          }
+        ]
+      }
+    ],
+    "TaskCreated": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/task-event-tracker.sh"]
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/task-event-tracker.sh"]
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "matcher": ".*_settings",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/config-integrity.sh"]
           }
         ]
       }
@@ -403,11 +466,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/worktree-create.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/worktree-create.sh"]
           },
           {
             "type": "command",
-            "command": "bash -lc '$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh worktree-enter'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/tmux/scripts/claude-tmux-bridge.sh", "worktree-enter"]
           }
         ]
       }
@@ -418,11 +483,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/worktree-remove.sh\"'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/worktree-remove.sh"]
           },
           {
             "type": "command",
-            "command": "bash -lc '$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh worktree-exit'"
+            "command": "bash",
+            "args": ["/Users/axos-agallentes/.dotfiles/tmux/scripts/claude-tmux-bridge.sh", "worktree-exit"]
           }
         ]
       }
@@ -460,5 +527,6 @@
   "voiceEnabled": true,
   "compactCustomInstructions": "After compaction, immediately re-read plans/active-context.md before doing anything else — it is the authoritative resume point. Do not waste summary tokens on content already captured in plans/ files (active-context.md, decisions.md, progress.md) — those files persist on disk and will be re-read. Focus the summary on: in-flight tool call results not yet written to disk, ephemeral error messages, and any decisions made verbally that have not been recorded. Always preserve: current branch name, uncommitted file list, active plan file path, and the exact task being worked on at the moment of compaction.",
   "autoCompact": true,
-  "autoMemory": false
+  "autoMemory": false,
+  "teammateMode": "auto"
 }
