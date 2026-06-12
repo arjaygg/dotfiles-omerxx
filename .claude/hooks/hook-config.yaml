@@ -2,7 +2,9 @@
 # Loaded by: pre-tool-gate-v2.sh (sections), hook-rule-loader.sh (rule.* / read-guard.*)
 #
 # Enforcement levels for script sections:
-#   block  → exit 1 + BLOCKED message (tool is halted)
+#   block  → JSON permissionDecision deny (tool halted, reason fed back to Claude)
+#            NOTE: exit 1 does NOT block in Claude Code — it renders as a red
+#            non-blocking "hook error" and the tool runs anyway (fixed 2026-06-12)
 #   warn   → exit 0 + HINT message (advisory only, tool proceeds)
 #   off    → disabled
 #
