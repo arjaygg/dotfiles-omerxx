@@ -71,13 +71,55 @@ link_skills_from_dir() {
     done
 }
 
-# Claude Code skill symlinks (repo-scoped distribution layer)
-link_skills_from_dir "$HOME/.dotfiles/ai/skills" "$HOME/.dotfiles/.claude/skills"
+# Claude Code skill symlinks — relative links so worktrees resolve correctly.
+mkdir -p "$HOME/.dotfiles/.claude/skills"
+for _skill_dir in "$HOME/.dotfiles/ai/skills"/*/; do
+    [ -d "$_skill_dir" ] || continue
+    { [ -f "${_skill_dir}SKILL.md" ] || [ -f "${_skill_dir}skill.md" ]; } || continue
+    _name="$(basename "${_skill_dir%/}")"
+    _target="$HOME/.dotfiles/.claude/skills/$_name"
+    if [ -e "$_target" ] && [ ! -L "$_target" ]; then
+        echo "Skipping $_target (exists and is not a symlink)"
+        continue
+    fi
+    ln -sfn "../../ai/skills/$_name" "$_target"
+done
 
-# Codex user-scoped skill symlinks. Codex discovers user skills from
-# ~/.codex/skills, so link every shared AI skill there while preserving Codex's
-# own ~/.codex/skills/.system directory. Then include any Claude-local skills
-# that have not yet been promoted into ai/skills.
+# Claude Code command symlinks — ai/commands/*.md → .claude/commands/ as relative links.
+# Only ai/commands/ files are symlinked; Claude-specific files already in .claude/commands/
+# (session-*, context-eval, migration-clean) are left untouched as real files.
+mkdir -p "$HOME/.dotfiles/.claude/commands"
+for _cmd in "$HOME/.dotfiles/ai/commands"/*.md; do
+    [ -f "$_cmd" ] || continue
+    _base="$(basename "$_cmd")"
+    _target="$HOME/.dotfiles/.claude/commands/$_base"
+    if [ -e "$_target" ] && [ ! -L "$_target" ]; then
+        echo "Skipping $_target (exists and is not a symlink)"
+        continue
+    fi
+    ln -sfn "../../ai/commands/$_base" "$_target"
+done
+
+# Claude Code agent symlinks — ai/agents/*.md → .claude/agents/ as relative links.
+# Source of truth is ai/agents/; .claude/agents/ holds the distribution symlinks.
+mkdir -p "$HOME/.dotfiles/.claude/agents"
+for _agent in "$HOME/.dotfiles/ai/agents"/*.md; do
+    [ -f "$_agent" ] || continue
+    _base="$(basename "$_agent")"
+    _target="$HOME/.dotfiles/.claude/agents/$_base"
+    if [ -e "$_target" ] && [ ! -L "$_target" ]; then
+        echo "Skipping $_target (exists and is not a symlink)"
+        continue
+    fi
+    ln -sfn "../../ai/agents/$_base" "$_target"
+done
+
+# Cross-tool standard skills path (Codex 0.130.0+, Gemini 0.42.0+).
+# A single symlink covers all tools that discover skills from ~/.agents/skills.
+mkdir -p "$HOME/.agents"
+ln -sfn "$HOME/.dotfiles/ai/skills" "$HOME/.agents/skills"
+
+# Codex legacy path: keep for Codex < 0.130.0. Both paths coexist harmlessly.
 link_skills_from_dir "$HOME/.dotfiles/ai/skills" "$HOME/.codex/skills"
 link_skills_from_dir "$HOME/.dotfiles/.claude/skills" "$HOME/.codex/skills" only-missing
 
