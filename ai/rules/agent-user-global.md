@@ -230,7 +230,7 @@ Use the right primitive based on whether the task is event-driven or time-driven
 **Use run_in_background when:** "run these tests and tell me when done"
 **Use /loop when:** each tick requires LLM reasoning, not just detecting a state change
 
-Patterns and recipes: `ai/rules/monitor-patterns.md`
+Patterns and recipes: `/monitor-patterns` skill (`ai/skills/monitor-patterns/SKILL.md`)
 
 ---
 

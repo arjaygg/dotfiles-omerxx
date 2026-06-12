@@ -42,6 +42,9 @@ plans/session-handoff.md
 .serena/cache/
 .serena/memories/cicd-acted-runs.md
 
+# Backup files (never commit editor/script .bak artifacts)
+*.bak
+
 # Accidental/self-referential stow symlinks
 .claude/commands/commands
 .claude/output-styles/output-styles
