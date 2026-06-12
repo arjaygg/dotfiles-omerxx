@@ -1,0 +1,5 @@
+{
+  "name": "dotfiles-guards",
+  "version": "1.0.0",
+  "description": "Portable guards, policy rules, and slash commands from axos-agallentes/dotfiles. Mirrors the key safety rules from Claude Code hooks into Gemini CLI."
+}
