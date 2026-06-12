@@ -1,0 +1,31 @@
+# /smart-commit slash command for Gemini CLI.
+# Atomic conventional commit — groups related changes and writes a conventional commit message.
+
+[command]
+name = "smart-commit"
+description = "Atomic conventional commit. Groups related staged changes, infers a conventional commit type and scope, and commits. Never uses --no-verify or --no-gpg-sign."
+prompt = """
+Create a conventional commit for the staged changes.
+
+## Rules
+- Format: `type(optional-scope): summary` (max 72 chars)
+- Allowed types: feat, fix, perf, refactor, test, ci, chore, docs, style, revert
+- Scope: lower-kebab-case subsystem (e.g., auth, db, api); omit if change is cross-cutting
+- Summary: imperative mood, no trailing period, no references to the PR or issue number
+- Never use --no-verify, --no-gpg-sign, or --allow-empty
+- Never commit directly to main or master
+
+## Steps
+1. Run `git status` to see staged files
+2. Run `git diff --staged` to read the changes
+3. Infer type and scope from the content
+4. Write the commit message
+5. Run: `git commit -m "<message>"`
+   - If a commit script exists at `~/.dotfiles/scripts/ai/commit.sh`, prefer: `~/.dotfiles/scripts/ai/commit.sh -m "<subject>" -m "<why>"`
+
+## Co-author footer
+Always append to the commit body:
+```
+Co-Authored-By: Gemini CLI <noreply@google.com>
+```
+"""

@@ -1,0 +1,73 @@
+# Portable bash safety guards for Gemini CLI.
+# Mirrors the key rules from .claude/hooks/hook-config.yaml and pre-tool-gate-v2.sh.
+#
+# Extensions run at Tier 2. 'allow' and 'yolo' decisions are ignored — rules here
+# can strengthen safety but cannot bypass user confirmation.
+
+# ── Shell command guards ────────────────────────────────────────────────────────
+
+# sed -i: use the Edit/replace tool instead
+[[rule]]
+toolName = "run_shell_command"
+commandPattern = "sed[[:space:]]+-i"
+decision = "deny"
+priority = 100
+denyMessage = "Use the 'replace' (Edit) tool for in-place file edits, not 'sed -i'."
+
+# grep/rg: use grep_search tool instead
+[[rule]]
+toolName = "run_shell_command"
+commandPattern = "^(grep|rg)[[:space:]]"
+decision = "ask_user"
+priority = 110
+
+# cat (whole-file reads): use read_file instead
+[[rule]]
+toolName = "run_shell_command"
+commandPattern = "^cat[[:space:]]"
+decision = "ask_user"
+priority = 120
+
+# ── Destructive operations (always ask) ────────────────────────────────────────
+
+[[rule]]
+toolName = "run_shell_command"
+commandPattern = "rm -rf"
+decision = "ask_user"
+priority = 200
+
+[[rule]]
+toolName = "run_shell_command"
+commandPattern = "git push --force"
+decision = "ask_user"
+priority = 210
+
+[[rule]]
+toolName = "run_shell_command"
+commandPattern = "git reset --hard"
+decision = "ask_user"
+priority = 220
+
+# Direct commit to main: always ask
+[[rule]]
+toolName = "run_shell_command"
+commandPattern = "git commit"
+decision = "ask_user"
+priority = 230
+
+# ── Secrets protection ──────────────────────────────────────────────────────────
+
+# Deny reading or grepping for secret files
+[[rule]]
+toolName = "grep_search"
+argsPattern = "(\\.env|id_rsa|passwd|credential|secret|password|\\.pem|\\.key)"
+decision = "deny"
+priority = 300
+denyMessage = "Access to credential or key files is blocked by dotfiles-guards policy."
+
+[[rule]]
+toolName = "run_shell_command"
+commandPattern = "(id_rsa|\\.pem|\\.key|appsettings\\.Production|appsettings\\.Staging)"
+decision = "deny"
+priority = 310
+denyMessage = "Access to production secrets or key files is blocked by dotfiles-guards policy."

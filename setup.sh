@@ -137,6 +137,16 @@ done
 
 # Gemini: covered via ~/.gemini/skills/ai -> ~/.dotfiles/ai/skills (stow-managed)
 
+# Gemini extension: link dotfiles-guards extension (hooks, policies, commands).
+# stow handles ~/.gemini/extension/ → .dotfiles/.gemini/extension/ automatically,
+# but the extension must be explicitly registered with gemini extension link.
+mkdir -p "$HOME/.dotfiles/.gemini/extension/scripts"
+if command -v gemini >/dev/null 2>&1; then
+    if ! gemini extension list 2>/dev/null | grep -q "dotfiles-guards"; then
+        gemini extension link "$HOME/.dotfiles/.gemini/extension" 2>/dev/null || true
+    fi
+fi
+
 # Cleanup legacy files if they exist in root
 rm -rf ~/.dotfiles/daily-standup-insights 2>/dev/null
 rm -rf ~/.dotfiles/daily-standup-insights.skill 2>/dev/null
