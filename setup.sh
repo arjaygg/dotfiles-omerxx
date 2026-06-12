@@ -124,6 +124,10 @@ link_skills_from_dir "$HOME/.dotfiles/ai/skills" "$HOME/.codex/skills"
 link_skills_from_dir "$HOME/.dotfiles/.claude/skills" "$HOME/.codex/skills" only-missing
 
 # Cursor skill symlinks — explicit subset from ai/skills/
+# Remove dangling symlinks (e.g. left over when .cursor/skills moved out of dotfiles source)
+for _d in skills output-styles; do
+    [ -L "$HOME/.cursor/$_d" ] && [ ! -e "$HOME/.cursor/$_d" ] && rm "$HOME/.cursor/$_d"
+done
 mkdir -p ~/.cursor/skills
 for _skill in pctx-code-mode explore quarantine-triage-live; do
     [ -d ~/.dotfiles/ai/skills/$_skill ] && ln -sfn ~/.dotfiles/ai/skills/$_skill ~/.cursor/skills/$_skill
