@@ -102,7 +102,6 @@
   "model": "sonnet",
   "enableAllProjectMcpServers": true,
   "skillOverrides": {
-    "cap": "off",
     "fury": "off",
     "code-health": "off",
     "hawk": "off",
@@ -217,7 +216,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/session-init.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/session-init.sh"
+            ]
           },
           {
             "type": "command",
@@ -233,7 +234,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/instructions-loaded.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/instructions-loaded.sh"
+            ]
           }
         ]
       }
@@ -245,7 +248,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/pre-tool-gate-v2.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/pre-tool-gate-v2.sh"
+            ]
           }
         ]
       },
@@ -255,7 +260,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/pr-title-conventional-guard.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/pr-title-conventional-guard.sh"
+            ]
           }
         ]
       },
@@ -265,7 +272,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/git-commit-guard.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/git-commit-guard.sh"
+            ]
           }
         ]
       },
@@ -275,7 +284,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/pre-push-remote-check.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/pre-push-remote-check.sh"
+            ]
           }
         ]
       },
@@ -296,7 +307,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/post-tool-analytics.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/post-tool-analytics.sh"
+            ]
           }
         ]
       },
@@ -306,7 +319,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/post-read-auto-delete.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/post-read-auto-delete.sh"
+            ]
           }
         ]
       },
@@ -316,7 +331,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-score-commit.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-score-commit.sh"
+            ]
           }
         ]
       },
@@ -335,7 +352,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/teammate-quality-gate.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/teammate-quality-gate.sh"
+            ]
           }
         ]
       }
@@ -347,7 +366,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/context-monitor.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/context-monitor.sh"
+            ]
           }
         ]
       }
@@ -359,27 +380,37 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/session-init-enforcer.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/session-init-enforcer.sh"
+            ]
           },
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/qmd-sync.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/qmd-sync.sh"
+            ]
           },
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/plans-healthcheck.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/plans-healthcheck.sh"
+            ]
           },
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-parallelism-hint.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-parallelism-hint.sh"
+            ]
           },
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/plan-todowrite-reminder.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/plan-todowrite-reminder.sh"
+            ]
           },
           {
             "type": "command",
@@ -388,27 +419,38 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/tmux/scripts/claude-tmux-bridge.sh", "activity-start"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/tmux/scripts/claude-tmux-bridge.sh",
+              "activity-start"
+            ]
           },
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-capture.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-capture.sh"
+            ]
           },
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-score-correction.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-score-correction.sh"
+            ]
           },
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/symbol-intent.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/symbol-intent.sh"
+            ]
           },
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/env-preflight.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/env-preflight.sh"
+            ]
           }
         ]
       }
@@ -420,7 +462,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/pre-compact.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/pre-compact.sh"
+            ]
           }
         ]
       },
@@ -441,17 +485,23 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/session-end.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/session-end.sh"
+            ]
           },
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/plan-completion-check.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/plan-completion-check.sh"
+            ]
           },
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/feedback-capture.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/feedback-capture.sh"
+            ]
           }
         ]
       },
@@ -461,7 +511,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/task-gate.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/task-gate.sh"
+            ]
           }
         ]
       }
@@ -473,7 +525,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/task-event-tracker.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/task-event-tracker.sh"
+            ]
           }
         ]
       }
@@ -485,7 +539,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/task-event-tracker.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/task-event-tracker.sh"
+            ]
           }
         ]
       }
@@ -497,7 +553,9 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/config-integrity.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/config-integrity.sh"
+            ]
           }
         ]
       }
@@ -509,12 +567,17 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/worktree-create.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/worktree-create.sh"
+            ]
           },
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/tmux/scripts/claude-tmux-bridge.sh", "worktree-enter"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/tmux/scripts/claude-tmux-bridge.sh",
+              "worktree-enter"
+            ]
           }
         ]
       }
@@ -526,12 +589,17 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/.claude/hooks/worktree-remove.sh"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/worktree-remove.sh"
+            ]
           },
           {
             "type": "command",
             "command": "bash",
-            "args": ["/Users/axos-agallentes/.dotfiles/tmux/scripts/claude-tmux-bridge.sh", "worktree-exit"]
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/tmux/scripts/claude-tmux-bridge.sh",
+              "worktree-exit"
+            ]
           }
         ]
       }
@@ -539,7 +607,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ Cache: %cache_hit% ▸ %time% ▸ %project%%git_status%%task_list_id%'"
+    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% \u25b8 %percent% (%remaining%) \u25b8 Cache: %cache_hit% \u25b8 %time% \u25b8 %project%%git_status%%task_list_id%'"
   },
   "enabledPlugins": {
     "skill-creator@claude-plugins-official": true,
@@ -560,14 +628,14 @@
   "autoMode": {
     "environment": [
       "Organization: Axos Financial / Axos Bank. Primary use: software development.",
-      "Source control: dev.azure.com/bofaz and bofaz.visualstudio.com — all repos and projects under these organizations.",
+      "Source control: dev.azure.com/bofaz and bofaz.visualstudio.com \u2014 all repos and projects under these organizations.",
       "Key projects: Axos-Universal-Core, Axos Clearing, Axos Core Services, Axos-Crypto-Core, AAS, AxPay, AxTrader, Stock Lending Services.",
       "Azure DevOps CLI org: https://dev.azure.com/bofaz. PR creation org: https://bofaz.visualstudio.com.",
       "Local development: macOS, git worktrees under .trees/, homebrew at /Users/axos-agallentes/homebrew/."
     ]
   },
   "voiceEnabled": true,
-  "compactCustomInstructions": "After compaction, immediately re-read plans/active-context.md before doing anything else — it is the authoritative resume point. Do not waste summary tokens on content already captured in plans/ files (active-context.md, decisions.md, progress.md) — those files persist on disk and will be re-read. Focus the summary on: in-flight tool call results not yet written to disk, ephemeral error messages, and any decisions made verbally that have not been recorded. Always preserve: current branch name, uncommitted file list, active plan file path, and the exact task being worked on at the moment of compaction.",
+  "compactCustomInstructions": "After compaction, immediately re-read plans/active-context.md before doing anything else \u2014 it is the authoritative resume point. Do not waste summary tokens on content already captured in plans/ files (active-context.md, decisions.md, progress.md) \u2014 those files persist on disk and will be re-read. Focus the summary on: in-flight tool call results not yet written to disk, ephemeral error messages, and any decisions made verbally that have not been recorded. Always preserve: current branch name, uncommitted file list, active plan file path, and the exact task being worked on at the moment of compaction.",
   "autoCompact": true,
   "autoMemory": false,
   "teammateMode": "auto"
