@@ -85,6 +85,26 @@ for _skill_dir in "$HOME/.dotfiles/ai/skills"/*/; do
     ln -sfn "../../ai/skills/$_name" "$_target"
 done
 
+# Claude Code user-scoped skills: ~/.claude/skills must be a REAL directory.
+# Stow creates it as a directory symlink (→ .dotfiles/.claude/skills), which
+# Claude Code does not follow when discovering user-scoped skills across projects.
+# Replace any directory symlink with a real dir containing individual symlinks.
+if [ -L "$HOME/.claude/skills" ]; then
+    rm "$HOME/.claude/skills"
+fi
+mkdir -p "$HOME/.claude/skills"
+for _skill_dir in "$HOME/.dotfiles/ai/skills"/*/; do
+    [ -d "$_skill_dir" ] || continue
+    { [ -f "${_skill_dir}SKILL.md" ] || [ -f "${_skill_dir}skill.md" ]; } || continue
+    _name="$(basename "${_skill_dir%/}")"
+    _dest="$HOME/.claude/skills/$_name"
+    if [ -e "$_dest" ] && [ ! -L "$_dest" ]; then
+        echo "Skipping $_dest (exists and is not a symlink)"
+        continue
+    fi
+    ln -sfn "$HOME/.dotfiles/ai/skills/$_name" "$_dest"
+done
+
 # Claude Code command symlinks — ai/commands/*.md → .claude/commands/ as relative links.
 # Only ai/commands/ files are symlinked; Claude-specific files already in .claude/commands/
 # (session-*, context-eval, migration-clean) are left untouched as real files.
