@@ -232,8 +232,12 @@ Report: "Hawk: launching Architecture, Quality, Resilience, Security agents"
 
 Spawn all 4 simultaneously. Each agent MUST:
 1. Read all changed files for their domain
-2. Check cross-cutting findings from peer agents
-3. Return a **complete JSON array of findings** — never "done" without content
+2. Return a **complete JSON array of findings** — never "done" without content
+
+Note: When invoked via Cap v4.0, each dimension agent returns REVIEW_SCHEMA findings.
+Cap deduplicates findings in JavaScript (by file+line±3 and by category+description prefix),
+then runs an adversarial verify agent per unique finding. No inter-agent messaging is used
+or needed — Cap aggregates all findings after all pipeline stages complete.
 
 ---
 
@@ -310,8 +314,6 @@ Spawn all 4 simultaneously. Each agent MUST:
 5. **Missing graceful shutdown:** New long-running goroutines not registered in shutdown handler → HIGH
 6. **Downstream cascade risk:** Changed functions called by scheduler/worker pool → MEDIUM warning
 
-**Before checking, read peer messages** — Security agent may have flagged shared data-access issues.
-
 **Confidence calibration:**
 - 0.9+: Saw it directly in the code — no ambiguity
 - 0.75–0.89: High confidence, minor interpretation needed
@@ -338,7 +340,6 @@ Spawn all 4 simultaneously. Each agent MUST:
 5. **Unsafe type assertions:** `x.(Type)` without comma-ok pattern → MEDIUM
 6. **Govulncheck:** If `mcp__mcp_gopls__govulncheck` is available, run it → CRITICAL if found
 
-**Always post cross-cutting findings** to Resilience agent — data access vulnerabilities share blast radius.
 
 **Confidence calibration:**
 - 0.9+: Saw it directly in the code — no ambiguity
