@@ -25,6 +25,10 @@ karabiner/automatic_backups/
 .cursor/skills-cursor/
 .cursor/unified_repo_list.json
 
+# AI Engineering Coach — upstream content (synced via ai/skills/coach/sync.sh)
+ai/skills/coach/rules/
+ai/skills/coach/coach-persona.ts
+
 # Local configurations (do not commit secrets or machine-specific paths)
 .config/
 !.config/pctx/

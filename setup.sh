@@ -171,6 +171,13 @@ if command -v gemini >/dev/null 2>&1; then
     fi
 fi
 
+# AI Engineering Coach — sync rules from upstream on first install (idempotent)
+if [ ! -d "$HOME/.dotfiles/ai/skills/coach/rules" ] || \
+   [ "$(find "$HOME/.dotfiles/ai/skills/coach/rules" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l)" -eq 0 ]; then
+    echo "Syncing AI Engineering Coach rules from upstream..."
+    bash "$HOME/.dotfiles/ai/skills/coach/sync.sh" || echo "⚠️  Coach sync failed (check gh auth). Run manually: bash ~/.dotfiles/ai/skills/coach/sync.sh"
+fi
+
 # Cleanup legacy files if they exist in root
 rm -rf ~/.dotfiles/daily-standup-insights 2>/dev/null
 rm -rf ~/.dotfiles/daily-standup-insights.skill 2>/dev/null
