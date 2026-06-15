@@ -379,78 +379,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/session-init-enforcer.sh"
-            ]
-          },
-          {
-            "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/qmd-sync.sh"
-            ]
-          },
-          {
-            "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/plans-healthcheck.sh"
-            ]
-          },
-          {
-            "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-parallelism-hint.sh"
-            ]
-          },
-          {
-            "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/plan-todowrite-reminder.sh"
-            ]
-          },
-          {
-            "type": "command",
-            "command": "/Users/axos-agallentes/homebrew/bin/node /Users/axos-agallentes/homebrew/lib/node_modules/context-mode/hooks/userpromptsubmit.mjs"
-          },
-          {
-            "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/tmux/scripts/claude-tmux-bridge.sh",
-              "activity-start"
-            ]
-          },
-          {
-            "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-capture.sh"
-            ]
-          },
-          {
-            "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-score-correction.sh"
-            ]
-          },
-          {
-            "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/symbol-intent.sh"
-            ]
-          },
-          {
-            "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/env-preflight.sh"
-            ]
+            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/userpromptsubmit.sh\"'"
           }
         ]
       }
