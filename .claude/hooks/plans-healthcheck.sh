@@ -161,6 +161,12 @@ if git rev-parse --show-toplevel &>/dev/null 2>&1; then
     fi
 fi
 
+# --- [SESSION HEALTH] Turn-30 checkpoint nudge ---
+_TURN_COUNT=$(cat "/tmp/.claude-turn-count-${UID}" 2>/dev/null || echo "0")
+if [[ "$_TURN_COUNT" -eq 30 ]]; then
+    echo "[SESSION HEALTH] Turn 30 reached — checkpoint now: update plans/active-context.md with current task state before continuing."
+fi
+
 # Opt-in: only run if plans/ directory exists
 [[ -d "$CWD/plans" ]] || exit 0
 
