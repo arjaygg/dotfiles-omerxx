@@ -150,13 +150,15 @@ Read the compressed file to understand architecture quickly, then proceed with S
 
 Batch these calls in parallel:
 
+First detect the project language by checking root-level files:
+- `go.mod` or `*.go` → **go** | `pyproject.toml` / `requirements.txt` → **python** | `tsconfig.json` + `package.json` → **typescript** | multiple markers → **polyglot**
+
 ```typescript
 // Batch these calls in parallel
 const [fileOverview, existingPatterns, dependencies] = await Promise.all([
   Serena.getSymbolsOverview("<target-package>"),
-  Serena.searchForPattern("pattern|interface|factory", { 
-    glob: "**/*.go",
-    restrict_search_to_code_files: true 
+  Serena.searchForPattern("pattern|interface|factory|protocol|abstract", { 
+    restrict_search_to_code_files: true  // works for Go, Python, TypeScript
   }),
   Serena.findReferencingSymbols("<ExistingComponent>")
 ]);

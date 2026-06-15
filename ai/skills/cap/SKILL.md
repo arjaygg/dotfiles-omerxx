@@ -1,9 +1,11 @@
 ---
 name: cap
 description: >
-  Cap v4.0 — One-shot autonomous orchestrator. Drives stark (plan) → fury (tests) →
-  ironman (implement) → hawk (review) via the Workflow tool. Deterministic, resumable,
-  and visible in /workflows. Enforces TDD, Lean-Agile, DDD, SOLID, Evolutionary Architecture.
+  Cap v4.0 — One-shot autonomous orchestrator for Go, Python, and TypeScript. Drives stark
+  (plan) → fury (tests) → ironman (implement) → hawk (review) via the Workflow tool.
+  Deterministic, resumable, and visible in /workflows. Enforces TDD, Lean-Agile, DDD, SOLID,
+  Evolutionary Architecture. Auto-detects language from project files (go.mod → Go,
+  pyproject.toml → Python, tsconfig.json → TypeScript, multiple → polyglot).
   Use for: "build this feature", "implement end to end", "orchestrate this", "run cap",
   "full TDD cycle", "automate the workflow", "multi-agent workflow". NOT for planning only
   (use /stark), tests only (use /fury), implementing only (use /ironman), review only (/hawk).
@@ -115,6 +117,7 @@ Skip the advisor call and report the result summary directly.
 Cap v4.0 — Done
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Feature:   <feature>
+Language:  <language>
 Tests:     <testsCount> passing
 Coverage:  <coveragePct>%
 Findings:  <findingsResolved> resolved, 0 critical/high remaining

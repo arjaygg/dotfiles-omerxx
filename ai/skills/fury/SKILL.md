@@ -10,7 +10,8 @@ description: >
   (4) Fixing bugs — reproduce via a failing test before touching implementation;
   (5) Any mention of "add tests", "write tests", "test-first", "TDD", "BDD", "validate PR",
       "check test coverage", "acceptance criteria", "missing tests", or "mutation testing".
-  For Go code, enforces Golang Unit Testing Guide and Godog BDD conventions (when project has them).
+  For Go, Python, and TypeScript — enforces language-appropriate test patterns, framework
+  conventions (pytest/Jest/Godog), and BDD patterns (when project has them).
   Do not skip fury when code is changing — test quality is always in scope.
 triggers:
   - /fury
@@ -154,11 +155,10 @@ When invoked in a PR review context ("review PR #X", "validate this PR", "check 
 
 4. **Write missing tests** — follow Step 2 (Write Failing Tests) for any gaps found. Don't just report; fix.
 
-5. **Run full test suite** — verify the PR doesn't regress:
-   ```bash
-   go test ./...
-   ```
-   For projects with Godog BDD: `make test-bdd-group-a` (or relevant group).
+5. **Run full test suite** — verify the PR doesn't regress (use language-appropriate command):
+   - Go: `go test ./...`; with Godog BDD: `make test-bdd-group-a` (or relevant group)
+   - Python: `python -m pytest --tb=short`
+   - TypeScript: `npx jest --passWithNoTests` or `npx vitest run`
 
 6. **Report** — summarize: tests added, gaps closed, regressions found (if any).
 
@@ -173,10 +173,10 @@ When invoked in a PR review context ("review PR #X", "validate this PR", "check 
 Mark `context` in_progress. Load in parallel:
 
 ```typescript
-const [agentsGuide, testingPatterns, golangGuide, guidance] = await Promise.all([
+const [agentsGuide, testingPatterns, langGuide, guidance] = await Promise.all([
   Serena.readMemory("ai_agent_testing_best_practices").catch(() => null),
-  Serena.readMemory("golang_unit_testing_patterns").catch(() => null),
   Serena.readMemory("project_testing_conventions").catch(() => null),
+  Serena.readMemory("golang_unit_testing_patterns").catch(() => null),  // may be null on non-Go
   Read("AGENTS.md").catch(() => null),
 ]);
 
@@ -222,7 +222,8 @@ Discover existing test patterns:
 ```typescript
 const [overview, existingTests] = await Promise.all([
   Serena.getSymbolsOverview("<target-file>"),
-  Serena.searchForPattern("func Test", { glob: "**/*_test.go", restrict_search_to_code_files: true }),
+  // Finds test functions across Go, Python, and TypeScript
+  Serena.searchForPattern("func Test|def test_|it\\(|describe\\(", { restrict_search_to_code_files: true }),
 ]);
 ```
 
@@ -234,30 +235,41 @@ Mark `discover` completed.
 
 Mark `write` in_progress. Report via TaskUpdate: "Fury: writing failing tests for [behavior]"
 
-For each behavior, write a test following BDD structure:
+Detect the project language first: `go.mod` → Go, `pyproject.toml`/`requirements.txt` → Python, `tsconfig.json`+`package.json` → TypeScript. Apply the matching pattern:
 
+**Go** (`<package>_test.go`):
 ```go
 func TestUserRepository_CreateUser_WhenValidInput_ThenReturnsID(t *testing.T) {
-    // GIVEN: a valid user
-    user := &User{Name: "Alice", Email: "alice@example.com"}
-    repo := setupRepository(t)
-
-    // WHEN: creating the user
-    id, err := repo.Create(context.Background(), user)
-
-    // THEN: expect success and valid ID
+    // GIVEN / WHEN / THEN using require, t.Run, t.Parallel
     require.NoError(t, err, "creating user with valid input must not fail")
-    require.Greater(t, id, int64(0), "returned ID must be positive")
 }
 ```
+Use table-driven `[]struct{name,input,want}` slices. Run: `go test ./...`
 
-Use table-driven tests for multiple scenarios. Cover edge cases as separate test functions. Never use `TBD`, `TODO`, or placeholder assertions.
+**Python** (`test_*.py` or `*_test.py` in `tests/`):
+```python
+@pytest.mark.parametrize("email,expected", [
+    ("alice@example.com", True),
+    ("", False),
+])
+def test_create_user_validates_email(email, expected):
+    # GIVEN valid/invalid email, WHEN creating, THEN expect result
+    assert create_user(email=email) == expected
+```
+Use `conftest.py` for fixtures. Run: `python -m pytest --tb=short`
 
-Strict rules:
-- Use `require` (not `assert`) — fail-fast discipline
-- Always include context in error messages: `require.NoError(t, err, "failed to ...")`
-- Integration tests hit real services; mocks only for true external APIs
-- Mark safe tests with `t.Parallel()`
+**TypeScript** (`*.test.ts`, `*.spec.ts`):
+```typescript
+describe("UserRepository", () => {
+  it("returns a positive ID for valid input", async () => {
+    // GIVEN / WHEN / THEN
+    expect(result.id).toBeGreaterThan(0);
+  });
+});
+```
+Use `jest.fn()` for mocks. Run: `npx jest --passWithNoTests` or `npx vitest run`
+
+Never use `TBD`, `TODO`, or placeholder assertions. Cover edge cases as separate test cases.
 
 Mark `write` completed. Report via TaskUpdate: "Fury: test files written, verifying failures"
 
@@ -267,16 +279,13 @@ Mark `write` completed. Report via TaskUpdate: "Fury: test files written, verify
 
 Mark `verify` in_progress.
 
-Run the tests and capture failure output:
-
-```bash
-go test -v -run TestXxx ./...
-```
+Run the tests and capture failure output (use the language-appropriate command):
+- Go: `go test -v -run TestXxx ./...`
+- Python: `python -m pytest tests/test_xxx.py -v`
+- TypeScript: `npx jest path/to/component.test.ts --verbose` or `npx vitest run`
 
 **Verify each test fails for the expected reason** — not a compile error, not a panic, not a setup failure.
 The failure message proves the test will pass only when the implementation is correct.
-
-For AI Agent tests: `go test -v -run TestAgentBehavior -timeout 30s`
 
 Mark `verify` completed. Report via TaskUpdate: "Fury: N tests verified failing as expected"
 

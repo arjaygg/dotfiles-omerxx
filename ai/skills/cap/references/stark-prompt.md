@@ -27,12 +27,21 @@ Without steps 1-3, Grep will be blocked by the pre-tool-gate hook.
 
 - Feature: {{feature}}
 - Deliverable: {{deliverable}}
+- Language: {{language}} (go | python | typescript | polyglot)
 - Acceptance criteria: {{criteria}}
 - Affected packages: {{affectedPkgs}}
 - Bounded context: {{boundedContext}}
 {{#if feedback}}
 - Feedback from prior attempt: {{feedback}}
 {{/if}}
+
+## Language Detection (when language is unknown)
+
+Check root-level project files to detect language:
+- `go.mod` or `*.go` files → **go**
+- `pyproject.toml`, `requirements.txt`, `setup.py`, or `*.py` files → **python**
+- `tsconfig.json` + `package.json`, or `*.ts`/`*.tsx` files → **typescript**
+- Multiple language markers → **polyglot** (plan for the dominant language; note the others)
 
 ## Instructions
 
@@ -41,13 +50,17 @@ Without steps 1-3, Grep will be blocked by the pre-tool-gate hook.
 - Apply SOLID: each component has one responsibility, depend on abstractions not concretions
 - Follow Evolutionary Architecture: extend existing patterns, do not create new abstractions without necessity
 - Write detailed plan to `plans/active-context.md` with sections:
-  * Context: domain, bounded context, why this change is needed
+  * Context: domain, bounded context, language, why this change is needed
   * Components: explicit file paths, type names, function signatures (zero placeholders)
-  * Interfaces: all new interfaces with their method signatures
-  * Testing Strategy: what behaviors to test, edge cases, table-driven test examples
-  * Error Handling: all error types, wrapping strategy, user-facing messages
+  * Interfaces/Protocols: all new interfaces/abstract classes/protocols with their method signatures
+  * Testing Strategy: what behaviors to test, edge cases, language-appropriate test examples
+  * Error Handling: all error types, wrapping/chaining strategy, user-facing messages
   * Acceptance Criteria: checkboxes the team can verify
 - Zero placeholder rule: every file, function, type, and interface is explicitly named
+- Use the correct naming conventions for the detected language:
+  * Go: PascalCase types, camelCase functions, `pkg/` package layout
+  * Python: snake_case functions, PascalCase classes, type hints on public API
+  * TypeScript: camelCase functions, PascalCase types/classes, strict null checks
 
 ## Structured Output
 

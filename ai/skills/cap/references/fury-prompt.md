@@ -26,6 +26,7 @@ Run these in order before any Read/Grep/Glob/Serena call:
 
 - Plan: `plans/active-context.md` (read it first)
 - Feature: {{feature}}
+- Language: {{language}} (go | python | typescript | polyglot)
 - Affected packages: {{affectedPkgs}}
 - Components to test: {{components}}
 {{#if feedback}}
@@ -35,13 +36,33 @@ Run these in order before any Read/Grep/Glob/Serena call:
 ## Instructions
 
 - Read the plan from `plans/active-context.md` before writing any tests
-- Write tests FIRST in `<package>_test.go` files — never touch implementation files
+- Write tests FIRST in language-appropriate test files — never touch implementation files
 - Follow BDD structure: Given-When-Then (Arrange, Act, Assert)
-- Use table-driven tests for multiple scenarios
-- Cover edge cases: nil inputs, boundaries, concurrent access, error paths
-- For Go: use `require` (not `assert`), use `t.Run()` for subtests, mark concurrent-safe with `t.Parallel()`
-- Run the tests: verify each fails for the expected reason (not a compile error)
+- Use parameterized / table-driven tests for multiple scenarios
+- Cover edge cases: nil/null inputs, boundaries, async failures, error paths
+- Run the tests: verify each fails for the expected reason (not a compile/import error)
 - Required: tests must FAIL — that is the success condition
+
+### Language-specific patterns
+
+**Go** (test files: `<package>_test.go`)
+- Use `require` (not `assert`), `t.Run()` for subtests, `t.Parallel()` for concurrent-safe tests
+- Table-driven tests: `[]struct{name string; input ...; want ...}` slice
+- BDD discovery: `godog` feature files are optional but use `Describe/It` from Ginkgo for complex BDD
+- Run: `go test ./...`
+
+**Python** (test files: `test_*.py` or `*_test.py` in `tests/` dir)
+- Use `pytest` with fixtures in `conftest.py`, `@pytest.mark.parametrize` for table-driven tests
+- BDD: use `behave` with `.feature` files for complex scenarios
+- Run: `python -m pytest --tb=short`
+
+**TypeScript** (test files: `*.test.ts`, `*.spec.ts`)
+- Use Jest: `describe/it/expect`, `beforeEach/afterEach`, `jest.fn()` mocks
+- Or Vitest: same API, faster for Vite projects
+- BDD: use `@testing-library` for UI components
+- Run: `npx jest --passWithNoTests` or `npx vitest run`
+
+**Polyglot**: apply the pattern for the primary language of each component being tested.
 
 ## Structured Output
 

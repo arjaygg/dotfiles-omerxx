@@ -9,8 +9,8 @@ description: >
   flagged something that now needs to be fixed in code. Covers: (1) implementing any feature
   from a plan; (2) fixing any bug, crash, nil pointer, compile error, or type mismatch;
   (3) making failing tests green after fury writes them; (4) applying hawk's code review fixes.
-  Go-optimized but language-agnostic. TDD strict — reads failing tests first, implements
-  minimally to pass, never beyond what tests require. Persistent until go test ./... is green.
+  Supports Go, Python, and TypeScript natively. TDD strict — reads failing tests first, implements
+  minimally to pass, never beyond what tests require. Persistent until all tests pass.
   Cap workflow: fury writes tests → IRONMAN implements → hawk reviews.
   NOT for: writing tests (use fury), code review (use hawk), architecture planning (use stark).
 triggers:
@@ -357,14 +357,18 @@ go test ./...
 Once individual components pass, run full suite:
 
 ```bash
-# All tests
+# Go
 go test ./...
-
-# With race detection (critical for goroutines)
-go test -race ./...
-
-# With coverage
+go test -race ./...   # race detection — Go only
 go test -cover ./...
+
+# Python
+python -m pytest --tb=short
+python -m pytest --cov --cov-report=term-missing
+
+# TypeScript
+npx jest --passWithNoTests
+npx jest --coverage --coverageReporters=text
 ```
 
 **All must pass before moving to code review phase.**
@@ -373,14 +377,21 @@ go test -cover ./...
 
 ### Step 5b — Code Health Self-Correction (after tests pass)
 
-Once `go test ./...` is green, run the code health gate on modified files:
+Once tests are green, run the code health gate on modified source files:
 
 ```bash
-# Identify modified .go files (excluding test files)
+# Go: identify modified .go files (excluding test files)
 MODIFIED=$(git diff --name-only HEAD | grep '\.go$' | grep -v '_test\.go' || true)
 [ -z "$MODIFIED" ] && MODIFIED="./..."
-
 claude /code-health --gate 9.5 $MODIFIED
+
+# Python: ruff + mypy quick health check
+python -m ruff check . 2>/dev/null || true
+python -m mypy . 2>/dev/null || true
+
+# TypeScript: tsc + eslint quick health check
+npx tsc --noEmit 2>/dev/null || true
+npx eslint . 2>/dev/null || true
 ```
 
 **If the gate passes (exit 0):** proceed to Step 6.
@@ -432,59 +443,57 @@ Checklist:
 
 ---
 
-## For Go Implementations
+## Language-Specific Patterns
 
-### Golang-Specific Patterns
+### Go
 
 Follow `docs/guides/golang-unit-testing-guide.md` and project conventions:
 
 1. **Error handling** — Use custom error types, wrap with context
    ```go
-   // BAD: generic errors
-   return nil, errors.New("something went wrong")
-   
-   // GOOD: specific error type with context
-   return nil, &ValidationError{
-       Field: "email",
-       Reason: "invalid email format",
-   }
+   return nil, &ValidationError{Field: "email", Reason: "invalid email format"}
    ```
 
-2. **Concurrency** — Use mutexes, channels, or atomic operations
-   ```go
-   // Protect shared state
-   type Cache struct {
-       mu sync.RWMutex
-       data map[string]interface{}
-   }
-   func (c *Cache) Get(key string) interface{} {
-       c.mu.RLock()
-       defer c.mu.RUnlock()
-       return c.data[key]
-   }
+2. **Concurrency** — Use mutexes, channels, or atomic operations; always pass `ctx context.Context` as first param
+
+3. **Naming**: `NewType` constructors; concrete names (`PostgresRepo`); `Value()` not `GetValue()`
+
+### Python
+
+1. **Type hints** — All public functions and methods must have type annotations
+   ```python
+   def create_user(email: str, name: str) -> User:
+       ...
    ```
 
-3. **Context handling** — Always respect context cancellation
-   ```go
-   func (r *Repo) QueryWithContext(ctx context.Context, query string) error {
-       ch := make(chan error, 1)
-       go func() {
-           ch <- r.db.QueryRow(query).Scan(...)
-       }()
-       select {
-       case err := <-ch:
-           return err
-       case <-ctx.Done():
-           return ctx.Err()
-       }
-   }
+2. **Dataclasses / Pydantic** — Use for structured data; avoid raw dicts for domain objects
+   ```python
+   @dataclass
+   class ValidationError(Exception):
+       field: str
+       reason: str
    ```
 
-4. **Naming conventions**
-   - Constructors: `NewType` or `NewTypeWithOption`
-   - Interface implementations: No "Impl" suffix, use concrete names (`PostgresRepo`, not `RepoImpl`)
-   - Getters: `Value()`, not `GetValue()`
-   - Setters: Use constructors or methods like `With<Field>()`
+3. **Context managers** — Always use `with` for file/DB/network resources; no bare `open()` calls
+
+4. **Async/await** — `async def` with `try/except asyncio.CancelledError`; never swallow cancellation
+
+5. **Naming**: `snake_case` functions/variables, `PascalCase` classes, `SCREAMING_SNAKE_CASE` constants
+
+### TypeScript
+
+1. **Strict null checks** — Enable `"strict": true` in `tsconfig.json`; never use `!` non-null assertion without comment
+
+2. **Discriminated unions** — Prefer over class hierarchies for sum types
+   ```typescript
+   type Result<T> = { ok: true; value: T } | { ok: false; error: string };
+   ```
+
+3. **No `any`** — Use `unknown` with type narrowing; `as SomeType` only after runtime validation
+
+4. **Async error handling** — All `async` functions must have `try/catch`; all `.then()` must have `.catch()`
+
+5. **Naming**: `camelCase` functions/variables, `PascalCase` types/classes/interfaces
 
 ---
 
