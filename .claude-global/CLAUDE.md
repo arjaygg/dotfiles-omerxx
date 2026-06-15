@@ -244,3 +244,6 @@ Use existing skills — do not hand-roll `gh pr merge` sequences:
 **Do not edit `CLAUDE.md` or `RTK.md` mid-session** — editing these files invalidates the LLM prompt cache and increases token costs for the remainder of the session.
 
 @RTK.md
+# graphify
+- **graphify** (`~/.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
+When the user types `/graphify`, invoke the Skill tool with `skill: "graphify"` before doing anything else.
