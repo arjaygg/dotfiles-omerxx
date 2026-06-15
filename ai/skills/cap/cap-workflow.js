@@ -1,14 +1,14 @@
 export const meta = {
   name: 'cap-v4',
-  description: 'Cap v4.0 — Autonomous TDD orchestrator: Scope → Preflight → Plan → Tests → Implement → Review → Finalize',
+  description: 'Cap v4.0 — Autonomous TDD orchestrator for Go, Python, and TypeScript: Scope → Preflight → Plan → Tests → Implement → Review → Finalize',
   phases: [
-    { title: 'Scope',     detail: 'Parse feature, identify bounded context and affected packages' },
+    { title: 'Scope',     detail: 'Parse feature, detect language (go/python/typescript/polyglot), identify bounded context and affected packages' },
     { title: 'Preflight', detail: 'Code health gate ≥9.5 on affected packages (feature mode)' },
     { title: 'Plan',      detail: 'Stark writes architectural plan to plans/active-context.md' },
     { title: 'Tests',     detail: 'Fury writes failing tests for all plan components' },
-    { title: 'Implement', detail: 'Ironman makes all tests pass, race detector clean' },
+    { title: 'Implement', detail: 'Ironman makes all tests pass (race detector clean for Go)' },
     { title: 'Review',    detail: 'Hawk reviews 4 dimensions in parallel, adversarial verify' },
-    { title: 'Finalize',  detail: 'Full test suite + race detector pass, optional PushNotification' },
+    { title: 'Finalize',  detail: 'Full test suite pass, optional PushNotification' },
   ],
 }
 
@@ -16,7 +16,7 @@ export const meta = {
 
 const SCOPE_SCHEMA = {
   type: 'object',
-  required: ['feature', 'deliverable', 'criteria', 'affectedPkgs', 'boundedContext', 'mode'],
+  required: ['feature', 'deliverable', 'criteria', 'affectedPkgs', 'boundedContext', 'mode', 'language'],
   properties: {
     feature:        { type: 'string' },
     deliverable:    { type: 'string' },
@@ -24,6 +24,7 @@ const SCOPE_SCHEMA = {
     affectedPkgs:   { type: 'array', items: { type: 'string' } },
     boundedContext: { type: 'string' },
     mode:           { type: 'string', enum: ['feature', 'uplift'] },
+    language:       { type: 'string', enum: ['go', 'python', 'typescript', 'polyglot'] },
   },
 }
 
@@ -67,11 +68,12 @@ const IMPL_SCHEMA = {
   required: ['testsPassed', 'raceClean', 'changedFiles', 'valid'],
   properties: {
     testsPassed:  { type: 'boolean' },
-    raceClean:    { type: 'boolean' },
+    raceClean:    { oneOf: [{ type: 'boolean' }, { type: 'null' }] },
     changedFiles: { type: 'array', items: { type: 'string' } },
     coveragePct:  { type: 'number' },
     valid:        { type: 'boolean' },
     issues:       { type: 'array', items: { type: 'string' } },
+    language:     { type: 'string' },
   },
 }
 
@@ -109,6 +111,149 @@ const VERDICT_SCHEMA = {
   },
 }
 
+// ── Language configuration map ────────────────────────────────────────────────
+// Each key maps to all language-specific commands and review check strings.
+// Scope agent detects language; all downstream phases index into this map.
+
+const LANG_CONFIG = {
+  go: {
+    testCmd:      'go test ./...',
+    raceCmd:      'go test -race ./...',
+    coverCmd:     'go test ./... -coverprofile=/tmp/cap-cov.out && go tool cover -func=/tmp/cap-cov.out | grep total',
+    healthCmd:    'make code-health-json 2>/dev/null || echo SKIP',
+    linters:      'golangci-lint run, gosec ./..., govulncheck ./...',
+    testFileExt:  '_test.go',
+    testPatterns: 'Go: t.Run() subtests, t.Parallel(), table-driven tests with []struct{name string; input; want}; use require (not assert)',
+    implPatterns: 'Go: fmt.Errorf("...%w", err) wrapping, context.Context as first param, inject via interfaces, no naked goroutines',
+    reviewChecks: {
+      architecture: `Checks:
+1. Repository pattern violation: Direct DB/GORM access outside pkg/repo/ → HIGH
+2. Missing factory constructor: Exported struct instantiated with {} outside tests → MEDIUM
+3. K8s manifest in wrong repo: *.yaml with kind: Deployment|Service → HIGH
+4. OSS compliance: Raw prometheus.io/client_golang without internal wrapper → HIGH
+5. Circular imports: Packages importing each other → CRITICAL
+6. Downstream blast radius: Changed interface used by downstream packages → MEDIUM`,
+      quality: `Checks:
+1. Missing table-driven tests: Repeated t.Run() without a slice of test cases → MEDIUM
+2. Missing godoc: Exported symbols without documentation comments → LOW (interface methods → MEDIUM)
+3. Error handling: fmt.Errorf/errors.New without project error constructors → MEDIUM
+4. Cognitive complexity: Nesting depth >4 → MEDIUM; >6 → HIGH
+5. Dead code/unused params: _ param or clearly unused variables → LOW
+6. Code health score: make code-health-json | scorer 0 — severity by score band`,
+      resilience: `Checks:
+1. Missing circuit breaker: New HTTP/DB/K8s calls without circuit breaker wrapping → HIGH
+2. Goroutine leaks: go func(...) without context cancellation or done channel → HIGH
+3. Context not propagated: Side-effect functions without ctx context.Context first param → MEDIUM
+4. Hardcoded timeouts: time.Duration literals not sourced from config → MEDIUM
+5. Missing graceful shutdown: New long-running goroutines not in shutdown handler → HIGH
+6. Downstream cascade risk: Changed functions called by scheduler/worker pool → MEDIUM`,
+      security: `Checks:
+1. SQL injection: gorm.Raw/db.Exec with string concatenation or fmt.Sprintf with user input → CRITICAL
+2. Missing auth middleware: New HTTP routes without middleware → HIGH
+3. Hardcoded secrets: Connection strings, passwords, API keys in non-test source → CRITICAL
+4. Missing request validation: json.Decode(r.Body) without post-decode validation → HIGH
+5. Unsafe type assertions: x.(Type) without comma-ok pattern → MEDIUM
+6. Govulncheck: Run if mcp__mcp_gopls__govulncheck available → CRITICAL if found`,
+    },
+  },
+  python: {
+    testCmd:      'python -m pytest --tb=short 2>/dev/null || echo SKIP',
+    raceCmd:      null,
+    coverCmd:     'python -m pytest --cov --cov-report=term-missing 2>/dev/null || echo SKIP',
+    healthCmd:    'python -m ruff check . --output-format=json 2>/dev/null || echo SKIP',
+    linters:      'python -m ruff check ., python -m mypy .',
+    testFileExt:  'test_*.py or *_test.py',
+    testPatterns: 'Python: pytest fixtures in conftest.py, @pytest.mark.parametrize for table-driven tests, assert statements',
+    implPatterns: 'Python: type hints on all public functions, dataclasses/Pydantic models, context managers (with/as), async def with proper exception handling',
+    reviewChecks: {
+      architecture: `Checks:
+1. Circular imports: Modules importing each other → CRITICAL
+2. Missing type hints: Public functions/methods without type annotations → MEDIUM
+3. Layer violation: Business logic in route handlers or data access in domain objects → HIGH
+4. God module: Single file >500 LOC doing multiple unrelated things → MEDIUM
+5. Missing __init__.py: Package directories missing module marker (Python <3.3) → LOW
+6. Downstream blast radius: Changed public API used by other modules → MEDIUM`,
+      quality: `Checks:
+1. Missing parametrize: Repeated similar test functions without @pytest.mark.parametrize → MEDIUM
+2. Missing docstrings: Public classes/functions without docstrings → LOW (public API → MEDIUM)
+3. Exception swallowing: bare except: or except Exception: pass → HIGH
+4. Cognitive complexity: Nesting depth >4 → MEDIUM; >6 → HIGH
+5. Dead code: unused imports, variables never read → LOW
+6. ruff/mypy issues: run python -m ruff check . and python -m mypy . — severity by error type`,
+      resilience: `Checks:
+1. Missing context manager: File/DB/network resources opened without with statement → HIGH
+2. Async exception handling: async def without try/except or proper cancellation → MEDIUM
+3. Hardcoded timeouts: timeout values as literals not from config → MEDIUM
+4. Missing retry logic: Network calls without retry/backoff on transient errors → MEDIUM
+5. Unhandled task cancellation: asyncio.Task without cancellation shield where needed → MEDIUM
+6. Downstream cascade risk: Changed shared utilities used broadly → MEDIUM`,
+      security: `Checks:
+1. SQL injection: raw SQL string with format/f-string/% with user input → CRITICAL
+2. subprocess shell=True: subprocess.run(cmd, shell=True) with user-controlled input → CRITICAL
+3. Path traversal: open() with user-supplied path without sanitization → HIGH
+4. Hardcoded secrets: API keys, passwords, tokens in non-test source → CRITICAL
+5. Pickle deserialization: pickle.loads() on untrusted data → HIGH
+6. Missing input validation: API endpoints without schema validation (Pydantic/marshmallow) → HIGH`,
+    },
+  },
+  typescript: {
+    testCmd:      'npx jest --passWithNoTests 2>/dev/null || npx vitest run 2>/dev/null || echo SKIP',
+    raceCmd:      null,
+    coverCmd:     'npx jest --coverage --coverageReporters=text 2>/dev/null || npx vitest run --coverage 2>/dev/null || echo SKIP',
+    healthCmd:    'npx eslint . --format=json 2>/dev/null || echo SKIP',
+    linters:      'npx tsc --noEmit, npx eslint .',
+    testFileExt:  '*.test.ts, *.spec.ts',
+    testPatterns: 'TypeScript: Jest describe/it/expect, beforeEach/afterEach, jest.fn() mocks; or Vitest describe/it/expect',
+    implPatterns: 'TypeScript: strict null checks, discriminated unions, async/await with try/catch, no implicit any, camelCase functions / PascalCase types',
+    reviewChecks: {
+      architecture: `Checks:
+1. Circular dependencies: Module importing from its own consumers → CRITICAL
+2. Barrel file abuse: index.ts re-exporting everything leading to import cycles → MEDIUM
+3. Module boundary violation: Internal implementation details exported without cause → MEDIUM
+4. Missing type exports: Public API types not exported from module index → LOW
+5. Mixed concerns: UI components containing business logic or direct API calls → HIGH
+6. Downstream blast radius: Changed exported type/interface used widely → MEDIUM`,
+      quality: `Checks:
+1. Implicit any: Variables or params typed as any without explicit annotation → MEDIUM
+2. Strict mode disabled: tsconfig.json missing "strict": true → HIGH
+3. Missing test coverage: Exported functions/components with no test file → MEDIUM
+4. Cognitive complexity: Nesting depth >4 → MEDIUM; >6 → HIGH
+5. Dead code: Unused exports, variables, or imports → LOW
+6. ESLint/tsc issues: run npx eslint . and npx tsc --noEmit — severity by rule`,
+      resilience: `Checks:
+1. Unhandled Promise rejection: .then() without .catch() or await without try/catch → HIGH
+2. Null/undefined guards: Optional chaining missing on nullable access paths → MEDIUM
+3. Missing error boundaries: React component trees without error boundary → MEDIUM
+4. Hardcoded timeouts: setTimeout/setInterval values as magic literals → LOW
+5. Missing loading/error states: Async operations without loading indicator → MEDIUM
+6. Type assertion abuse: as SomeType without runtime validation → MEDIUM`,
+      security: `Checks:
+1. XSS via innerHTML: dangerouslySetInnerHTML or innerHTML with user data → CRITICAL
+2. Prototype pollution: Object.assign/merge with user-controlled keys → HIGH
+3. eval() usage: eval(), new Function(), or dynamic import with user input → CRITICAL
+4. Hardcoded secrets: API keys, tokens in non-test source → CRITICAL
+5. Missing CSRF protection: State-mutating API calls without CSRF token → HIGH
+6. Deserialization: JSON.parse on untrusted input without schema validation → MEDIUM`,
+    },
+  },
+  polyglot: {
+    testCmd:      '# Run each detected language test suite',
+    raceCmd:      null,
+    coverCmd:     '# Aggregate coverage across languages',
+    healthCmd:    '# Run all applicable health checks',
+    linters:      'run all applicable linters for each detected language',
+    testFileExt:  'varies by language',
+    testPatterns: 'Use the test patterns for the primary language of each changed file',
+    implPatterns: 'Apply language-specific patterns per file being changed',
+    reviewChecks: {
+      architecture: 'Check architecture for each language present. Look for cross-language boundary violations and shared-state coupling.',
+      quality:      'Apply quality checks for each language present using appropriate tools (ruff, eslint, golangci-lint).',
+      resilience:   'Check resilience patterns for each language present (goroutines for Go, async for Python/TS).',
+      security:     'Apply security checks for each language present (CRITICAL findings get priority regardless of language).',
+    },
+  },
+}
+
 // ── Init block injected into every fresh subagent prompt ─────────────────────
 
 function pctxInit(taskDesc) {
@@ -140,23 +285,32 @@ Mode hint: "${mode}"
 
 Instructions:
 - Load project architecture via Serena.readMemory("project_architecture_and_patterns") first
-- Identify the DDD bounded context and affected Go packages (e.g. pkg/scheduler)
+- Detect the project language by checking root-level files:
+  * go.mod or *.go files present → language: "go"
+  * pyproject.toml, requirements.txt, setup.py, or *.py files present → language: "python"
+  * tsconfig.json + package.json, or *.ts/*.tsx files present → language: "typescript"
+  * Multiple language markers detected → language: "polyglot"
+  * When ambiguous, prefer the language of the majority of files being changed
+- Identify the DDD bounded context and affected packages/modules (e.g. pkg/scheduler for Go, src/services for TS, app/domain for Python)
 - List 3-7 concrete acceptance criteria as verifiable checkboxes
 - Set mode to "${mode}" (override to "feature" if not "uplift")
 
-Return SCOPE_SCHEMA JSON only.`
+Return SCOPE_SCHEMA JSON only. The language field is required.`
 }
 
 function preflightPrompt(scope) {
+  const lang = LANG_CONFIG[scope.language] || LANG_CONFIG.go
   return `${pctxInit('cap preflight code health gate')}
 
 You are Cap's preflight checker. Run the code health gate on the affected packages and report results.
 
 Affected packages: ${scope.affectedPkgs.join(', ')}
+Language: ${scope.language}
 
 Instructions:
 - Run: claude /code-health --gate 9.5 ${scope.affectedPkgs.join(' ')}
-- If the command is unavailable, run: make code-health-json 2>/dev/null | head -30
+- If the command is unavailable, run: ${lang.healthCmd} | head -50
+- If the output contains "SKIP", log a warning and set score=10, passed=true (graceful degradation — tool not installed)
 - Parse the score from the output
 - List the worst 3 files by score if gate fails
 
@@ -193,6 +347,7 @@ Return PLAN_SCHEMA JSON. Set valid=false and list issues if any section is incom
 }
 
 function furyPrompt(scope, plan, feedback) {
+  const lang = LANG_CONFIG[scope.language] || LANG_CONFIG.go
   return `${pctxInit('fury test writing for ' + scope.feature)}
 
 You are Fury, the QA agent. Write failing tests for all components in the plan.
@@ -200,16 +355,16 @@ You are Fury, the QA agent. Write failing tests for all components in the plan.
 Plan: plans/active-context.md (read it first)
 Components to test: ${plan.components.join(', ')}
 Feature: "${scope.feature}"
+Language: ${scope.language}
 ${feedback && feedback.length > 0 ? `\nFeedback from prior attempt:\n${feedback.map(i => `- ${i}`).join('\n')}` : ''}
 
 Instructions:
 - Read plans/active-context.md before writing any tests
-- Write tests FIRST in <package>_test.go — never touch implementation files
+- Write tests FIRST in test files (${lang.testFileExt}) — never touch implementation files
 - BDD structure: Given-When-Then (Arrange, Act, Assert)
-- Table-driven tests for multiple scenarios
-- Cover edge cases: nil inputs, boundaries, concurrent access, error paths
-- Go: use require (not assert), t.Run() for subtests, t.Parallel() for concurrent-safe tests
-- Run go test ./... — verify each fails for the right reason (NOT a compile error)
+- ${lang.testPatterns}
+- Cover edge cases: nil/null inputs, boundaries, error paths, async failures
+- Run: ${lang.testCmd} — verify each fails for the right reason (NOT a compile/import error)
 
 Success condition: ALL tests must FAIL (they are pre-implementation — passing means a bug).
 
@@ -217,9 +372,13 @@ Return TEST_SCHEMA JSON. Set valid=false and list issues if any component lacks 
 }
 
 function ironmanPrompt(scope, plan, tests, findings) {
+  const lang = LANG_CONFIG[scope.language] || LANG_CONFIG.go
   const fixPassHeader = findings
     ? `This is a FIX PASS. Address these Hawk review findings FIRST:\n${findings.map(f => `- [${f.severity}] ${f.file}:${f.line} — ${f.description}\n  Fix: ${f.fix}`).join('\n')}\n`
     : ''
+  const raceStep = lang.raceCmd
+    ? `- When all unit tests pass: ${lang.raceCmd}`
+    : `- No race detector for ${scope.language} — set raceClean: null in output`
   return `${pctxInit('ironman implementation for ' + scope.feature)}
 
 You are Ironman, the Implementation Agent. Make the failing tests pass.
@@ -227,30 +386,33 @@ ${fixPassHeader}
 Plan: plans/active-context.md (read it first)
 Failing tests: ${tests.testFiles.join(', ')}
 Feature: "${scope.feature}"
+Language: ${scope.language}
 
 Instructions:
 - Read plan and all test files before touching source
 - Implement MINIMAL changes — only what's needed for tests to pass${findings ? ' and findings to be fixed' : ''}
-- DDD: aggregates in domain layer, repos in infrastructure layer, domain events for side effects
-- SOLID: single responsibility, inject via interfaces
+- ${lang.implPatterns}
 - Do NOT refactor beyond what's in the plan
-- Run after each component: go test -v ./path/to/package
-- When all unit tests pass: go test -race ./...
-- Capture coverage: go test ./... -coverprofile=/tmp/cap-cov.out && go tool cover -func=/tmp/cap-cov.out | grep total
+- Run after each component: ${lang.testCmd}
+- ${raceStep}
+- Capture coverage: ${lang.coverCmd}
 
-Return IMPL_SCHEMA JSON. Set valid=false if any test fails or race detector reports issues.`
+Return IMPL_SCHEMA JSON. Set language: "${scope.language}". Set raceClean: ${lang.raceCmd ? 'true/false based on race output' : 'null (not applicable)'}. Set valid=false if any test fails.`
 }
 
 function hawkDimPrompt(dim, scope, impl) {
   const files = impl.changedFiles.join(', ')
+  const lang = LANG_CONFIG[scope.language] || LANG_CONFIG.go
+  const checks = lang.reviewChecks[dim.key] || dim.fallbackChecks || 'Apply standard code review checks for this dimension.'
   return `${pctxInit('hawk ' + dim.key + ' review')}
 
-You are a Go code reviewer focusing on ${dim.label}. Review the changed files below.
+You are a code reviewer specializing in ${dim.label} for ${scope.language} projects. Review the changed files below.
 
 Changed files: ${files}
 Feature context: "${scope.feature}"
+Language: ${scope.language}
 
-${dim.checks}
+${checks}
 
 Tool priority: ${dim.toolPriority}
 
@@ -283,18 +445,23 @@ Return VERDICT_SCHEMA JSON.`
 }
 
 function finalizePrompt(scope, impl, confirmed, autonomous) {
+  const lang = LANG_CONFIG[scope.language] || LANG_CONFIG.go
+  const raceStep = lang.raceCmd
+    ? `2. Run: ${lang.raceCmd} (confirm race detector clean)`
+    : `2. Skip race detector — not applicable for ${scope.language}`
   return `${pctxInit('cap finalize and commit')}
 
 You are Cap's finalization agent. Run the final verification sequence and commit.
 
 Feature: "${scope.feature}"
+Language: ${scope.language}
 Changed files: ${impl.changedFiles.join(', ')}
 Confirmed findings (all should be resolved): ${confirmed.length === 0 ? 'none' : confirmed.map(f => f.description).join(', ')}
 
 Instructions:
-1. Run: go test ./... (confirm all tests pass)
-2. Run: go test -race ./... (confirm race detector clean)
-3. Run: go test -cover ./... (capture final coverage)
+1. Run: ${lang.testCmd} (confirm all tests pass)
+${raceStep}
+3. Run: ${lang.coverCmd} (capture final coverage)
 4. Run: git status (verify all changes are tracked)
 5. Use /smart-commit to create a conventional commit with the feature description
 ${autonomous ? '6. Use PushNotification to send a desktop notification: "Cap v4.0 complete: ' + scope.feature + '"' : ''}
@@ -326,54 +493,32 @@ function dedupeFindings(allFindings) {
 
 // ── Review dimension definitions ──────────────────────────────────────────────
 
+// Language-specific checks live in LANG_CONFIG[language].reviewChecks[dim.key]
+// REVIEW_DIMS holds only language-agnostic metadata (key, label, toolPriority)
 const REVIEW_DIMS = [
   {
     key: 'architecture',
     label: 'Architecture',
     toolPriority: 'Serena.findSymbol → Serena.findReferencingSymbols → Serena.getSymbolsOverview → Grep',
-    checks: `Checks:
-1. Repository pattern violation: Direct DB/GORM access outside pkg/repo/ → HIGH
-2. Missing factory constructor: Exported struct instantiated with {} outside tests → MEDIUM
-3. K8s manifest in wrong repo: *.yaml with kind: Deployment|Service → HIGH
-4. OSS compliance: Raw prometheus.io/client_golang without internal wrapper → HIGH
-5. Circular imports: Packages importing each other → CRITICAL
-6. Downstream blast radius: Changed interface used by downstream packages → MEDIUM`,
+    fallbackChecks: 'Check for circular imports, layer violations, and downstream blast radius.',
   },
   {
     key: 'quality',
     label: 'Quality',
     toolPriority: 'Serena.getSymbolsOverview → Serena.findReferencingSymbols → Grep',
-    checks: `Checks:
-1. Missing table-driven tests: Repeated t.Run() without a slice of test cases → MEDIUM
-2. Missing godoc: Exported symbols without documentation comments → LOW (interface methods → MEDIUM)
-3. Error handling: fmt.Errorf/errors.New without project error constructors → MEDIUM
-4. Cognitive complexity: Nesting depth >4 → MEDIUM; >6 → HIGH
-5. Dead code/unused params: _ param or clearly unused variables → LOW
-6. Code health score: make code-health-json | scorer 0 — severity by score band`,
+    fallbackChecks: 'Check for missing tests, documentation, error handling, and cognitive complexity.',
   },
   {
     key: 'resilience',
     label: 'Resilience',
     toolPriority: 'Serena.findSymbol → Serena.findReferencingSymbols → Grep',
-    checks: `Checks:
-1. Missing circuit breaker: New HTTP/DB/K8s calls without circuit breaker wrapping → HIGH
-2. Goroutine leaks: go func(...) without context cancellation or done channel → HIGH
-3. Context not propagated: Side-effect functions without ctx context.Context first param → MEDIUM
-4. Hardcoded timeouts: time.Duration literals not sourced from config → MEDIUM
-5. Missing graceful shutdown: New long-running goroutines not in shutdown handler → HIGH
-6. Downstream cascade risk: Changed functions called by scheduler/worker pool → MEDIUM`,
+    fallbackChecks: 'Check for missing circuit breakers, resource leaks, hardcoded timeouts, and error propagation.',
   },
   {
     key: 'security',
     label: 'Security',
     toolPriority: 'Serena.getSymbolsOverview → Grep → Serena.findReferencingSymbols',
-    checks: `Checks:
-1. SQL injection: gorm.Raw/db.Exec with string concatenation or fmt.Sprintf with user input → CRITICAL
-2. Missing auth middleware: New HTTP routes without middleware → HIGH
-3. Hardcoded secrets: Connection strings, passwords, API keys in non-test source → CRITICAL
-4. Missing request validation: json.Decode(r.Body) without post-decode validation → HIGH
-5. Unsafe type assertions: x.(Type) without comma-ok pattern → MEDIUM
-6. Govulncheck: Run if mcp__mcp_gopls__govulncheck available → CRITICAL if found`,
+    fallbackChecks: 'Check for injection vulnerabilities, hardcoded secrets, missing auth, and unsafe deserialization.',
   },
 ]
 
@@ -391,7 +536,7 @@ phase('Scope')
 log(`Scoping: "${feature}" (mode: ${mode})`)
 const scope = await agent(scopePrompt(feature, mode), { label: 'scope', schema: SCOPE_SCHEMA })
 if (!scope) return { error: 'scope-agent-failed' }
-log(`Scope: ${scope.affectedPkgs.join(', ')} | context: ${scope.boundedContext} | criteria: ${scope.criteriaCount || scope.criteria.length}`)
+log(`Scope: ${scope.affectedPkgs.join(', ')} | language: ${scope.language} | context: ${scope.boundedContext} | criteria: ${scope.criteriaCount || scope.criteria.length}`)
 
 // Phase 2 — Preflight (feature mode only)
 phase('Preflight')
@@ -459,7 +604,8 @@ while (!impl || !impl.valid) {
   impl = await agent(ironmanPrompt(scope, plan, tests, null), { label, schema: IMPL_SCHEMA })
   if (!impl) return { error: 'ironman-agent-failed' }
 }
-log(`Impl: all ${tests.testCount} tests pass. Race: clean. Coverage: ${impl.coveragePct || '?'}%`)
+const raceStatus = impl.raceClean === null ? 'n/a' : impl.raceClean ? 'clean' : 'FAILED'
+log(`Impl: all ${tests.testCount} tests pass. Race: ${raceStatus}. Coverage: ${impl.coveragePct || '?'}%`)
 
 // Phase 6 — Review (4-dim pipeline + adversarial verify)
 phase('Review')
@@ -526,6 +672,7 @@ await agent(finalizePrompt(scope, impl, confirmed, autonomous), {
 
 return {
   feature: scope.feature,
+  language: scope.language,
   mode: scope.mode,
   testsCount: tests.testCount,
   coveragePct: impl.coveragePct,

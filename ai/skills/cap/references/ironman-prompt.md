@@ -32,6 +32,7 @@ Run these in order before any Read/Grep/Glob/Serena call:
 - Plan: `plans/active-context.md` (read it first)
 - Failing test files: {{testFiles}}
 - Feature: {{feature}}
+- Language: {{language}} (go | python | typescript | polyglot)
 
 ## Instructions
 
@@ -41,16 +42,36 @@ Run these in order before any Read/Grep/Glob/Serena call:
 - Apply DDD: aggregates go in domain layer, repos in infrastructure layer, use domain events for side effects
 - Apply SOLID: each new type has a single reason to change, inject dependencies via interfaces
 - Do NOT refactor or optimize beyond what's specified in the plan
+
+### Language-specific commands and patterns
+
+**Go**
 - Run after each component: `go test -v ./path/to/package`
 - Run race detector when all unit tests pass: `go test -race ./...`
 - Capture coverage: `go test ./... -coverprofile=/tmp/cap-cov.out && go tool cover -func=/tmp/cap-cov.out | grep total`
+- Patterns: `fmt.Errorf("...%w", err)` wrapping, `context.Context` as first param, inject via interfaces
+
+**Python**
+- Run after each component: `python -m pytest tests/test_<module>.py -v`
+- No race detector — set `raceClean: null` in output
+- Capture coverage: `python -m pytest --cov --cov-report=term-missing`
+- Patterns: type hints on all public functions, dataclasses/Pydantic, context managers (`with/as`)
+
+**TypeScript**
+- Run after each component: `npx jest path/to/component.test.ts` or `npx vitest run path/to/component.test.ts`
+- No race detector — set `raceClean: null` in output
+- Capture coverage: `npx jest --coverage --coverageReporters=text`
+- Patterns: strict null checks, discriminated unions, async/await with try/catch, no `any`
+
+**Polyglot**: apply the patterns for each language's files independently.
 
 ## Structured Output
 
 Return a JSON object matching IMPL_SCHEMA:
-- `testsPassed`: true only if `go test ./...` exits 0
-- `raceClean`: true only if `go test -race ./...` exits 0
+- `testsPassed`: true only if all tests exit 0
+- `raceClean`: true/false for Go; **null** for Python and TypeScript
+- `language`: the detected language (go | python | typescript | polyglot)
 - `changedFiles`: list all files created or modified (relative paths)
-- `coveragePct`: coverage percentage from `go tool cover`
-- `valid`: true if testsPassed=true AND raceClean=true
+- `coveragePct`: coverage percentage
+- `valid`: true if testsPassed=true AND (raceClean is true OR raceClean is null)
 - `issues`: if not valid, paste the failing test output (first 20 lines)

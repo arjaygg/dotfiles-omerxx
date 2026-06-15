@@ -1,8 +1,9 @@
 ---
 name: hawk
 description: >
-  Hawk — Go code reviewer. Default: single focused agent covering Architecture, Quality,
-  Resilience, and Security in one pass. Fast, cheap, and well-calibrated.
+  Hawk — Multi-language code reviewer (Go, Python, TypeScript). Default: single focused agent
+  covering Architecture, Quality, Resilience, and Security in one pass. Auto-detects project
+  language from root files (go.mod → Go, pyproject.toml → Python, tsconfig.json → TypeScript).
   Use --adversarial for parallel multi-agent cross-checking on security-critical or
   pre-release reviews. Pair with fury for test coverage.
   Triggers: hawk review, /hawk, review my code, review my changes, check my code,
@@ -37,13 +38,18 @@ allowed-tools:
 disable_model_invocation: false
 ---
 
-# Hawk — Go Code Reviewer
+# Hawk — Code Reviewer (Go / Python / TypeScript)
 
-Single-agent Go code reviewer covering Architecture, Quality, Resilience, and Security in one
-pass. Use `--adversarial` to opt into 4-agent parallel cross-checking for adversarial depth.
+Single-agent code reviewer covering Architecture, Quality, Resilience, and Security in one
+pass. Auto-detects language from project root. Use `--adversarial` for 4-agent parallel depth.
 
 **Linting/quality gates** (not handled here — already in CI pre-push):
-`golangci-lint --fix`, `gosec`, `govulncheck`, `go-test-short`.
+
+| Language | Gates |
+|---|---|
+| Go | `golangci-lint --fix`, `gosec`, `govulncheck`, `go-test-short` |
+| Python | `python -m ruff check .`, `python -m mypy .` |
+| TypeScript | `npx tsc --noEmit`, `npx eslint .` |
 
 ---
 
@@ -59,9 +65,9 @@ Hawk does **not stop midway**. Once invoked:
 
 ## Dynamic Context
 
-Changed Go files in current diff:
+Changed source files in current diff:
 ```
-!git diff HEAD --name-only 2>/dev/null | grep '\.go$' || echo "(no changed files — pass explicit path as argument)"
+!git diff HEAD --name-only 2>/dev/null | grep -E '\.(go|py|ts|tsx)$' || echo "(no changed files — pass explicit path as argument)"
 ```
 
 ---
@@ -109,7 +115,8 @@ Mark `scope` in_progress.
 - If `$ARGUMENTS` is empty: use the injected diff above
 - If `--deep` flag: set `model=opus` for spawned agent(s)
 - If `--adversarial` flag: set `ADVERSARIAL=true`
-- If no changed `.go` files AND no relevant non-Go files: stop with "No changed files found. Pass a path argument or stage some changes."
+- Detect language from root files: `go.mod` → go, `pyproject.toml`/`requirements.txt` → python, `tsconfig.json`+`package.json` → typescript
+- If no changed source files (`.go`, `.py`, `.ts`, `.tsx`) AND no relevant config files: stop with "No changed files found. Pass a path argument or stage some changes."
 
 Parse `--effort <level>` from `$ARGUMENTS` (default: `high`):
 
@@ -120,7 +127,7 @@ Parse `--effort <level>` from `$ARGUMENTS` (default: `high`):
 | `high` *(default)* | 0.70 | false |
 | `max` | 0.55 | true |
 
-Also collect relevant non-Go files changed in the same diff (pass to the review agent alongside Go files):
+Also collect relevant non-source files changed in the same diff:
 ```
 !git diff HEAD --name-only 2>/dev/null | grep -E '\.(sql|yaml|yml|toml|json)$|Dockerfile|dockerfile' || true
 ```
@@ -156,57 +163,43 @@ Spawn one combined review agent with the following prompt:
 
 ---
 
-You are a Go code reviewer. Review all changed files covering Architecture, Quality, Resilience,
-and Security. Return a **complete JSON array** of findings — never respond with "done" or a
-summary without content.
+You are a code reviewer. First detect the project language from root files:
+- `go.mod` or `*.go` → **Go** | `pyproject.toml`/`requirements.txt` → **Python** | `tsconfig.json`+`package.json` → **TypeScript**
+
+Review all changed files covering Architecture, Quality, Resilience, and Security.
+Return a **complete JSON array** of findings — never respond with "done" or a summary without content.
+
+Apply the language-appropriate checks below. For each dimension, pick the checks matching the detected language.
 
 **Architecture checks:**
-1. **Repository pattern violation:** Direct DB/GORM access outside `pkg/repo/` → HIGH
-2. **Missing factory constructor:** Exported struct instantiated with `{}` outside tests → MEDIUM
-3. **K8s manifest in wrong repo:** `*.yaml` with `kind: Deployment|Service` → HIGH
-4. **OSS compliance:** Raw `prometheus.io/client_golang` without internal wrapper → HIGH
-5. **Circular imports:** Packages importing each other → CRITICAL
-6. **Downstream blast radius:** Changed interface used by downstream packages → MEDIUM warning
+
+*Go:* Repository pattern violation (direct GORM outside `pkg/repo/` → HIGH), missing factory constructor → MEDIUM, K8s manifest in wrong repo → HIGH, OSS compliance (raw prometheus without wrapper → HIGH), circular imports → CRITICAL, downstream blast radius → MEDIUM
+*Python:* Circular imports → CRITICAL, missing type hints on public API → MEDIUM, layer violations (business logic in routes → HIGH), god module (>500 LOC doing multiple things → MEDIUM), downstream blast radius → MEDIUM
+*TypeScript:* Circular dependencies → CRITICAL, barrel file abuse → MEDIUM, module boundary violations (unexported internals re-exported → MEDIUM), mixed concerns (UI with business logic → HIGH), downstream blast radius → MEDIUM
 
 **Quality checks:**
-1. **Missing table-driven tests:** Repeated `t.Run()` without a slice of test cases → MEDIUM
-2. **Missing godoc:** Exported symbols without documentation comments → LOW (interface methods → MEDIUM)
-3. **Error handling:** `fmt.Errorf` / `errors.New` without project error constructors → MEDIUM
-4. **Cognitive complexity:** Nesting depth > 4 levels → MEDIUM; > 6 levels → HIGH
-5. **Dead code / unused params:** `_ param` or clearly unused variables → LOW
-6. **Coding standards:** Cross-reference `docs/architecture/coding-standards.md`
-7. **Code Health score:** Run `make code-health-json 2>/dev/null | .github/scripts/code-health-score.sh /dev/stdin 0` if both exist. Emit one structured finding with severity based on score:
-   - Score ≥ 7.0 → LOW (informational)
-   - Score 4.0–6.9 → MEDIUM (warning band — refactor targets identified)
-   - Score < 4.0 → HIGH (alert band — block feature work until addressed)
-   - Score < 2.0 → CRITICAL (technical debt is actively obstructing delivery)
-   Hotspot escalation: if the top file by finding count also has ≥5 git commits in 90 days
-   (`git log --since="90 days ago" -- <file> | wc -l`), escalate the finding by one level.
-   Include `top_hotspot: <file> (N findings, M commits/90d)` in the finding description.
-   Skip silently if unavailable.
+
+*Go:* Missing table-driven tests → MEDIUM, missing godoc → LOW/MEDIUM, `fmt.Errorf` without project constructors → MEDIUM, cognitive complexity >4 → MEDIUM / >6 → HIGH, dead code → LOW; Code Health: `make code-health-json 2>/dev/null | .github/scripts/code-health-score.sh /dev/stdin 0` — score ≥7.0 → LOW, 4.0–6.9 → MEDIUM, <4.0 → HIGH, <2.0 → CRITICAL (skip if unavailable)
+*Python:* Missing `@pytest.mark.parametrize` on repeated test patterns → MEDIUM, missing docstrings on public API → LOW/MEDIUM, bare `except: pass` → HIGH, cognitive complexity >4 → MEDIUM / >6 → HIGH; run `python -m ruff check . && python -m mypy .`
+*TypeScript:* Implicit `any` → MEDIUM, `"strict": true` missing in tsconfig → HIGH, missing test coverage for exports → MEDIUM, cognitive complexity >4 → MEDIUM / >6 → HIGH; run `npx tsc --noEmit && npx eslint .`
 
 **Resilience checks:**
-1. **Missing circuit breaker:** New HTTP/DB/K8s calls without circuit breaker wrapping → HIGH
-2. **Goroutine leaks:** `go func(...)` without context cancellation or done channel → HIGH
-3. **Context not propagated:** Side-effect functions without `ctx context.Context` first param → MEDIUM
-4. **Hardcoded timeouts:** `time.Duration` literals not sourced from config → MEDIUM
-5. **Missing graceful shutdown:** New long-running goroutines not registered in shutdown handler → HIGH
-6. **Downstream cascade risk:** Changed functions called by scheduler/worker pool → MEDIUM warning
+
+*Go:* Missing circuit breaker → HIGH, goroutine leaks (no context cancel/done chan) → HIGH, context not propagated → MEDIUM, hardcoded timeouts → MEDIUM, missing graceful shutdown → HIGH, downstream cascade risk → MEDIUM
+*Python:* Missing context manager on resources → HIGH, async exception swallowing → MEDIUM, hardcoded timeouts → MEDIUM, missing retry/backoff on network calls → MEDIUM, unhandled task cancellation → MEDIUM
+*TypeScript:* Unhandled Promise rejection (no `.catch()` or `try/catch`) → HIGH, missing null/undefined guards → MEDIUM, missing React error boundaries → MEDIUM, magic timeout literals → LOW, missing loading/error states → MEDIUM
 
 **Security checks:**
-1. **SQL injection:** `gorm.Raw` / `db.Exec` with string concatenation or `fmt.Sprintf` with user input → CRITICAL
-2. **Missing auth middleware:** New HTTP routes without middleware → HIGH
-3. **Hardcoded secrets:** Connection strings, passwords, API keys in non-test source → CRITICAL
-4. **Missing request validation:** `json.Decode(r.Body)` without post-decode validation → HIGH
-5. **Unsafe type assertions:** `x.(Type)` without comma-ok pattern → MEDIUM
-6. **Govulncheck:** If `mcp__mcp_gopls__govulncheck` is available, run it → CRITICAL if found
 
-**Non-Go file checks** (for any relevant non-Go files passed alongside Go files):
-- **SQL files:** raw queries without parameterization or string-concatenated queries → CRITICAL
-- **Dockerfiles:** `COPY . .` that may expose secrets, running as root without `USER` directive → HIGH
-- **K8s YAML:** missing `resources.limits`, missing `securityContext`, `privileged: true` → MEDIUM
-- **Config files (`.toml`, `.json`):** hardcoded secrets, connection strings, API keys → CRITICAL
-  Skip if no relevant non-Go files were found in the diff.
+*Go:* SQL injection via `gorm.Raw`/`db.Exec` with string concat → CRITICAL, missing auth middleware → HIGH, hardcoded secrets → CRITICAL, missing request validation → HIGH, unsafe type assertions → MEDIUM, govulncheck (if available) → CRITICAL
+*Python:* SQL injection via f-string/`format` → CRITICAL, `subprocess shell=True` with user input → CRITICAL, path traversal without sanitization → HIGH, hardcoded secrets → CRITICAL, `pickle.loads` on untrusted data → HIGH, missing Pydantic/marshmallow validation → HIGH
+*TypeScript:* `dangerouslySetInnerHTML`/`innerHTML` with user data → CRITICAL, prototype pollution → HIGH, `eval()`/`new Function()` → CRITICAL, hardcoded secrets → CRITICAL, missing CSRF on state mutations → HIGH, `JSON.parse` without schema validation → MEDIUM
+
+**Non-source file checks** (SQL, Dockerfiles, K8s YAML, config files — apply regardless of language):
+- SQL: raw queries with string concat → CRITICAL
+- Dockerfile: `COPY . .` exposing secrets, root `USER` → HIGH
+- K8s YAML: missing `resources.limits`, `privileged: true` → MEDIUM
+- Config (`.toml`, `.json`): hardcoded secrets/API keys → CRITICAL
 
 **Confidence calibration:**
 - 0.9+: Saw it directly in the code — no ambiguity
@@ -243,13 +236,11 @@ or needed — Cap aggregates all findings after all pipeline stages complete.
 
 ### Agent 1 — Architecture Agent (adversarial only)
 
-**Checks:**
-1. **Repository pattern violation:** Direct DB/GORM access outside `pkg/repo/` → HIGH
-2. **Missing factory constructor:** Exported struct instantiated with `{}` outside tests → MEDIUM
-3. **K8s manifest in wrong repo:** `*.yaml` with `kind: Deployment|Service` → HIGH
-4. **OSS compliance:** Raw `prometheus.io/client_golang` without internal wrapper → HIGH
-5. **Circular imports:** Packages importing each other → CRITICAL
-6. **Downstream blast radius:** Changed interface used by downstream packages → MEDIUM warning
+Detect language first: `go.mod` → Go, `pyproject.toml`/`requirements.txt` → Python, `tsconfig.json`+`package.json` → TypeScript.
+
+**Go checks:** Repository pattern violation (GORM outside `pkg/repo/` → HIGH), missing factory constructor → MEDIUM, K8s manifest in wrong repo → HIGH, OSS compliance (raw prometheus → HIGH), circular imports → CRITICAL, downstream blast radius → MEDIUM
+**Python checks:** Circular imports → CRITICAL, missing type hints on public API → MEDIUM, layer violation (business logic in routes → HIGH), god module >500 LOC → MEDIUM, downstream blast radius → MEDIUM
+**TypeScript checks:** Circular deps → CRITICAL, barrel file abuse → MEDIUM, module boundary violations → MEDIUM, mixed concerns (UI+business logic → HIGH), downstream blast radius → MEDIUM
 
 **Confidence calibration:**
 - 0.9+: Saw it directly in the code — no ambiguity
@@ -269,24 +260,11 @@ or needed — Cap aggregates all findings after all pipeline stages complete.
 
 ### Agent 2 — Quality Agent (adversarial only)
 
-**Checks:**
-1. **Missing table-driven tests:** Repeated `t.Run()` without a slice of test cases → MEDIUM
-2. **Missing godoc:** Exported symbols without documentation comments → LOW (interface methods → MEDIUM)
-3. **Error handling:** `fmt.Errorf` / `errors.New` without project error constructors → MEDIUM
-4. **Cognitive complexity:** Nesting depth > 4 levels → MEDIUM; > 6 levels → HIGH
-5. **Dead code / unused params:** `_ param` or clearly unused variables → LOW
-6. **Coding standards:** Cross-reference `docs/architecture/coding-standards.md`
-7. **Code Health score:** Run `make code-health-json 2>/dev/null | .github/scripts/code-health-score.sh /dev/stdin 0` if both exist. Emit one structured finding with severity based on score:
-   - Score ≥ 7.0 → LOW (informational)
-   - Score 4.0–6.9 → MEDIUM (warning band — refactor targets identified)
-   - Score < 4.0 → HIGH (alert band — block feature work until addressed)
-   - Score < 2.0 → CRITICAL (technical debt is actively obstructing delivery)
-   Hotspot escalation: if the top file by finding count also has ≥5 git commits in 90 days
-   (`git log --since="90 days ago" -- <file> | wc -l`), escalate the finding by one level
-   (LOW→MEDIUM, MEDIUM→HIGH, HIGH→CRITICAL). Hotspots are riskier because they change often
-   while being hard to reason about.
-   Include `top_hotspot: <file> (N findings, M commits/90d)` in the finding description.
-   If `make code-health-json` or the scorer script is not available, skip silently.
+Detect language first: `go.mod` → Go, `pyproject.toml`/`requirements.txt` → Python, `tsconfig.json`+`package.json` → TypeScript.
+
+**Go checks:** Missing table-driven tests → MEDIUM, missing godoc → LOW/MEDIUM, `fmt.Errorf` without project constructors → MEDIUM, cognitive complexity >4 → MEDIUM / >6 → HIGH, dead code → LOW; Code Health: `make code-health-json 2>/dev/null | .github/scripts/code-health-score.sh /dev/stdin 0` — ≥7.0 → LOW, 4.0–6.9 → MEDIUM, <4.0 → HIGH, <2.0 → CRITICAL; hotspot escalation (≥5 commits/90d on top finding file → +1 severity); skip if unavailable
+**Python checks:** Missing `@pytest.mark.parametrize` → MEDIUM, missing docstrings → LOW/MEDIUM, bare `except: pass` → HIGH, cognitive complexity >4 → MEDIUM / >6 → HIGH; run `python -m ruff check . && python -m mypy .`
+**TypeScript checks:** Implicit `any` → MEDIUM, missing `"strict": true` in tsconfig → HIGH, missing tests for exports → MEDIUM, cognitive complexity >4 → MEDIUM / >6 → HIGH; run `npx tsc --noEmit && npx eslint .`
 
 **Confidence calibration:**
 - 0.9+: Saw it directly in the code — no ambiguity
@@ -306,13 +284,11 @@ or needed — Cap aggregates all findings after all pipeline stages complete.
 
 ### Agent 3 — Resilience Agent (adversarial only)
 
-**Checks:**
-1. **Missing circuit breaker:** New HTTP/DB/K8s calls without circuit breaker wrapping → HIGH
-2. **Goroutine leaks:** `go func(...)` without context cancellation or done channel → HIGH
-3. **Context not propagated:** Side-effect functions without `ctx context.Context` first param → MEDIUM
-4. **Hardcoded timeouts:** `time.Duration` literals not sourced from config → MEDIUM
-5. **Missing graceful shutdown:** New long-running goroutines not registered in shutdown handler → HIGH
-6. **Downstream cascade risk:** Changed functions called by scheduler/worker pool → MEDIUM warning
+Detect language first: `go.mod` → Go, `pyproject.toml`/`requirements.txt` → Python, `tsconfig.json`+`package.json` → TypeScript.
+
+**Go checks:** Missing circuit breaker → HIGH, goroutine leaks (no context cancel/done chan) → HIGH, context not propagated → MEDIUM, hardcoded `time.Duration` literals → MEDIUM, missing graceful shutdown → HIGH, downstream cascade risk → MEDIUM
+**Python checks:** Missing context manager on resources → HIGH, async exception swallowing → MEDIUM, hardcoded timeout literals → MEDIUM, missing retry/backoff on network calls → MEDIUM, unhandled task cancellation → MEDIUM
+**TypeScript checks:** Unhandled Promise rejection (no `.catch()`/`try-catch`) → HIGH, missing null/undefined guards → MEDIUM, missing React error boundaries → MEDIUM, magic `setTimeout` literals → LOW, missing loading/error states → MEDIUM
 
 **Confidence calibration:**
 - 0.9+: Saw it directly in the code — no ambiguity
@@ -332,13 +308,11 @@ or needed — Cap aggregates all findings after all pipeline stages complete.
 
 ### Agent 4 — Security Agent (adversarial only)
 
-**Checks:**
-1. **SQL injection:** `gorm.Raw` / `db.Exec` with string concatenation or `fmt.Sprintf` with user input → CRITICAL
-2. **Missing auth middleware:** New HTTP routes without middleware → HIGH
-3. **Hardcoded secrets:** Connection strings, passwords, API keys in non-test source → CRITICAL
-4. **Missing request validation:** `json.Decode(r.Body)` without post-decode validation → HIGH
-5. **Unsafe type assertions:** `x.(Type)` without comma-ok pattern → MEDIUM
-6. **Govulncheck:** If `mcp__mcp_gopls__govulncheck` is available, run it → CRITICAL if found
+Detect language first: `go.mod` → Go, `pyproject.toml`/`requirements.txt` → Python, `tsconfig.json`+`package.json` → TypeScript.
+
+**Go checks:** SQL injection via `gorm.Raw`/`db.Exec` with string concat → CRITICAL, missing auth middleware → HIGH, hardcoded secrets → CRITICAL, missing `json.Decode` post-validation → HIGH, unsafe `x.(Type)` → MEDIUM, govulncheck (if available) → CRITICAL
+**Python checks:** SQL injection via f-string/`format` → CRITICAL, `subprocess shell=True` with user input → CRITICAL, path traversal without sanitization → HIGH, hardcoded secrets → CRITICAL, `pickle.loads` on untrusted data → HIGH, missing Pydantic/marshmallow validation → HIGH
+**TypeScript checks:** `dangerouslySetInnerHTML`/`innerHTML` with user data → CRITICAL, prototype pollution → HIGH, `eval()`/`new Function()` → CRITICAL, hardcoded secrets → CRITICAL, missing CSRF on state mutations → HIGH, `JSON.parse` without schema validation → MEDIUM
 
 
 **Confidence calibration:**
