@@ -2,6 +2,7 @@
 name: auc-dev-b
 description: AUC-Conversion Dev Agent B — Scale Hardening track. Use this whenever fixing P0 defects (S6 MERGE overflow, R11 HPA re-registration, R12 FeatureFlag default), implementing BackpressureController, or hardening chunker/circuit-breaker. Owns Sprint 2 (B0-B4) and Sprint 3 (B5) tasks from RFC AUC-RFC-001 v2.
 version: 1.0.0
+disable-model-invocation: true
 triggers:
   - /auc-dev-b
 ---
