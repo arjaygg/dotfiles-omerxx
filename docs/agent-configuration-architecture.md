@@ -66,10 +66,9 @@ Machine-wide defaults live in `ai/rules/` and are loaded through tool-specific a
 |---|---|---|
 | `agent-user-global.md` | All agents | Claude, Gemini, Codex |
 | `tool-priority.md` | Claude, Gemini | Claude, Gemini (`@` imports) |
-| `global-developer-guidelines.md` | Claude, Gemini | Claude, Gemini (`@` imports) |
 | `context-and-compaction.md` | Claude only | Claude (`@` import) |
 
-**Codex note**: Codex loads only `agent-user-global.md` via `model_instructions_file`. Tool priority and developer guidelines are a known gap for Codex in non-dotfiles projects.
+**Codex note**: Codex loads only `agent-user-global.md` via `model_instructions_file`. Tool priority is a known gap for Codex in non-dotfiles projects.
 
 ### Agent Memory
 

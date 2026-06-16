@@ -20,10 +20,6 @@
 set -euo pipefail
 trap 'echo "HOOK CRASH (pre-tool-gate-v2.sh line $LINENO): $BASH_COMMAND" >&2' ERR
 
-# Source violation tracker — silence stdout: it prints an analysis banner on
-# source, which would corrupt this hook's JSON stdout protocol on every call.
-source "$HOME/.dotfiles/.claude/hooks/violation-tracker.sh" >/dev/null 2>&1 || true
-
 # Halt the tool call: emit PreToolUse JSON deny on stdout, mirror reason to
 # stderr for the UI. stdout must contain ONLY this JSON — never echo anything
 # else to stdout on a code path that can reach _deny.
