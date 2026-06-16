@@ -52,7 +52,7 @@ task_id="${selection:-$query}"
 
 # Launch Claude in a new tmux window
 if [[ "$task_id" == "$SENTINEL_NO_ID" ]]; then
-    tmux new-window -c "$PANE_PATH" "claude --dangerously-skip-permissions"
+    tmux new-window -c "$PANE_PATH" "claude"
 else
-    tmux new-window -c "$PANE_PATH" "export CLAUDE_CODE_TASK_LIST_ID='$task_id'; claude --dangerously-skip-permissions"
+    tmux new-window -c "$PANE_PATH" "export CLAUDE_CODE_TASK_LIST_ID='$task_id'; claude"
 fi

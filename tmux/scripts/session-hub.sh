@@ -264,14 +264,74 @@ for (mtime_ms, section, cwd, session_id, summary, branch, age, badge, project) i
 PYEOF
 }
 
+# ── Phase 2b: Collect native agent (daemon) sessions ─────────────────────────
+
+collect_agent_sessions() {
+    # Emit: TYPE\tDISPLAY\tSESSION_ID\tCWD
+    # TYPE = "agent"
+    # Shows background-kind sessions from `claude agents --json`.
+    # Note: `claude --bg` (daemon dispatch) absent in v2.1.178 — this is read-only view.
+    local json
+    json=$(claude agents --json 2>/dev/null) || return 0
+    [[ -z "$json" || "$json" == "[]" ]] && return 0
+
+    python3 - "$json" <<'PYEOF'
+import sys, json, time
+
+raw = sys.argv[1]
+try:
+    agents = json.loads(raw)
+except Exception:
+    sys.exit(0)
+
+now_ms = int(time.time() * 1000)
+
+for agent in agents:
+    kind = agent.get("kind", "")
+    if kind != "background":
+        continue  # interactive sessions already shown as live tmux panes
+
+    session_id = agent.get("sessionId", "")
+    if not session_id:
+        continue
+
+    cwd = agent.get("cwd", "")
+    name = (agent.get("name") or "(no name)")[:55]
+    state = agent.get("state") or agent.get("status") or "unknown"
+
+    started_at = agent.get("startedAt", now_ms)
+    diff_s = (now_ms - started_at) // 1000
+    if diff_s < 3600:
+        age = f"{diff_s}s"
+    elif diff_s < 86400:
+        age = f"{diff_s // 3600}h"
+    else:
+        age = f"{diff_s // 86400}d"
+
+    badge = "⏸" if state in ("blocked", "waiting") else ("⚙" if state == "busy" else "·")
+
+    proj = cwd
+    for prefix in ("/Users/", "/home/"):
+        if proj.startswith(prefix):
+            proj = "~/" + proj[len(prefix):].split("/", 1)[-1] if "/" in proj[len(prefix):] else "~"
+            break
+    proj = proj[-20:] if len(proj) > 20 else proj
+
+    display = f"{badge}  {proj:<20} [{state:<8}]  {age:<5}  {name}"
+    print(f"agent\t{display}\t{session_id}\t{cwd}")
+
+PYEOF
+}
+
 # ── Phase 3: Build full display list ──────────────────────────────────────────
 
 build_display_list() {
     local show_archived="${1:-}"
-    local live_lines persisted_lines
+    local live_lines persisted_lines agent_lines
     local live_cwds=""
 
     live_lines=$(collect_live_sessions 2>/dev/null || true)
+    agent_lines=$(collect_agent_sessions 2>/dev/null || true)
 
     # Extract live cwds for dedup reference
     if [[ -n "$live_lines" ]]; then
@@ -286,6 +346,16 @@ build_display_list() {
         printf '%s\n' "$live_lines"
     else
         printf "header\t\033[1;36m── ACTIVE ── (no live Claude panes) ────────────────────\033[0m\t\t\n"
+    fi
+
+    # Section: AGENTS (background daemon sessions from `claude agents --json`)
+    local agent_count=0
+    [[ -n "$agent_lines" ]] && agent_count=$(printf '%s\n' "$agent_lines" | awk 'END{print NR}')
+    printf "header\t\033[1;35m── AGENTS (background daemons, %s) ──────────────────────\033[0m\t\t\n" "$agent_count"
+    if [[ -n "$agent_lines" ]]; then
+        printf '%s\n' "$agent_lines"
+    else
+        printf "header\t  (no background agents running)\t\t\n"
     fi
 
     # Section: RECENT — dedup against live cwds via temp file (avoids awk -v multiline bug)
@@ -338,6 +408,29 @@ open_session() {
         tmux switch-client -t "$session_id" 2>/dev/null \
             || tmux select-pane -t "$session_id" 2>/dev/null \
             || true
+        return 0
+    fi
+
+    if [[ "$entry_type" == "agent" ]]; then
+        # Resume a background daemon session in a new tmux window
+        local window_name="agent:${session_id:0:8}"
+        local window_name_trunc="${window_name:0:30}"
+        local open_cwd="${cwd:-$HOME}"
+        [[ -d "$open_cwd" ]] || open_cwd="$HOME"
+        if [[ -n "$TMUX" ]]; then
+            local TMUX_SESSION
+            TMUX_SESSION=$(tmux display-message -p '#S' 2>/dev/null || true)
+            if [[ -n "$TMUX_SESSION" ]]; then
+                if tmux list-windows -t "$TMUX_SESSION" -F '#{window_name}' 2>/dev/null | grep -Fxq "$window_name_trunc"; then
+                    tmux select-window -t "$TMUX_SESSION:$window_name_trunc" 2>/dev/null || true
+                    return 0
+                fi
+            fi
+        fi
+        tmux new-window \
+            -c "$open_cwd" \
+            -n "$window_name_trunc" \
+            bash -l -c "claude --resume '$session_id'; '$SCRIPT_DIR/claude-tmux-bridge.sh' session-stop"
         return 0
     fi
 
