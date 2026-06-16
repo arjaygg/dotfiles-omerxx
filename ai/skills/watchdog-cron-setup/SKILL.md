@@ -16,6 +16,9 @@ the 7-day window.
 
 ## Important constraints
 
+- **Local-only:** This skill uses CronCreate (session-scoped local cron). It requires StrongDM,
+  kubectl, and direct DB access — none of which are available from cloud Routines. Use
+  `/routines-setup` only for work that targets public GitHub repos on the arjaygg account.
 - **Session-scoped:** The cron fires only while this Claude session is active/idle. If the
   session ends, the job pauses until Claude restarts (if `durable: true`, it resumes).
 - **7-day auto-expiry:** CronCreate jobs auto-delete after 7 days. Re-run `/watchdog-cron-setup`
