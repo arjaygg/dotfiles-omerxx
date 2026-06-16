@@ -38,6 +38,16 @@ Memory is never the source of truth for repo policy.
 
 ---
 
+## Commands Convention
+
+Shared slash commands live in `ai/commands/` (canonical source of truth). `setup.sh` symlinks each `ai/commands/*.md` into `.claude/commands/` at install time.
+
+- **Add or edit a command**: change `ai/commands/<name>.md` only. The symlink in `.claude/commands/` will reflect it automatically.
+- **Agent-specific commands** that are not shared (e.g. `.cursor/commands/migration-clean.md`) live only in the agent's directory and are not symlinked.
+- **Cursor commands** at `.cursor/commands/` that duplicate shared commands must be symlinks (`../../ai/commands/<name>.md`), not separate files.
+
+---
+
 ## Tool Priority, Batching, and Serena Convention
 
 These rules are universal — loaded for all projects via user-global agent adapters from `ai/rules/tool-priority.md`.
