@@ -9,6 +9,7 @@ disallowed-tools:
   - Edit
   - Write
   - MultiEdit
+  - NotebookEdit
 triggers:
   - "/migration-watchdog"
 ---

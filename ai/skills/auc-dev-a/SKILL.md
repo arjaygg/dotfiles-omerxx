@@ -2,6 +2,7 @@
 name: auc-dev-a
 description: AUC-Conversion Dev Agent A — Observability Provider track. Use this whenever implementing or debugging pkg/observability/**, wiring MetricCollector, exporter interfaces, or the provider/collector/noop pattern. Owns Sprint 1 (A0-A4) and Sprint 3 (A5-A6) tasks from RFC AUC-RFC-001 v2.
 version: 1.0.0
+disable-model-invocation: true
 triggers:
   - /auc-dev-a
 ---

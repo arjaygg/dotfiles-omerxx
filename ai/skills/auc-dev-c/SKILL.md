@@ -2,6 +2,7 @@
 name: auc-dev-c
 description: AUC-Conversion Dev Agent C — Strategy B Streaming Pipeline track. Use this whenever implementing the experimental streaming ETL pipeline, shadow mode experiment framework, or Strategy B chunk_processor path. Owns Sprint 4 (C1-C3) tasks from RFC AUC-RFC-001 v2.
 version: 1.0.0
+disable-model-invocation: true
 triggers:
   - /auc-dev-c
 ---

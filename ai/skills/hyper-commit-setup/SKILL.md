@@ -2,6 +2,7 @@
 name: hyper-commit-setup
 description: Install hyper-atomic commit hooks for the current git repo. Use this when setting up commit hooks, enabling atomic commits, or installing hyper-commit enforcement.
 version: 1.0.0
+disable-model-invocation: true
 triggers:
   - hyper-commit-setup
   - set up hyper commit hooks
