@@ -157,4 +157,4 @@ fi
 tmux new-window \
     -c "$worktree_path" \
     -n "$window_name_trunc" \
-    bash -l -c "cd '$safe_path' && CLAUDE_CODE_TASK_LIST_ID='$task_list_id' claude --dangerously-skip-permissions; '$SCRIPT_DIR/claude-tmux-bridge.sh' session-stop"
+    bash -l -c "cd '$safe_path' && CLAUDE_CODE_TASK_LIST_ID='$task_list_id' claude; '$SCRIPT_DIR/claude-tmux-bridge.sh' session-stop"
