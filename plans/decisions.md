@@ -90,3 +90,12 @@ Durable record: `decisions/0005-autonomous-watchdog-loop.md`
 **Decision:** 2026-06-12 — Treat `read-before-write-guard.sh` blocking Writes to `plans/*.md` as a defect; fix scheduled in upgrade plan Wave 1.
 **Why:** Hooks touch `plans/*.md` every prompt → harness marks any prior Read stale → guard never sees a fresh read → native Write permanently blocked for existing plans files mid-session.
 **Workaround until fixed:** `rm` + Write (new-file path bypasses guard) or `LeanCtx.ctxEdit`.
+
+---
+
+## ADL-014 — migration-watchdog: keep as quarantined skill, no split needed
+
+**Decision:** 2026-06-16 — `auc-prod-db-monitor` skill stays in `.claude/skills/` as a real directory (not a symlink) but remains quarantined via `disable-model-invocation: true` in its SKILL.md frontmatter. No migration to `ai/skills/` or worktree split.
+**Why:** The skill is AUC-project-specific (not dotfiles-global), so it does NOT belong in `ai/skills/`. Its quarantine flag prevents accidental invocation. Moving it to a project repo would require a separate tracker and adds overhead with no benefit.
+**Alternatives rejected:** Move to `ai/skills/` (wrong scope — project-specific, not machine-global); delete entirely (still referenced in project docs); split to separate worktree (overkill).
+**Assumptions:** `check-skill-drift.sh` correctly exempts quarantined real directories, so CI will pass even with this real dir present.
