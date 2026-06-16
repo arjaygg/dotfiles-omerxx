@@ -48,10 +48,9 @@ if (randomPattern.test(filename)) {
 }
 
 // For other non-conforming names, provide guidance
-if (!filename.startsWith('active-context') && 
-    !filename.startsWith('decisions') && 
-    !filename.startsWith('progress') &&
-    !filename.startsWith('session-handoff')) {
+if (!filename.startsWith('active-context') &&
+    !filename.startsWith('decisions') &&
+    !filename.startsWith('progress')) {
     
     const today = new Date().toISOString().split('T')[0];
     console.error(`[PLAN NAMING] Plan file "${filename}" should follow YYYY-MM-DD-context.md format.`);
