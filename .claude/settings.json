@@ -552,7 +552,6 @@
     "enabled": true,
     "mode": "hold"
   },
-  "skipDangerousModePermissionPrompt": true,
   "preferredNotifChannel": "ghostty",
   "autoMode": {
     "environment": [
