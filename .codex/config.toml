@@ -51,6 +51,9 @@ trust_level = "trusted"
 [projects."/Users/axos-agallentes/git/auc-deployment-manifest"]
 trust_level = "trusted"
 
+[projects."/Users/axos-agallentes/git/auc-discovery"]
+trust_level = "trusted"
+
 [mcp_servers.pctx]
 type = "stdio"
 command = "pctx"
@@ -70,7 +73,7 @@ unified_exec = true
 shell_snapshot = true
 multi_agent = true
 prevent_idle_sleep = true
-codex_hooks = true
+hooks = true
 
 [marketplaces.openai-bundled]
 last_updated = "2026-04-22T10:12:08Z"
@@ -148,4 +151,8 @@ status_line = [
 status_line_use_colors = true
 
 [tui.model_availability_nux]
-"gpt-5.5" = 1
+"gpt-5.5" = 4
+
+[mcp_servers.lean-ctx]
+command = "/Users/axos-agallentes/.cargo/bin/lean-ctx"
+args = []
