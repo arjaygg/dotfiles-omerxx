@@ -123,3 +123,11 @@ $env.EDITOR = "nvim"
 $env.HEADROOM_CONTEXT_TOOL = "lean-ctx"
 $env.HEADROOM_NO_SUBSCRIPTION_TRACKING = "1"
 $env.REF_API_KEY = "ref-e12567ea1d5b4c4bb0c8"
+
+# Supermemory (local memory engine — non-secret vars only)
+$env.SUPERMEMORY_BASE_URL = "http://localhost:6767"
+$env.SUPERMEMORY_DATA_DIR = ($env.HOME | path join ".supermemory")
+
+# Load machine-local secrets (gitignored — API keys live here, not above)
+let _secret_env = ($env.HOME | path join ".dotfiles" "nushell" "env.secret.nu")
+if ($_secret_env | path exists) { source $_secret_env }
