@@ -379,7 +379,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc 'bash \"$HOME/.dotfiles/.claude/hooks/userpromptsubmit.sh\"'"
+            "command": "bash",
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/userpromptsubmit.sh"
+            ]
           }
         ]
       }
