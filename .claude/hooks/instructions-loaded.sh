@@ -51,17 +51,11 @@ if [[ "$GIT_BRANCH" == "main" || "$GIT_BRANCH" == "master" ]]; then
     fi
 fi
 
-# --- Pending session handoff ---
-HANDOFF_NOTICE=""
-if [[ -f "$CWD/plans/session-handoff.md" ]]; then
-    HANDOFF_NOTICE="HANDOFF: plans/session-handoff.md exists — read it to restore prior session context, then delete it."
-fi
-
 # --- Emit context injection ---
-python3 - "$DATE" "$GIT_BRANCH" "$GIT_DIRTY" "$PCTX_STATUS" "$STACK_WARNING" "$HANDOFF_NOTICE" "$CWD" <<'PYEOF'
+python3 - "$DATE" "$GIT_BRANCH" "$GIT_DIRTY" "$PCTX_STATUS" "$STACK_WARNING" "$CWD" <<'PYEOF'
 import sys, json
 
-date, branch, dirty_count, pctx_status, stack_warning, handoff_notice, cwd = sys.argv[1:8]
+date, branch, dirty_count, pctx_status, stack_warning, cwd = sys.argv[1:7]
 
 lines = [f"[SESSION START — {date}]"]
 
@@ -74,9 +68,6 @@ if stack_warning:
 
 if pctx_status != "ok":
     lines.append(f"pctx advisory: {pctx_status}")
-
-if handoff_notice:
-    lines.append(handoff_notice)
 
 # Only emit if there's something actionable to surface
 if len(lines) > 1:

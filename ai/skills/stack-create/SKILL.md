@@ -14,7 +14,7 @@ triggers:
 
 # Stack Create
 
-Creates a new stacked branch with a worktree (default) for PR stacking workflows, with full Charcoal integration. Automatically writes a rich session handoff and opens a new Claude Code session in the worktree via tmux.
+Creates a new stacked branch with a worktree (default) for PR stacking workflows, with full Charcoal integration. Automatically opens a new Claude Code session in the worktree via tmux.
 
 ## When to Use
 
@@ -134,39 +134,9 @@ Worktrees are created by **default** (no flag needed). You also get:
    - Explicit error messages help debug when tmux isn't available
 
    This gives the new session a properly isolated CWD — the new Claude instance will
-   start fresh in the worktree and pick up `plans/session-handoff.md` automatically.
+   start fresh in the worktree.
 
-6. **Write a rich session handoff** before opening the new session, so the new Claude
-   instance starts with context from the current session:
-   ```bash
-   mkdir -p "$WORKTREE_PATH/plans"
-
-   # Capture current session context (empty string if files don't exist)
-   ACTIVE_CONTEXT=$([ -f plans/active-context.md ] && cat plans/active-context.md || echo "*(none)*")
-   PROGRESS=$([ -f plans/progress.md ] && cat plans/progress.md || echo "*(none)*")
-   DECISIONS=$([ -f plans/decisions.md ] && cat plans/decisions.md || echo "*(none)*")
-
-   cat > "$WORKTREE_PATH/plans/session-handoff.md" << EOF
-   # Session Handoff
-   status: pending
-   branch: <full-branch-name>
-   created_at: $(date +%Y-%m-%d)
-
-   ## Context from parent session
-
-   ### active-context.md
-   $ACTIVE_CONTEXT
-
-   ### progress.md
-   $PROGRESS
-
-   ### decisions.md
-   $DECISIONS
-   EOF
-   ```
-   Write the handoff **before** opening tmux (step 5) so the file is present when Claude starts.
-
-7. **Optionally create a draft PR** — ask the user if they'd like a draft PR opened immediately:
+6. **Optionally create a draft PR** — ask the user if they'd like a draft PR opened immediately:
    > "Worktree created. Want me to open a draft PR now so reviewers can track progress?"
 
    If yes:
@@ -175,8 +145,8 @@ Worktrees are created by **default** (no flag needed). You also get:
    ```
    If no (or user doesn't respond), skip.
 
-8. Inform the user:
-   - **tmux**: New branch and worktree at `<main-repo>/.trees/<sanitized-name>`, handoff written, tmux window opened
+7. Inform the user:
+   - **tmux**: New branch and worktree at `<main-repo>/.trees/<sanitized-name>`, tmux window opened
    - **no tmux (Cursor Desktop)**: Same worktree path; use `cd "$WORKTREE_PATH"` (from script output) to navigate
 
 ## Opting out of worktrees
@@ -212,7 +182,6 @@ When using worktrees with Charcoal:
 
 User: "Create a new stacked branch for user authentication"
 Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/user-auth main`
-Then: write handoff to `.trees/user-auth/plans/session-handoff.md`
 - **tmux**: opens window `dev:user-auth` with `claude`
 - **Cursor Desktop / no tmux**: outputs `cd .trees/user-auth` — agent evals it to navigate
 Result: Branch + worktree at `.trees/user-auth`, session (or cwd) in the worktree
@@ -224,7 +193,7 @@ $HOME/.dotfiles/.claude/scripts/stack create feature/api main
 $HOME/.dotfiles/.claude/scripts/stack create feature/ui feature/api
 $HOME/.dotfiles/.claude/scripts/stack create feature/polish feature/ui
 ```
-Then write handoffs and open tmux windows for each: `api`, `ui`, `polish` (in current tmux session)
+Then open tmux windows for each: `api`, `ui`, `polish` (in current tmux session)
 
 User: "Stack a new branch without a worktree"
 Action: Use `git checkout -b` / Charcoal tracking manually; `stack create` always creates a worktree.

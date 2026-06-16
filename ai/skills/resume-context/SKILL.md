@@ -44,9 +44,6 @@ Show only if there are changes in the diff stat; skip the diff line if clean.
 Read these files if they exist:
 1. `plans/active-context.md` — current focus and plan pointer
 2. `plans/progress.md` — task state (In Progress / Done / WIP sections)
-3. `plans/session-handoff.md` — if it exists, extract the "Context from parent session" section
-
-After reading `plans/session-handoff.md`, delete it (it's been consumed).
 
 ### Step 3 — Load relevant Serena memories
 
@@ -82,21 +79,16 @@ Progress:
   WIP checkpoints: <items if any>
   Done this session: <count> items
 
-Next action: <suggested next step from progress.md or session-handoff.md>
+Next action: <suggested next step from progress.md>
 ─────────────────────────────────────────────────
 ```
 
 Keep the entire output under 20 lines. If progress has many items, summarize counts
 ("3 done, 2 in progress") rather than listing all.
 
-### Step 5 — Update active-context.md
-
-If `plans/session-handoff.md` was consumed, update `plans/active-context.md` to reflect
-the restored state. Do not add new content — just ensure the `focus:` line is current.
-
 ## Notes
 
-- If none of `plans/active-context.md`, `plans/progress.md`, or `plans/session-handoff.md` exist,
+- If none of `plans/active-context.md` or `plans/progress.md` exist,
   fall back to just the git context from Step 1 and note "no session artifacts found"
 - Do not print raw file contents — synthesize into the summary format above
 - Do not ask the user questions during this skill — just print the summary and stop

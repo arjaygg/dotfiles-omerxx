@@ -49,7 +49,7 @@ fn main() -> io::Result<()> {
     }
     
     // For other non-conforming names
-    let system_files = ["active-context", "decisions", "progress", "session-handoff"];
+    let system_files = ["active-context", "decisions", "progress"];
     let is_system_file = system_files.iter().any(|&sf| filename.starts_with(sf));
     
     if !is_system_file {

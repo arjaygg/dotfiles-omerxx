@@ -411,7 +411,7 @@ if [[ "$TOOL_NAME" == "Write" && -n "$FILE_PATH" ]]; then
         FILENAME="${FILE_PATH##*/}"
         # Skip system files
         case "$FILENAME" in
-            active-context*|decisions*|progress*|session-handoff*|plan-state*|pctx-functions*|hook-learning*|plan.md) ;;
+            active-context*|decisions*|progress*|plan-state*|pctx-functions*|hook-learning*|plan.md) ;;
             *)
                 # Check naming convention: YYYY-MM-DD-context.md
                 if [[ ! "$FILENAME" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-.+\.md$ ]]; then
