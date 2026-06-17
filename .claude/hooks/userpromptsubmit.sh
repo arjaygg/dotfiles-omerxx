@@ -72,34 +72,13 @@ _run "$HOME/.dotfiles/.claude/hooks/prompt-parallelism-hint.sh"
 # 6. Plan/TodoWrite reminder — reminds to create task lists for multi-step work
 _run "$HOME/.dotfiles/.claude/hooks/plan-todowrite-reminder.sh"
 
-# 7. context-mode UserPromptSubmit hook (Node.js — cannot be sourced into bash)
-_cm_out=$(echo "$_INPUT" | \
-    /Users/axos-agallentes/homebrew/bin/node \
-    /Users/axos-agallentes/homebrew/lib/node_modules/context-mode/hooks/userpromptsubmit.mjs \
-    2>/dev/null) || true
-if [[ -n "$_cm_out" ]]; then
-    _cm_ctx=$(python3 -c "
-import json, sys
-try:
-    d = json.loads(sys.stdin.read())
-    ctx = d.get('hookSpecificOutput', {}).get('additionalContext', '')
-    if ctx: print(ctx, end='')
-except:
-    pass
-" <<< "$_cm_out" 2>/dev/null || true)
-    if [[ -n "$_cm_ctx" ]]; then
-        [[ -n "$_COMBINED_CTX" ]] && _COMBINED_CTX+=$'\n'
-        _COMBINED_CTX+="$_cm_ctx"
-    fi
-fi
-
-# 8. tmux activity bridge — fire-and-forget, no stdin
+# 7. tmux activity bridge — fire-and-forget, no stdin
 (bash "$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh" activity-start &>/dev/null) &
 
-# 9. Prompt capture — logs prompts for analytics
+# 8. Prompt capture — logs prompts for analytics
 _bg "$HOME/.dotfiles/.claude/hooks/prompt-capture.sh"
 
-# 10. Prompt score correction — scoring side-effect
+# 9. Prompt score correction — scoring side-effect
 _bg "$HOME/.dotfiles/.claude/hooks/prompt-score-correction.sh"
 
 # 11. Symbol intent — records symbol references
