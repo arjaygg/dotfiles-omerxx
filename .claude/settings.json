@@ -38,7 +38,9 @@
       "TaskOutput(*)",
       "TaskStop(*)",
       "TaskUpdate(*)",
-      "mcp__pctx__*"
+      "mcp__pctx__*",
+      "mcp__graphify__*",
+      "mcp__supermemory__*"
     ],
     "deny": [
       "Bash(rm -rf *)",
@@ -215,6 +217,18 @@
             ]
           }
         ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/supermemory-project-check.sh"
+            ]
+          }
+        ]
       }
     ],
     "InstructionsLoaded": [
@@ -240,6 +254,18 @@
             "command": "bash",
             "args": [
               "/Users/axos-agallentes/.dotfiles/.claude/hooks/pre-tool-gate-v2.sh"
+            ]
+          }
+        ]
+      },
+      {
+        "matcher": "Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/graphify-redirect.sh"
             ]
           }
         ]
