@@ -58,7 +58,16 @@ Worktrees are created by **default** (no flag needed). You also get:
    - Tracks branch in Charcoal (navigation and restacking)
    - Enables worktree-aware Charcoal commands
 
-4. **Bootstrap `.claude/settings.local.json`** in the **new** worktree (use `WORKTREE_PATH` from step 3, not `$(pwd)/.trees/...`):
+4. **Carry session context** into the new worktree — copy `active-context.md` from the parent so hooks can read plan/focus state at session start:
+   ```bash
+   if [ -f "plans/active-context.md" ]; then
+     mkdir -p "$WORKTREE_PATH/plans"
+     cp plans/active-context.md "$WORKTREE_PATH/plans/active-context.md"
+   fi
+   ```
+   > Semantic context carry (task history, decisions) is handled automatically by the Supermemory plugin, which injects `<supermemory-context>` at each session start. No explicit Supermemory write is needed here.
+
+5. **Bootstrap `.claude/settings.local.json`** in the **new** worktree (use `WORKTREE_PATH` from step 3, not `$(pwd)/.trees/...`):
    ```bash
    LOCAL_SETTINGS="$WORKTREE_PATH/.claude/settings.local.json"
    if [ ! -f "$LOCAL_SETTINGS" ]; then
@@ -75,7 +84,7 @@ Worktrees are created by **default** (no flag needed). You also get:
    This ensures the new session never prompts for permission on every tool call.
    Skip if the file already exists (respect any existing local overrides).
 
-5. **Open a new Claude Code session in the worktree** (after a successful create):
+6. **Open a new Claude Code session in the worktree** (after a successful create):
    Derive the `name` from the branch by stripping the type prefix:
    - `feature/user-auth` → name = `"user-auth"`
    - `fix/cursor-issue` → name = `"cursor-issue"`
@@ -136,7 +145,7 @@ Worktrees are created by **default** (no flag needed). You also get:
    This gives the new session a properly isolated CWD — the new Claude instance will
    start fresh in the worktree.
 
-6. **Optionally create a draft PR** — ask the user if they'd like a draft PR opened immediately:
+7. **Optionally create a draft PR** — ask the user if they'd like a draft PR opened immediately:
    > "Worktree created. Want me to open a draft PR now so reviewers can track progress?"
 
    If yes:
@@ -145,7 +154,7 @@ Worktrees are created by **default** (no flag needed). You also get:
    ```
    If no (or user doesn't respond), skip.
 
-7. Inform the user:
+8. Inform the user:
    - **tmux**: New branch and worktree at `<main-repo>/.trees/<sanitized-name>`, tmux window opened
    - **no tmux (Cursor Desktop)**: Same worktree path; use `cd "$WORKTREE_PATH"` (from script output) to navigate
 

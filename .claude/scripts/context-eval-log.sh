@@ -123,19 +123,11 @@ record = {
 data = {}
 
 if event == "session-start":
-    handoff_path = root / "plans/session-handoff.md"
     data = {
-        "handoff_present": file_present("plans/session-handoff.md"),
         "active_context_present": file_present("plans/active-context.md"),
         "decisions_present": file_present("plans/decisions.md"),
         "progress_present": file_present("plans/progress.md"),
     }
-    if handoff_path.exists() and handoff_path.is_file():
-        try:
-            age_seconds = max(0, int(datetime.now().timestamp() - handoff_path.stat().st_mtime))
-            data["handoff_age_minutes"] = round(age_seconds / 60, 1)
-        except Exception:
-            pass
 elif event == "notification":
     message = str(
         payload.get("message")
@@ -175,7 +167,7 @@ elif event == "post-bash":
     }
 elif event == "stop":
     data = {
-        "handoff_written": file_present("plans/session-handoff.md"),
+        "active_context_present": file_present("plans/active-context.md"),
         "active_context_present": file_present("plans/active-context.md"),
         "progress_present": file_present("plans/progress.md"),
     }
