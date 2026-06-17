@@ -38,8 +38,6 @@ ai/skills/coach/coach-persona.ts
 # Local tooling state (may contain tokens/pids)
 .osgrep/
 
-# Plans (ephemeral session artifacts)
-plans/session-handoff.md
 
 # Machine-local secrets (never commit API keys)
 *.secret.nu

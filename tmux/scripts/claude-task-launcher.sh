@@ -19,7 +19,7 @@ if git -C "$PANE_PATH" rev-parse --git-dir >/dev/null 2>&1; then
 fi
 branch_slug="${branch#*/}"   # strip type prefix: feature/foo → foo
 # Generate date-only ID with canonical cwd hash for uniqueness within day
-# Canonicalize path (resolve symlinks, remove trailing slash) for consistent hashing with session-hub
+# Canonicalize path (resolve symlinks, remove trailing slash) for consistent hashing
 canonical_path=$(cd "$PANE_PATH" 2>/dev/null && pwd || printf '%s' "$PANE_PATH")
 cwd_hash=$(printf '%s' "$canonical_path" | python3 -c "import sys, hashlib; print(hashlib.md5(sys.stdin.read().encode()).hexdigest()[:8])" 2>/dev/null \
     || printf '%s' "$canonical_path" | md5sum | cut -d' ' -f1 | cut -c1-8 2>/dev/null \
