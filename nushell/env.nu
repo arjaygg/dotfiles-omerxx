@@ -129,5 +129,5 @@ $env.SUPERMEMORY_BASE_URL = "http://localhost:6767"
 $env.SUPERMEMORY_DATA_DIR = ($env.HOME | path join ".supermemory")
 
 # Load machine-local secrets (gitignored — API keys live here, not above)
-let _secret_env = ($env.HOME | path join ".dotfiles" "nushell" "env.secret.nu")
+const _secret_env = "~/.dotfiles/nushell/env.secret.nu"
 if ($_secret_env | path exists) { source $_secret_env }
