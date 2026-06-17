@@ -295,18 +295,6 @@
         ]
       },
       {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/post-read-auto-delete.sh"
-            ]
-          }
-        ]
-      },
-      {
         "matcher": "Bash",
         "hooks": [
           {
