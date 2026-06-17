@@ -217,6 +217,18 @@
             ]
           }
         ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/supermemory-project-check.sh"
+            ]
+          }
+        ]
       }
     ],
     "InstructionsLoaded": [
