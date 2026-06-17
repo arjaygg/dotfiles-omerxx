@@ -257,11 +257,10 @@ These rules cover the tools that `tool-priority.md` did not originally address: 
 
 | Task | 1st Priority | 2nd Priority | Avoid |
 |---|---|---|---|
-| **Fetch a known URL for analysis** | `mcp__plugin_context-mode__ctx_fetch_and_index` | `WebFetch` | Direct `WebFetch` (floods context) |
-| **Search for external info** | `WebSearch` | — | `WebFetch` without a URL |
-| **Follow-up questions on fetched page** | `mcp__plugin_context-mode__ctx_search` | — | Re-fetching the same URL |
+| **Search for external info** | `WebSearch` | — | — |
+| **Fetch a known URL** | `WebFetch(url, prompt)` | — | Fetching without a focused prompt (floods context) |
 
-**Rule:** `WebFetch` directly dumps raw HTML/text into context. Always prefer `ctx_fetch_and_index` first — it indexes the page and lets you query it without polluting the context window.
+**Rule:** Always pass a focused `prompt` to `WebFetch` describing exactly what to extract — this uses Claude's built-in summarization to keep output tight. `WebSearch` returns snippets and is preferred for discovery.
 
 ### Session Context & Continuity
 
@@ -276,7 +275,7 @@ These rules cover the tools that `tool-priority.md` did not originally address: 
 | Violation | Correct replacement |
 |---|---|
 | `Grep` or `LeanCtx.ctxSearch` on `docs/**/*.md` | `Qmd.search` or `Qmd.deepSearch` |
-| `WebFetch(url)` for analysis | `ctx_fetch_and_index(url)` then `ctx_search` |
+| `WebFetch(url)` without a prompt | Pass a focused `prompt` to `WebFetch` to get a targeted summary |
 | `Read(large_file)` for analysis (no edit intent) | `LeanCtx.ctxSmartRead` or `ctxRead(mode: "signatures")` |
 | Multiple `Read` calls in sequence | `LeanCtx.ctxMultiRead` |
 
