@@ -14,7 +14,7 @@ triggers:
 
 # Stack Create
 
-Creates a new stacked branch with a worktree (default) for PR stacking workflows, with full Charcoal integration. Automatically opens a new Claude Code session in the worktree via tmux.
+Creates a new stacked branch with a worktree (default) for PR stacking workflows, with full Charcoal integration.
 
 ## When to Use
 
@@ -28,14 +28,13 @@ Creates a new stacked branch with a worktree (default) for PR stacking workflows
 - "create worktree and branch"
 - Any mention of "worktree" combined with "create" or "branch"
 
-## Key Feature: Default Worktrees + tmux Session Integration
+## Key Feature: Default Worktrees
 
 Worktrees are created by **default** (no flag needed). You also get:
 - ✅ Parallel development in separate `.trees/` directories
 - ✅ Charcoal navigation (`stack up/down`) that's worktree-aware
 - ✅ Automatic restacking with `stack restack`
 - ✅ Visual stack display with worktree locations
-- ✅ New Claude Code session opened in a tmux window inside the worktree
 
 ## Instructions
 
@@ -75,68 +74,7 @@ Worktrees are created by **default** (no flag needed). You also get:
    This ensures the new session never prompts for permission on every tool call.
    Skip if the file already exists (respect any existing local overrides).
 
-5. **Open a new Claude Code session in the worktree** (after a successful create):
-   Derive the `name` from the branch by stripping the type prefix:
-   - `feature/user-auth` → name = `"user-auth"`
-   - `fix/cursor-issue` → name = `"cursor-issue"`
-   - `chore/cleanup` → name = `"cleanup"`
-
-   When not inside tmux (e.g. Cursor Desktop), the script outputs `cd <worktree-path>`
-   so the agent can `eval` it to navigate. Use: `eval $($HOME/.dotfiles/.claude/scripts/stack create <name> [base])`
-
-   When inside tmux, open a new window in the current session and start Claude there.
-   Detect the current session name at runtime — never hardcode it:
-   ```bash
-   WINDOW_NAME="<sanitized-name>"
-   
-   if [ -z "${TMUX:-}" ]; then
-       # Cursor Desktop / no-tmux: output cd command for agent to eval
-       # Run: eval $($HOME/.dotfiles/.claude/scripts/stack create <name> [base])
-       echo "cd $WORKTREE_PATH"
-       exit 0
-   fi
-   
-   TMUX_SESSION=$(tmux display-message -p '#S' 2>/dev/null)
-   if [ -z "$TMUX_SESSION" ]; then
-       echo "⚠️  Could not determine tmux session. To open the new worktree in tmux:"
-       echo "   cd $WORKTREE_PATH && claude"
-       exit 0
-   fi
-   
-   # Use tmux select-window to test if window exists (simpler & more reliable than grep)
-   # If select succeeds, window exists; if it fails, create it
-   if tmux select-window -t "$TMUX_SESSION:$WINDOW_NAME" 2>/dev/null; then
-       # Window already exists — already switched to it
-       echo "Switched to existing tmux window: $WINDOW_NAME"
-   else
-       # Window doesn't exist — create it and start Claude
-       tmux new-window -t "$TMUX_SESSION" -n "$WINDOW_NAME" -c "$WORKTREE_PATH"
-       sleep 0.3
-       tmux send-keys -t "$TMUX_SESSION:$WINDOW_NAME" "claude" Enter
-       
-       # Sync tmux bridge display if available
-       sleep 0.5
-       if [ -f ~/.dotfiles/tmux/scripts/claude-tmux-bridge.sh ]; then
-           ~/.dotfiles/tmux/scripts/claude-tmux-bridge.sh session-start 2>/dev/null || true
-       fi
-   fi
-   ```
-
-   **Key fixes for window-exists bug (T5):**
-   - Use `tmux select-window` instead of `grep -Fxq` (more direct, avoids formatting edge cases)
-   - Add early exit if `$TMUX` or `$TMUX_SESSION` is empty (proper error handling)
-   - Use `-c $WORKTREE_PATH` in `tmux new-window` to avoid `cd` command issues
-   - Cleaner, more maintainable code
-   
-   **Why this fixes the dotfiles issue:**
-   - The original `grep -Fxq` could fail with certain window names or tmux configurations
-   - `tmux select-window` is atomic and foolproof: it either succeeds or fails
-   - Explicit error messages help debug when tmux isn't available
-
-   This gives the new session a properly isolated CWD — the new Claude instance will
-   start fresh in the worktree.
-
-6. **Optionally create a draft PR** — ask the user if they'd like a draft PR opened immediately:
+5. **Optionally create a draft PR** — ask the user if they'd like a draft PR opened immediately:
    > "Worktree created. Want me to open a draft PR now so reviewers can track progress?"
 
    If yes:
@@ -145,9 +83,13 @@ Worktrees are created by **default** (no flag needed). You also get:
    ```
    If no (or user doesn't respond), skip.
 
-7. Inform the user:
-   - **tmux**: New branch and worktree at `<main-repo>/.trees/<sanitized-name>`, tmux window opened
-   - **no tmux (Cursor Desktop)**: Same worktree path; use `cd "$WORKTREE_PATH"` (from script output) to navigate
+6. **Inform the user** — print the absolute worktree path and entry options:
+   ```
+   ✅ Worktree ready at <WORKTREE_PATH>
+   → Work on files directly using absolute paths (Read/Edit/Bash with full path)
+   → Enter interactively: EnterWorktree or  cd <WORKTREE_PATH> && claude
+   → Dispatch a background agent: claude agents
+   ```
 
 ## Opting out of worktrees
 
@@ -182,9 +124,7 @@ When using worktrees with Charcoal:
 
 User: "Create a new stacked branch for user authentication"
 Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/user-auth main`
-- **tmux**: opens window `dev:user-auth` with `claude`
-- **Cursor Desktop / no tmux**: outputs `cd .trees/user-auth` — agent evals it to navigate
-Result: Branch + worktree at `.trees/user-auth`, session (or cwd) in the worktree
+Result: Branch + worktree at `.trees/user-auth`. Session accesses files via absolute paths.
 
 User: "Create stacked worktrees for API, UI, and polish"
 Actions:
@@ -193,7 +133,7 @@ $HOME/.dotfiles/.claude/scripts/stack create feature/api main
 $HOME/.dotfiles/.claude/scripts/stack create feature/ui feature/api
 $HOME/.dotfiles/.claude/scripts/stack create feature/polish feature/ui
 ```
-Then open tmux windows for each: `api`, `ui`, `polish` (in current tmux session)
+Result: Three independent worktrees — work on each via absolute paths or dispatch agents.
 
 User: "Stack a new branch without a worktree"
 Action: Use `git checkout -b` / Charcoal tracking manually; `stack create` always creates a worktree.
