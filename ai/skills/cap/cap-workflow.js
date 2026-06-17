@@ -269,6 +269,12 @@ PCTX INIT REQUIRED (run before any Read, Grep, Glob, or Serena call):
      ]);
      return { ready: true };
    }
+4. (Episodic memory) Use ToolSearch with query "mcp__supermemory__search". If the tool
+   is available, call it with query "${taskDesc}" to surface relevant past decisions,
+   patterns, and context from previous sessions on this codebase.
+5. (Structural graph) Check if graphify-out/graph.json exists in the project root.
+   If yes, read graphify-out/GRAPH_REPORT.md for community structure and god nodes
+   before searching files — this is 71x more token-efficient than raw Grep/Glob.
 Without steps 1-3, Grep will be blocked by the pre-tool-gate hook.
 `.trim()
 }

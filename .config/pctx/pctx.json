@@ -41,6 +41,13 @@
       "args": [
         "--mcp"
       ]
+    },
+    {
+      "name": "graphify",
+      "command": "/Users/axos-agallentes/.local/bin/graphify",
+      "args": [
+        "--mcp"
+      ]
     }
   ],
   "logger": {
