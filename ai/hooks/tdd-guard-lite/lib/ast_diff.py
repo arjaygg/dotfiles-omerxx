@@ -44,7 +44,7 @@ def check(file_path: str, proposed_content: str, config) -> AstDiffResult:
     try:
         parser = get_parser(ts_lang)
     except Exception as e:
-        return AstDiffResult(is_pure_refactor=True, reason=f"Parser unavailable for {ts_lang}: {e}")
+        return AstDiffResult(is_pure_refactor=False, reason=f"Parser unavailable for {ts_lang}: {e}")
 
     try:
         with open(file_path, "rb") as f:
@@ -59,7 +59,10 @@ def check(file_path: str, proposed_content: str, config) -> AstDiffResult:
 
     new_symbols = after - before
     removed_symbols = before - after
-    is_pure_refactor = len(new_symbols) == 0
+    # Pure refactor: no net increase in symbols.
+    # A rename (1 added, 1 removed) is a refactor; only a net addition is a behavioral change.
+    net_additions = max(0, len(new_symbols) - len(removed_symbols))
+    is_pure_refactor = net_additions == 0
 
     return AstDiffResult(
         is_pure_refactor=is_pure_refactor,
