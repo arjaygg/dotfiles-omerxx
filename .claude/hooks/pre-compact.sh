@@ -43,7 +43,7 @@ if [[ -d "$CWD/plans" ]] && ls "$CWD/plans/"*.md 1>/dev/null 2>&1; then
         PLAN_FILE="$CWD/plans/active-context.md"
     else
         PLAN_FILE=$(ls -t "$CWD/plans/"*.md 2>/dev/null \
-            | grep -v -E '(active-context|decisions|progress|session-handoff)\.md$' \
+            | grep -v -E '(active-context|decisions|progress)\.md$' \
             | head -1)
     fi
 elif [[ -d "$CWD/docs/plans" ]] && ls "$CWD/docs/plans/"*.md 1>/dev/null 2>&1; then
