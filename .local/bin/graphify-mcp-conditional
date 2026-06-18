@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Wrapper for graphify-mcp that gracefully handles missing graph.json.
+# If the graph hasn't been built yet, responds as a no-op MCP server so
+# pctx continues working normally without graphify tools.
+GRAPH="${1:-${PWD}/graphify-out/graph.json}"
+
+if [ -f "$GRAPH" ]; then
+    exec /Users/axos-agallentes/.local/bin/graphify-mcp "$@"
+fi
+
+# No graph found — serve as an empty MCP server (initialize + empty tools/list).
+exec /Users/axos-agallentes/.local/bin/graphify-noop-mcp

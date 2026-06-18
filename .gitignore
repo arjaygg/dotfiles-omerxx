@@ -56,3 +56,4 @@ ai/skills/coach/coach-persona.ts
 # Accidental/self-referential stow symlinks
 .claude/commands/commands
 .claude/output-styles/output-styles
+**/__pycache__/
