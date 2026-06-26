@@ -13,6 +13,11 @@
 
 set -euo pipefail
 
+# qmd is installed under /opt/homebrew; prefer the matching Node runtime for native deps.
+if [ -d /opt/homebrew/bin ]; then
+  export PATH="/opt/homebrew/bin:$PATH"
+fi
+
 if [ $# -lt 1 ]; then
   echo "Usage: lit-ingest.sh <file-path> [slug]" >&2
   exit 1
@@ -37,7 +42,7 @@ OUT_FILE="$OUT_DIR/${SLUG}.md"
 mkdir -p "$OUT_DIR"
 
 echo "Parsing: $FILE"
-lit parse "$FILE" --format markdown -o "$OUT_FILE"
+lit parse "$FILE" --format text -o "$OUT_FILE"
 
 echo "Ingested: $OUT_FILE"
 echo "Updating QMD index..."
