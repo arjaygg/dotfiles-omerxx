@@ -37,20 +37,20 @@ fi
 
 CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
 
-# Print one-line summary
-echo "Remote: origin → ${REMOTE_HOST}/${REMOTE_REPO} | branch: ${CURRENT_BRANCH} | gh: ${GH_USER}"
+# Print one-line summary as a warning; stdout must remain JSON-compatible for hooks.
+echo "Remote: origin → ${REMOTE_HOST}/${REMOTE_REPO} | branch: ${CURRENT_BRANCH} | gh: ${GH_USER}" >&2
 
 # Warn if gh user is not arjaygg on GitHub repos
 if [[ "$REMOTE_HOST" == "github.com" && "$GH_USER" != "arjaygg" && "$GH_USER" != "unknown" ]]; then
-    echo "WARNING: gh CLI authenticated as '${GH_USER}' — expected 'arjaygg' for GitHub personal repos."
-    echo "  Run: gh auth switch --user arjaygg"
+    echo "WARNING: gh CLI authenticated as '${GH_USER}' — expected 'arjaygg' for GitHub personal repos." >&2
+    echo "  Run: gh auth switch --user arjaygg" >&2
 fi
 
 # Warn if ADO remote but command uses gh pr (GitHub-only tool)
 if [[ "$REMOTE_HOST" == dev.azure.com* || "$REMOTE_HOST" == visualstudio.com* ]]; then
     if echo "$CMD" | grep -q 'gh pr'; then
-        echo "WARNING: 'gh pr' targets GitHub but remote is ADO (${REMOTE_HOST})."
-        echo "  Use: az repos pr create --organization https://bofaz.visualstudio.com"
+        echo "WARNING: 'gh pr' targets GitHub but remote is ADO (${REMOTE_HOST})." >&2
+        echo "  Use: az repos pr create --organization https://bofaz.visualstudio.com" >&2
     fi
 fi
 
