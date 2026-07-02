@@ -22,6 +22,18 @@ Your job: figure out the right tool for the situation, use it, and surface insig
 
 ---
 
+## Prod safety — read before pointing any tier at Prod
+
+The tiers below (esp. T2's `--export`) assume a lower environment. **Against Production**,
+follow `docs/guides/prod-quarantine-deep-analysis-runbook.md` in the target repo instead of
+running these tiers as-is — it has the Prod-specific guardrails this skill doesn't enforce:
+confirmed SDM connection, no raw-row/PII export, no index/DDL changes, off-peak scoping, the
+source-row-count reference (`config.SourceTableRowCount`, not `ProcessEvidence`), and a
+severity-ranked (P0–P3) outcome framework for triaging what you find. Skim it first; use this
+skill's tiers only within the bounds it sets.
+
+---
+
 ## Tier Selection — Read This First
 
 Before doing anything, determine which tier fits the request:
