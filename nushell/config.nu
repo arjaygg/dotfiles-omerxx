@@ -969,6 +969,11 @@ def --wrapped hclaude [...rest] {
     }
 }
 
+# hclaude with permission prompts bypassed
+def --wrapped hcy [...rest] {
+    hclaude --dangerously-skip-permissions ...$rest
+}
+
 # Claude Code Multi-Backend Aliases
 alias claude = bash ~/.dotfiles/.claude/scripts/claude-launch.sh native
 alias claude-gemini = bash ~/.dotfiles/.claude/scripts/claude-launch.sh gemini
