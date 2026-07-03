@@ -39,6 +39,14 @@ trap flush_userprompt_json EXIT
 CWD=$(pwd)
 TODAY=$(date '+%Y-%m-%d')
 
+# Environment checks below (setup/pctx/hooks/stack) describe machine/repo state
+# that rarely changes mid-session — surface once per session instead of on
+# every prompt. Session id comes from stdin JSON already drained above, so
+# re-read it isn't available here; fall back to a per-UID, per-day flag.
+_ENV_NOTIFY_FLAG="/tmp/.claude-plans-healthcheck-env-$(id -u)-${TODAY}"
+_SKIP_ENV_CHECKS=0
+[[ -f "$_ENV_NOTIFY_FLAG" ]] && _SKIP_ENV_CHECKS=1
+
 # Binary dependency checks (global) — cached in /tmp for 1 hour to avoid per-prompt overhead
 CACHE_FILE="/tmp/.claude-binary-check-$(id -u)"
 NOW=$(date '+%s')
@@ -81,13 +89,14 @@ if [[ ! -f "$CACHE_FILE" ]] || [[ $CACHE_AGE -ge $CACHE_TTL ]]; then
     echo "${MISSING_BINARIES[*]:-}" > "$CACHE_FILE"
 fi
 
-if [[ ${#MISSING_BINARIES[@]} -gt 0 ]]; then
-    echo "[SETUP HEALTH] Missing required tools (installing in background):"
+if [[ ${#MISSING_BINARIES[@]} -gt 0 && "$_SKIP_ENV_CHECKS" -eq 0 ]]; then
+    echo "hook: setup-health"
+    echo "status: installing in background"
     for m in "${MISSING_BINARIES[@]}"; do
         case "$m" in
-            qmd) echo "  - qmd  (semantic search sync)  → auto-installing: npm install -g @tobilu/qmd" ;;
-            rtk) echo "  - rtk  (token optimizer)       → auto-installing: brew install rtk" ;;
-            *)   echo "  - $m  → install manually" ;;
+            qmd) echo "  - qmd (semantic search sync): npm install -g @tobilu/qmd" ;;
+            rtk) echo "  - rtk (token optimizer): brew install rtk" ;;
+            *)   echo "  - $m: no auto-install command, install manually" ;;
         esac
     done
     echo ""
@@ -124,47 +133,61 @@ except Exception as e:
     done <<< "$MISSING_SERVERS"
 fi
 
-if [[ ${#PCTX_WARNINGS[@]} -gt 0 ]]; then
-    echo "[PCTX HEALTH] Advisory - Gateway configuration issues:"
+if [[ ${#PCTX_WARNINGS[@]} -gt 0 && "$_SKIP_ENV_CHECKS" -eq 0 ]]; then
+    echo "hook: pctx-health"
+    echo "status: gateway configuration issues"
     for warn in "${PCTX_WARNINGS[@]}"; do
         echo "  - $warn"
     done
     echo ""
 fi
 
-# --- [HOOKS HEALTH] Hyper-atomic commit hooks (runs unconditionally — independent of plan state) ---
-if git rev-parse --show-toplevel &>/dev/null 2>&1; then
+# --- Hyper-atomic commit hooks (runs unconditionally — independent of plan state) ---
+if [[ "$_SKIP_ENV_CHECKS" -eq 0 ]] && git rev-parse --show-toplevel &>/dev/null 2>&1; then
     HOOKS_PATH=$(git config --local core.hooksPath 2>/dev/null || echo "")
     EXPECTED="$HOME/.dotfiles/git/hooks"
     if [[ "$HOOKS_PATH" != "$EXPECTED" ]]; then
-        echo "[HOOKS HEALTH] Hyper-atomic commit hooks not installed in this repo."
-        echo "  Action: Run /hyper-commit-setup to enable atomic commit enforcement."
+        echo "hook: hooks-health"
+        echo "status: atomic commit hooks not installed in this repo"
+        echo "  suggested: /hyper-commit-setup"
+        echo ""
     fi
 fi
 
-# --- [STACK HEALTH] Charcoal / stacking readiness (runs unconditionally) ---
-if git rev-parse --show-toplevel &>/dev/null 2>&1; then
+# --- Charcoal / stacking readiness (runs unconditionally) ---
+if [[ "$_SKIP_ENV_CHECKS" -eq 0 ]] && git rev-parse --show-toplevel &>/dev/null 2>&1; then
     STACK_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
     GT_INIT=0
     [[ -f ".git/.graphite_repo_config" ]] && GT_INIT=1
 
     if [[ "$STACK_BRANCH" == "main" || "$STACK_BRANCH" == "master" ]]; then
-        echo "[STACK HEALTH] On '$STACK_BRANCH' — use stack-create skill before editing."
+        echo "hook: stack-health"
+        echo "status: on '$STACK_BRANCH'"
+        echo "  suggested: stack-create skill before editing files"
+        echo ""
     fi
 
     if [[ "$GT_INIT" -eq 0 ]] && command -v gt &>/dev/null; then
-        echo "[STACK HEALTH] Charcoal installed but 'gt repo init' not run in this repo."
-        echo "  Action: Run 'gt repo init' to enable stacking, then use stack-create skill."
+        echo "hook: stack-health"
+        echo "status: charcoal installed, 'gt repo init' not run in this repo"
+        echo "  suggested: gt repo init, then stack-create skill"
+        echo ""
     elif ! command -v gt &>/dev/null; then
-        echo "[STACK HEALTH] Charcoal (gt) not found. Install: npm install -g @withgraphite/graphite-cli"
-        echo "  Then: gt repo init && stack create feature/<name> main"
+        echo "hook: stack-health"
+        echo "status: charcoal (gt) not found"
+        echo "  suggested: npm install -g @withgraphite/graphite-cli, then gt repo init"
+        echo ""
     fi
 fi
 
-# --- [SESSION HEALTH] Turn-30 checkpoint nudge ---
+[[ "$_SKIP_ENV_CHECKS" -eq 0 ]] && touch "$_ENV_NOTIFY_FLAG" 2>/dev/null || true
+
+# --- Turn-30 checkpoint nudge ---
 _TURN_COUNT=$(cat "/tmp/.claude-turn-count-${UID}" 2>/dev/null || echo "0")
 if [[ "$_TURN_COUNT" -eq 30 ]]; then
-    echo "[SESSION HEALTH] Turn 30 reached — checkpoint now: update plans/active-context.md with current task state before continuing."
+    echo "hook: session-health"
+    echo "status: turn 30 reached"
+    echo "  suggested: update plans/active-context.md with current task state"
 fi
 
 # Opt-in: only run if plans/ directory exists
@@ -216,32 +239,28 @@ missing_str, stale_str, ctx_age = sys.argv[1], sys.argv[2], sys.argv[3]
 missing = [f for f in missing_str.split() if f]
 stale = [f for f in stale_str.split() if f]
 
-lines = ["[PLANS HEALTH] Session artifact status:", ""]
+lines = ["hook: plans-health", ""]
 
 if missing:
-    lines.append("MISSING (must create before compaction):")
+    lines.append("missing (per CLAUDE.md, create before compaction):")
     for f in missing:
         lines.append(f"  - {f}")
-    lines.append("Action: Create missing files now per CLAUDE.md instructions.")
-    lines.append("  active-context.md — current focus/learnings, ≤30 lines")
+    lines.append("  active-context.md — current focus/learnings, <=30 lines")
     lines.append("  decisions.md      — append-only ADL log")
     lines.append("  progress.md       — task state in checkbox format")
 
 if stale:
     if missing:
         lines.append("")
-    lines.append("STALE (exist but not updated today):")
+    lines.append("stale (not updated today):")
     for f in stale:
         lines.append(f"  - {f}")
-    lines.append("Action: Update stale files to reflect current session state.")
 
 if ctx_age:
     if missing or stale:
         lines.append("")
-    lines.append(f"STALE CONTEXT: plans/active-context.md is {ctx_age} days old.")
-    lines.append("  Warning: content may describe a different task than what you're working on now.")
-    lines.append("  Action: Read active-context.md and verify the 'focus:' line matches your current task.")
-    lines.append("          Update it if stale, or delete it to start fresh.")
+    lines.append(f"active-context.md age: {ctx_age} days")
+    lines.append("  note: content may describe a task other than the current one — worth a quick check")
 
 print("\n".join(lines))
 PYEOF
