@@ -36,6 +36,13 @@ if ! $_MISSING_SERENA && ! $_MISSING_CTX; then
     exit 0
 fi
 
+# Notify once per session — pre-tool-gate-v2.sh Section 0/0B is the actual
+# enforcement (hard-denies Grep/source-Read/Bash until init runs), so this
+# hook only needs to surface the status once, not re-nag on every prompt.
+_NOTIFY_FLAG="/tmp/.claude-session-init-notified-$(id -u)-${_SESSION_ID}"
+[[ -f "$_NOTIFY_FLAG" ]] && exit 0
+touch "$_NOTIFY_FLAG" 2>/dev/null || true
+
 # Build the missing steps list
 _STEPS=""
 if $_MISSING_SERENA; then
@@ -47,9 +54,9 @@ if $_MISSING_CTX; then
 fi
 
 cat <<EOF | python3 -c 'import json,sys; m=sys.stdin.read().strip(); print(json.dumps({"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":m}}))'
-[SESSION INIT INCOMPLETE] Run the following via mcp__pctx__execute_typescript BEFORE answering this prompt:
+hook: session-init
+status: pending
+steps not yet run this session:
 $(printf '%b' "$_STEPS")
-Batch all missing steps into ONE execute_typescript call with Promise.all() where possible.
-Also run as a SEPARATE direct tool call (NOT inside execute_typescript): ToolSearch({ query: "select:TaskCreate,TaskUpdate,EnterPlanMode,Monitor,WebSearch" }) to pre-load deferred tool schemas for this session.
-After the init call completes, continue with the user's original request in the same turn.
+note: pre-tool-gate-v2.sh will block Grep, source-file Read, and Bash until these run; batching them into one mcp__pctx__execute_typescript call with Promise.all() avoids hitting that block later in this turn.
 EOF
