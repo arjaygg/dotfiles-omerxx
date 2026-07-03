@@ -109,7 +109,10 @@ validate_conventional_pr_title_or_die "$TITLE" || exit 1
 
 # Check if there are related stories
 # Fix: Search from REPO_ROOT to find docs even if we are in a worktree
-STORY_FILE=$(find "$REPO_ROOT/docs/stories" -name "*.story.md" 2>/dev/null | head -1)
+STORY_FILE=""
+if [ -d "$REPO_ROOT/docs/stories" ]; then
+    STORY_FILE=$(find "$REPO_ROOT/docs/stories" -name "*.story.md" 2>/dev/null | head -1) || true
+fi
 STORY_REF=""
 if [ -n "$STORY_FILE" ]; then
     STORY_NUM=$(basename "$STORY_FILE" .story.md)

@@ -18,20 +18,24 @@ LOG_DIR=".stack-ship"
 LOG_FILE="$LOG_DIR/log.jsonl"
 
 # Helper functions
+# NOTE: log_* helpers write to stderr, not stdout. Several functions below
+# (e.g. build_graph) call these for progress output while also returning
+# data via stdout/command substitution; if logs went to stdout they'd get
+# interleaved into the captured data.
 log_info() {
-  echo -e "${BLUE}ℹ${NC} $*"
+  echo -e "${BLUE}ℹ${NC} $*" >&2
 }
 
 log_success() {
-  echo -e "${GREEN}✅${NC} $*"
+  echo -e "${GREEN}✅${NC} $*" >&2
 }
 
 log_error() {
-  echo -e "${RED}❌${NC} $*"
+  echo -e "${RED}❌${NC} $*" >&2
 }
 
 log_warning() {
-  echo -e "${YELLOW}⚠️${NC}  $*"
+  echo -e "${YELLOW}⚠️${NC}  $*" >&2
 }
 
 # Parse arguments
@@ -224,9 +228,15 @@ main() {
   echo ""
 
   # Build graph
-  mapfile -t graph < <(build_graph "$TARGET_BRANCH")
-  local parent="${graph[0]}"
-  local dependents=$(printf '%s\n' "${graph[@]:1}" | grep -v '^$' || echo "")
+  # NOTE: avoid `mapfile` here — it's a bash 4+ builtin, and macOS ships
+  # bash 3.2 at /bin/bash regardless of a newer bash on $PATH. Use a
+  # portable command-substitution split instead so this works everywhere.
+  local graph_output
+  graph_output=$(build_graph "$TARGET_BRANCH")
+  local parent
+  parent=$(printf '%s\n' "$graph_output" | sed -n '1p')
+  local dependents
+  dependents=$(printf '%s\n' "$graph_output" | sed -n '2,$p' | grep -v '^$' || echo "")
 
   # Print plan
   if [[ -n "$dependents" ]]; then
