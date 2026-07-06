@@ -1,0 +1,44 @@
+{
+  "git-commit-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/axos-agallentes/.dotfiles/.gemini/hooks/git-commit-guard.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "pr-title-conventional-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/axos-agallentes/.dotfiles/.gemini/hooks/pr-title-conventional-guard.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "pre-push-remote-check": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/axos-agallentes/.dotfiles/.gemini/hooks/pre-push-remote-check.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
