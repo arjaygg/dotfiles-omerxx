@@ -2,6 +2,7 @@
 name: silent-failure-hunter
 description: Review code for silent failures, swallowed errors, bad fallbacks, and missing error propagation. Use when debugging mysterious behavior or reviewing error handling.
 tools: Read, Grep, Glob
+model: opus
 ---
 
 # Silent Failure Hunter

@@ -3,6 +3,7 @@ name: cicd-auto-retry
 description: Idempotent CI/CD failure retry agent with single-attempt guarantee and escalation
 version: 1.0
 type: agent
+model: haiku
 ---
 
 # CI/CD Auto-Retry Agent
