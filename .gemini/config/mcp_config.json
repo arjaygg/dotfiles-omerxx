@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "pctx": {
+      "command": "/Users/axos-agallentes/homebrew/bin/pctx",
+      "args": [
+        "mcp",
+        "start",
+        "-q",
+        "--stdio",
+        "-c",
+        "/Users/axos-agallentes/.config/pctx/pctx.json"
+      ]
+    },
+    "lean-ctx": {
+      "command": "/Users/axos-agallentes/.cargo/bin/lean-ctx",
+      "env": {
+        "LEAN_CTX_DATA_DIR": "/Users/axos-agallentes/.lean-ctx"
+      }
+    },
+    "notebooklm": {
+      "command": "/Users/axos-agallentes/.local/bin/notebooklm-mcp",
+      "args": []
+    },
+    "chrome-devtools": {
+      "command": "/Users/axos-agallentes/.local/bin/chrome-devtools-mcp-wrapper.sh",
+      "args": []
+    }
+  }
+}
