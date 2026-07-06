@@ -415,6 +415,18 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash",
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/advisor-escalate.sh"
+            ]
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
             "command": "bash -lc 'lean-ctx hook observe'"
           }
         ]

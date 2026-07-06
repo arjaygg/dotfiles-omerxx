@@ -214,6 +214,18 @@ may change behavior/pricing) and requires Claude Code v2.1.170+ for the Fable pa
 This is distinct from `opusplan` (fixed plan/execution boundary) and subagent delegation
 (explicit, for the whole subtask) — see the comparison in Claude Code's advisor docs.
 
+**Known limitation:** the native advisor is known to go silent on long transcripts —
+above roughly 100K tokens it can return `advisor_tool_result_error`/`unavailable` with
+no fallback firing (see GitHub issues #66784, #66742, #66714, #67609). Do not assume
+it will catch a stuck task once a session has run long. `~/.dotfiles/.claude/hooks/
+advisor-escalate.py`/`.sh` (a `PostToolUse` hook, ported from the Cursor equivalent)
+is a backstop: it tracks recurring identical tool failures and, once a signature
+recurs 3+ times, injects a nudge telling the agent to manually spawn a
+`model: "fable"` (or `opus`) subagent for a second opinion instead of waiting on the
+native advisor. It cannot cover the "before declaring a task complete" trigger —
+`Stop` hooks only support `decision: "block"`, not `additionalContext` — so that
+trigger remains a prose-rule responsibility in each project's `AGENTS.md`.
+
 ### Effort levels (also controls thinking depth)
 
 Effort is the dial for extended thinking — not a separate toggle. Higher effort = more thinking tokens.
