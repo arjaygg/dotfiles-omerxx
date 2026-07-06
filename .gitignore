@@ -60,3 +60,8 @@ ai/skills/coach/coach-persona.ts
 .claude/commands/commands
 .claude/output-styles/output-styles
 **/__pycache__/
+
+# generated data (graphify graph output, token telemetry, hook logs)
+graphify-out/
+tokentelemetry/
+.claude/hooks/.logs/
