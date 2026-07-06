@@ -1,10 +1,11 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
-    "USE_BUILTIN_RIPGREP": "0",
+    "AR_DISABLE_SIMPLIFY_GATE": "1",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_FORK_SUBAGENT": "1",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70"
+    "USE_BUILTIN_RIPGREP": "0"
   },
   "permissions": {
     "allow": [
@@ -40,7 +41,23 @@
       "TaskUpdate(*)",
       "mcp__pctx__*",
       "mcp__graphify__*",
-      "mcp__supermemory__*"
+      "mcp__supermemory__*",
+      "mcp__notebooklm__*",
+      "mcp__exa__*",
+      "mcp__qmd__*",
+      "mcp__repomix__*",
+      "mcp__lean-ctx__ctx_read",
+      "mcp__lean-ctx__ctx_search",
+      "mcp__lean-ctx__ctx_tree",
+      "mcp__lean-ctx__ctx_overview",
+      "mcp__lean-ctx__ctx_plan",
+      "mcp__lean-ctx__ctx_metrics",
+      "mcp__lean-ctx__ctx_compress",
+      "mcp__lean-ctx__ctx_session",
+      "mcp__lean-ctx__ctx_knowledge",
+      "mcp__lean-ctx__ctx_graph",
+      "mcp__lean-ctx__ctx_retrieve",
+      "mcp__lean-ctx__ctx_provider"
     ],
     "deny": [
       "Bash(rm -rf *)",
@@ -98,12 +115,9 @@
   "model": "opusplan",
   "enableAllProjectMcpServers": true,
   "skillOverrides": {
-    "fury": "off",
-    "code-health": "off",
-    "hawk": "off",
-    "stark": "off",
-    "ironman": "off",
-    "story-complete": "off",
+    "ado-workitem": "off",
+    "analytics-api-analyst": "off",
+    "aside": "off",
     "auc-dev-a": "off",
     "auc-dev-b": "off",
     "auc-dev-c": "off",
@@ -111,101 +125,116 @@
     "auc-qa": "off",
     "auc-sm": "off",
     "auc-tech-writer": "off",
-    "start-story": "off",
-    "bmad-help": "off",
-    "bmad-custom-pr-review": "off",
-    "bmad-review-adversarial-general": "off",
-    "bmad-party-mode": "off",
-    "bmad-brainstorming": "off",
-    "bmad-editorial-review-structure": "off",
-    "bmad-editorial-review-prose": "off",
-    "bmad-shard-doc": "off",
-    "bmad-index-docs": "off",
+    "autoresearch": "off",
+    "bmad-bmad-master.agent": "off",
     "bmad-bmm-analyst.agent": "off",
     "bmad-bmm-architect.agent": "off",
-    "bmad-bmm-dev.agent": "off",
-    "bmad-bmm-pm.agent": "off",
-    "bmad-bmm-sm.agent": "off",
-    "bmad-bmm-tea.agent": "off",
-    "bmad-bmm-tech-writer-tech-writer.agent": "off",
-    "bmad-bmm-ux-designer.agent": "off",
-    "bmad-bmm-quick-flow-solo-dev.agent": "off",
-    "bmad-bmm-quick-dev": "off",
-    "bmad-bmm-quick-spec": "off",
+    "bmad-bmm-check-implementation-readiness": "off",
     "bmad-bmm-code-review": "off",
     "bmad-bmm-correct-course": "off",
-    "bmad-bmm-retrospective": "off",
-    "bmad-bmm-dev-story": "off",
-    "bmad-bmm-sprint-status": "off",
-    "bmad-bmm-sprint-planning": "off",
-    "bmad-bmm-document-project": "off",
-    "bmad-bmm-research": "off",
-    "bmad-bmm-check-implementation-readiness": "off",
-    "bmad-bmm-create-prd": "off",
-    "bmad-bmm-create-story": "off",
     "bmad-bmm-create-architecture": "off",
-    "bmad-bmm-create-ux-design": "off",
-    "bmad-bmm-create-product-brief": "off",
     "bmad-bmm-create-epics-and-stories": "off",
-    "bmad-bmm-create-excalidraw-flowchart": "off",
-    "bmad-bmm-create-excalidraw-diagram": "off",
     "bmad-bmm-create-excalidraw-dataflow": "off",
+    "bmad-bmm-create-excalidraw-diagram": "off",
+    "bmad-bmm-create-excalidraw-flowchart": "off",
     "bmad-bmm-create-excalidraw-wireframe": "off",
+    "bmad-bmm-create-prd": "off",
+    "bmad-bmm-create-product-brief": "off",
+    "bmad-bmm-create-story": "off",
+    "bmad-bmm-create-ux-design": "off",
+    "bmad-bmm-dev-story": "off",
+    "bmad-bmm-dev.agent": "off",
+    "bmad-bmm-document-project": "off",
+    "bmad-bmm-pm.agent": "off",
+    "bmad-bmm-quick-dev": "off",
+    "bmad-bmm-quick-flow-solo-dev.agent": "off",
+    "bmad-bmm-quick-spec": "off",
+    "bmad-bmm-research": "off",
+    "bmad-bmm-retrospective": "off",
+    "bmad-bmm-sm.agent": "off",
+    "bmad-bmm-sprint-planning": "off",
+    "bmad-bmm-sprint-status": "off",
+    "bmad-bmm-tea.agent": "off",
+    "bmad-bmm-tech-writer-tech-writer.agent": "off",
     "bmad-bmm-testarch-atdd": "off",
-    "bmad-bmm-testarch-trace": "off",
+    "bmad-bmm-testarch-automate": "off",
+    "bmad-bmm-testarch-ci": "off",
     "bmad-bmm-testarch-framework": "off",
     "bmad-bmm-testarch-nfr": "off",
     "bmad-bmm-testarch-test-design": "off",
     "bmad-bmm-testarch-test-review": "off",
-    "bmad-bmm-testarch-ci": "off",
-    "bmad-bmm-testarch-automate": "off",
-    "bmad-bmad-master.agent": "off",
-    "bmad-bmm-master": "off",
-    "analytics-api-analyst": "off",
-    "data-analyst": "off",
-    "lit-ingest": "off",
-    "ollama": "off",
-    "vision": "off",
-    "claude-in-chrome": "off",
+    "bmad-bmm-testarch-trace": "off",
+    "bmad-bmm-ux-designer.agent": "off",
+    "bmad-brainstorming": "off",
+    "bmad-custom-pr-review": "off",
+    "bmad-editorial-review-prose": "off",
+    "bmad-editorial-review-structure": "off",
+    "bmad-help": "off",
+    "bmad-index-docs": "off",
+    "bmad-party-mode": "off",
+    "bmad-review-adversarial-general": "off",
+    "bmad-shard-doc": "off",
+    "checkpoint": "off",
     "claude-api": "off",
-    "hyper-commit-setup": "off",
-    "keybindings-help": "off",
-    "init": "off",
-    "fewer-permission-prompts": "off",
-    "continuous-learning": "off",
-    "skill-creator:skill-creator": "off",
-    "schedule": "off",
-    "loop": "off",
-    "tmux-automation": "off",
-    "ia": "off",
-    "evolve": "off",
-    "aside": "off",
-    "instinct-export": "off",
+    "claude-architect": "off",
+    "claude-auto": "off",
+    "claude-in-chrome": "off",
+    "code-health": "off",
     "context-eval": "off",
+    "continuous-learning": "off",
+    "data-analyst": "off",
+    "evolve": "off",
+    "fewer-permission-prompts": "off",
+    "findings": "off",
+    "fury": "off",
+    "hawk": "off",
     "hookify": "off",
     "hookify-list": "off",
-    "claude-auto": "off",
+    "hyper-commit-setup": "off",
+    "ia": "off",
+    "init": "off",
+    "instinct-export": "off",
+    "ironman": "off",
+    "keybindings-help": "off",
+    "lit-ingest": "off",
+    "loop": "off",
+    "monitor-patterns": "off",
+    "ollama": "off",
+    "pctx-code-mode": "off",
     "quarantine-analyst": "off",
     "quarantine-triage-live": "off",
-    "autoresearch": "off",
-    "pctx-code-mode": "off",
-    "update-config": "off",
+    "resource-guard": "off",
+    "schedule": "off",
     "session-defer": "off",
     "session-done": "off",
     "session-next": "off",
     "session-picker": "off",
     "session-undefer": "off",
-    "checkpoint": "off",
-    "resource-guard": "off",
-    "claude-architect": "off",
-    "monitor-patterns": "off",
+    "skill-creator:skill-creator": "off",
+    "stark": "off",
+    "start-story": "off",
+    "story-complete": "off",
     "tech-lead": "off",
+    "tmux-automation": "off",
+    "update-config": "off",
+    "vision": "off",
     "watchdog-remediate": "off",
-    "findings": "off",
-    "ado-workitem": "off"
+    "bmad-bmm-master": "off"
   },
   "hooks": {
     "SessionStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/settings-symlink-guard.sh"
+            ]
+          }
+        ]
+      },
       {
         "matcher": ".*",
         "hooks": [
@@ -227,6 +256,15 @@
             "args": [
               "/Users/axos-agallentes/.dotfiles/.claude/hooks/supermemory-project-check.sh"
             ]
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'lean-ctx hook observe'"
           }
         ]
       }
@@ -305,6 +343,33 @@
             ]
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/axos-agallentes/.claude/hooks/rtk-rewrite.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'lean-ctx hook rewrite'"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|read|ReadFile|read_file|View|view|Grep|grep|Search|search|ListFiles|list_files|ListDirectory|list_directory",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'lean-ctx hook redirect'"
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -343,6 +408,15 @@
             ]
           }
         ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'lean-ctx hook observe'"
+          }
+        ]
       }
     ],
     "Notification": [
@@ -371,6 +445,16 @@
             ]
           }
         ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'lean-ctx hook observe'",
+            "timeout": 120
+          }
+        ]
       }
     ],
     "PreCompact": [
@@ -383,6 +467,15 @@
             "args": [
               "/Users/axos-agallentes/.dotfiles/.claude/hooks/pre-compact.sh"
             ]
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'lean-ctx hook observe'"
           }
         ]
       }
@@ -423,6 +516,15 @@
             "args": [
               "/Users/axos-agallentes/.dotfiles/.claude/hooks/task-gate.sh"
             ]
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'lean-ctx hook observe'"
           }
         ]
       }
@@ -512,6 +614,17 @@
           }
         ]
       }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'lean-ctx hook observe'"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
@@ -519,13 +632,29 @@
     "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% \u25b8 %percent% (%remaining%) \u25b8 Cache: %cache_hit% \u25b8 %time% \u25b8 %project%%git_status%%task_list_id%'"
   },
   "enabledPlugins": {
-    "skill-creator@claude-plugins-official": true,
+    "autoresearch@autoresearch": true,
+    "bash-language-server@claude-code-lsps": true,
     "gopls-lsp@claude-plugins-official": true,
-    "bash-language-server@claude-code-lsps": true
+    "skill-creator@claude-plugins-official": true,
+    "supermemory@supermemory-plugins": true
   },
-  "extraKnownMarketplaces": {},
+  "extraKnownMarketplaces": {
+    "autoresearch": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/uditgoenka/autoresearch.git"
+      }
+    },
+    "supermemory-plugins": {
+      "autoUpdate": true,
+      "source": {
+        "repo": "supermemoryai/claude-supermemory",
+        "source": "github"
+      }
+    }
+  },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "medium",
+  "effortLevel": "high",
   "advisorModel": "fable",
   "plansDirectory": "./plans",
   "voice": {
@@ -549,5 +678,8 @@
   "teammateMode": "auto",
   "worktree": {
     "bgIsolation": true
-  }
+  },
+  "tui": "fullscreen",
+  "skipDangerousModePermissionPrompt": true,
+  "skipWorkflowUsageWarning": true
 }
