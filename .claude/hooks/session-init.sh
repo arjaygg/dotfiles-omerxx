@@ -74,7 +74,7 @@ Before the first project file access (Read/Grep/Glob/Serena), you MUST:
   2. Write the result to plans/pctx-functions.md (create plans/ if missing)
   3. Call Serena.initialInstructions() — load project-specific rules
 ${_MEM_HINT}
-  5. Call LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "<task-description>" } }) — REQUIRED to unlock Grep in this session.
+  5. Call LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "<task-description>" } }) — primes lean-ctx task scoping for ctx_search/ctx_read (raw grep/rg stay blocked by global permissions.deny regardless of this call).
 Skip this ONLY if plans/pctx-functions.md already exists and was written today.
 EOT
 )"
@@ -84,7 +84,7 @@ else
 Before the first project file access (Read/Grep/Glob/Serena), you MUST:
   1. Call mcp__pctx__list_functions — confirm current Serena/lean-ctx signatures
   2. Write the result to plans/pctx-functions.md (create plans/ if missing)
-  4. Call LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "<task-description>" } }) — REQUIRED to unlock Grep in this session.
+  4. Call LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "<task-description>" } }) — primes lean-ctx task scoping for ctx_search/ctx_read (raw grep/rg stay blocked by global permissions.deny regardless of this call).
 
 Skip step 3 (Serena.initialInstructions) — no .serena/ config found in this directory tree.
 Skip this ONLY if plans/pctx-functions.md already exists and was written today.
