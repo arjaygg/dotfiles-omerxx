@@ -1,0 +1,69 @@
+---
+description: Model selection for the main agent and Task subagents — frontier models for deep reasoning, low-cost models for trivial work
+alwaysApply: true
+---
+
+# Model & Subagent Routing
+
+Cursor does not auto-route by task complexity — model choice for the main thread is a
+manual/UI decision, and `model` is an explicit argument on every `Task` call. Apply this
+table deliberately; don't default to the same model for every request.
+
+## Main thread (this session)
+
+| Signal | Recommendation |
+|--------|----------------|
+| Trivial: quick lookup, rename, format, boilerplate, simple Q&A | Switch to a fast/cheap model (e.g. `composer-2.5-fast`) or accept `Auto` |
+| Standard coding (most tasks) | `Auto`, or a mid-tier thinking model (e.g. `claude-4.6-sonnet-medium-thinking`) |
+| Deep reasoning: architecture, hard bugs, security/correctness-critical, multi-file refactors | A frontier thinking model (`claude-opus-4-8-thinking-high`, `claude-sonnet-5-thinking-high`, or `gpt-5.5-medium`) — also prefer **Plan Mode** first |
+| Coding-specialized deep task (large diff, codegen-heavy) | `gpt-5.3-codex` |
+| Beyond-frontier: multi-day/long-horizon autonomous work, or Opus-tier already stalled/looped on the problem | `claude-fable-5-thinking-high` — Anthropic's Mythos-class tier, above Opus. Notably more expensive; escalate to it, don't default to it |
+
+If unsure, prefer `Auto` over guessing — it already balances cost/quality. Only hand-pick
+when the task is clearly at one end of the spectrum.
+
+## Auto-escalation (advisor-tool replication)
+
+Cursor has no server-side "advisor" primitive like Claude Code's — there's no mechanism
+that consults a stronger model mid-generation on its own. Approximate it by treating a
+`Task` call to a frontier model as your on-demand second opinion, and self-trigger it at
+the same moments Claude Code's advisor tool would fire:
+
+- **Before committing to an approach** on an ambiguous or high-stakes change
+- **When stuck on a recurring error** — a `postToolUse` hook (`.cursor/hooks/advisor-escalate.sh`)
+  deterministically nudges this one: after the same tool call fails identically 3 times,
+  it injects `additional_context` telling you to escalate. Don't ignore that nudge —
+  stop retrying the same way and spawn the Task it suggests.
+- **Before declaring a hard/ambiguous task done** — no hook enforces this one (Cursor
+  hooks don't reliably support blocking on session completion); it's judgment-based, so
+  apply it yourself on non-trivial tasks.
+
+When escalating, spawn a `Task` with `model: claude-opus-4-8-thinking-high` for most
+cases, or `claude-fable-5-thinking-high` only if the problem looks genuinely hard/ambiguous
+even for Opus-tier. Feed it the relevant context (error text, files touched, what's been
+tried) and ask specifically for root cause / a corrected approach — not a redo of the
+whole task. Apply its guidance, then continue; don't hand off the rest of the task to it
+unless the guidance says the approach itself needs to change.
+
+## Task subagents (`model` param)
+
+Only pass an explicit `model` when the subagent's job is consistently at one end of the
+spectrum. Omit it (inherit default) for variable-complexity work.
+
+| Subagent job | Model |
+|---|---|
+| Mechanical, narrow, well-defined (build-fix loops, config parsing/migration, formatting) | `composer-2.5-fast` |
+| General research / exploration / most `generalPurpose` tasks | `claude-sonnet-5-thinking-high` or omit (default) |
+| Deep reasoning: security review, adversarial review, subtle-bug hunting, architecture review | `claude-opus-4-8-thinking-high` |
+| Large/complex codegen or refactor subagent | `gpt-5.3-codex` |
+| Escalation only: an Opus-tier subagent already failed/looped on a genuinely hard, long-horizon problem | `claude-fable-5-thinking-high` — reserve for rare cases, not routine delegation |
+
+## Subagent usage (when to delegate at all)
+
+Use `Task` when the work is:
+- Independent and parallelizable with other work (batch multiple `Task` calls in one message)
+- A specialized review (`bugbot`, `security-review`, `database-reviewer`, etc.) that benefits from isolation
+- Large enough in scope that it would otherwise dominate the main thread's context
+
+Don't spawn a subagent for single-file, few-step edits — do it directly. Never delegate
+the entire user request just to "return the result" (see `Task` tool guidance).
