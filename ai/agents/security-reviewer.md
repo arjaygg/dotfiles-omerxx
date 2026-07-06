@@ -2,6 +2,7 @@
 name: security-reviewer
 description: OWASP-based security code reviewer. Audits API endpoints, auth flows, input validation, secrets handling, and dependency CVEs. Use for security review of new features, auth changes, or dependency updates.
 tools: Read, Edit, Bash, Grep, Glob
+model: opus
 ---
 
 # Security Reviewer

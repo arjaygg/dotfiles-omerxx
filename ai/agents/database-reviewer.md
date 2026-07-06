@@ -2,6 +2,7 @@
 name: database-reviewer
 description: PostgreSQL schema and query reviewer. Audits indexes, RLS policies, query plans, transaction scope, and N+1 patterns. Use when reviewing database migrations, schema changes, or slow queries.
 tools: Read, Edit, Write, Bash, Grep, Glob
+model: opus
 ---
 
 # Database Reviewer
