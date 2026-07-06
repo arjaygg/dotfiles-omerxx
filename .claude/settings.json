@@ -95,7 +95,7 @@
     ],
     "defaultMode": "acceptEdits"
   },
-  "model": "sonnet",
+  "model": "opusplan",
   "enableAllProjectMcpServers": true,
   "skillOverrides": {
     "fury": "off",
@@ -526,7 +526,7 @@
   "extraKnownMarketplaces": {},
   "alwaysThinkingEnabled": true,
   "effortLevel": "medium",
-  "advisorModel": "opus",
+  "advisorModel": "fable",
   "plansDirectory": "./plans",
   "voice": {
     "enabled": true,
