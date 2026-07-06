@@ -81,10 +81,12 @@ Exit codes: `0` = score ≥ threshold (or no `--gate` set), `1` = score < thresh
 
 Start at 10.0, apply penalties, clamp to [1.0, 10.0].
 
-**Bands:**
-- 9.0–10.0 → **Healthy** (green): maintainable, low cognitive load
-- 4.0–8.9 → **Warning** (yellow): accumulating debt, targeted refactors recommended
-- 1.0–3.9 → **Alert** (red): high cognitive load, refactor before adding features
+**Bands** (canonical scheme — defined once in the project's `AGENTS.md` § Code Health & Coverage
+Gates, referenced here rather than restated, since that table is what `refactor`/`ironman`
+actually gate on):
+- ≥ 9.5 → **AI-ready** (green): proceed normally
+- 7.0–9.4 → **Warning** (yellow): feature work allowed; expect ironman self-correction loops
+- < 7.0 → **Alert** (red): run `/cap --mode uplift` first, then retry
 
 ---
 

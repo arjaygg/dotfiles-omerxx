@@ -179,7 +179,7 @@ Apply the language-appropriate checks below. For each dimension, pick the checks
 
 **Quality checks:**
 
-*Go:* Missing table-driven tests → MEDIUM, missing godoc → LOW/MEDIUM, `fmt.Errorf` without project constructors → MEDIUM, cognitive complexity >4 → MEDIUM / >6 → HIGH, dead code → LOW; Code Health: `make code-health-json 2>/dev/null | .github/scripts/code-health-score.sh /dev/stdin 0` — score ≥7.0 → LOW, 4.0–6.9 → MEDIUM, <4.0 → HIGH, <2.0 → CRITICAL (skip if unavailable)
+*Go:* Missing table-driven tests → MEDIUM, missing godoc → LOW/MEDIUM, `fmt.Errorf` without project constructors → MEDIUM, cognitive complexity >4 → MEDIUM / >6 → HIGH, dead code → LOW; Code Health: `make code-health-json 2>/dev/null | .github/scripts/code-health-score.sh /dev/stdin 0` — score ≥9.5 (AI-ready) → LOW, 7.0–9.4 (Warning) → MEDIUM, <7.0 (Alert) → HIGH — bands per the project AGENTS.md § Code Health & Coverage Gates, referenced not restated (skip if unavailable)
 *Python:* Missing `@pytest.mark.parametrize` on repeated test patterns → MEDIUM, missing docstrings on public API → LOW/MEDIUM, bare `except: pass` → HIGH, cognitive complexity >4 → MEDIUM / >6 → HIGH; run `python -m ruff check . && python -m mypy .`
 *TypeScript:* Implicit `any` → MEDIUM, `"strict": true` missing in tsconfig → HIGH, missing test coverage for exports → MEDIUM, cognitive complexity >4 → MEDIUM / >6 → HIGH; run `npx tsc --noEmit && npx eslint .`
 
@@ -262,7 +262,7 @@ Detect language first: `go.mod` → Go, `pyproject.toml`/`requirements.txt` → 
 
 Detect language first: `go.mod` → Go, `pyproject.toml`/`requirements.txt` → Python, `tsconfig.json`+`package.json` → TypeScript.
 
-**Go checks:** Missing table-driven tests → MEDIUM, missing godoc → LOW/MEDIUM, `fmt.Errorf` without project constructors → MEDIUM, cognitive complexity >4 → MEDIUM / >6 → HIGH, dead code → LOW; Code Health: `make code-health-json 2>/dev/null | .github/scripts/code-health-score.sh /dev/stdin 0` — ≥7.0 → LOW, 4.0–6.9 → MEDIUM, <4.0 → HIGH, <2.0 → CRITICAL; hotspot escalation (≥5 commits/90d on top finding file → +1 severity); skip if unavailable
+**Go checks:** Missing table-driven tests → MEDIUM, missing godoc → LOW/MEDIUM, `fmt.Errorf` without project constructors → MEDIUM, cognitive complexity >4 → MEDIUM / >6 → HIGH, dead code → LOW; Code Health: `make code-health-json 2>/dev/null | .github/scripts/code-health-score.sh /dev/stdin 0` — ≥9.5 (AI-ready) → LOW, 7.0–9.4 (Warning) → MEDIUM, <7.0 (Alert) → HIGH — bands per the project AGENTS.md § Code Health & Coverage Gates, referenced not restated; hotspot escalation (≥5 commits/90d on top finding file → +1 severity); skip if unavailable
 **Python checks:** Missing `@pytest.mark.parametrize` → MEDIUM, missing docstrings → LOW/MEDIUM, bare `except: pass` → HIGH, cognitive complexity >4 → MEDIUM / >6 → HIGH; run `python -m ruff check . && python -m mypy .`
 **TypeScript checks:** Implicit `any` → MEDIUM, missing `"strict": true` in tsconfig → HIGH, missing tests for exports → MEDIUM, cognitive complexity >4 → MEDIUM / >6 → HIGH; run `npx tsc --noEmit && npx eslint .`
 
