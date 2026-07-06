@@ -179,6 +179,40 @@ No manual `/model` switching needed for the plan→execute flow.
 | Trivial lookup, quick Q&A, classify | Haiku | `/model haiku` |
 | Standard coding (default) | Sonnet | (default via opusplan) |
 | Complex reasoning, architecture, hard bugs | Opus | `/model opus` or use plan mode |
+| Beyond-frontier: multi-day/long-horizon agentic work, or Opus already stalled on the problem | Fable 5 | `/model fable` |
+
+**Fable 5 is an escalation, not a default.** It's Anthropic's Mythos-class tier — above
+Opus, priced well above it, and built for days-long asynchronous work. Reserve `/model
+fable` for tasks that genuinely need it; don't leave it selected as your daily driver
+(it persists across sessions once chosen, so switch back explicitly when done).
+
+**No `fableplan` hybrid exists.** `opusplan` (Opus in plan mode → Sonnet in execution) is
+the only built-in hybrid alias. To get Fable-level planning with cheaper execution, do it
+manually: `/model fable` → plan → accept → `/model opus` (or `sonnet`) before execution.
+
+**`best` alias**: resolves to Fable 5 where your account has access, otherwise the latest
+Opus. Useful as a settings-file default in orgs with mixed Fable access.
+
+### Auto-escalation via the advisor tool
+
+The advisor tool is the one **real auto-escalation** mechanism: the main model decides,
+mid-task, that it's stuck and consults a stronger model for guidance before continuing —
+no manual `/model` switch, no fixed phase boundary. It's still experimental (Anthropic
+may change behavior/pricing) and requires Claude Code v2.1.170+ for the Fable pairing.
+
+- **Configured here**: `advisorModel: "fable"` in `settings.json` — Sonnet/Opus (the main
+  model) auto-consults Fable 5 when it needs a stronger opinion.
+- **When it fires**: model-driven, not rule-based. Typically before committing to an
+  approach, when an error keeps recurring, or before declaring a task done.
+- **Cost**: only the advisor's short reply (~400-700 tokens) is billed at the advisor's
+  rate — not the whole task. Cheap even with Fable as the advisor.
+- **Steer it**: say so directly in a prompt, e.g. `consult the advisor before you
+  continue` or `don't consult the advisor for this`. There's no setting to cap/force calls.
+- **Disable**: `/advisor off` for the session, or `CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1` to
+  turn it off entirely.
+
+This is distinct from `opusplan` (fixed plan/execution boundary) and subagent delegation
+(explicit, for the whole subtask) — see the comparison in Claude Code's advisor docs.
 
 ### Effort levels (also controls thinking depth)
 
@@ -203,6 +237,25 @@ Fast mode uses the same model at 2.5x speed at 6x cost. Quality is identical.
 
 Combining `/fast on` + `/effort low` = maximum throughput for trivial tasks.
 Combining `/fast on` + `/effort high` = best interactive experience for standard work.
+
+### Subagent model routing
+
+Subagents declare their own model via the `model:` frontmatter field in
+`.claude/agents/*.md` (accepts `opus`, `sonnet`, `haiku`, `inherit`, or an explicit
+model ID). Unset means "inherit the orchestrator's current model" — this is correct
+for agents whose complexity varies with the task (e.g. `cicd-monitor`, `cicd-review`).
+
+Set an explicit override only when the agent's job is consistently at one end of the
+complexity spectrum:
+
+| Signal | Model | Example agents |
+|--------|-------|-----------------|
+| Deep reasoning, security/correctness stakes, subtle bugs | `opus` | `security-reviewer`, `database-reviewer`, `silent-failure-hunter` |
+| Variable complexity, default is fine | unset (`inherit`) | `cicd-monitor`, `cicd-review`, `cicd-audit` |
+| Mechanical, narrow, well-defined diagnostic loop | `haiku` | `go-build-resolver`, `cicd-auto-retry` |
+
+Applies when authoring or editing any `.claude/agents/*.md` file. Re-evaluate the tier
+if an agent's responsibility changes materially.
 
 ### Plan mode
 
