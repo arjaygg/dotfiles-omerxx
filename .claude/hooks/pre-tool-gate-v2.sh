@@ -206,22 +206,25 @@ fi
 # SECTION 2: Bash guards
 # ============================================================
 if [[ "$TOOL_NAME" == "Bash" ]]; then
-    # 2a. grep (but not git grep) — use Grep tool
+    # 2a. grep (but not git grep) — no Grep tool exists in this session; use LeanCtx.ctxSearch
     if [[ ( "$CMD" == grep\ * || "$CMD" == grep\ -* ) && "$CMD" != *"git grep"* ]]; then
-        _deny "BLOCKED: Use the Grep tool or LeanCtx.ctxSearch instead of 'grep'.
-  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ query: '<pattern>' })"
+        _deny "BLOCKED: Use LeanCtx.ctxSearch instead of 'grep' (no Grep tool exists in this session).
+  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ query: '<pattern>' })
+  Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
     fi
 
-    # 2b. find → use Glob or Serena.findFile
+    # 2b. find → no Glob tool exists in this session; use Serena.findFile
     if [[ "$CMD" == find\ * ]]; then
-        _deny "BLOCKED: Use the Glob tool or Serena.findFile instead of 'find'.
-  Use: Glob with a glob pattern, or execute_typescript: await Serena.findFile('<filename>')"
+        _deny "BLOCKED: Use Serena.findFile instead of 'find' (no Glob tool exists in this session).
+  Call via: mcp__pctx__execute_typescript with: await Serena.findFile('<filename>')
+  Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
     fi
 
-    # 2c. plain ls (not ls -l* for symlink inspection)
+    # 2c. plain ls (not ls -l* for symlink inspection) — no Glob tool exists in this session; use Serena.listDir
     if [[ ( "$CMD" == ls\ * || "$CMD" == "ls" ) && "$CMD" != ls\ -l* ]]; then
-        _deny "BLOCKED: Use the Glob tool or Serena.listDir instead of 'ls'.
-  Call via: Glob tool with pattern, or: await Serena.listDir('<path>')"
+        _deny "BLOCKED: Use Serena.listDir instead of 'ls' (no Glob tool exists in this session).
+  Call via: mcp__pctx__execute_typescript with: await Serena.listDir('<path>')
+  Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
     fi
 
     # 2d. git commit on main/master
