@@ -318,7 +318,11 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Mult
         if [[ "$_EDIT_BRANCH" == "main" || "$_EDIT_BRANCH" == "master" ]]; then
             # Exempt: plans/ files (session bookkeeping, always on current branch)
             #         .trees/ paths (already in a worktree)
-            if [[ ! "$FILE_PATH" =~ (^|/)(plans|\.trees)/ ]]; then
+            #         .claude/projects/*/memory/ (auto-memory storage) — $HOME can
+            #         itself be a git repo on main for unrelated project work; that
+            #         must never gate Claude's own memory writes.
+            if [[ ! "$FILE_PATH" =~ (^|/)(plans|\.trees)/ ]] && \
+               [[ ! "$FILE_PATH" =~ /\.claude/projects/[^/]+/memory/ ]]; then
                 _SUGGESTED_BRANCH=""
                 _HINT_FILE="/tmp/.claude-stack-hint-$(id -u)-${CLAUDE_SESSION_ID:-}"
                 [[ -f "$_HINT_FILE" ]] && _SUGGESTED_BRANCH=$(cat "$_HINT_FILE" 2>/dev/null)
