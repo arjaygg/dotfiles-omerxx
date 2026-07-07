@@ -113,7 +113,7 @@
     ],
     "defaultMode": "acceptEdits"
   },
-  "model": "opusplan",
+  "model": "sonnet",
   "enableAllProjectMcpServers": true,
   "skillOverrides": {
     "ado-workitem": "off",
@@ -266,6 +266,18 @@
           {
             "type": "command",
             "command": "bash -lc 'lean-ctx hook observe'"
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": [
+              "/Users/axos-agallentes/.dotfiles/.claude/hooks/model-availability-check.sh"
+            ]
           }
         ]
       }
@@ -455,7 +467,8 @@
             "command": "bash",
             "args": [
               "/Users/axos-agallentes/.dotfiles/.claude/hooks/userpromptsubmit.sh"
-            ]
+            ],
+            "timeout": 120
           }
         ]
       },
@@ -640,14 +653,15 @@
       }
     ]
   },
+  "worktree": {},
   "statusLine": {
     "type": "command",
-    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% \u25b8 %percent% (%remaining%) \u25b8 Cache: %cache_hit% \u25b8 %time% \u25b8 %project%%git_status%%task_list_id%'"
+    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ Cache: %cache_hit% ▸ %time% ▸ %project%%git_status%%task_list_id%'"
   },
   "enabledPlugins": {
-    "autoresearch@autoresearch": true,
-    "bash-language-server@claude-code-lsps": true,
-    "gopls-lsp@claude-plugins-official": true,
+    "autoresearch@autoresearch": false,
+    "bash-language-server@claude-code-lsps": false,
+    "gopls-lsp@claude-plugins-official": false,
     "skill-creator@claude-plugins-official": true,
     "supermemory@supermemory-plugins": true
   },
@@ -659,40 +673,36 @@
       }
     },
     "supermemory-plugins": {
-      "autoUpdate": true,
       "source": {
-        "repo": "supermemoryai/claude-supermemory",
-        "source": "github"
-      }
+        "source": "github",
+        "repo": "supermemoryai/claude-supermemory"
+      },
+      "autoUpdate": true
     }
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",
   "advisorModel": "fable",
   "plansDirectory": "./plans",
+  "tui": "fullscreen",
   "voice": {
     "enabled": true,
     "mode": "hold"
   },
+  "skipWorkflowUsageWarning": true,
   "preferredNotifChannel": "ghostty",
+  "teammateMode": "auto",
   "autoMode": {
     "environment": [
       "Organization: Axos Financial / Axos Bank. Primary use: software development.",
-      "Source control: dev.azure.com/bofaz and bofaz.visualstudio.com \u2014 all repos and projects under these organizations.",
+      "Source control: dev.azure.com/bofaz and bofaz.visualstudio.com — all repos and projects under these organizations.",
       "Key projects: Axos-Universal-Core, Axos Clearing, Axos Core Services, Axos-Crypto-Core, AAS, AxPay, AxTrader, Stock Lending Services.",
       "Azure DevOps CLI org: https://dev.azure.com/bofaz. PR creation org: https://bofaz.visualstudio.com.",
       "Local development: macOS, git worktrees under .trees/, homebrew at /Users/axos-agallentes/homebrew/."
     ]
   },
   "voiceEnabled": true,
-  "compactCustomInstructions": "After compaction, immediately re-read plans/active-context.md before doing anything else \u2014 it is the authoritative resume point. Do not waste summary tokens on content already captured in plans/ files (active-context.md, decisions.md, progress.md) \u2014 those files persist on disk and will be re-read. Focus the summary on: in-flight tool call results not yet written to disk, ephemeral error messages, and any decisions made verbally that have not been recorded. Always preserve: current branch name, uncommitted file list, active plan file path, and the exact task being worked on at the moment of compaction.",
+  "compactCustomInstructions": "After compaction, immediately re-read plans/active-context.md before doing anything else — it is the authoritative resume point. Do not waste summary tokens on content already captured in plans/ files (active-context.md, decisions.md, progress.md) — those files persist on disk and will be re-read. Focus the summary on: in-flight tool call results not yet written to disk, ephemeral error messages, and any decisions made verbally that have not been recorded. Always preserve: current branch name, uncommitted file list, active plan file path, and the exact task being worked on at the moment of compaction.",
   "autoCompact": true,
-  "autoMemory": false,
-  "teammateMode": "auto",
-  "worktree": {
-    "bgIsolation": true
-  },
-  "tui": "fullscreen",
-  "skipDangerousModePermissionPrompt": true,
-  "skipWorkflowUsageWarning": true
+  "autoMemory": false
 }
