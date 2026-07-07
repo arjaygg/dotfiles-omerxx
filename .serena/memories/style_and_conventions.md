@@ -12,7 +12,7 @@ NEVER: Bash cat/grep/find/ls for project file operations.
 ## MCP Architecture
 - All MCP traffic routes through pctx gateway
 - Gateway config: /Users/axos-agallentes/.config/pctx/pctx.json
-- Servers: serena, exa, sequential-thinking, notebooklm, markitdown
+- Servers (verified 2026-07-07): serena, qmd, lean-ctx, repomix, graphify
 - Serena uses --context claude-code (LSP tools only, no file mutation)
 - Agent configs contain ONLY the pctx entry — nothing else
 
