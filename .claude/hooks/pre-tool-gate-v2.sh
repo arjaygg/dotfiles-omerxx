@@ -42,6 +42,14 @@ _branch_for_path() {
     git -C "$dir" branch --show-current 2>/dev/null || echo ""
 }
 
+# Declarative block/warn rules from hook-config.yaml (sed/awk/echo/printf/tee
+# redirects, read-guards for node_modules/go.sum/repomix output). Sourced
+# after _deny() so check_bash_cmd_rules/check_read_path_rules use it directly
+# instead of the non-blocking exit 1 fallback.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=hook-rule-loader.sh
+source "${SCRIPT_DIR}/hook-rule-loader.sh"
+
 INPUT=$(cat)
 
 # --- Single JSON parse via jq ---
@@ -54,8 +62,15 @@ eval "$(echo "$INPUT" | jq -r '
   @sh "PROMPT=\(.tool_input.prompt // "")",
   @sh "SUBAGENT=\(.tool_input.subagent_type // "")",
   @sh "RUN_BG=\(.tool_input.run_in_background // false)",
-  @sh "CONTENT=\(.tool_input.content // "")"
+  @sh "CONTENT=\(.tool_input.content // "")",
+  @sh "SESSION_ID=\(.session_id // "")"
 ' 2>/dev/null)" 2>/dev/null || exit 0
+
+# session_id arrives via the stdin JSON payload, not an env var — no
+# CLAUDE_SESSION_ID is ever set in hook environments. EFFECTIVE_SESSION_ID
+# mirrors post-tool-analytics.sh's fallback so flag files set by one script
+# are found by the other.
+EFFECTIVE_SESSION_ID="${SESSION_ID:-${CLAUDE_SESSION_ID:-default}}"
 
 # ============================================================
 # GUARD: empty TOOL_NAME → eval failed silently; block to prevent pass-through
@@ -66,13 +81,13 @@ _INIT_STEPS=$'  1. Call mcp__pctx__list_functions\n  2. Write result to plans/pc
 
 # ============================================================
 # SECTION 0: Serena session-init gate
-# Only active in real Claude sessions (CLAUDE_SESSION_ID is set by the runtime).
+# Only active in real Claude sessions (session_id present in the stdin payload).
 # Blocks Grep AND source-file Reads before Serena has been initialized, so the
 # model is forced to call mcp__pctx__list_functions → Serena.initialInstructions() first.
 # Plan/config files (.md, .json, .yaml) are exempt — only code files are gated.
 # ============================================================
-if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
-    _INIT_FLAG="/tmp/.claude-serena-init-$(id -u)-${CLAUDE_SESSION_ID}"
+if [[ -n "$SESSION_ID" ]]; then
+    _INIT_FLAG="/tmp/.claude-serena-init-$(id -u)-${EFFECTIVE_SESSION_ID}"
 
     # Honor "skip if plans/pctx-functions.md was written today" — auto-set the temp flag
     # so a warmed session (file exists from today) doesn't re-block tools on a new session ID.
@@ -127,8 +142,8 @@ fi
 # Blocks Grep unless LeanCtx.ctxIntent or ctxBatchExecute was called.
 # These tools load live project context — always current, not manually curated.
 # ============================================================
-if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
-    _CTX_FLAG="/tmp/.claude-ctx-loaded-$(id -u)-${CLAUDE_SESSION_ID}"
+if [[ -n "$SESSION_ID" ]]; then
+    _CTX_FLAG="/tmp/.claude-ctx-loaded-$(id -u)-${EFFECTIVE_SESSION_ID}"
     if [[ "$TOOL_NAME" == "Grep" && ! -f "$_CTX_FLAG" ]]; then
         _deny "BLOCKED: Context not yet loaded in this session.
   Before using Grep, load project context with:
@@ -145,7 +160,7 @@ fi
 if [[ "$TOOL_NAME" == mcp__serena__* ]] || [[ "$TOOL_NAME" == mcp__pctx__* ]]; then
     if [[ "$TOOL_NAME" != "mcp__pctx__execute_typescript" ]]; then
         # Direct Serena/pctx call (not batched) — check counter
-        _COUNTER_FILE="/tmp/.claude-serena-calls-$(id -u)-${CLAUDE_SESSION_ID:-}"
+        _COUNTER_FILE="/tmp/.claude-serena-calls-$(id -u)-${EFFECTIVE_SESSION_ID}"
         if [[ -f "$_COUNTER_FILE" ]]; then
             _COUNT=$(wc -l < "$_COUNTER_FILE" 2>/dev/null || echo 0)
             if [[ "$_COUNT" -ge 4 ]]; then
@@ -160,6 +175,9 @@ fi
 # SECTION 1: Read guards
 # ============================================================
 if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
+    # 1-pre. Declarative read-guard.* rules from hook-config.yaml (node_modules, etc.)
+    check_read_path_rules "$FILE_PATH"
+
     # 1a. Lock files — never read directly (backup for deny list)
     case "${FILE_PATH##*/}" in
         package-lock.json|yarn.lock|Cargo.lock|pnpm-lock.yaml|composer.lock|Gemfile.lock)
@@ -217,6 +235,10 @@ fi
 # SECTION 2: Bash guards
 # ============================================================
 if [[ "$TOOL_NAME" == "Bash" ]]; then
+    # 2-pre. Declarative rule.* rules from hook-config.yaml (sed -i, awk>file,
+    # echo/printf redirects, piped tee — real gaps not caught by 2a-2g below)
+    check_bash_cmd_rules "$CMD"
+
     # 2a. grep (but not git grep) — no Grep tool exists in this session; use LeanCtx.ctxSearch
     if [[ ( "$CMD" == grep\ * || "$CMD" == grep\ -* ) && "$CMD" != *"git grep"* ]]; then
         _deny "BLOCKED: Use LeanCtx.ctxSearch instead of 'grep' (no Grep tool exists in this session).
@@ -324,7 +346,7 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Mult
             if [[ ! "$FILE_PATH" =~ (^|/)(plans|\.trees)/ ]] && \
                [[ ! "$FILE_PATH" =~ /\.claude/projects/[^/]+/memory/ ]]; then
                 _SUGGESTED_BRANCH=""
-                _HINT_FILE="/tmp/.claude-stack-hint-$(id -u)-${CLAUDE_SESSION_ID:-}"
+                _HINT_FILE="/tmp/.claude-stack-hint-$(id -u)-${EFFECTIVE_SESSION_ID}"
                 [[ -f "$_HINT_FILE" ]] && _SUGGESTED_BRANCH=$(cat "$_HINT_FILE" 2>/dev/null)
                 _REASON="BLOCKED: Editing '$FILE_PATH' on '$_EDIT_BRANCH'. Create a stacked branch first:"
                 if [[ -n "$_SUGGESTED_BRANCH" ]]; then
@@ -455,7 +477,7 @@ if [[ -f "${HOME}/.config/pctx/pctx.json" ]]; then
     # Without this, Section 2a says "use the Grep tool" while this section
     # denies it, and the model ping-pongs between Bash grep and Grep forever.
     if [[ "$TOOL_NAME" == "Grep" && -n "$PATTERN" ]]; then
-        if [[ -n "${CLAUDE_SESSION_ID:-}" && -f "/tmp/.claude-ctx-loaded-$(id -u)-${CLAUDE_SESSION_ID}" ]]; then
+        if [[ -f "/tmp/.claude-ctx-loaded-$(id -u)-${EFFECTIVE_SESSION_ID}" ]]; then
             _SERENA_LEVEL="warn"
         fi
         _SERENA_PREFIX="HINT"

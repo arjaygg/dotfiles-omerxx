@@ -123,10 +123,12 @@ if [[ "$TOOL_NAME" == mcp__serena__* || "$TOOL_NAME" == mcp__pctx__* ]]; then
         # Batched call — reset counter
         rm -f "$TRACKER" 2>/dev/null || true
 
-        # Detect context-loading calls (ctxIntent or ctxBatchExecute)
+        # Detect context-loading calls — actual mandated form is
+        # LeanCtx.ctxCall({ name: "ctx_intent", ... }), a snake_case dispatch
+        # name string, not a top-level ctxIntent()/ctxBatchExecute() call.
         SCRIPT=$(echo "$INPUT" | jq -r '.tool_input.code // empty' 2>/dev/null)
         if [[ -n "$SCRIPT" ]]; then
-            if echo "$SCRIPT" | grep -qE "ctxIntent|ctxBatchExecute"; then
+            if echo "$SCRIPT" | grep -qE "ctx_intent"; then
                 # Mark that context has been loaded in this session
                 touch "/tmp/.claude-ctx-loaded-$(id -u)-${EFFECTIVE_SESSION_ID}" 2>/dev/null || true
             fi

@@ -1,5 +1,15 @@
 # Progress — 2026-06-12
 
+## Done — 2026-07-08 constitution-hooks-audit Phase 1
+
+Executed `plans/2026-07-08-constitution-hooks-audit.md` Phase 1 per user "go" (Phase 0 explicitly skipped by user).
+
+- [x] C1 — `pre-tool-gate-v2.sh` session-id detection: env var → jq-parsed stdin field, with `EFFECTIVE_SESSION_ID` fallback
+- [x] `post-tool-analytics.sh` flag-matcher — confirmed already correct, no change needed
+- [x] H3 — `hook-config.yaml` dead `rule.*`/`read-guard.*` layer: registered `hook-rule-loader.sh` (fixed its `_deny()` blocking, sourced from `pre-tool-gate-v2.sh`, wired into Sections 1/2); verified live with simulated hook payloads
+- [x] M4 — `session-duration-guard.sh` 500-turn hard block: `exit 1` → `exit 2`
+- Phases 2-4 of that audit remain unexecuted, no user decision yet
+
 ## In Progress — 2026-07-07 harness improvement execution
 
 Executing `plans/2026-07-07-ai-harness-improvement-proposal.md` per user "go" (Phase 0/#7/#10 excluded).
