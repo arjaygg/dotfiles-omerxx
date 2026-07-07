@@ -31,6 +31,17 @@ _deny() {
     exit 0
 }
 
+# Resolve the current branch of the repo that actually owns a file path,
+# rather than the hook process's own cwd — a bare `git branch --show-current`
+# reflects the session's home repo, which is wrong for any FILE_PATH pointing
+# into a different repo (e.g. a cross-repo Write via absolute path).
+_branch_for_path() {
+    local path="$1"
+    local dir
+    dir=$(dirname -- "$path" 2>/dev/null) || return 0
+    git -C "$dir" branch --show-current 2>/dev/null || echo ""
+}
+
 INPUT=$(cat)
 
 # --- Single JSON parse via jq ---
@@ -303,7 +314,7 @@ fi
 # 3b. Edit/Write/MultiEdit on main/master branch — hard block (stacking enforcement)
 if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "MultiEdit" ]]; then
     if [[ -n "$FILE_PATH" ]]; then
-        _EDIT_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+        _EDIT_BRANCH=$(_branch_for_path "$FILE_PATH")
         if [[ "$_EDIT_BRANCH" == "main" || "$_EDIT_BRANCH" == "master" ]]; then
             # Exempt: plans/ files (session bookkeeping, always on current branch)
             #         .trees/ paths (already in a worktree)
