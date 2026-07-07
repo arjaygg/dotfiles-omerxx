@@ -1,6 +1,13 @@
 # Active Context
 
-focus: supermemory self-hosted validation — complete (2026-07-04)
+plan: plans/2026-07-07-ai-harness-improvement-proposal.md
+focus: harness improvement proposal drafted from /insights + reconciled against paused 2026-06-12 plan — awaiting user review, no execution yet
+
+## Current (2026-07-07)
+
+Drafted `plans/2026-07-07-ai-harness-improvement-proposal.md` reconciling the `/insights` report against the paused 2026-06-12 audit. Key finding: uncommitted `.claude/settings.json` diff on branch `fix/session-init-unlock-grep-claim` adds `skipDangerousModePermissionPrompt: true`, regressing paused Step 13 and conflicting with the user's standing rule against skip-permissions/don't-ask mode — flagged as Phase 0 in the proposal, not yet fixed. Also found pctx SDK drift (Qmd/LeanCtx) not reflected in `ai/rules/tool-priority.md` §10, and an undocumented Graphify namespace relevant to PR workflows. Nothing in the new proposal has been executed.
+
+focus (previous): supermemory self-hosted validation — complete (2026-07-04)
 
 ## Last Session (2026-07-04)
 

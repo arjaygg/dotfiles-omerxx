@@ -1,6 +1,24 @@
 # Progress — 2026-06-12
 
-## In Progress
+## In Progress — 2026-07-07 harness improvement execution
+
+Executing `plans/2026-07-07-ai-harness-improvement-proposal.md` per user "go" (Phase 0/#7/#10 excluded).
+
+- [x] #4/#5 — `ai/rules/tool-priority.md` §10: fix Qmd.query/LeanCtx.ctxCall drift, add Graphify routing table
+- [x] #6 — Fix stale MCP-server list in `style_and_conventions` Serena memory (serena, qmd, lean-ctx, repomix, graphify, verified against pctx.json)
+- [x] #8 — `.claude/hooks/git-commit-guard.sh`: added commitlint body-max-line-length check (100 chars, trailers exempt). Also fixed a real prerequisite bug found along the way: the existing subject-format check (Policy A) silently no-op'd on heredoc-style `git commit -m "$(cat <<'EOF' ... EOF)"` commits — the exact form this system's own git instructions mandate for multi-line/co-authored commits — because the old single-line sed regex never matched across the heredoc's newlines. Added `extract_commit_message()` to handle both forms; verified via 3 simulated PreToolUse JSON inputs (heredoc+bad body → blocks, heredoc+good body → passes, single-line non-conventional subject → still blocks as before). No repo-side CI (`.github/workflows/claude-auto*.yml`) references commitlint at all — confirms the insights "CI failures" happened in other repos, so this machine-wide hook (not a dotfiles-repo CI change) was the correct fix location.
+- [x] #9 — Added "Communication" section to `ai/rules/agent-user-global.md` (ask before implementing on ambiguous shorthand)
+- [x] #11 — New `.claude/hooks/model-availability-check.sh` SessionStart hook (registered in `settings.json` alongside `session-init.sh`/`supermemory-project-check.sh`). Best-effort, fail-open checks: (1) `model`/`advisorModel` from project-then-global `settings.json` match a known alias/ID pattern, (2) at least one recognized auth mechanism present (`ANTHROPIC_API_KEY`, Bedrock/Vertex env vars, or `~/.claude/.credentials.json`), (3) `api.anthropic.com` reachable within a 2s timeout. Emits a clear `additionalContext` message only when issues are found (silent on the healthy path). Directly targets the insights report's "model access and API failures" friction category (sessions that ended with no response at all). Verified: clean run against real config (no output, exit 0), and a synthetic bad-model/bad-advisor/no-auth run (all 3 issues correctly detected, valid JSON, exit 0).
+- [x] #12a (Step 4, alias cleanup) — already resolved via `decisions/0003-universal-constitution-loading.md`; `global-developer-guidelines.md` file is gone, zero live references (only historical mentions in `decisions/`/`plans/`)
+- [ ] #12b (Step 5, restore corrupted `ai/commands/{aside,hookify,instinct-export}.md`) — BLOCKED: needs the actual "Everything Claude Code" upstream repo URL/ref to restore from; not guessing a GitHub URL. Needs user input.
+- [x] #12c (Step 6, skill frontmatter sweep) — RE-SCOPED, not a frontmatter edit task. The 2026-06-12 plan's 11-skill list is stale: commit 392a764 (PR #258, merged 2026-06-18, six days after the plan was written) already descoped AUC-specific skills out of this repo. `migration-watchdog`, `migration-watchdog-auto` moved to `auc-conversion/.claude/skills/`; `auc-dev-a/b/c` never lived here (they're in `auc-conversion/.claude/agents/` per `plans/2026-04-02-bmad-learnings.md`). Of the 6 skills that do still exist here, the plan's specific asks were already done by prior work: `stack-ship` has real frontmatter+triggers, `watchdog-cron-setup` has `disable-model-invocation: true`, `watchdog-remediate` has a named `playbook` argument. `hyper-commit-setup`, `ado-workitem`, `autoresearch` were already correctly configured. **Real problem found, not in original plan**: `watchdog-cron-setup/SKILL.md` still instructs `CronCreate(prompt: "/migration-watchdog-auto", durable: true)` and its Teardown section, but that skill no longer resolves in this repo — moved to `auc-conversion`. Confirmed via `CronList` that no live cron currently exists with this prompt, so it's a latent doc bug, not an active broken job. `watchdog-remediate` has the same problem (described as "Called by migration-watchdog-auto on FAILURE"). Recommend: move both to `auc-conversion/.claude/skills/` alongside their siblings, or retire them from this repo — deferred to user decision since it's a cross-repo action.
+- [x] #13 — `.claude/agents/*.md` restored as symlinks to `ai/agents/` (disk had drifted to real files, though content was identical and git index already expected symlinks — `setup.sh` logic was already correct, just hadn't converted these)
+- [ ] #14 — Re-scope paused Steps 15-19 against current reality
+- [ ] #15 — Wire commitlint auto-fix into `cicd-auto-retry` agent
+- [ ] #16 — `stack-create` gitignore-detection enhancement
+- Explicitly excluded from this pass: Phase 0 (settings.json safety), #7 (.claude/skills/ gitignored note), #10 (data-verification note), #17 (deferred pending Cap v4)
+
+## Older — paused
 
 - [ ] AI primitives upgrade plan (plans/2026-06-12-ai-primitives-upgrade.md) — plan written, execution not started
 
