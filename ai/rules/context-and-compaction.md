@@ -7,4 +7,4 @@
 - **Session discipline:** One task per session when practical. After a significant commit or domain change, start a new chat. Use `/compact` at most 1-2 times per session — prefer checkpointing to a plan and starting fresh.
 - **lean-ctx CCP is NOT activated** — do not run `lean-ctx init` without `--agent` flag.
 
-> Session artifact definitions (`active-context.md`, `decisions.md`, `progress.md`) live in each project's CLAUDE.md to avoid duplication.
+> Session artifact definitions (`active-context.md`, `decisions.md`, `progress.md`) live in the global `~/.claude/CLAUDE.md` § Session Artifacts, to avoid duplication.

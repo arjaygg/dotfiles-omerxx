@@ -222,27 +222,46 @@ These rules cover the tools that `tool-priority.md` did not originally address: 
 
 **Rule:** lean-ctx is a file-access layer (read, compress, cache). It has no symbol index. For any task phrased as navigation ("where", "what calls", "what's in"), Serena is the correct first call. LeanCtx is correct for text patterns and file reads — not code structure exploration.
 
-### Documentation & Knowledge Lookup
+### PR / Git Graph Tooling (Graphify — new namespace, 2026-07-07)
+
+`Graphify` is a pctx namespace (`queryGraph`, `getNode`, `getNeighbors`, `getCommunity`, `godNodes`, `graphStats`, `shortestPath`, `listPrs`, `getPrImpact`, `triagePrs`) not previously documented here. Git Workflow & PR Management is the highest-volume usage area on this machine — prefer these over manual `gh pr list`/diff-reading when the question is about PR relationships or blast radius, not content.
 
 | Task | 1st Priority | 2nd Priority | Avoid |
 |---|---|---|---|
-| **Find docs by concept/meaning** | `Qmd.deepSearch` | `Qmd.vectorSearch` | `LeanCtx.ctxSearch` on .md files |
-| **Find docs by keyword** | `Qmd.search` | `LeanCtx.ctxSearch` | `Grep` on docs/ |
-| **Retrieve a known doc** | `Qmd.get` | `Read(path)` | — |
-| **Project knowledge (structured)** | `Serena.readMemory` | `Qmd.deepSearch` | Re-deriving from source |
+| **"What PRs are open/queued?"** | `Graphify.listPrs` | `gh pr list` | — |
+| **"What does this PR touch/break?"** | `Graphify.getPrImpact` | `Serena.findReferencingSymbols` on changed symbols | Manually diffing + guessing blast radius |
+| **"Which PRs need attention first?"** | `Graphify.triagePrs` | `gh pr list` + manual sort | — |
+| **"How are these files/modules related?"** | `Graphify.queryGraph` / `getNeighbors` | `Serena.findReferencingSymbols` | — |
+| **"What are the most-depended-on files?"** | `Graphify.godNodes` / `graphStats` | — | — |
+| **"Shortest dependency path between A and B"** | `Graphify.shortestPath` | — | — |
 
-**Decision rule:** If you know the document path → `Qmd.get` or `Read`. If you're searching by concept or don't know where it lives → `Qmd.deepSearch`. If it's about project architecture/patterns/decisions → `Serena.readMemory` first (structured), then `Qmd` (semantic fallback).
+**Rule:** Graphify answers relationship/impact questions (what depends on what, which PR touches what, what's central). Serena answers symbol-level code questions. Use Graphify first when the question is phrased about PRs, files, or modules as graph nodes rather than about a specific symbol.
+
+### Documentation & Knowledge Lookup
+
+**API note (2026-07-07):** Qmd's `search`/`vectorSearch`/`deepSearch` were consolidated into a single `Qmd.query({ subqueries: [{type: "lex"|"vec"|"hyde", text}] })` call — the typed sub-query replaces the old separate function names. `Qmd.get`/`multiGet`/`status` are unchanged. See `plans/pctx-functions.md` for the current snapshot.
+
+| Task | 1st Priority | 2nd Priority | Avoid |
+|---|---|---|---|
+| **Find docs by concept/meaning** | `Qmd.query` with a `hyde` or `vec` sub-query | — | `LeanCtx.ctxSearch` on .md files |
+| **Find docs by keyword** | `Qmd.query` with a `lex` sub-query | `LeanCtx.ctxSearch` | `Grep` on docs/ |
+| **Retrieve a known doc** | `Qmd.get` | `Read(path)` | — |
+| **Project knowledge (structured)** | `Serena.readMemory` | `Qmd.query` | Re-deriving from source |
+
+**Decision rule:** If you know the document path → `Qmd.get` or `Read`. If you're searching by concept or don't know where it lives → `Qmd.query` (use a `hyde` sub-query for fuzzy/semantic asks, `lex` for exact keywords — combine both in one call if unsure). If it's about project architecture/patterns/decisions → `Serena.readMemory` first (structured), then `Qmd.query` (semantic fallback).
 
 **QMD scope:** QMD indexes `docs/**/*.md` from the main repo plus the current worktree (when a worktree session is active). It does NOT index source code — use Serena for that.
 
 ### File Reading
 
+**API note (2026-07-07):** LeanCtx consolidated from 23 standalone functions to 11 core functions. `ctxRead`, `ctxSearch`, `ctxShell`, `ctxTree`, `ctxSession` remain direct calls. Former standalone tools `ctxMultiRead` and `ctxSmartRead` are no longer top-level — reach them via `LeanCtx.ctxCall({ name: "ctx_multi_read"|"ctx_smart_read", args: {...} })` dispatch. See `plans/pctx-functions.md` for the full current/prior function list.
+
 | Task | 1st Priority | 2nd Priority | Avoid |
 |---|---|---|---|
 | **Read file for editing** | `Read(path)` | — | `LeanCtx.ctxRead` (use Read before Edit) |
 | **Read file for analysis** | `LeanCtx.ctxRead(mode: "signatures"\|"map"\|"aggressive")` | `Read` with limit/offset | Uncached full `Read` on large files |
-| **Read many files at once** | `LeanCtx.ctxMultiRead` | Sequential `Read` calls | — |
-| **Read with smart compression** | `LeanCtx.ctxSmartRead` | `LeanCtx.ctxRead` | — |
+| **Read many files at once** | `LeanCtx.ctxCall({name: "ctx_multi_read", args: {...}})` | Sequential `Read` calls | Calling `ctxMultiRead` directly (removed) |
+| **Read with smart compression** | `LeanCtx.ctxCall({name: "ctx_smart_read", args: {...}})` | `LeanCtx.ctxRead` | Calling `ctxSmartRead` directly (removed) |
 
 **Rule:** Always `Read` before `Edit` (required by the Edit tool). For analysis-only reads of large files, use `LeanCtx.ctxRead` with a compression mode to save tokens.
 
@@ -274,10 +293,10 @@ These rules cover the tools that `tool-priority.md` did not originally address: 
 
 | Violation | Correct replacement |
 |---|---|
-| `Grep` or `LeanCtx.ctxSearch` on `docs/**/*.md` | `Qmd.search` or `Qmd.deepSearch` |
+| `Grep` or `LeanCtx.ctxSearch` on `docs/**/*.md` | `Qmd.query` (lex or hyde sub-query) |
 | `WebFetch(url)` without a prompt | Pass a focused `prompt` to `WebFetch` to get a targeted summary |
-| `Read(large_file)` for analysis (no edit intent) | `LeanCtx.ctxSmartRead` or `ctxRead(mode: "signatures")` |
-| Multiple `Read` calls in sequence | `LeanCtx.ctxMultiRead` |
+| `Read(large_file)` for analysis (no edit intent) | `LeanCtx.ctxCall({name: "ctx_smart_read", ...})` or `ctxRead(mode: "signatures")` |
+| Multiple `Read` calls in sequence | `LeanCtx.ctxCall({name: "ctx_multi_read", ...})` |
 
 ### Code Health Routing
 

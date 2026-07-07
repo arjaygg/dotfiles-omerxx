@@ -167,8 +167,8 @@ and `/fast` commands and apply for the remainder of the session.
 ### Default configuration
 
 The recommended default is `model: "opusplan"` in `settings.json`. This automatically uses:
-- **Opus 4.6** when in plan mode (complex reasoning, architecture exploration)
-- **Sonnet 4.6** during execution (code generation, file edits, tool use)
+- **Opus** (currently Opus 4.8) when in plan mode (complex reasoning, architecture exploration)
+- **Sonnet** (currently Sonnet 5) during execution (code generation, file edits, tool use)
 
 No manual `/model` switching needed for the plan→execute flow.
 
@@ -319,6 +319,10 @@ anything and is NOT a background process.
 - Background work exists only when spawned via `Bash(run_in_background: true)`,
   `Agent`, or `Monitor` — report its real task/agent id as evidence.
 - After loading a skill, execute its steps directly and report actual status.
+
+## Communication
+
+When a request uses ambiguous shorthand (e.g. an abbreviation, acronym, or numbered label like "P0" that could mean either a priority tier or a plan phase), ask a single targeted clarifying question before starting implementation. Do not guess and proceed — a wrong guess on scope wastes more turns than one clarifying question.
 
 ## Compound Request Echo-Back
 
