@@ -55,8 +55,12 @@ check_bash_cmd_rules() {
             [[ -n "$tool" ]] && full_msg="$message (use: $tool)"
             case "$action" in
                 block)
-                    # Use hook_block() if available (outputs JSON decision)
-                    if declare -f hook_block >/dev/null 2>&1; then
+                    # _deny() (pre-tool-gate-v2.sh) emits the JSON permissionDecision
+                    # that actually halts the tool; hook_block() is a fallback for
+                    # other callers; plain exit 1 does NOT block in Claude Code.
+                    if declare -f _deny >/dev/null 2>&1; then
+                        _deny "BLOCKED [rule.$rule_name]: $full_msg"
+                    elif declare -f hook_block >/dev/null 2>&1; then
                         hook_block "rule.$rule_name" "Bash" "BLOCKED: $full_msg"
                     else
                         echo "BLOCKED: $full_msg"
@@ -99,7 +103,9 @@ check_read_path_rules() {
             $path_pattern)
                 case "$action" in
                     block)
-                        if declare -f hook_block >/dev/null 2>&1; then
+                        if declare -f _deny >/dev/null 2>&1; then
+                            _deny "BLOCKED [read-guard.$rule_name]: $message"
+                        elif declare -f hook_block >/dev/null 2>&1; then
                             hook_block "read-guard.$rule_name" "Read" "BLOCKED: $message"
                         else
                             echo "BLOCKED: $message"

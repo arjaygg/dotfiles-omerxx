@@ -47,7 +47,10 @@ if [ "$NEW_COUNT" -ge 500 ]; then
         echo "Current turn: $NEW_COUNT"
         echo ""
     } >&2
-    exit 1
+    # exit 2 is the blocking signal for UserPromptSubmit hooks (stderr shown to
+    # user, prompt not sent to Claude); exit 1 is non-blocking and lets the
+    # prompt through anyway, which defeats the hard-block at 500 turns.
+    exit 2
 elif [ "$NEW_COUNT" -ge 400 ]; then
     # WARNING at 400 (every turn from here)
     echo "[session-guard] 🟠 WARNING: $NEW_COUNT turns — session getting long. Plan to checkpoint soon." >&2
