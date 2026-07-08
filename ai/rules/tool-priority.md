@@ -222,20 +222,22 @@ These rules cover the tools that `tool-priority.md` did not originally address: 
 
 **Rule:** lean-ctx is a file-access layer (read, compress, cache). It has no symbol index. For any task phrased as navigation ("where", "what calls", "what's in"), Serena is the correct first call. LeanCtx is correct for text patterns and file reads — not code structure exploration.
 
-### PR / Git Graph Tooling (Graphify — new namespace, 2026-07-07)
+### Code/PR Graph Tooling (Graphify — standalone CLI, corrected 2026-07-09)
 
-`Graphify` is a pctx namespace (`queryGraph`, `getNode`, `getNeighbors`, `getCommunity`, `godNodes`, `graphStats`, `shortestPath`, `listPrs`, `getPrImpact`, `triagePrs`) not previously documented here. Git Workflow & PR Management is the highest-volume usage area on this machine — prefer these over manual `gh pr list`/diff-reading when the question is about PR relationships or blast radius, not content.
+**Correction:** an earlier version of this section claimed `Graphify` was a `pctx` namespace (`queryGraph`, `getNode`, `getNeighbors`, `getCommunity`, `godNodes`, `graphStats`, `shortestPath`, `listPrs`, `getPrImpact`, `triagePrs`). Verified against a live `mcp__pctx__list_functions` call (2026-07-09): the pctx server exposes only `Serena`, `Qmd`, `LeanCtx`, and `Repomix` — **no `Graphify` namespace exists.** Those function names were never real; do not call them.
 
-| Task | 1st Priority | 2nd Priority | Avoid |
-|---|---|---|---|
-| **"What PRs are open/queued?"** | `Graphify.listPrs` | `gh pr list` | — |
-| **"What does this PR touch/break?"** | `Graphify.getPrImpact` | `Serena.findReferencingSymbols` on changed symbols | Manually diffing + guessing blast radius |
-| **"Which PRs need attention first?"** | `Graphify.triagePrs` | `gh pr list` + manual sort | — |
-| **"How are these files/modules related?"** | `Graphify.queryGraph` / `getNeighbors` | `Serena.findReferencingSymbols` | — |
-| **"What are the most-depended-on files?"** | `Graphify.godNodes` / `graphStats` | — | — |
-| **"Shortest dependency path between A and B"** | `Graphify.shortestPath` | — | — |
+The real, working interface is the standalone `graphify` CLI (see the per-project `CLAUDE.md`'s `# graphify` section, e.g. `auc-conversion/CLAUDE.md`), which operates on a project-local `graphify-out/graph.json`:
 
-**Rule:** Graphify answers relationship/impact questions (what depends on what, which PR touches what, what's central). Serena answers symbol-level code questions. Use Graphify first when the question is phrased about PRs, files, or modules as graph nodes rather than about a specific symbol.
+| Task | Command |
+|---|---|
+| **Scoped question about the codebase** | `graphify query "<question>"` |
+| **Relationship between two files/symbols** | `graphify path "<A>" "<B>"` |
+| **Focused concept lookup** | `graphify explain "<concept>"` |
+| **Broad navigation** | `graphify-out/wiki/index.md` (if present) |
+| **Full architecture review** | `graphify-out/GRAPH_REPORT.md` (only when query/path/explain don't surface enough) |
+| **Keep graph current after edits** | `graphify update .` (AST-only, no API cost) |
+
+**Rule:** Graphify is per-project (only active where `graphify-out/graph.json` exists and the project's own `CLAUDE.md` documents it) — it is not a globally available pctx function set. Check the project's `CLAUDE.md` for its own graphify invocation rules before assuming this table applies.
 
 ### Documentation & Knowledge Lookup
 

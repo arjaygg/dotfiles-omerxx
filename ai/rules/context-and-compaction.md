@@ -10,3 +10,5 @@
   Unrelated to CCP: if the lean-ctx CLI bootstrap is ever re-run, use `lean-ctx init --agent` only — never `--global` — to avoid shell-hook double-compression conflicts with rtk.
 
 > Session artifact definitions (`active-context.md`, `decisions.md`, `progress.md`) live in the global `~/.claude/CLAUDE.md` § Session Artifacts, to avoid duplication.
+
+- **Never re-Read CLAUDE.md-imported files post-compaction:** `CLAUDE.md`, `AGENTS.md`, and anything they `@`-import (`RTK.md`, `rules/*.md`) are reloaded automatically as part of the system prompt on every turn, including immediately after compaction. Re-reading them manually after a compaction event wastes tokens on content already present in context — check whether a fact is already covered by loaded rules before issuing a `Read` for one of these files.
