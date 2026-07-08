@@ -163,8 +163,18 @@ merge_branch() {
   local hash_before=$(git rev-parse "$source_branch")
 
   if [[ $DRY_RUN -eq 0 ]]; then
-    # Attempt merge via gh pr merge
-    if gh pr merge "$source_branch" --rebase --delete-branch --auto 2>/dev/null; then
+    # Attempt merge via gh pr merge. --delete-branch conflicts with the
+    # worktree-based workflow (git refuses to delete a branch checked out
+    # in a worktree), so gh can exit non-zero here even though the PR
+    # merge on GitHub already succeeded. Don't trust the exit code alone —
+    # verify the real PR state afterward.
+    local merge_err
+    merge_err=$(gh pr merge "$source_branch" --rebase --delete-branch --auto 2>&1 >/dev/null) || true
+
+    local pr_state
+    pr_state=$(gh pr view "$source_branch" --json state -q .state 2>/dev/null || echo "UNKNOWN")
+
+    if [[ "$pr_state" == "MERGED" ]]; then
       local hash_after=$(git rev-parse "$target_branch" 2>/dev/null || echo "$hash_before")
 
       # Log success
@@ -176,9 +186,13 @@ EOF
 )
       echo "$log_entry" >> "$LOG_FILE"
       log_success "Merged $source_branch → $target_branch"
+      if [[ -n "$merge_err" ]]; then
+        log_warning "PR merged, but a post-merge step reported: $merge_err"
+      fi
       return 0
     else
-      log_error "Merge failed for $source_branch — manual intervention needed"
+      log_error "Merge failed for $source_branch (PR state: $pr_state) — manual intervention needed"
+      [[ -n "$merge_err" ]] && log_error "$merge_err"
       return 1
     fi
   else
