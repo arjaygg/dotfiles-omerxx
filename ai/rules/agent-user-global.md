@@ -97,7 +97,7 @@ When working from a dated plan file (`plans/YYYY-MM-DD-<context>.md`):
 1. Add `plan: plans/YYYY-MM-DD-<context>.md` to `plans/active-context.md` at session start.
 2. Add `step: N of M` and `focus: <current step title>` to `plans/active-context.md`.
 3. Each `## Step N` in the plan must declare `**Files:**` and `**Accepts:**` fields.
-4. Use `TodoWrite` to convert plan steps to an ordered task list before executing. Do NOT use `TaskCreate` — that spawns background agents, not a checklist.
+4. Use `TodoWrite` to convert plan steps to an ordered checklist for your own single-agent execution before executing. `TaskCreate` is a separate mechanism for multi-agent coordination (see "Task Tracking Discipline (Multi-Agent)" below), not a substitute for this checklist.
 5. Check off `progress.md` checkboxes when each `TodoWrite` item is completed.
 6. Do not begin Step N+1 until Step N's `**Accepts:**` criteria are met.
 
@@ -116,7 +116,7 @@ step: 2 of 5
 focus: write migration
 ```
 
-Hooks resolve the active plan at runtime via `grep "^plan:" plans/active-context.md`. The `@plans/active-context.md` include in CLAUDE.md is evaluated once at session start and provides cross-session continuity only.
+Hooks resolve the active plan at runtime via `grep "^plan:" plans/active-context.md`. This grep-based lookup is the only mechanism for cross-session plan continuity — there is no `@plans/active-context.md` include in any `CLAUDE.md` in the chain.
 
 ## TodoWrite Mandate
 
@@ -128,7 +128,7 @@ For any task requiring **3 or more distinct steps**, you MUST:
 
 This applies whether or not a formal plan file is active.
 
-**Do NOT use `TaskCreate`** for step tracking — it spawns background agents, not a checklist.
+**Use `TodoWrite` for your own step tracking, not `TaskCreate`.** `TaskCreate`/`TaskGet`/`TaskUpdate`/`TaskList` manage a shared task-list entry system for coordinating *multiple* agents (see "Task Tracking Discipline (Multi-Agent)" below) — they do not spawn agents themselves. When you are the only agent working the checklist, `TodoWrite` is the right tool; reach for `TaskCreate` only when the work is being split across subagents that need to share task state.
 
 Heuristics for "3+ step tasks":
 - Editing more than one file
@@ -155,7 +155,7 @@ When spawning a subagent for research or codebase exploration, **prefer a fork**
 | Second opinion / independent review | Fresh agent — isolation is the point |
 | Specialized tool set (e.g. `bmm-*`) | Fresh agent + include init mandate in prompt |
 
-**When spawning a fresh agent that touches project files:** always include the pctx init mandate in the prompt (call `Serena.initialInstructions()` + `LeanCtx.ctxIntent()` before any file access). Without it, the agent will use `ls`/`grep` via shell and trigger hook blocks.
+**When spawning a fresh agent that touches project files:** always include the pctx init mandate in the prompt (call `Serena.initialInstructions()` + `LeanCtx.ctxCall({name: "ctx_intent", arguments: {...}})` before any file access). Without it, the agent will use `ls`/`grep` via shell and trigger hook blocks.
 
 ---
 
