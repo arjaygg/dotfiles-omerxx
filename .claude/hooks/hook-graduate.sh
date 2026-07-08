@@ -21,6 +21,7 @@ if [[ ! -f "$STATE_FILE" ]]; then
 fi
 
 _ensure_db
+cmd_flush >/dev/null 2>&1 || true
 
 echo "Hook Graduation Check"
 echo "======================================================="

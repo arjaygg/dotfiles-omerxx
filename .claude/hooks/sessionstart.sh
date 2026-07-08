@@ -46,6 +46,15 @@ _run "$SCRIPT_DIR/model-availability-check.sh"
 
 (printf '%s' "$_INPUT" | bash -lc 'lean-ctx hook observe' &>/dev/null) &
 
+# R8c (2026-07-09): daily-gated hook graduation check. Backgrounded/silent —
+# hook-graduate.sh mutates hook-config.yaml, not session context, so nothing
+# here feeds additionalContext. Marker file caps it at once per day even
+# across many session starts.
+_GRAD_MARKER="/tmp/.claude-hook-graduate-last-run-$(id -u)"
+if [[ ! -f "$_GRAD_MARKER" ]] || [[ -n "$(find "$_GRAD_MARKER" -mtime +1 2>/dev/null)" ]]; then
+    (bash "$SCRIPT_DIR/hook-graduate.sh" &>/dev/null; touch "$_GRAD_MARKER") &
+fi
+
 if [[ -n "$_COMBINED_CTX" ]]; then
     python3 -c "
 import json, sys

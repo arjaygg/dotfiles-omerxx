@@ -15,7 +15,9 @@
 #   in was judged too risky to do blind. Conservatively left separate.
 #
 # Design: single process, jq for JSON parse (~3ms vs python3 ~30ms).
-#         No SQLite writes — metrics move to PostToolUse.
+#         No SYNCHRONOUS SQLite writes on this path — hook_metric()/
+#         hook_learning_metric() (R8, 2026-07-09) are flat-file appends only;
+#         they're drained into metrics.db by hook-graduate.sh's cmd_flush.
 #
 # Blocking semantics (fixed 2026-06-12):
 #   Claude Code halts a tool call only when a PreToolUse hook exits 2 or emits
@@ -30,15 +32,54 @@
 set -euo pipefail
 trap 'echo "HOOK CRASH (pre-tool-gate-v2.sh line $LINENO): $BASH_COMMAND" >&2' ERR
 
+_START_NS=$(date +%s%N 2>/dev/null || echo 0)
+_DENIED=0
+_DENY_TOOL=""
+
 # Halt the tool call: emit PreToolUse JSON deny on stdout, mirror reason to
 # stderr for the UI. stdout must contain ONLY this JSON — never echo anything
 # else to stdout on a code path that can reach _deny.
 _deny() {
     local reason="$1"
+    _DENIED=1
+    _DENY_TOOL="${TOOL_NAME:-}"
     printf '%s\n' "$reason" >&2
     jq -cn --arg r "$reason" \
         '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$r}}'
     exit 0
+}
+
+# RC7 fix (R8b, 2026-07-09): every _deny() call and every clean pass-through
+# runs through here via EXIT trap (installed after hook-metrics.sh is
+# sourced below) so hook_events/learning_events actually get populated —
+# previously this script never sourced hook-metrics.sh at all. Uses a
+# per-session flag file to classify the reaction to a PRIOR block: same tool
+# retried => block_repeat, a different/allowed tool used next => block_recover.
+_finalize_metrics() {
+    [[ "${_METRICS_LOGGED:-0}" -eq 1 ]] && return 0
+    _METRICS_LOGGED=1
+    declare -f hook_metric >/dev/null 2>&1 || return 0
+
+    local end_ns dur_ms exit_code=0
+    end_ns=$(date +%s%N 2>/dev/null || echo 0)
+    dur_ms=$(( (end_ns - _START_NS) / 1000000 ))
+    [[ "$_DENIED" -eq 1 ]] && exit_code=2
+    hook_metric "pre-tool-gate-v2" "${TOOL_NAME:-}" "$exit_code" "${EFFECTIVE_SESSION_ID:-}" "$dur_ms"
+
+    local block_flag="/tmp/.claude-last-block-$(id -u)-${EFFECTIVE_SESSION_ID:-default}"
+    if [[ "$_DENIED" -eq 1 ]]; then
+        if [[ -f "$block_flag" ]] && [[ "$(cat "$block_flag" 2>/dev/null)" == "$_DENY_TOOL" ]]; then
+            hook_learning_metric "${EFFECTIVE_SESSION_ID:-}" "pre-tool-gate-v2" "block_repeat" "$_DENY_TOOL" ""
+        fi
+        printf '%s' "$_DENY_TOOL" > "$block_flag" 2>/dev/null || true
+    elif [[ -f "$block_flag" ]]; then
+        local prev_tool
+        prev_tool=$(cat "$block_flag" 2>/dev/null || echo "")
+        if [[ -n "$prev_tool" ]]; then
+            hook_learning_metric "${EFFECTIVE_SESSION_ID:-}" "pre-tool-gate-v2" "block_recover" "$prev_tool" "${TOOL_NAME:-}"
+        fi
+        rm -f "$block_flag" 2>/dev/null || true
+    fi
 }
 
 # Resolve the current branch of the repo that actually owns a file path,
@@ -59,6 +100,8 @@ _branch_for_path() {
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=hook-rule-loader.sh
 source "${SCRIPT_DIR}/hook-rule-loader.sh"
+# shellcheck source=hook-metrics.sh
+source "${SCRIPT_DIR}/hook-metrics.sh" 2>/dev/null || true
 
 INPUT=$(cat)
 
@@ -81,6 +124,11 @@ eval "$(echo "$INPUT" | jq -r '
 # mirrors post-tool-analytics.sh's fallback so flag files set by one script
 # are found by the other.
 EFFECTIVE_SESSION_ID="${SESSION_ID:-${CLAUDE_SESSION_ID:-default}}"
+
+# Installed once EFFECTIVE_SESSION_ID/TOOL_NAME exist so _finalize_metrics can
+# see them; fires on every exit path below (deny, warn/hint early-return, or
+# the final pass-through exit 0).
+trap _finalize_metrics EXIT
 
 # ============================================================
 # GUARD: empty TOOL_NAME → eval failed silently; block to prevent pass-through

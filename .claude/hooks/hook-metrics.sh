@@ -87,23 +87,34 @@ CREATE TABLE IF NOT EXISTS learning_events (
 );
 CREATE INDEX IF NOT EXISTS idx_learning_events_hook ON learning_events(hook_name);
 SQL
+    # Idempotent column add — sqlite3 has no ADD COLUMN IF NOT EXISTS, so guard
+    # with PRAGMA table_info rather than relying on `|| true` alone (set -e
+    # would otherwise treat a real errors-elsewhere case as harmless too).
+    if ! sqlite3 "$METRICS_DB" "PRAGMA table_info(hook_events);" 2>/dev/null | grep -q '|duration_ms|'; then
+        sqlite3 "$METRICS_DB" "ALTER TABLE hook_events ADD COLUMN duration_ms INTEGER DEFAULT 0;" 2>/dev/null || true
+    fi
     _DB_INITIALIZED=1
 }
 
 METRICS_LOG="/tmp/.claude-hook-metrics-$(id -u).log"
 
 # Called from hooks to log a metric (fast — flat file append)
+# duration_ms is optional (defaults to 0) — pass it from dispatchers timing
+# sub-hook execution with `date +%s%N` before/after.
 hook_metric() {
     local hook_name="${1:-unknown}"
     local tool_name="${2:-}"
     local exit_code="${3:-0}"
     local session_id="${4:-}"
+    local duration_ms="${5:-0}"
     local ts
     ts=$(date '+%Y-%m-%dT%H:%M:%S')
-    printf '%s|%s|%s|%s|%s\n' "$ts" "$hook_name" "$tool_name" "$exit_code" "$session_id" >> "$METRICS_LOG" 2>/dev/null || true
+    printf '%s|%s|%s|%s|%s|%s\n' "$ts" "$hook_name" "$tool_name" "$exit_code" "$session_id" "$duration_ms" >> "$METRICS_LOG" 2>/dev/null || true
 }
 
-# Record a learning event (behavioral classification)
+# Record a learning event (behavioral classification) — direct SQLite write.
+# Only call this off the PreToolUse hot path (e.g. PostToolUse, CLI). For
+# PreToolUse gates, use hook_learning_metric() below instead.
 hook_learning_event() {
     local session_id="${1:-}"
     local hook_name="${2:-unknown}"
@@ -112,6 +123,22 @@ hook_learning_event() {
     local recovery_tool="${5:-}"
     _ensure_db
     sqlite3 "$METRICS_DB" "INSERT INTO learning_events (session_id, hook_name, event_type, blocked_tool, recovery_tool) VALUES ('$session_id', '$hook_name', '$event_type', '$blocked_tool', '$recovery_tool');" 2>/dev/null || true
+}
+
+LEARNING_LOG="/tmp/.claude-hook-learning-$(id -u).log"
+
+# Fast flat-file append for learning events — safe to call from PreToolUse
+# gates (no SQLite I/O on the hot path). Drained into learning_events by
+# cmd_flush(), same pattern as hook_metric()/METRICS_LOG.
+hook_learning_metric() {
+    local session_id="${1:-}"
+    local hook_name="${2:-unknown}"
+    local event_type="${3:-}"
+    local blocked_tool="${4:-}"
+    local recovery_tool="${5:-}"
+    local ts
+    ts=$(date '+%Y-%m-%dT%H:%M:%S')
+    printf '%s|%s|%s|%s|%s|%s\n' "$ts" "$session_id" "$hook_name" "$event_type" "$blocked_tool" "$recovery_tool" >> "$LEARNING_LOG" 2>/dev/null || true
 }
 
 # --- CLI commands ---
@@ -127,7 +154,8 @@ SELECT
     SUM(CASE WHEN exit_code = 0 THEN 1 ELSE 0 END) AS pass,
     SUM(CASE WHEN exit_code = 0 THEN 1 ELSE 0 END) AS warn,
     SUM(CASE WHEN exit_code = 2 THEN 1 ELSE 0 END) AS block,
-    ROUND(100.0 * SUM(CASE WHEN exit_code = 0 THEN 1 ELSE 0 END) / COUNT(*), 1) AS pass_pct
+    ROUND(100.0 * SUM(CASE WHEN exit_code = 0 THEN 1 ELSE 0 END) / COUNT(*), 1) AS pass_pct,
+    ROUND(AVG(duration_ms), 1) AS avg_ms
 FROM hook_events
 WHERE timestamp >= datetime('now', '-7 days', 'localtime')
 GROUP BY hook_name
@@ -169,7 +197,8 @@ cmd_reset() {
     local count
     count=$(sqlite3 "$METRICS_DB" "SELECT COUNT(*) FROM hook_events;")
     sqlite3 "$METRICS_DB" "DELETE FROM hook_events;"
-    rm -f "$METRICS_LOG"
+    sqlite3 "$METRICS_DB" "DELETE FROM learning_events;"
+    rm -f "$METRICS_LOG" "$LEARNING_LOG"
     echo "Cleared $count metric events."
 }
 
@@ -204,14 +233,26 @@ SQL
 cmd_flush() {
     _ensure_db
     local log_file="$METRICS_LOG"
-    [[ -f "$log_file" ]] || { echo "No pending metrics to flush."; return 0; }
     local count=0
-    while IFS='|' read -r ts hook_name tool_name exit_code session_id; do
-        sqlite3 "$METRICS_DB" "INSERT INTO hook_events (timestamp, hook_name, tool_name, exit_code, session_id) VALUES ('$ts', '$hook_name', '$tool_name', $exit_code, '$session_id');" 2>/dev/null || true
-        ((count++)) || true
-    done < "$log_file"
-    rm -f "$log_file"
+    if [[ -f "$log_file" ]]; then
+        while IFS='|' read -r ts hook_name tool_name exit_code session_id duration_ms; do
+            duration_ms="${duration_ms:-0}"
+            sqlite3 "$METRICS_DB" "INSERT INTO hook_events (timestamp, hook_name, tool_name, exit_code, session_id, duration_ms) VALUES ('$ts', '$hook_name', '$tool_name', $exit_code, '$session_id', $duration_ms);" 2>/dev/null || true
+            ((count++)) || true
+        done < "$log_file"
+        rm -f "$log_file"
+    fi
     echo "Flushed $count metric events to SQLite."
+
+    local learn_count=0
+    if [[ -f "$LEARNING_LOG" ]]; then
+        while IFS='|' read -r ts session_id hook_name event_type blocked_tool recovery_tool; do
+            sqlite3 "$METRICS_DB" "INSERT INTO learning_events (timestamp, session_id, hook_name, event_type, blocked_tool, recovery_tool) VALUES ('$ts', '$session_id', '$hook_name', '$event_type', '$blocked_tool', '$recovery_tool');" 2>/dev/null || true
+            ((learn_count++)) || true
+        done < "$LEARNING_LOG"
+        rm -f "$LEARNING_LOG"
+    fi
+    echo "Flushed $learn_count learning events to SQLite."
 }
 
 # --- Main (CLI mode) ---

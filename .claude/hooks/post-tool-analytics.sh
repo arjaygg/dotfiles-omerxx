@@ -13,6 +13,7 @@ set -euo pipefail
 trap 'echo "HOOK CRASH (post-tool-analytics.sh line $LINENO): $BASH_COMMAND"; exit 0' ERR
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_START_NS=$(date +%s%N 2>/dev/null || echo 0)
 
 INPUT=$(cat)
 
@@ -236,7 +237,9 @@ fi
 # ============================================================
 if [[ -f "${SCRIPT_DIR}/hook-metrics.sh" ]]; then
     source "${SCRIPT_DIR}/hook-metrics.sh" 2>/dev/null || true
-    hook_metric "post-tool-analytics" "$TOOL_NAME" 0 2>/dev/null || true
+    _END_NS=$(date +%s%N 2>/dev/null || echo 0)
+    _DURATION_MS=$(( (_END_NS - _START_NS) / 1000000 ))
+    hook_metric "post-tool-analytics" "$TOOL_NAME" 0 "$EFFECTIVE_SESSION_ID" "$_DURATION_MS" 2>/dev/null || true
 fi
 
 # ============================================================
