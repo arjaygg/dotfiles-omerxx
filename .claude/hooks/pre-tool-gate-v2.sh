@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
 # Consolidated PreToolUse gate (v2)
 # Replaces: pre-tool-gate.sh, serena-tool-priority.sh, edit-without-read.sh,
-#           check-agent-parallelism.sh, plan-scope-gate.sh, plan-naming-enforcer
+#           check-agent-parallelism.sh, plan-scope-gate.sh, plan-naming-enforcer,
+#           pr-title-conventional-guard.sh, git-commit-guard.sh, pre-push-remote-check.sh
+#           (folded 2026-07-08, H2 — see Section 2h/2i/2j)
 # Matcher: Bash|Read|Edit|Write|MultiEdit|Grep|Glob|Agent
+#
+# NOT folded in (left as standalone PreToolUse entries in settings.json):
+#   rtk-rewrite.sh, `lean-ctx hook rewrite` — both mutate tool_input.command
+#   before it runs. Their content/ordering interaction with this gate's own
+#   command-rewrite path (Section 2g pipe-stripping) was not fully verifiable
+#   from this worktree (rtk-rewrite.sh lives only at the live, untracked
+#   ~/.claude/hooks/rtk-rewrite.sh, not in the tracked repo), so folding them
+#   in was judged too risky to do blind. Conservatively left separate.
 #
 # Design: single process, jq for JSON parse (~3ms vs python3 ~30ms).
 #         No SQLite writes — metrics move to PostToolUse.
@@ -181,14 +191,12 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
     # 1a. Lock files — never read directly (backup for deny list)
     case "${FILE_PATH##*/}" in
         package-lock.json|yarn.lock|Cargo.lock|pnpm-lock.yaml|composer.lock|Gemfile.lock)
-            log_violation "level1_block" "pre_tool_gate" "Read" "$FILE_PATH" "lock_file_read" 2>/dev/null || true
             _deny "BLOCKED: Reading ${FILE_PATH##*/} directly wastes tokens. Use Grep to search for specific entries instead." ;;
     esac
 
     # 1a-extra. Generated/bulk files by pattern — repomix outputs, go.sum, lock files
     _fname="${FILE_PATH##*/}"
     if [[ "$_fname" == *_repomix_* || "$FILE_PATH" == *.sum || "$FILE_PATH" == *-lock.* ]]; then
-        log_violation "level1_block" "pre_tool_gate" "Read" "$FILE_PATH" "generated_file_read" 2>/dev/null || true
         _deny "BLOCKED: ${_fname} is a generated/lock file — no direct-read value. Use ctxSmartRead or Grep to search specific entries."
     fi
 
@@ -235,6 +243,235 @@ fi
 # SECTION 2: Bash guards
 # ============================================================
 if [[ "$TOOL_NAME" == "Bash" ]]; then
+    # ------------------------------------------------------------
+    # 2h-2j: folded standalone Bash-matched PreToolUse hooks (H2, 2026-07-08)
+    # Replaces: pr-title-conventional-guard.sh, git-commit-guard.sh,
+    #           pre-push-remote-check.sh
+    #
+    # Placement note: these run FIRST in Section 2, before 2-pre/2a-2g,
+    # intentionally. Any later check that calls the real _deny() (JSON
+    # permissionDecision:deny) does an unconditional `exit 0` on this whole
+    # process — that would silently skip everything below it, including
+    # these fold-ins, for the same command. Confirmed by testing: Section 2d's
+    # "hyper-atomic hooks installed" check already does this for every
+    # `git commit*` command in this repo. Running 2h-2j first guarantees they
+    # always get to execute and produce their own diagnostics, matching their
+    # pre-fold-in behavior as independent hook processes that always ran
+    # regardless of what gate-v2 (or any other hook) decided.
+    #
+    # Each block is wrapped in its own `( ... ) || true` subshell. This is
+    # load-bearing, not stylistic:
+    #   1. pr-title-conventional-guard.sh and git-commit-guard.sh both used a
+    #      plain `exit 1` on failure. Per this file's own "Blocking semantics"
+    #      header comment, exit 1 is NON-BLOCKING (the tool still runs) — but
+    #      it terminates whatever process runs it. Unwrapped, that `exit 1`
+    #      would kill this entire consolidated script, silently skipping every
+    #      check after it for the SAME command — concretely, `gh pr create` is
+    #      matched by BOTH pr-title-conventional-guard.sh AND
+    #      pre-push-remote-check.sh today as two independent standalone
+    #      processes, and both run. Subshell wrapping preserves that
+    #      "both checks always run" property inside one process.
+    #   2. This intentionally preserves the pre-fold-in non-blocking `exit 1`
+    #      behavior verbatim — no upgrade to `_deny` was made here, since that
+    #      would change *what gets blocked*, out of scope for H2.
+    #   3. Known cosmetic side effect: standalone hooks exiting 1 previously
+    #      surfaced Claude Code's red "PreToolUse hook error — non-blocking
+    #      status code" UI banner; swallowed via `|| true`, that banner no
+    #      longer appears. The BLOCKED/ADVISORY text itself still reaches
+    #      stderr unchanged either way — presentation-only, not a gating diff.
+    # ------------------------------------------------------------
+
+    # 2h. PR title conventional-commit guard (folded from pr-title-conventional-guard.sh)
+    if [[ "$CMD" =~ ^[[:space:]]*gh[[:space:]]+pr[[:space:]]+(create|edit)([[:space:]]|$) ]]; then
+        ( _PR_ACTION="${BASH_REMATCH[1]}"
+          _PR_TITLE=""
+          if [[ "$CMD" =~ (--title|-t)[[:space:]]+\"([^\"]+)\" ]]; then
+              _PR_TITLE="${BASH_REMATCH[2]}"
+          elif [[ "$CMD" =~ (--title|-t)[[:space:]]+\'([^\']+)\' ]]; then
+              _PR_TITLE="${BASH_REMATCH[2]}"
+          elif [[ "$CMD" =~ (--title|-t)[[:space:]]+([^[:space:]]+) ]]; then
+              _PR_TITLE="${BASH_REMATCH[2]}"
+          fi
+
+          if [[ "$_PR_ACTION" == "create" && -z "$_PR_TITLE" ]]; then
+              echo "BLOCKED: gh pr create requires --title in Conventional Commits format." >&2
+              echo "Use: gh pr create --title \"feat: <summary>\" ..." >&2
+              echo "Or use: ~/.dotfiles/.claude/scripts/stack pr <branch> <target> \"feat: <summary>\"" >&2
+              exit 1
+          fi
+
+          if [[ -n "$_PR_TITLE" ]]; then
+              _PR_VALIDATOR="$HOME/.dotfiles/.claude/scripts/pr-stack/lib/pr-title.sh"
+              if [[ -f "$_PR_VALIDATOR" ]]; then
+                  # shellcheck disable=SC1090
+                  source "$_PR_VALIDATOR"
+                  if ! is_conventional_pr_title "$_PR_TITLE"; then
+                      echo "BLOCKED: PR title is not Conventional Commits compliant: \"$_PR_TITLE\"" >&2
+                      echo "Expected: <type>(optional-scope): <summary>" >&2
+                      echo "Allowed types: feat, fix, perf, refactor, test, ci, chore, docs, style, revert" >&2
+                      exit 1
+                  fi
+              fi
+          fi
+          exit 0
+        ) || true
+    fi
+
+    # 2i. git commit message + squash-merge guard (folded from git-commit-guard.sh)
+    # Folded as one atomic subshell to preserve the original script's
+    # `commit_msg` variable dependency between Policy A and Policy A2.
+    (
+        _extract_commit_message() {
+            local cmd="$1"
+            local delim
+            delim=$(printf '%s\n' "$cmd" | grep -oE "<<-?[\"']?[A-Za-z_][A-Za-z0-9_]*[\"']?" | head -1 | sed -E "s/^<<-?[\"']?//; s/[\"']?\$//")
+            if [[ -n "$delim" ]]; then
+                printf '%s\n' "$cmd" | awk -v delim="$delim" '
+                    found && $0 == delim { exit }
+                    found { print; next }
+                    index($0, "<<") > 0 && index($0, delim) > 0 { found=1 }
+                '
+                return 0
+            fi
+            printf '%s\n' "$cmd" | sed -n 's/.*-m[[:space:]]*"\([^"]*\)".*/\1/p'
+        }
+
+        # POLICY A: Conventional Commits format on git commit -m
+        if echo "$CMD" | grep -qE 'git commit.*-m'; then
+            commit_msg=$(_extract_commit_message "$CMD")
+
+            if [[ -n "$commit_msg" ]]; then
+                subject=$(echo "$commit_msg" | head -1)
+
+                # Skip auto-generated merge/revert commits
+                if echo "$subject" | grep -qE '^(Merge|Revert) '; then
+                    exit 0
+                fi
+
+                # Use shared pr-title.sh lib (canonical types); extend with wip/build for commits.
+                _CG_VALIDATOR="$HOME/.dotfiles/.claude/scripts/pr-stack/lib/pr-title.sh"
+                valid=false
+                if [[ -f "$_CG_VALIDATOR" ]]; then
+                    # shellcheck disable=SC1090
+                    source "$_CG_VALIDATOR"
+                    is_conventional_pr_title "$subject" && valid=true
+                    # wip and build are valid commit types but not PR title types
+                    echo "$subject" | grep -qE '^(wip|build)(\([a-z0-9._/-]+\))?(!)?:[[:space:]].+$' && valid=true
+                else
+                    echo "$subject" | grep -qE \
+                        '^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert|wip)(\([a-z0-9._/-]+\))?(!)?:[[:space:]].+$' \
+                        && valid=true
+                fi
+
+                if [[ "$valid" != "true" ]]; then
+                    echo "BLOCKED: Commit message does not follow Conventional Commits format." >&2
+                    echo "" >&2
+                    echo "  Your message: $subject" >&2
+                    echo "  Expected:     <type>(<optional-scope>): <summary>" >&2
+                    echo "" >&2
+                    echo "  Allowed types: feat, fix, docs, style, refactor, test, chore, perf, ci, build, revert, wip" >&2
+                    echo "" >&2
+                    echo "  Examples:" >&2
+                    echo "    feat(auth): add JWT refresh token support" >&2
+                    echo "    fix(worker): resolve bulk insert timeout" >&2
+                    echo "    wip(migration): experimenting with sequence algorithm" >&2
+                    exit 1
+                fi
+
+                # Co-authored-by advisory for AI commits (warning only, non-blocking)
+                if ! echo "$commit_msg" | grep -q "Co-authored-by:"; then
+                    echo "[ADVISORY] AI-generated commits should include:" >&2
+                    echo "  Co-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>" >&2
+                fi
+            fi
+        fi
+
+        # POLICY A2: commitlint body-max-line-length (default rule: 100 chars)
+        if [[ -n "${commit_msg:-}" ]]; then
+            body_violations=""
+            line_no=0
+            while IFS= read -r line; do
+                line_no=$((line_no + 1))
+                # skip subject line and blank lines
+                [[ $line_no -eq 1 || -z "$line" ]] && continue
+                # skip trailer/footer lines
+                echo "$line" | grep -qiE '^(co-authored-by|signed-off-by|reviewed-by|fixes|closes|refs):' && continue
+                line_len=${#line}
+                if [[ $line_len -gt 100 ]]; then
+                    body_violations+="  Line $line_no ($line_len chars): ${line:0:70}...
+"
+                fi
+            done <<< "$commit_msg"
+
+            if [[ -n "$body_violations" ]]; then
+                echo "BLOCKED: Commit message body exceeds commitlint's body-max-line-length (100 chars)." >&2
+                echo "" >&2
+                printf '%s' "$body_violations" >&2
+                echo "" >&2
+                echo "  Wrap body lines at ~100 chars. Trailer lines (Co-authored-by, Signed-off-by, etc.) are exempt." >&2
+                exit 1
+            fi
+        fi
+
+        # POLICY B: Squash merge advisory for large PRs
+        if echo "$CMD" | grep -qE '(gh pr merge.*--squash|az repos pr update.*--squash)'; then
+            pr_number=$(echo "$CMD" | grep -oE '(merge|update) [0-9]+' | grep -oE '[0-9]+$' | head -1)
+
+            if [[ -n "$pr_number" ]] && command -v gh &>/dev/null; then
+                files_changed=$(gh pr view "$pr_number" --json files --jq '.files | length' 2>/dev/null || echo "")
+
+                if [[ -n "$files_changed" && "$files_changed" -gt 5 ]]; then
+                    echo "[ADVISORY] Squash merging PR #$pr_number with $files_changed files changed." >&2
+                    echo "  Consider regular merge to preserve commit history for git bisect:" >&2
+                    echo "    gh pr merge $pr_number --merge" >&2
+                fi
+            fi
+        fi
+        exit 0
+    ) || true
+
+    # 2j. Pre-push remote/auth advisory (folded from pre-push-remote-check.sh)
+    # Pure advisory (always exit 0 upstream) — still subshell-wrapped for
+    # defensive isolation, so an unexpected git/gh failure here (this file's
+    # own ERR trap only logs, it does not `exit 0` like the standalone hook's
+    # trap did) cannot abort the rest of Section 2 under `set -e`.
+    ( if echo "$CMD" | grep -qE '(git push|gh pr create|gh pr edit|az repos pr)'; then
+          _PP_REMOTE_INFO=$(git remote -v 2>/dev/null | awk '/^origin.*\(fetch\)/{print $2}' | sed -n '1p' || echo "unknown")
+          _PP_GH_USER=$(gh auth status --active 2>&1 | awk '/Logged in to/{print $(NF-1)}' | tr -d '"()' | sed -n '1p' || echo "unknown")
+
+          _PP_REMOTE_HOST="unknown"
+          _PP_REMOTE_REPO="unknown"
+          if [[ "$_PP_REMOTE_INFO" =~ github\.com[:/](.+)\.git$ ]] || [[ "$_PP_REMOTE_INFO" =~ github\.com[:/](.+)$ ]]; then
+              _PP_REMOTE_HOST="github.com"
+              _PP_REMOTE_REPO="${BASH_REMATCH[1]}"
+          elif [[ "$_PP_REMOTE_INFO" =~ dev\.azure\.com/([^/]+)/([^/]+)/_git/(.+) ]]; then
+              _PP_REMOTE_HOST="dev.azure.com/${BASH_REMATCH[1]}"
+              _PP_REMOTE_REPO="${BASH_REMATCH[2]}/${BASH_REMATCH[3]}"
+          elif [[ "$_PP_REMOTE_INFO" =~ visualstudio\.com/([^/]+)/_git/(.+) ]]; then
+              _PP_REMOTE_HOST="visualstudio.com"
+              _PP_REMOTE_REPO="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+          else
+              _PP_REMOTE_HOST="$_PP_REMOTE_INFO"
+          fi
+
+          _PP_CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+
+          echo "Remote: origin → ${_PP_REMOTE_HOST}/${_PP_REMOTE_REPO} | branch: ${_PP_CURRENT_BRANCH} | gh: ${_PP_GH_USER}" >&2
+
+          if [[ "$_PP_REMOTE_HOST" == "github.com" && "$_PP_GH_USER" != "arjaygg" && "$_PP_GH_USER" != "unknown" ]]; then
+              echo "WARNING: gh CLI authenticated as '${_PP_GH_USER}' — expected 'arjaygg' for GitHub personal repos." >&2
+              echo "  Run: gh auth switch --user arjaygg" >&2
+          fi
+
+          if [[ "$_PP_REMOTE_HOST" == dev.azure.com* || "$_PP_REMOTE_HOST" == visualstudio.com* ]]; then
+              if echo "$CMD" | grep -q 'gh pr'; then
+                  echo "WARNING: 'gh pr' targets GitHub but remote is ADO (${_PP_REMOTE_HOST})." >&2
+                  echo "  Use: az repos pr create --organization https://bofaz.visualstudio.com" >&2
+              fi
+          fi
+      fi
+    ) || true
+
     # 2-pre. Declarative rule.* rules from hook-config.yaml (sed -i, awk>file,
     # echo/printf redirects, piped tee — real gaps not caught by 2a-2g below)
     check_bash_cmd_rules "$CMD"
@@ -402,7 +639,6 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Mult
         fi
         case "$_ATOMIC_STATE" in
             blocked)
-                log_violation "level1_block" "pre_tool_gate" "$TOOL_NAME" "$FILE_PATH" "atomic_blocked" 2>/dev/null || true
                 _DIAG=$("$HOME/.dotfiles/scripts/ai/atomic-status.sh" --verbose 2>&1 1>/dev/null || true)
                 _REASON="BLOCKED: Mixed concerns detected in staged files (state: blocked)."
                 [[ -n "$_DIAG" ]] && _REASON+=$'\n'"  ${_DIAG//$'\n'/$'\n'  }"
@@ -531,12 +767,6 @@ if [[ "$TOOL_NAME" == "Agent" ]]; then
         echo "If tasks are truly sequential or dependent, rephrase your prompt to make that explicit." >&2
         exit 0
     fi
-fi
-
-# Log successful pass-through (Level 1 allowed operation)
-if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Bash" || "$TOOL_NAME" == "Read" ]]; then
-    log_violation "level1_pass" "pre_tool_gate" "$TOOL_NAME" "$FILE_PATH" "" 2>/dev/null || true
-    [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]] && log_operation "edit" "$FILE_PATH" 2>/dev/null || true
 fi
 
 exit 0

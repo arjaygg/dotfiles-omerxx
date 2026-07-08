@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Consolidated PostToolUse analytics (v2)
 # Replaces: post-tool-handler.sh, bash-output-guard.sh, pctx-batch-tracker.sh,
-#           read-tracker.sh, post-task-fence.sh
+#           read-tracker.sh, post-task-fence.sh, advisor-escalate.sh
+#           (advisor-escalate folded 2026-07-08, H2)
 # Matcher: .*
 #
 # Design: single process, jq for JSON parse, stdout only, exit 0 always
@@ -10,6 +11,8 @@
 
 set -euo pipefail
 trap 'echo "HOOK CRASH (post-tool-analytics.sh line $LINENO): $BASH_COMMAND"; exit 0' ERR
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 INPUT=$(cat)
 
@@ -42,6 +45,35 @@ if [[ "$TOOL_NAME" == "Bash" || "$TOOL_NAME" == "Agent" ]]; then
     if [[ -n "$OUTPUT" ]]; then
         LINE_COUNT=$(echo "$OUTPUT" | wc -l | tr -d ' ')
     fi
+fi
+
+# ============================================================
+# SECTION 0: advisor-escalate backstop (folded from advisor-escalate.sh/.py, H2, 2026-07-08)
+#
+# Placement note: this runs FIRST, before any section that might exit early
+# (Section 2's compaction path does `exit 0` on >THRESHOLD-line output). Per
+# the ordering lesson learned consolidating pre-tool-gate-v2.sh: a freshly
+# folded independent check that must always run cannot be placed after a
+# section that can terminate the process first. Computing ADVISOR_JSON here,
+# before Section 2, guarantees it always runs regardless of what any later
+# section decides.
+#
+# advisor-escalate.py drains stdin itself (sys.stdin.read()) and needs the
+# raw, un-flattened JSON (nested tool_output/tool_input fields this script's
+# own jq preamble does not extract into shell vars). $INPUT was captured once
+# above and is unmutated, so it is safe to re-feed here even though this
+# script's own `cat` already drained the hook's actual stdin.
+#
+# Output contract (unchanged from standalone advisor-escalate.py): always
+# valid JSON, either `{}` (nothing to report) or
+# `{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"..."}}`.
+# Never writes to stderr, never exits non-zero.
+# ============================================================
+ADVISOR_JSON='{}'
+if [[ -f "${SCRIPT_DIR}/advisor-escalate.py" ]]; then
+    ADVISOR_JSON=$(printf '%s' "$INPUT" | python3 "${SCRIPT_DIR}/advisor-escalate.py" 2>/dev/null || echo '{}')
+    # Defensive: fall back to '{}' if the script produced non-JSON/empty output
+    echo "$ADVISOR_JSON" | jq -e . >/dev/null 2>&1 || ADVISOR_JSON='{}'
 fi
 
 # ============================================================
@@ -79,7 +111,10 @@ if [[ "$LINE_COUNT" -gt 0 ]]; then
         OMITTED=$(( LINE_COUNT - 80 ))
         COMPACTED=$(printf '%s\n\n... %d lines omitted (use grep/search to find specific content) ...\n\n%s' \
             "$HEAD" "$OMITTED" "$TAIL")
-        echo "$COMPACTED" | jq -Rs '{"updatedToolOutput": .}'
+        # Merge with ADVISOR_JSON (Section 0) — a PostToolUse hook can only emit
+        # one JSON object on stdout, so both must be combined here rather than
+        # printed separately. When ADVISOR_JSON is '{}' this is a no-op merge.
+        echo "$COMPACTED" | jq -Rs --argjson adv "$ADVISOR_JSON" '{"updatedToolOutput": .} + $adv'
         exit 0
     fi
 fi
@@ -94,11 +129,11 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
         *)
             if [[ "$LINE_COUNT" -gt 200 ]]; then
                 echo "OUTPUT WARNING: Bash produced $LINE_COUNT lines — significant context consumption." >&2
-                echo "  For data-heavy commands, use context-mode MCP tools:" >&2
-                echo "    mcp__context-mode__ctx_batch_execute — runs commands + auto-indexes output" >&2
-                echo "    mcp__context-mode__ctx_execute — processes data in sandbox" >&2
+                echo "  For data-heavy commands, prefer LeanCtx (compresses output):" >&2
+                echo "    mcp__lean-ctx__ctx_shell — run a command with compressed output" >&2
+                echo "    mcp__pctx__execute_typescript running LeanCtx.ctxShell({ command: ... }) — when batching 2+ ops" >&2
             elif [[ "$LINE_COUNT" -gt 50 ]]; then
-                echo "OUTPUT HINT: Bash produced $LINE_COUNT lines. For commands with large output, consider context-mode MCP tools to keep raw data out of context." >&2
+                echo "OUTPUT HINT: Bash produced $LINE_COUNT lines. For commands with large output, consider mcp__lean-ctx__ctx_shell to keep raw data out of context." >&2
             fi
             ;;
     esac
@@ -199,10 +234,20 @@ fi
 # ============================================================
 # SECTION 7: Metrics logging (single write, end of script)
 # ============================================================
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -f "${SCRIPT_DIR}/hook-metrics.sh" ]]; then
     source "${SCRIPT_DIR}/hook-metrics.sh" 2>/dev/null || true
     hook_metric "post-tool-analytics" "$TOOL_NAME" 0 2>/dev/null || true
+fi
+
+# ============================================================
+# SECTION 7b: Emit advisor-escalate JSON (folded, H2)
+# Only reached if Section 2's compaction path did not already exit with a
+# merged JSON blob above. If ADVISOR_JSON is the trivial '{}' (the common
+# case — no recurring-failure signature detected), stdout stays empty and
+# behavior is byte-for-byte identical to before this fold-in.
+# ============================================================
+if [[ "$ADVISOR_JSON" != "{}" ]]; then
+    echo "$ADVISOR_JSON"
 fi
 
 exit 0
