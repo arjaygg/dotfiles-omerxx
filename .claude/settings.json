@@ -11,11 +11,8 @@
   "permissions": {
     "allow": [
       "Read(*)",
-      "Read(/Users/axos-agallentes/.dotfiles/**)",
       "Write(*)",
-      "Write(/Users/axos-agallentes/.dotfiles/**)",
       "Edit(*)",
-      "Edit(/Users/axos-agallentes/.dotfiles/**)",
       "Glob(*)",
       "Grep(*)",
       "Bash(*)",
@@ -317,42 +314,6 @@
             "command": "bash",
             "args": [
               "/Users/axos-agallentes/.dotfiles/.claude/hooks/graphify-redirect.sh"
-            ]
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/pr-title-conventional-guard.sh"
-            ]
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/git-commit-guard.sh"
-            ]
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/pre-push-remote-check.sh"
             ]
           }
         ]

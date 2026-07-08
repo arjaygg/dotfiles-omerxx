@@ -73,14 +73,21 @@ if [[ -f "$CACHE_FILE" ]]; then
     fi
 fi
 
-# Cache miss or expired — run checks and trigger background installs
+# Cache miss or expired — run checks and (opt-in only) trigger background installs
+# M5 (2026-07-08): auto-install was previously opt-OUT (ran by default unless
+# CLAUDE_HOOKS_DISABLE_AUTO_INSTALL=1 was set) — silently running `npm install -g`/
+# `brew install` on every cache-miss prompt without explicit consent. Now opt-IN:
+# nothing installs unless DOTFILES_AUTO_INSTALL=1 is explicitly set.
+_AUTO_INSTALL_ENABLED=0
+[[ "${DOTFILES_AUTO_INSTALL:-0}" == "1" ]] && _AUTO_INSTALL_ENABLED=1
+
 if [[ ! -f "$CACHE_FILE" ]] || [[ $CACHE_AGE -ge $CACHE_TTL ]]; then
     for bin in "${REQUIRED_BINARIES[@]}"; do
         if ! command -v "$bin" &> /dev/null; then
             MISSING_BINARIES+=("$bin")
-            # Trigger silent background install if a command is defined
+            # Trigger silent background install only when explicitly opted in
             install_cmd="${BINARY_AUTO_INSTALL[$bin]:-}"
-            if [[ -n "$install_cmd" ]] && [[ "${CLAUDE_HOOKS_DISABLE_AUTO_INSTALL:-0}" != "1" ]]; then
+            if [[ -n "$install_cmd" ]] && [[ "$_AUTO_INSTALL_ENABLED" -eq 1 ]]; then
                 (eval "$install_cmd" &>/dev/null) &
             fi
         fi
@@ -91,7 +98,11 @@ fi
 
 if [[ ${#MISSING_BINARIES[@]} -gt 0 && "$_SKIP_ENV_CHECKS" -eq 0 ]]; then
     echo "hook: setup-health"
-    echo "status: installing in background"
+    if [[ "$_AUTO_INSTALL_ENABLED" -eq 1 ]]; then
+        echo "status: installing in background"
+    else
+        echo "status: missing (auto-install disabled — set DOTFILES_AUTO_INSTALL=1 to enable)"
+    fi
     for m in "${MISSING_BINARIES[@]}"; do
         case "$m" in
             qmd) echo "  - qmd (semantic search sync): npm install -g @tobilu/qmd" ;;
