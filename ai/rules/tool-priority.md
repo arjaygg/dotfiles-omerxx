@@ -2,7 +2,7 @@
 
 These rules apply to every project on this machine where `pctx` (and its upstream servers like `Serena`) is configured.
 
-> **Precedence:** In pctx-enabled projects, these rules supersede `agent-user-global.md` for tool selection (stricter: "Never" vs "Prefer").
+> **Precedence:** In pctx-enabled projects, these rules supersede `ai/rules/lean-ctx.md` for tool selection (stricter: "Never" vs "Prefer"). `agent-user-global.md` says little about tool selection specifically, so the practical conflict this resolves is with `lean-ctx.md`.
 
 ---
 
@@ -239,7 +239,7 @@ These rules cover the tools that `tool-priority.md` did not originally address: 
 
 ### Documentation & Knowledge Lookup
 
-**API note (2026-07-07):** Qmd's `search`/`vectorSearch`/`deepSearch` were consolidated into a single `Qmd.query({ subqueries: [{type: "lex"|"vec"|"hyde", text}] })` call — the typed sub-query replaces the old separate function names. `Qmd.get`/`multiGet`/`status` are unchanged. See `plans/pctx-functions.md` for the current snapshot.
+**API note (2026-07-07):** Qmd's `search`/`vectorSearch`/`deepSearch` were consolidated into a single `Qmd.query({ searches: [{type: "lex"|"vec"|"hyde", query}] })` call — the typed sub-query replaces the old separate function names. `Qmd.get`/`multiGet`/`status` are unchanged. See `plans/pctx-functions.md` for the current snapshot.
 
 | Task | 1st Priority | 2nd Priority | Avoid |
 |---|---|---|---|
