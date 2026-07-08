@@ -70,7 +70,7 @@ git commit -m "..."
 # Use stack-pr skill
 ```
 
-The `pre-tool-gate.sh` hook will warn you if you attempt `git commit` on `main`.
+The `pre-tool-gate-v2.sh` hook will warn you if you attempt `git commit` on `main`.
 
 ---
 
@@ -113,8 +113,8 @@ All agent configs (`~/.cursor/mcp.json`, `~/.gemini/*`, `~/.codex/config.toml`, 
 
 All MCP traffic routes through `pctx`:
 - **Gateway config:** `~/.config/pctx/pctx.json`
-- **Servers:** serena, exa, sequential-thinking, notebooklm, markitdown
-- **Serena context:** `--context claude-code` (19 of 43 tools — LSP intelligence only, no file mutation)
+- **Servers:** Serena, Qmd, LeanCtx, Repomix, Graphify
+- **Serena context:** `--context claude-code` (19 of 43 tools — includes symbolic editing tools such as `replaceSymbolBody`, `renameSymbol`, `insertAfterSymbol`/`insertBeforeSymbol`, and `safeDeleteSymbol`; see `ai/rules/tool-priority.md` §1 for the full priority stack)
 
 ---
 
