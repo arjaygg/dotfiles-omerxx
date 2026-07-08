@@ -386,6 +386,32 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
             fi
         fi
 
+        # =============================================================
+        # POLICY A1: commitlint header-max-length + subject-case
+        # Conventional Commits format alone (POLICY A) does not catch these
+        # two active commitlint rules — a subject can match the regex above
+        # while still failing CI's `npx commitlint` on header length or case.
+        # =============================================================
+        if [[ -n "${subject:-}" ]]; then
+            header_len=${#subject}
+            if [[ $header_len -gt 100 ]]; then
+                echo "BLOCKED: Commit header exceeds commitlint's header-max-length (100 chars)." >&2
+                echo "  Header ($header_len chars): $subject" >&2
+                exit 1
+            fi
+
+            # subject-case: lowerCase — text after "type(scope): " must not
+            # contain uppercase (e.g. a capitalized filename like GRAPH_REPORT.md
+            # breaks this even though it matches Conventional Commits format).
+            subject_text=$(echo "$subject" | sed -E 's/^[a-z]+(\([a-z0-9._/-]+\))?!?:[[:space:]]*//')
+            if [[ "$subject_text" =~ [A-Z] ]]; then
+                echo "BLOCKED: Commit subject must be lowerCase per commitlint's subject-case rule." >&2
+                echo "  Subject: $subject_text" >&2
+                echo "  Rewrite without uppercase (spell out filenames/acronyms in lowercase prose)." >&2
+                exit 1
+            fi
+        fi
+
         # POLICY A2: commitlint body-max-line-length (default rule: 100 chars)
         if [[ -n "${commit_msg:-}" ]]; then
             body_violations=""
