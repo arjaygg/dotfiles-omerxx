@@ -8,8 +8,9 @@ description: >
   Evolutionary Architecture. Auto-detects language from project files (go.mod → Go,
   pyproject.toml → Python, tsconfig.json → TypeScript, multiple → polyglot).
   Use for: "build this feature", "implement end to end", "orchestrate this", "run cap",
-  "full TDD cycle", "automate the workflow", "multi-agent workflow". NOT for planning only
-  (use /stark), tests only (use /fury), implementing only (use /ironman), review only (/hawk).
+  "full TDD cycle", "automate the workflow", "multi-agent workflow". NOT for planning-only,
+  tests-only, implementing-only, or review-only requests — cap runs those phases inline
+  (the standalone /stark, /fury, /ironman, /hawk skills are currently disabled).
 triggers:
   - /cap
   - orchestrate

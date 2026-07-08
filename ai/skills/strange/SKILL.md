@@ -281,4 +281,5 @@ Mark `fix` completed. Report via TaskUpdate: "Strange: fix applied. Root cause: 
 
 ## Related Skills
 
-Once fixed, invoke `/fury` to add regression tests, then commit.
+Once fixed, add regression tests covering the failure case, then commit. (The `/fury` skill
+that previously automated this step is currently disabled.)
