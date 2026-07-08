@@ -99,3 +99,12 @@ Durable record: `decisions/0005-autonomous-watchdog-loop.md`
 **Why:** The skill is AUC-project-specific (not dotfiles-global), so it does NOT belong in `ai/skills/`. Its quarantine flag prevents accidental invocation. Moving it to a project repo would require a separate tracker and adds overhead with no benefit.
 **Alternatives rejected:** Move to `ai/skills/` (wrong scope — project-specific, not machine-global); delete entirely (still referenced in project docs); split to separate worktree (overkill).
 **Assumptions:** `check-skill-drift.sh` correctly exempts quarantined real directories, so CI will pass even with this real dir present.
+
+---
+
+## ADL-015 — hook-config.yaml declarative rules: register the loader, don't delete the yaml
+
+**Decision:** 2026-07-08 — `hook-config.yaml`'s `rule.*`/`read-guard.*` entries were dead (`hook-rule-loader.sh` never sourced by any hook or registered in `.claude/settings.json`), but several are genuine `action: block` guards (`sed -i`, `awk`/`echo`/`printf` file redirects, piped `tee`, `node_modules` reads) with no other coverage in `pre-tool-gate-v2.sh`. Registered the loader rather than deleting the yaml.
+**Why:** Deleting the yaml would silently remove intended protection instead of just stop overstating what's enforced. The yaml's simple section-level toggles (`serena-tool-priority`, `session-duration-guard`, etc.) are also genuinely read live by `pre-tool-gate-v2.sh` and `session-duration-guard.sh` — the file is not entirely dead, only its declarative rule layer was.
+**Alternatives rejected:** Delete `hook-config.yaml` entirely (loses real, non-overlapping block coverage); leave as-is and just fix the audit doc's wording (doesn't close the actual enforcement gap).
+**Implementation:** Fixed `check_bash_cmd_rules`/`check_read_path_rules`'s block-path in `hook-rule-loader.sh` to call `_deny()` (same non-blocking-`exit 1` bug class as C1/M4) instead of falling back to plain `exit 1`; sourced the loader from `pre-tool-gate-v2.sh`; wired both check functions into Sections 1 (Read guards) and 2 (Bash guards). Verified live with simulated PreToolUse JSON payloads covering block, warn, and pass-through cases.
