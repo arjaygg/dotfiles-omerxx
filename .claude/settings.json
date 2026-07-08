@@ -362,16 +362,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/axos-agallentes/.claude/hooks/rtk-rewrite.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'lean-ctx hook rewrite'"
+            "command": "/Users/axos-agallentes/.dotfiles/.claude/hooks/rtk-rewrite.sh"
           }
         ]
       },
