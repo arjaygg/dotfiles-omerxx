@@ -250,4 +250,10 @@ if [[ "$ADVISOR_JSON" != "{}" ]]; then
     echo "$ADVISOR_JSON"
 fi
 
+# ============================================================
+# SECTION 8: lean-ctx hook observe (backgrounded, folded from separate
+# PostToolUse .* matcher entry, R6 — docs/plans/2026-07-08-reduce-context-redundancy.md)
+# ============================================================
+(printf '%s' "$INPUT" | bash -lc 'lean-ctx hook observe' &>/dev/null) &
+
 exit 0
