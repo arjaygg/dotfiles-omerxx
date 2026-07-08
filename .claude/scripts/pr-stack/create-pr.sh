@@ -203,7 +203,7 @@ if [ $EXIT_CODE -eq 0 ]; then
         echo "  2. Wait for reviews and address feedback"
     fi
     echo "  3. After merge, update dependent PRs:"
-    echo "     $STACK_SCRIPT_DIR/stack update $SOURCE_BRANCH"
+    echo "     $REPO_ROOT/.claude/scripts/stack update $SOURCE_BRANCH"
 else
     print_error "Failed to create Pull Request"
     echo "$PR_OUTPUT"
