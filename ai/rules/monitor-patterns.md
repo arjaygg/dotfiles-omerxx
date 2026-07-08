@@ -1,3 +1,5 @@
-# Monitor Patterns → /monitor-patterns skill
+# Monitor Patterns Reference
 
-Full reference moved to `ai/skills/monitor-patterns/SKILL.md`. Invoke `/monitor-patterns` or trigger automatically via the skill description.
+Full reference lives at `ai/skills/monitor-patterns/SKILL.md`. Read it directly — the
+`/monitor-patterns` skill is currently disabled via `skillOverrides` in `.claude/settings.json`,
+so it will not trigger automatically or resolve as a slash command.

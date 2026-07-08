@@ -138,4 +138,5 @@ Return immediately.
 
 - `/ci-status` — read current ci-status.md
 - `/ci-monitor` — cicd-monitor agent with webhook support (for complex pipelines)
-- Monitor patterns: `/monitor-patterns` skill (`ai/skills/monitor-patterns/SKILL.md`)
+- Monitor patterns: `ai/skills/monitor-patterns/SKILL.md` (read directly — the `/monitor-patterns`
+  skill is currently disabled via `skillOverrides`)

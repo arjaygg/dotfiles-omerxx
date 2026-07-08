@@ -1,9 +1,23 @@
 # Active Context
 
 plan: plans/2026-07-08-constitution-hooks-audit.md
-focus: Phase 1 of constitution-hooks-audit complete (C1, post-tool-analytics flag-matcher, H3, M4) — Phase 0 explicitly skipped by user 2026-07-08; Phases 2-4 still unexecuted, awaiting decision on next step
+focus: M7 (scrub disabled-skill references) complete on branch fix/scrub-disabled-skill-refs-m7, PR open for review; other Phase 4 items (M8, low-severity batch) and Phases 2-3 still unexecuted
 
-## Current (2026-07-08) — Phase 1 executed and verified
+## Current (2026-07-08) — M7 scrub-references executed
+
+User decision (final, not up for debate): keep `/stark`, `/fury`, `/ironman`, `/hawk`, `/code-health`,
+`/monitor-patterns`, `/hyper-commit-setup` disabled via `skillOverrides` in `.claude/settings.json`;
+scrub dead docs/hooks references instead of re-enabling. Verified live `skillOverrides` confirms all 7
+are `"off"`. Edited: `ai/skills/cap/SKILL.md`, `ai/skills/strange/SKILL.md`, `ai/skills/pr-review/SKILL.md`,
+`ai/skills/ci-watch/SKILL.md`, `ai/skills/ci-monitor/SKILL.md`, `ai/rules/monitor-patterns.md`. Flagged
+as follow-up (file-overlap with other open PRs, not edited): `ai/rules/agent-user-global.md`,
+`ai/rules/tool-priority.md`, `.claude/hooks/plans-healthcheck.sh`. Left alone as historical/aspirational
+(not live routing bugs): stale `plans/*.md` files predating 2026-05-21 and
+`decisions/0005-autonomous-watchdog-loop.md`'s forward-looking pipeline note. Checked off M7 in the audit
+plan. Worked in worktree `.trees/agent-abdac92451e4db8be`; branch renamed to
+`fix/scrub-disabled-skill-refs-m7`, PR opened (not merged) for human review.
+
+## Previous (2026-07-08) — Phase 1 executed and verified
 
 Executed Phase 1 of `plans/2026-07-08-constitution-hooks-audit.md` (user: "go"). All 4 items done and independently verified (not just tool-call-success-claimed — each re-checked via `bash -n`, pattern search, `git diff --stat`, or live simulated-payload testing):
 1. **C1**: `pre-tool-gate-v2.sh` read `session_id` from a `CLAUDE_SESSION_ID` env var Claude Code never sets — Grep/session-init gating was dead. Now parses `session_id` from the stdin JSON payload via jq with an `EFFECTIVE_SESSION_ID` fallback mirrored from `post-tool-analytics.sh`.

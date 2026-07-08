@@ -5,7 +5,7 @@ description: >
   For Go: 6 agents (hawk's Architecture/Quality/Resilience/Security + Performance + Tests).
   For non-Go: 4 agents (Security/Performance/Style/Tests).
   Stack-aware (Charcoal), forge-aware (GitHub + Azure DevOps), posts findings to PR.
-  Use /pr-review for thorough structured review; use /hawk for fast Go-only code review.
+  Use /pr-review for all reviews, Go and non-Go. (The fast Go-only /hawk skill is currently disabled.)
 triggers:
   - /pr-review
   - thorough pr review
@@ -32,9 +32,11 @@ allowed-tools:
 Orchestrates the right agent set based on detected language, then synthesizes a severity-ranked
 findings table. Forge-aware and stack-aware — works on GitHub and Azure DevOps, single PRs and stacks.
 
-**Relationship to `/hawk`:**
-- `/hawk` — fast, Go-specific code-quality review (Architecture/Quality/Resilience/Security). Use for quick checks.
-- `/pr-review` — thorough, language-adaptive review. For Go it is a strict superset of hawk (all 4 hawk agents + Performance + Tests). For non-Go it runs a full 4-agent pass. Always posts to the PR.
+**Note:** `/pr-review` incorporates the same Architecture/Quality/Resilience/Security agent set
+that the standalone `/hawk` skill used to provide for fast Go-only checks. `/hawk` is currently
+disabled via `skillOverrides`; use `/pr-review --no-post` for a quick, non-posting Go review
+in the meantime. For non-Go it runs a full 4-agent pass. Always posts to the PR unless `--no-post`
+is passed.
 
 ## When to Use
 
@@ -339,9 +341,9 @@ For stack reviews: post to each layer's PR with that layer's section only.
 
 | Task | Use |
 |------|-----|
-| Quick Go code review (no posting) | `/hawk` |
+| Quick Go code review (no posting) | `/pr-review --no-post` (`/hawk` is currently disabled) |
 | Thorough Go review + perf/tests + post | `/pr-review` |
 | Non-Go PR review | `/pr-review` |
 | Stack review (all layers) | `/pr-review --stack` |
 | Release readiness (manifest/CHANGELOG/migrations/rollback) | `/release-prep` |
-| Test generation for gaps found | `/fury` |
+| Test generation for gaps found | Write tests manually (`/fury` is currently disabled) |

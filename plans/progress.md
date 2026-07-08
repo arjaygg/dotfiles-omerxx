@@ -1,5 +1,25 @@
 # Progress — 2026-06-12
 
+## Done — 2026-07-08 constitution-hooks-audit M7 (out of Phase 4 order)
+
+Executed `plans/2026-07-08-constitution-hooks-audit.md` M7 per user decision: "scrub references"
+(keep the 7 skills disabled, remove/rewrite dead docs pointing to them as callable).
+
+- [x] Verified live `.claude/settings.json` `skillOverrides` — confirmed all 7 (`stark`, `fury`,
+  `ironman`, `hawk`, `code-health`, `monitor-patterns`, `hyper-commit-setup`) are `"off"`
+- [x] Rewrote dead references in `ai/skills/cap/SKILL.md` (frontmatter description), `ai/skills/strange/SKILL.md`
+  (`/fury` invocation instruction), `ai/skills/pr-review/SKILL.md` (3 spots: description, "Relationship to
+  /hawk" section, Skill Map table rows for `/hawk` and `/fury`), `ai/skills/ci-watch/SKILL.md` and
+  `ai/skills/ci-monitor/SKILL.md` (`/monitor-patterns` "Related" links), `ai/rules/monitor-patterns.md`
+  (pointed at the reference file directly instead of "invoking" a disabled skill)
+- [ ] Flagged as follow-up, not edited (file-overlap with other open PRs #277-282 / in-flight hooks
+  consolidation): `ai/rules/agent-user-global.md` (`/monitor-patterns` mention), `ai/rules/tool-priority.md`
+  (Code Health Routing table: `/code-health`, `/hawk`), `.claude/hooks/plans-healthcheck.sh`
+  (`/hyper-commit-setup` suggestion)
+- Left unedited as historical/aspirational, not active routing bugs: stale `plans/*.md` files last
+  touched 2026-05-21 or earlier, and `decisions/0005-autonomous-watchdog-loop.md`'s forward-looking
+  "Self-Driving PR Pipeline" note
+
 ## Done — 2026-07-08 constitution-hooks-audit Phase 1
 
 Executed `plans/2026-07-08-constitution-hooks-audit.md` Phase 1 per user "go" (Phase 0 explicitly skipped by user).

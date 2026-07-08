@@ -97,7 +97,7 @@ I directly reproduced one of these: this session's own loaded context contains `
 - [ ] M3: move `rtk-rewrite.sh` into the tracked repo as a real symlinked file
 - [ ] M5: gate `plans-healthcheck.sh`'s auto-install behind explicit opt-in
 - [ ] M6: point `post-tool-analytics.sh`'s long-output advice at real LeanCtx calls
-- [ ] M7: either re-enable the ~6 skills docs actively point users toward, or scrub the references (decide per-skill)
+- [x] M7: decided "scrub references" (skills stay disabled). Rewrote dead `/stark`/`/fury`/`/ironman`/`/hawk`/`/monitor-patterns` mentions in `ai/skills/cap/SKILL.md`, `ai/skills/strange/SKILL.md`, `ai/skills/pr-review/SKILL.md`, `ai/skills/ci-watch/SKILL.md`, `ai/skills/ci-monitor/SKILL.md`, `ai/rules/monitor-patterns.md`. Flagged (not edited, PR-overlap): `ai/rules/agent-user-global.md`, `ai/rules/tool-priority.md` (`/monitor-patterns`, `/hawk`, `/code-health` mentions), `.claude/hooks/plans-healthcheck.sh` (`/hyper-commit-setup` suggestion).
 - [ ] M8: wire in or retire the 6 orphaned `ai/rules/*.md` files; fix `docs/agent-configuration-architecture.md`
 - [ ] Low-severity batch: delete `.bak` files, dead `log_violation`/`log_operation` calls, duplicate settings keys, stale filenames in AGENTS.md/agent-user-global.md, `/tmp` flag cleanup
 
