@@ -38,6 +38,13 @@ EFFECTIVE_SESSION_ID="${SESSION_ID:-${CLAUDE_SESSION_ID:-default}}"
 # compaction behavior as Bash/Agent already get, just a third tool name
 # routed into the same existing check — advisory replacement of the tool's
 # returned content, never a block (this hook cannot block; PostToolUse only).
+#
+# LINE_COUNT/OUTPUT must be initialized unconditionally: Section 2 below
+# reads LINE_COUNT for every tool call, and under `set -u` an unset
+# reference on a non-Bash/Agent/pctx-execute call (i.e. most calls) is a
+# fatal shell error, not a false/empty value.
+LINE_COUNT=0
+OUTPUT=""
 if [[ "$TOOL_NAME" == "Bash" || "$TOOL_NAME" == "Agent" || "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then
     eval "$(echo "$INPUT" | jq -r '
       def text_content:
