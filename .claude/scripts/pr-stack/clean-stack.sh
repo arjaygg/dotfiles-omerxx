@@ -65,7 +65,11 @@ if [ -n "${TMUX:-}" ]; then
 fi
 
 # 2. Remove worktree if it exists
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+# Resolve via the common git dir, not --show-toplevel: when this script runs
+# from inside the worktree being cleaned, --show-toplevel returns that
+# worktree's own root, producing a bogus nested .trees/<name>/.trees/<name>
+# path and silently skipping worktree removal.
+REPO_ROOT=$(cd "$(git rev-parse --git-common-dir 2>/dev/null || echo .git)/.." && pwd)
 WORKTREE_PATH="$REPO_ROOT/.trees/$WINDOW_NAME"
 
 if [ -d "$WORKTREE_PATH" ]; then
@@ -79,6 +83,13 @@ if [ -d "$WORKTREE_PATH" ]; then
     fi
     git worktree remove "$WORKTREE_PATH" 2>/dev/null || git worktree remove --force "$WORKTREE_PATH"
     print_info "Removed worktree: $WORKTREE_PATH"
+
+    # If we were running from inside the worktree just removed, our cwd is now
+    # gone, and every subsequent git call would fail with "fatal: Unable to
+    # read current working directory" — silently skipping branch deletion.
+    if [ ! -d "$PWD" ]; then
+        cd "$REPO_ROOT"
+    fi
 fi
 
 # 3. Delete local branch (switch away first if on it)
@@ -88,14 +99,14 @@ if [ "$CURRENT" = "$BRANCH" ]; then
 fi
 
 if git branch --list "$BRANCH" | grep -q "$BRANCH"; then
-    git branch -d "$BRANCH" 2>/dev/null || {
-        if [ "$FORCE" = true ]; then
-            git branch -D "$BRANCH"
-        else
-            print_warning "Branch not fully merged; use --force to delete anyway"
-        fi
-    }
-    print_info "Deleted local branch: $BRANCH"
+    if git branch -d "$BRANCH" 2>/dev/null; then
+        print_info "Deleted local branch: $BRANCH"
+    elif [ "$FORCE" = true ]; then
+        git branch -D "$BRANCH"
+        print_info "Deleted local branch: $BRANCH (forced)"
+    else
+        print_warning "Branch not fully merged; use --force to delete anyway"
+    fi
 fi
 
 print_success "Cleaned: $BRANCH"
