@@ -29,10 +29,16 @@ eval "$(echo "$INPUT" | jq -r '
 # Prefer explicit session_id from tool payload; fall back to env var for compatibility.
 EFFECTIVE_SESSION_ID="${SESSION_ID:-${CLAUDE_SESSION_ID:-default}}"
 
-# Extract output text and line count for Bash/Agent (heavier parse, only when needed)
-LINE_COUNT=0
-OUTPUT=""
-if [[ "$TOOL_NAME" == "Bash" || "$TOOL_NAME" == "Agent" ]]; then
+# Extract output text and line count for Bash/Agent/pctx-execute (heavier
+# parse, only when needed). N4 (gate-logic-consolidated-review): pre-tool-
+# gate-v2.sh is PreToolUse-only and cannot inspect a tool's *result* size
+# before it runs, so mcp__pctx__execute_typescript result-size guarding has
+# to live here instead, feeding the same generic Section 2 compaction below
+# rather than a new mechanism. Policy unchanged, scope corrected: identical
+# compaction behavior as Bash/Agent already get, just a third tool name
+# routed into the same existing check — advisory replacement of the tool's
+# returned content, never a block (this hook cannot block; PostToolUse only).
+if [[ "$TOOL_NAME" == "Bash" || "$TOOL_NAME" == "Agent" || "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then
     eval "$(echo "$INPUT" | jq -r '
       def text_content:
         .tool_response.content // .content //
