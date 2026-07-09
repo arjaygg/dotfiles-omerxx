@@ -26,6 +26,26 @@ except:
     print('')
 " 2>/dev/null || echo "")
 
+SESSION_ID=$(echo "$HOOK_PAYLOAD" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print(d.get('session_id', ''))
+except:
+    print('')
+" 2>/dev/null || echo "")
+
+# --- Compaction brake (N3a): count compactions per session ---
+# At >=3 the checkpoint carries a hard restart advisory — mechanizes the
+# context-and-compaction.md "at most 1-2 compacts per session" rule
+# (transcripts show sessions ignoring it: 37/14/11 cycles).
+COMPACT_COUNT=1
+if [[ -n "$SESSION_ID" ]]; then
+    COUNT_FILE="/tmp/.claude-compact-count-$(id -u)-${SESSION_ID}"
+    COMPACT_COUNT=$(( $(cat "$COUNT_FILE" 2>/dev/null || echo 0) + 1 ))
+    echo "$COMPACT_COUNT" > "$COUNT_FILE" 2>/dev/null || COMPACT_COUNT=1
+fi
+
 # More topics on auto-compact (user had no warning)
 TOPIC_COUNT=5
 [[ "$TRIGGER" == "auto" ]] && TOPIC_COUNT=10
@@ -170,11 +190,13 @@ python3 - \
     "$DECISIONS" \
     "$PROGRESS" \
     "$TOPICS" \
+    "$COMPACT_COUNT" \
     <<'PYEOF'
 import sys, json, os
 
 (plan, recent, timestamp, cwd, trigger,
- git_branch, git_state, active_ctx, decisions, progress, topics) = sys.argv[1:12]
+ git_branch, git_state, active_ctx, decisions, progress, topics,
+ compact_count) = sys.argv[1:13]
 
 trigger_label = trigger if trigger else "unknown"
 
@@ -182,6 +204,17 @@ lines = [
     f'[PRE-COMPACT CHECKPOINT — {timestamp}]  [trigger: {trigger_label}]',
     f'Working directory: {cwd}  |  Branch: {git_branch}' if git_branch else f'Working directory: {cwd}',
 ]
+
+try:
+    _n = int(compact_count)
+except ValueError:
+    _n = 1
+if _n >= 3:
+    lines.insert(0,
+        f'[COMPACTION BRAKE] This session has compacted {_n} times. Per '
+        'context-and-compaction.md: checkpoint state to plans/ NOW and tell '
+        'the user to restart a fresh session — do not continue accumulating '
+        'work in this window.')
 
 if git_state:
     lines.append(f'Git state: {git_state}')
