@@ -8,22 +8,24 @@ Branch `fix/gate-logic-consolidated-review`, worktree `.trees/gate-logic-consoli
 Constraint on every item: "policy unchanged, scope corrected" — no existing hard-deny weakened.
 
 - [x] N6b — `advisor-escalate.py` `is_excluded()`: stop excluding `"BLOCKED:"` gate denials from
-  the recurrence tracker (applied to working tree, not committed)
-- [ ] N4 — extend size guard to `mcp__pctx__execute_typescript` result size + Bash-redirect
-  target paths (BLOCKED on re-reading Phase 2's finding — mechanism unresolved, may need a
-  PostToolUse companion since this file is PreToolUse-only)
-- [ ] N4c/N6c — add `jq|curl` to pipe-strip whitelist, `pre-tool-gate-v2.sh` line ~615
-- [ ] N6a — `[HARD-BLOCK — DO NOT RETRY]` prefix on every hard-deny + doc in tool-priority.md §0
-  ("autoresearch dangerous-cmd list" call site not yet located)
-- [ ] N7 — branch grep/find/ls denials on MCP-alternative-initialized state, lines ~553-572
-- [ ] N9a — extend `[MONITOR HINT]` regex for semicolon/`&&`-chained `sleep`, lines ~594-600
-- [ ] Reconcile `post-tool-analytics.sh` vs `advisor-escalate.py` naming discrepancy for N6b commit
-- [ ] Commit: one commit for `pre-tool-gate-v2.sh` (N4, N4c/N6c, N6a, N7, N9a) + tool-priority.md
-      doc line; separate commit for N6b
-- [ ] Run plan's Verification steps 3, 5, 6, 8 after all edits land
+  the recurrence tracker (commit `3dae42c`)
+- [x] N4 — extend size guard to Bash `<` redirect targets (commit `752b2d3`, `pre-tool-gate-v2.sh`)
+  and to `mcp__pctx__execute_typescript` result size (commit `e5844d0`, `post-tool-analytics.sh` —
+  routed through the existing generic Bash/Agent compaction check since the gate hook is
+  PreToolUse-only and cannot inspect tool results)
+- [x] N4c/N6c — `jq|curl` pipe-strip whitelist (commit `cd1dfcf`)
+- [x] N6a — `[HARD-BLOCK — DO NOT RETRY]` prefix on every `_deny()` (commit `5eab8c6`) + doc
+  paragraph in `tool-priority.md` §0 (commit `c7a4968`)
+- [x] N7 — branch grep/find/ls denials on MCP-alternative-initialized state (commit `2b5c09a`)
+- [x] N9a — extend `[MONITOR HINT]` regex for semicolon/`&&`-chained `sleep` (commit `287cad8`)
+- [x] Commits: `5eab8c6`, `3dae42c`, `cd1dfcf`, `287cad8`, `2b5c09a`, `752b2d3`, `e5844d0`,
+      `c7a4968` — all on `fix/gate-logic-consolidated-review`. Working tree clean (only the
+      auto-generated, untracked `plans/session-snapshot.md` remains).
+- [ ] Run plan's Verification steps 3, 5, 6, 8 against the merged changes (not yet started)
 
-Session stopped here (3rd `/compact` this session — checkpointing per context-and-compaction.md
-rather than continuing in this window). See `plans/active-context.md` for full resume detail.
+Phase 4 substantively complete as of 2026-07-09 — all six identified items landed as discrete,
+policy-compliant commits ("policy unchanged, scope corrected" on every one). Verification steps
+and Phase 5 (deferred by user) remain for a follow-up session.
 
 ## Done — 2026-07-08 constitution-hooks-audit M7 (out of Phase 4 order)
 
