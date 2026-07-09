@@ -597,6 +597,10 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
            echo "$CMD" | grep -qE 'sleep [0-9]'; then
             echo "[MONITOR HINT] This command looks like a poll loop. If the goal is event-watching (notify when condition changes), the Monitor tool is more efficient — zero tokens when silent, vs this loop which costs tokens on every iteration. See ai/rules/monitor-patterns.md." >&2
         fi
+    # 2f-chained. Same poll-loop signal, but chained via ';'/'&&' instead of a while-loop
+    elif echo "$CMD" | grep -qE '(gh (run|pr|workflow)|kubectl|tail -f|curl.*http|argocd)' && \
+         echo "$CMD" | grep -qE '(;|&&) *sleep [0-9]'; then
+        echo "[MONITOR HINT] This command looks like a poll loop (chained sleep outside a while-loop). If the goal is event-watching (notify when condition changes), the Monitor tool is more efficient — zero tokens when silent, vs repeated invocations which cost tokens every time. See ai/rules/monitor-patterns.md." >&2
     fi
 
     # 2f-standalone. Standalone head/tail/cat — use Read tool instead (mirrors deny-list entries being removed)
