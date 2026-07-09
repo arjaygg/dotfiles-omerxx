@@ -550,6 +550,25 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
     # echo/printf redirects, piped tee — real gaps not caught by 2a-2g below)
     check_bash_cmd_rules "$CMD"
 
+    # N4: input-redirect target size guard. Section 1b already tiers Read
+    # tool_input by size (500KB deny / 100KB advise-toward-limit) — but a Bash
+    # command reading the same oversized file via `< file` redirect bypasses
+    # that guard entirely, since Section 1 only inspects the Read tool. Mirror
+    # the same thresholds here for the redirect-target path. Policy unchanged,
+    # scope corrected: identical limits/messages as 1b, just a second entry
+    # point for the same underlying risk (no existing deny weakened).
+    if [[ "$CMD" =~ \<[[:space:]]*([^[:space:]\<\>\|\&\;]+) ]]; then
+        _REDIRECT_TARGET="${BASH_REMATCH[1]}"
+        if [[ -f "$_REDIRECT_TARGET" ]]; then
+            _REDIRECT_SIZE=$(stat -f%z "$_REDIRECT_TARGET" 2>/dev/null || stat -c%s "$_REDIRECT_TARGET" 2>/dev/null || echo 0)
+            if [[ "$_REDIRECT_SIZE" -gt 512000 ]]; then
+                _deny "BLOCKED: '$_REDIRECT_TARGET' is $(( _REDIRECT_SIZE / 1024 ))KB — reading it via a Bash '<' redirect bypasses the Read tool's size guard. Use LeanCtx.ctxSmartRead(\"$_REDIRECT_TARGET\") for analysis-only reads."
+            elif [[ "$_REDIRECT_SIZE" -gt 102400 ]]; then
+                _deny "BLOCKED: '$_REDIRECT_TARGET' is $(( _REDIRECT_SIZE / 1024 ))KB. Use Read with limit/offset or Grep to read only the relevant section instead of a Bash '<' redirect."
+            fi
+        fi
+    fi
+
     # 2a. grep (but not git grep) — no Grep tool exists in this session; use LeanCtx.ctxSearch
     if [[ ( "$CMD" == grep\ * || "$CMD" == grep\ -* ) && "$CMD" != *"git grep"* ]]; then
         _deny "BLOCKED: Use LeanCtx.ctxSearch instead of 'grep' (no Grep tool exists in this session).
