@@ -612,7 +612,7 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
         if [[ "$PIPE_CMD" == "head" || "$PIPE_CMD" == "tail" ]]; then
             _BASE_CMD=$(echo "$CMD" | sed 's/ *|.*//')
             _FIRST_WORD=$(echo "$_BASE_CMD" | awk '{print $1}')
-            if echo "$_FIRST_WORD" | grep -qE '^(gh|kubectl|git|argocd|az|docker|helm|aws|rtk)$'; then
+            if echo "$_FIRST_WORD" | grep -qE '^(gh|kubectl|git|argocd|az|docker|helm|aws|rtk|jq|curl)$'; then
                 echo "$INPUT" | jq --arg cmd "$_BASE_CMD" '.tool_input.command = $cmd'
                 echo "REWRITE: Stripped '| $PIPE_CMD' — running: $_BASE_CMD" >&2
                 exit 0
