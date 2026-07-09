@@ -28,6 +28,9 @@ karabiner/automatic_backups/
 # Cursor hook runtime state (failure-streak tracking, debug logs)
 .cursor/hooks/.state/
 
+# stack-ship tool state (audit log, machine-local)
+.stack-ship/
+
 # Claude Code hook runtime state (advisor-escalate failure-streak tracking)
 .claude/hooks/.state/advisor-escalate/
 
