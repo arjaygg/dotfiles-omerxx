@@ -224,11 +224,16 @@ These rules cover the tools that `tool-priority.md` did not originally address: 
 
 **Rule:** lean-ctx is a file-access layer (read, compress, cache). It has no symbol index. For any task phrased as navigation ("where", "what calls", "what's in"), Serena is the correct first call. LeanCtx is correct for text patterns and file reads — not code structure exploration.
 
-### Code/PR Graph Tooling (Graphify — standalone CLI, corrected 2026-07-09)
+### Code/PR Graph Tooling (Graphify — two real interfaces, correction retracted 2026-07-09)
 
-**Correction:** an earlier version of this section claimed `Graphify` was a `pctx` namespace (`queryGraph`, `getNode`, `getNeighbors`, `getCommunity`, `godNodes`, `graphStats`, `shortestPath`, `listPrs`, `getPrImpact`, `triagePrs`). Verified against a live `mcp__pctx__list_functions` call (2026-07-09): the pctx server exposes only `Serena`, `Qmd`, `LeanCtx`, and `Repomix` — **no `Graphify` namespace exists.** Those function names were never real; do not call them.
+**Correction retracted (2026-07-09):** the prior version of this section claimed no `Graphify` pctx namespace exists. That was wrong — a live `mcp__pctx__list_functions` call this session confirmed `Graphify` **is** a real pctx namespace, exposing `queryGraph`, `getNode`, `getNeighbors`, `getCommunity`, `godNodes`, `graphStats`, `shortestPath`, `listPrs`, `getPrImpact`, `triagePrs`. It is backed by `/Users/axos-agallentes/.local/bin/graphify-mcp-conditional` — the "conditional" naming indicates it registers only when a project has `graphify-out/graph.json`, the same per-project scoping already documented below for the CLI. The two interfaces likely serve the same underlying graph data via different access paths.
 
-The real, working interface is the standalone `graphify` CLI (see the per-project `CLAUDE.md`'s `# graphify` section, e.g. `auc-conversion/CLAUDE.md`), which operates on a project-local `graphify-out/graph.json`:
+| Interface | Access path | Use when |
+|---|---|---|
+| **pctx `Graphify` namespace** | `mcp__pctx__execute_typescript` (`Graphify.queryGraph`, `.getNode`, `.getNeighbors`, `.getCommunity`, `.godNodes`, `.graphStats`, `.shortestPath`, `.listPrs`, `.getPrImpact`, `.triagePrs`) | Already inside an `execute_typescript` batch with other Serena/Qmd/LeanCtx/Repomix calls — combine into one round-trip per §4 |
+| **Standalone `graphify` CLI** | Shell: `graphify query/path/explain/update` (see the per-project `CLAUDE.md`'s `# graphify` section, e.g. `auc-conversion/CLAUDE.md`) | Standalone shell check, no batching need |
+
+Both operate on the same project-local `graphify-out/graph.json`:
 
 | Task | Command |
 |---|---|
@@ -239,7 +244,7 @@ The real, working interface is the standalone `graphify` CLI (see the per-projec
 | **Full architecture review** | `graphify-out/GRAPH_REPORT.md` (only when query/path/explain don't surface enough) |
 | **Keep graph current after edits** | `graphify update .` (AST-only, no API cost) |
 
-**Rule:** Graphify is per-project (only active where `graphify-out/graph.json` exists and the project's own `CLAUDE.md` documents it) — it is not a globally available pctx function set. Check the project's `CLAUDE.md` for its own graphify invocation rules before assuming this table applies.
+**Rule:** Graphify is per-project either way — both interfaces are only active where `graphify-out/graph.json` exists, and the CLI's invocation details still live in the project's own `CLAUDE.md`. Prefer the pctx namespace when already batching other pctx calls; prefer the CLI for a one-off shell check.
 
 ### Documentation & Knowledge Lookup
 
