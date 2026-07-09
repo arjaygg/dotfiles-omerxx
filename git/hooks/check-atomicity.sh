@@ -3,6 +3,16 @@
 # Warns (advisory) when overgrown. Delegates state computation to atomic-status.sh.
 set -euo pipefail
 
+# Merge commits legitimately stage many files across subsystems — the
+# atomicity fence targets authored commits, not merges (observed false
+# positive 2026-07-09: syncing origin/main into a feature branch staged 49
+# files / 5 subsystems and was blocked, forcing a rebuild-and-cherry-pick
+# workaround).
+_GIT_DIR=$(git rev-parse --git-dir 2>/dev/null || echo ".git")
+if [[ -f "$_GIT_DIR/MERGE_HEAD" ]]; then
+    exit 0
+fi
+
 ATOMIC_STATUS="$HOME/.dotfiles/scripts/ai/atomic-status.sh"
 
 if [[ ! -x "$ATOMIC_STATUS" ]]; then
