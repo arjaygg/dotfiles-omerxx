@@ -31,6 +31,8 @@ These rules apply to every project on this machine where `pctx` (and its upstrea
 2. Write a feedback memory NOW: what command was blocked, what the correct tool is
 3. Do not wait for the user to point it out
 
+**`[HARD-BLOCK — DO NOT RETRY]` marker:** every `_deny()` message in `pre-tool-gate-v2.sh` is prefixed with this literal string. It means the denial is final for this exact command — retrying the same command, or a trivially-rephrased variant of it, will hit the same block again. Switch to the dedicated tool named in the message instead of re-attempting. This marker exists specifically to short-circuit retry loops before `advisor-escalate.py`'s recurrence tracker has to catch them after 3+ repeats.
+
 ---
 
 ## 1. Tool Priority Stack
