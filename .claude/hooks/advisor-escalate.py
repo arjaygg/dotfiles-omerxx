@@ -109,8 +109,12 @@ def error_class(text):
 
 
 def is_excluded(text):
-    if text.startswith("BLOCKED:"):
-        return True
+    # N6b (policy unchanged, scope corrected): "BLOCKED:" denials from
+    # pre-tool-gate-v2.sh/hook-rule-loader.sh used to be excluded outright,
+    # so an agent retrying the exact same denied call never accumulated a
+    # recurrence signature and never got escalated — this hid the retry-loop
+    # case the whole hook exists to catch. Gate denials now count like any
+    # other tool failure; only genuine informational nudges stay excluded.
     if "hook additional context" in text.lower():
         return True
     return False
