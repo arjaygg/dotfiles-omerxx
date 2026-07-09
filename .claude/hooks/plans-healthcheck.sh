@@ -6,7 +6,15 @@ set -euo pipefail
 trap 'echo "HOOK CRASH (plans-healthcheck.sh line $LINENO): $BASH_COMMAND"; exit 0' ERR
 
 # CRITICAL: Drain stdin — all UserPromptSubmit hooks must consume stdin to prevent buffering issues
-cat > /dev/null
+# (N1b) Capture instead of discarding so session_id can key per-session dedup flags.
+HOOK_PAYLOAD=$(cat || true)
+SESSION_ID=$(echo "$HOOK_PAYLOAD" | python3 -c "
+import sys, json
+try:
+    print(json.load(sys.stdin).get('session_id', ''))
+except Exception:
+    print('')
+" 2>/dev/null || echo "")
 
 # UserPromptSubmit expects JSON output when emitting context.
 # Capture plain-text advisory output from this script and wrap it as hookSpecificOutput.
@@ -171,11 +179,14 @@ if [[ "$_SKIP_ENV_CHECKS" -eq 0 ]] && git rev-parse --show-toplevel &>/dev/null 
     GT_INIT=0
     [[ -f ".git/.graphite_repo_config" ]] && GT_INIT=1
 
-    if [[ "$STACK_BRANCH" == "main" || "$STACK_BRANCH" == "master" ]]; then
+    # (N1b) once per session per branch — re-arms on branch switch (state change)
+    _STACK_FLAG="/tmp/.claude-stackhealth-$(id -u)-${SESSION_ID:-$TODAY}-${STACK_BRANCH}"
+    if [[ "$STACK_BRANCH" == "main" || "$STACK_BRANCH" == "master" ]] && [[ ! -f "$_STACK_FLAG" ]]; then
         echo "hook: stack-health"
         echo "status: on '$STACK_BRANCH'"
         echo "  suggested: stack-create skill before editing files"
         echo ""
+        touch "$_STACK_FLAG" 2>/dev/null || true
     fi
 
     if [[ "$GT_INIT" -eq 0 ]] && command -v gt &>/dev/null; then
@@ -241,6 +252,15 @@ fi
 if [[ ${#MISSING[@]} -eq 0 ]] && [[ ${#STALE[@]} -eq 0 ]] && [[ -z "$ACTIVE_CTX_AGE" ]]; then
     exit 0
 fi
+
+# (N1b) once per session per state — re-emits only when the warning content
+# changes (file becomes stale/missing/fresh), not on every prompt
+_PLANS_SIG="${MISSING[*]:-}|${STALE[*]:-}|${ACTIVE_CTX_AGE}"
+_PLANS_FLAG="/tmp/.claude-planshealth-$(id -u)-${SESSION_ID:-$TODAY}"
+if [[ -f "$_PLANS_FLAG" ]] && [[ "$(cat "$_PLANS_FLAG" 2>/dev/null || true)" == "$_PLANS_SIG" ]]; then
+    exit 0
+fi
+echo "$_PLANS_SIG" > "$_PLANS_FLAG" 2>/dev/null || true
 
 # Build and output warning
 python3 - "${MISSING[*]:-}" "${STALE[*]:-}" "$ACTIVE_CTX_AGE" <<'PYEOF'
