@@ -1,5 +1,37 @@
 # Active Decisions Log
 
+## 2026-07-09 — Checkpoint and restart session for Phase 4 (injection-antipatterns)
+**Decision:** Stopped mid-Phase-4 (only N6b applied, uncommitted) to write a full checkpoint to
+`plans/active-context.md`/`progress.md` and tell the user to resume in a fresh session, instead of
+continuing to implement N7/N9a/N4c/N6c/N6a/N4 in the current window.
+**Why:** This session tripped its 3rd `/compact` this session. `ai/rules/context-and-compaction.md`
+states: "Use `/compact` at most 1-2 times per session — prefer checkpointing to a plan and starting
+fresh." Continuing to accumulate work risks a 4th compaction and further context degradation.
+**Alternatives rejected:** Continuing to implement the remaining 6 items directly — rejected because
+it directly contradicts the standing rule that fired, and several items (N4, N6a) still have
+unresolved scope questions that benefit from a clean-context re-read of the plan doc rather than
+carrying forward speculative framing from a compacted summary.
+**Assumptions:** The user's original "go" authorization for Phase 4 execution still holds across the
+session restart — resuming should not require re-asking which phase to do, only re-reading this
+checkpoint.
+
+## 2026-07-09 — N4's pctx-result-size mechanism is unresolved, needs Phase 2 finding
+**Decision:** Did not implement N4 this session; flagged the mcp__pctx__execute_typescript-result
+half of N4 as blocked pending a fresh read of "Phase 2's finding" (referenced by the plan doc for
+both N4 and N6b as "Depends on Phase 2").
+**Why:** `pre-tool-gate-v2.sh` is a PreToolUse-only hook — it cannot see tool *output*, only
+tool_input, so it structurally cannot measure a real execute_typescript result's byte size before
+the call runs. The plan's own Verification item 3 frames this case as "(post-fix only)", which is
+consistent with the fix needing to live in a PostToolUse hook (most likely `post-tool-analytics.sh`)
+rather than purely in `pre-tool-gate-v2.sh`.
+**Alternatives rejected:** A heuristic PreToolUse check on the `code` param (e.g. flagging
+`Serena.readMemory`/`ctxRead` calls lacking `.slice`/`substring`/explicit field selection) — rejected
+as fragile/false-positive-prone without first confirming Phase 2's actual finding calls for this.
+**Assumptions:** Phase 2's finding (not currently visible in context, needs re-reading from the plan
+doc) will name the specific PostToolUse mechanism or clarify that N4's pctx-result dimension is
+Bash-redirect-only and the "result size" wording was about something narrower than a full
+after-the-fact measurement.
+
 Session-friendly ADL for in-flight work. Promote to `decisions/` when a decision is cross-cutting or long-lived.
 
 ---

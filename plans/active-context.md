@@ -1,9 +1,66 @@
 # Active Context
 
-plan: plans/2026-07-08-constitution-hooks-audit.md
-focus: M7 (scrub disabled-skill references) complete on branch fix/scrub-disabled-skill-refs-m7, PR open for review; other Phase 4 items (M8, low-severity batch) and Phases 2-3 still unexecuted
+plan: /Users/axos-agallentes/git/auc-conversion/docs/plans/2026-07-09-implement-session-injection-antipatterns.md
+step: Phase 4 of 5 (Phase 4 only — user explicitly deferred Phase 5 for this pass)
+focus: gate-logic consolidated review of pre-tool-gate-v2.sh + advisor-escalate.py, worktree .trees/gate-logic-consolidated-review, branch fix/gate-logic-consolidated-review
 
-## Current (2026-07-08) — M7 scrub-references executed
+## Current (2026-07-09) — Phase 4 checkpoint, session restart required
+
+**Why checkpointing now instead of continuing:** this session has hit its 3rd `/compact` this
+session, tripping the standing rule in `ai/rules/context-and-compaction.md` ("Use `/compact` at
+most 1-2 times per session — prefer checkpointing to a plan and starting fresh"). Stopping here
+and telling the user to resume in a fresh session rather than continuing to implement more items
+in this window.
+
+**Standing constraint for every remaining edit (plan doc line 54, verbatim):** "policy unchanged,
+scope corrected" — never weaken an existing hard-deny, only fix repetition/scoping/contradiction;
+each commit must carry an explicit note to that effect.
+
+**Done this session (applied to working tree, NOT yet committed):**
+- N6b: `.claude/hooks/advisor-escalate.py` `is_excluded()` (~line 111) — removed the outright
+  exclusion of `"BLOCKED:"` gate denials (previously hid retry-loop cases from the recurrence
+  tracker); only genuine "hook additional context" nudges stay excluded now. Confirmed intact via
+  re-read this session.
+
+**Not yet started (still need edits in `pre-tool-gate-v2.sh`):**
+- N4 — extend the existing 100KB/500KB size guard (Section 1b, ~line 251) beyond `Read` tool_input
+  to cover `mcp__pctx__execute_typescript` result size and Bash-redirect target paths. **Unresolved
+  mechanism**: `pre-tool-gate-v2.sh` is PreToolUse-only, but the plan's Verification item 3 frames
+  the pctx-result case as "(post-fix only)" — i.e. it may require a PostToolUse companion (most
+  likely in `post-tool-analytics.sh`, not `advisor-escalate.py`) rather than being achievable purely
+  in this file. **Next session must re-read "Phase 2's finding"** in the plan doc (referenced by
+  both N4 and N6b as "Depends on Phase 2") before implementing this — that finding text was not
+  located again this session (a `grep`-based Bash search for "Phase 2" was blocked by this
+  project's own gate hook; needs a `Read`-based section scan of the plan doc instead, or an
+  `awk`-based Bash fallback since `awk` is not on the deny list here).
+- N4c/N6c — Section 2g line ~615: add `jq|curl` to the pipe-strip whitelist regex
+  `^(gh|kubectl|git|argocd|az|docker|helm|aws|rtk)`. Exact, low-risk, ready to implement directly.
+- N6a — prefix "every hard-deny (autoresearch dangerous-cmd list, branch-protection edits)" with
+  `[HARD-BLOCK — DO NOT RETRY]`; document the marker in `~/.dotfiles/ai/rules/tool-priority.md` §0.
+  Scope stated as "Net-new, multi-site" in the plan — broader than an earlier narrow draft that
+  scoped it to just 3b (branch-protection)/4a/4b/empty-`TOOL_NAME`. The "autoresearch dangerous-cmd
+  list" reference has NOT been located in this file yet — may point to a different file/mechanism.
+- N7 — Section 2a/2b/2c (lines ~553-572, grep/find/ls hard-denies): branch on MCP-alternative-
+  initialized state — permit-with-warn+output-cap instead of hard-deny when the dedicated tool is
+  absent AND uninitialized. Reuse the `${HOME}/.config/pctx/pctx.json`-existence check (Section
+  1d/6 precedent) as the "tool absent" signal; the `/tmp/.claude-ctx-loaded-...` flag (Section 6)
+  is a candidate "initialized" signal.
+- N9a — Section 2f (lines ~594-600, `[MONITOR HINT]`): extend the regex to also match semicolon/
+  `&&`-chained `sleep N` outside a `while`-loop: `(^|;|&&)\s*sleep +[0-9]+\s*(;|&&)`.
+
+**Real open discrepancy to reconcile before committing N6b (and possibly part of N4):** the plan
+doc's own commit-grouping table names `post-tool-analytics.sh` for the N6b commit, but the actual
+`is_excluded()`/recurrence-tracking logic N6b describes lives in `advisor-escalate.py` (confirmed
+by direct reads of both files). Check whether `post-tool-analytics.sh` is meant to be the source of
+deny signatures N6b "wires into" the tracker, or whether the plan doc's file name is simply stale.
+
+**Explicitly out of scope for this branch:** Phase 5 (`auc-conversion` `.ckignore` fix) — user chose
+"Phase 4 only" for this pass; do not touch it here.
+
+**Verification once all Phase 4 edits land:** re-run the plan's own Verification steps 3, 5, 6, 8 to
+confirm no existing hard-deny was weakened (ties to the "policy unchanged, scope corrected" rule).
+
+## Previous (2026-07-08) — M7 scrub-references executed
 
 User decision (final, not up for debate): keep `/stark`, `/fury`, `/ironman`, `/hawk`, `/code-health`,
 `/monitor-patterns`, `/hyper-commit-setup` disabled via `skillOverrides` in `.claude/settings.json`;
