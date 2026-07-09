@@ -40,7 +40,7 @@ _DENY_TOOL=""
 # stderr for the UI. stdout must contain ONLY this JSON — never echo anything
 # else to stdout on a code path that can reach _deny.
 _deny() {
-    local reason="$1"
+    local reason="[HARD-BLOCK — DO NOT RETRY] $1"
     _DENIED=1
     _DENY_TOOL="${TOOL_NAME:-}"
     printf '%s\n' "$reason" >&2
