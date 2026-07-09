@@ -557,8 +557,20 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
   Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
     fi
 
+    # N7: dot-directory carve-out for find/ls — Serena.findFile/listDir are documented to fail
+    # silently inside .serena/, .claude/, .cursor/, .mcp.json (tool-priority.md §6, issue #853).
+    # Hard-denying "use Serena instead" is a dead end for exactly these paths, so permit with a
+    # warning + output cap instead. Does not extend to grep: LeanCtx.ctxSearch has no such
+    # limitation, so grep's hard-deny (2a) remains a real, working alternative — policy unchanged.
+    _DOTDIR_LIMITATION='\.(serena|claude|cursor)/|\.mcp\.json'
+
     # 2b. find → no Glob tool exists in this session; use Serena.findFile
     if [[ "$CMD" == find\ * ]]; then
+        if [[ "$CMD" =~ $_DOTDIR_LIMITATION ]]; then
+            echo "$INPUT" | jq --arg cmd "$CMD | head -100" '.tool_input.command = $cmd'
+            echo "WARN: 'find' permitted for a dot-directory target — Serena.findFile fails silently inside .serena/.claude/.cursor/.mcp.json (issue #853, see ai/rules/tool-priority.md §6). Output capped to 100 lines via '| head -100'." >&2
+            exit 0
+        fi
         _deny "BLOCKED: Use Serena.findFile instead of 'find' (no Glob tool exists in this session).
   Call via: mcp__pctx__execute_typescript with: await Serena.findFile('<filename>')
   Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
@@ -566,6 +578,11 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
 
     # 2c. plain ls (not ls -l* for symlink inspection) — no Glob tool exists in this session; use Serena.listDir
     if [[ ( "$CMD" == ls\ * || "$CMD" == "ls" ) && "$CMD" != ls\ -l* ]]; then
+        if [[ "$CMD" =~ $_DOTDIR_LIMITATION ]]; then
+            echo "$INPUT" | jq --arg cmd "$CMD | head -100" '.tool_input.command = $cmd'
+            echo "WARN: 'ls' permitted for a dot-directory target — Serena.listDir/findFile fail silently inside .serena/.claude/.cursor/.mcp.json (issue #853, see ai/rules/tool-priority.md §6). Output capped to 100 lines via '| head -100'." >&2
+            exit 0
+        fi
         _deny "BLOCKED: Use Serena.listDir instead of 'ls' (no Glob tool exists in this session).
   Call via: mcp__pctx__execute_typescript with: await Serena.listDir('<path>')
   Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
