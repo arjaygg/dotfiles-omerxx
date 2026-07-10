@@ -1,4 +1,4 @@
-# pctx Functions — 2026-07-08 (refreshed; supersedes 2026-07-07 drift snapshot)
+# pctx Functions — 2026-07-10 (refreshed; no drift vs 2026-07-08 snapshot)
 
 Namespaces: Serena, Qmd, LeanCtx, Repomix, Graphify
 
