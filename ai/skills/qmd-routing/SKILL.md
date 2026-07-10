@@ -18,15 +18,17 @@ QMD is a local semantic search engine over private markdown collections. Use it 
 
 ## Tool Selection
 
-| Scenario | Tool | Notes |
-|---|---|---|
-| Specific keyword or exact term | `mcp__qmd__search` | ~30ms, use first |
-| Concept or paraphrase query | `mcp__qmd__vector_search` | ~2s, use when keyword fails or query is fuzzy |
-| Broad exploratory question | `mcp__qmd__deep_search` | ~10s, use sparingly for open-ended research |
-| Retrieve a specific known doc | `mcp__qmd__get` | Use when you have a path or doc ID |
-| Check collection health | `mcp__qmd__status` | Use when debugging or verifying index |
+Qmd's search functions are consolidated into a single `Qmd.query({ searches: [{type: "lex"|"vec"|"hyde", query}] })` call (via `mcp__pctx__execute_typescript`) — the typed sub-query replaces the old separate `search`/`vector_search`/`deep_search` functions. `Qmd.get`/`multiGet`/`status` remain separate, unchanged calls.
 
-Add `minScore: 0.5` to filter out low-confidence results.
+| Scenario | Sub-query type | Notes |
+|---|---|---|
+| Specific keyword or exact term | `lex` | Fast, use first |
+| Concept or paraphrase query | `vec` | Use when keyword fails or query is fuzzy |
+| Broad exploratory / semantic question | `hyde` | Use for open-ended or conceptual research |
+| Retrieve a specific known doc | `Qmd.get` | Use when you have a path or doc ID |
+| Check collection health | `Qmd.status` | Use when debugging or verifying index |
+
+Combine multiple sub-query types in one `Qmd.query` call if unsure which will hit. Add `minScore: 0.5` to filter out low-confidence results.
 
 ## When to Trigger
 
@@ -58,7 +60,7 @@ watches for the `claude-pdf-context` collection. No config changes needed.
 
 1. Identify which collection is relevant (activtrak / team-okrs / claude-pdf-context / auc-conversion)
 2. If `claude-pdf-context` and query returns nothing → check if source is a binary doc, ingest via LiteParse first
-3. Call `mcp__qmd__search` first (fast)
-4. If results are weak or the query is conceptual, follow up with `mcp__qmd__vector_search`
+3. Call `Qmd.query` with a `lex` sub-query first (fast)
+4. If results are weak or the query is conceptual, add a `vec` or `hyde` sub-query to the same (or a follow-up) `Qmd.query` call
 5. Synthesize findings into your response — cite the doc path from the result
 6. Do not mention "I searched qmd" unless the user asks; just use the context naturally

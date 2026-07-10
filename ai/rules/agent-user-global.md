@@ -44,51 +44,13 @@ When working in a dotfiles repository:
 
 ## AI Agent Primitives Configuration
 
-This machine uses a unified AI configuration strategy where common primitives are managed centrally in `~/.dotfiles/ai` and symlinked to each agent's configuration directory.
-
-- **Centralized Source:** `~/.dotfiles/ai/`
-- **Linked Agents:** Claude Code, Gemini CLI, Codex, Cursor, Windsurf.
-- **Maintenance:** Any changes to rules, skills, commands, or styles should be made in `~/.dotfiles/ai/` and will be automatically reflected across all tools.
+This machine uses a unified AI configuration strategy: common primitives (skills `ai/skills/`, commands `ai/commands/`, styles `ai/output-styles/`, rules `ai/rules/`) are managed centrally in `~/.dotfiles/ai/` and symlinked to each agent's configuration directory (Claude Code, Gemini CLI, Codex, Cursor, Windsurf). Make changes only in `~/.dotfiles/ai/` — they reflect automatically across all tools.
 
 ## Git Worktree Conventions
 
-Worktrees live at `.trees/<description>/` with branch names `<type>/<description>`.
+Worktrees live at `.trees/<description>/` with branch names `<type>/<description>` (`feature/`, `bugfix/`, `hotfix/`, `release/`, `chore/`). Full branch-type inference, naming/sanitization rules, the config-copy list, and the create/remove procedures live in the **`stack-create` skill** (`ai/skills/stack-create/SKILL.md`) — invoke it for "create a worktree/branch" requests rather than hand-rolling `git worktree add`.
 
-### Supported branch types
-- `feature/` or `feat/`, `bugfix/` or `fix/`, `hotfix/`, `release/`, `chore/`
-
-### Determine branch type from intent
-- **feature/feat**: add, implement, create, build, new feature
-- **bugfix/fix**: bug, fix, resolve, repair, correct
-- **hotfix**: urgent, critical, security, emergency
-- **release**: release, version, v1.0, v2.0
-- **chore**: docs, cleanup, update dependencies
-
-If unclear, default to `feature/`.
-
-### Branch naming rules
-- Use lowercase letters, numbers, and hyphens only (dots allowed for release versions)
-- No consecutive, leading, or trailing hyphens or dots
-- Use hyphens to separate words (e.g., `feature/add-user-login`)
-
-### When asked to "create a worktree"
-1. Sanitize the description (lowercase, spaces→hyphens, strip special chars, collapse hyphens, trim).
-2. Ensure `.trees/` exists.
-3. Create: `git worktree add -b "<type>/<description>" ".trees/<description>" <base-branch>`
-4. Copy essential config files (`.env`, `.vscode/`, `.claude/`, `.serena/`, `.mcp.json`, `.cursor/mcp.json`) — update `--project` paths to point to worktree.
-5. Print next steps: `cd .trees/<description>`, `git status`, `git branch --show-current`
-
-### When asked to "remove a worktree"
-- Verify clean state first (`git -C <path> status --short`).
-- Do NOT remove if uncommitted changes unless explicitly told to proceed.
-- Remove with `git worktree remove <path>`, optionally delete branch.
-
-### When asked to "create a branch" or "switch to a branch"
-- A branch request ALWAYS means creating/switching the actual git branch
-  (`git switch -c`, `gt`, or stack-create). A worktree name or directory is
-  NEVER a substitute for branch creation.
-- If the request is ambiguous, create both branch and worktree per the
-  conventions above — do not debate naming with the user instead of acting.
+A branch request ALWAYS means creating/switching the actual git branch — a worktree name or directory is never a substitute for branch creation. If ambiguous, create both per the skill's conventions rather than debating naming with the user.
 
 ## Plan Documents
 
@@ -161,141 +123,15 @@ When spawning a subagent for research or codebase exploration, **prefer a fork**
 
 ## Model, Effort & Thinking Mode
 
-Use the right Claude Code primitives for each task. These are configured via `/model`, `/effort`,
-and `/fast` commands and apply for the remainder of the session.
+Model/effort/fast-mode selection (Sonnet/Opus/Haiku/Fable tiers, `opusplan` default, advisor auto-escalation, effort levels, fast mode, subagent model routing) is fully documented in the **`model-routing` skill** (`ai/skills/model-routing/SKILL.md`) — mirrors `.cursor/rules/model-routing.mdc` for the Cursor equivalent. Invoke it before a manual `/model`/`/effort` switch, before authoring a `.claude/agents/*.md` frontmatter `model:` field, or when deciding whether a task warrants Fable-tier escalation.
 
-### Default configuration
-
-The recommended default is `model: "opusplan"` in `settings.json`. This automatically uses:
-- **Opus** (currently Opus 4.8) when in plan mode (complex reasoning, architecture exploration)
-- **Sonnet** (currently Sonnet 5) during execution (code generation, file edits, tool use)
-
-No manual `/model` switching needed for the plan→execute flow.
-
-### Model selection
-
-| Signal | Model | Command |
-|--------|-------|---------|
-| Trivial lookup, quick Q&A, classify | Haiku | `/model haiku` |
-| Standard coding (default) | Sonnet | (default via opusplan) |
-| Complex reasoning, architecture, hard bugs | Opus | `/model opus` or use plan mode |
-| Beyond-frontier: multi-day/long-horizon agentic work, or Opus already stalled on the problem | Fable 5 | `/model fable` |
-
-**Fable 5 is an escalation, not a default.** It's Anthropic's Mythos-class tier — above
-Opus, priced well above it, and built for days-long asynchronous work. Reserve `/model
-fable` for tasks that genuinely need it; don't leave it selected as your daily driver
-(it persists across sessions once chosen, so switch back explicitly when done).
-
-**No `fableplan` hybrid exists.** `opusplan` (Opus in plan mode → Sonnet in execution) is
-the only built-in hybrid alias. To get Fable-level planning with cheaper execution, do it
-manually: `/model fable` → plan → accept → `/model opus` (or `sonnet`) before execution.
-
-**`best` alias**: resolves to Fable 5 where your account has access, otherwise the latest
-Opus. Useful as a settings-file default in orgs with mixed Fable access.
-
-### Auto-escalation via the advisor tool
-
-The advisor tool is the one **real auto-escalation** mechanism: the main model decides,
-mid-task, that it's stuck and consults a stronger model for guidance before continuing —
-no manual `/model` switch, no fixed phase boundary. It's still experimental (Anthropic
-may change behavior/pricing) and requires Claude Code v2.1.170+ for the Fable pairing.
-
-- **Configured here**: `advisorModel: "fable"` in `settings.json` — Sonnet/Opus (the main
-  model) auto-consults Fable 5 when it needs a stronger opinion.
-- **When it fires**: model-driven, not rule-based. Typically before committing to an
-  approach, when an error keeps recurring, or before declaring a task done.
-- **Cost**: only the advisor's short reply (~400-700 tokens) is billed at the advisor's
-  rate — not the whole task. Cheap even with Fable as the advisor.
-- **Steer it**: say so directly in a prompt, e.g. `consult the advisor before you
-  continue` or `don't consult the advisor for this`. There's no setting to cap/force calls.
-- **Disable**: `/advisor off` for the session, or `CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1` to
-  turn it off entirely.
-
-This is distinct from `opusplan` (fixed plan/execution boundary) and subagent delegation
-(explicit, for the whole subtask) — see the comparison in Claude Code's advisor docs.
-
-**Known limitation:** the native advisor is known to go silent on long transcripts —
-above roughly 100K tokens it can return `advisor_tool_result_error`/`unavailable` with
-no fallback firing (see GitHub issues #66784, #66742, #66714, #67609). Do not assume
-it will catch a stuck task once a session has run long. `~/.dotfiles/.claude/hooks/
-advisor-escalate.py`/`.sh` (a `PostToolUse` hook, ported from the Cursor equivalent)
-is a backstop: it tracks recurring identical tool failures and, once a signature
-recurs 3+ times, injects a nudge telling the agent to manually spawn a
-`model: "fable"` (or `opus`) subagent for a second opinion instead of waiting on the
-native advisor. It cannot cover the "before declaring a task complete" trigger —
-`Stop` hooks only support `decision: "block"`, not `additionalContext` — so that
-trigger remains a prose-rule responsibility in each project's `AGENTS.md`.
-
-### Effort levels (also controls thinking depth)
-
-Effort is the dial for extended thinking — not a separate toggle. Higher effort = more thinking tokens.
-
-| Task type | Effort | Command |
-|-----------|--------|---------|
-| Mechanical: rename, format, boilerplate | low | `/effort low` |
-| Standard coding (default) | high | `/effort high` |
-| Architecture, root cause, hard debugging | max | `/effort max` |
-
-- **`/effort low`** — suppresses thinking; fastest output, lowest cost
-- **`/effort high`** — adaptive thinking; Claude decides when to reason deeply (default)
-- **`/effort max`** — maximum thinking budget; explores edge cases, no cap
-
-### Fast mode
-
-Fast mode uses the same model at 2.5x speed at 6x cost. Quality is identical.
-
-- **Enable** (`/fast on`): rapid iteration loops, live debugging, back-and-forth micro-sessions
-- **Disable** (`/fast off`): background/autonomous tasks, bulk operations, one-shot requests
-
-Combining `/fast on` + `/effort low` = maximum throughput for trivial tasks.
-Combining `/fast on` + `/effort high` = best interactive experience for standard work.
-
-### Subagent model routing
-
-Subagents declare their own model via the `model:` frontmatter field in
-`.claude/agents/*.md` (accepts `opus`, `sonnet`, `haiku`, `inherit`, or an explicit
-model ID). Unset means "inherit the orchestrator's current model" — this is correct
-for agents whose complexity varies with the task (e.g. `cicd-monitor`, `cicd-review`).
-
-Set an explicit override only when the agent's job is consistently at one end of the
-complexity spectrum:
-
-| Signal | Model | Example agents |
-|--------|-------|-----------------|
-| Deep reasoning, security/correctness stakes, subtle bugs | `opus` | `security-reviewer`, `database-reviewer`, `silent-failure-hunter` |
-| Variable complexity, default is fine | unset (`inherit`) | `cicd-monitor`, `cicd-review`, `cicd-audit` |
-| Mechanical, narrow, well-defined diagnostic loop | `haiku` | `go-build-resolver`, `cicd-auto-retry` |
-
-Applies when authoring or editing any `.claude/agents/*.md` file. Re-evaluate the tier
-if an agent's responsibility changes materially.
-
-### Plan mode
-
-Enter plan mode (`/plan`) for:
-- Multi-file architectural changes
-- Any task requiring `**Accepts:**` criteria before execution
-- Decisions where you want human review before any files are touched
-
-With `opusplan` set, plan mode automatically upgrades to Opus for the planning phase.
+Quick digest: default is `opusplan` (Opus in plan mode, Sonnet in execution); escalate to Fable only for beyond-frontier/stalled work; `/effort low` for mechanical tasks, `/effort max` for architecture/hard-debugging; enter `/plan` mode for multi-file architectural changes.
 
 ---
 
 ## Background Monitoring and Event Watching
 
-Use the right primitive based on whether the task is event-driven or time-driven:
-
-| Signal | Primitive | Notes |
-|--------|-----------|-------|
-| "Tell me when X changes/happens" | `Monitor` | Zero tokens when silent; fires only on stdout events |
-| "Run this, notify when done" | `Bash(run_in_background: true)` | One-shot; single completion notification |
-| "Do X every N minutes regardless" | `/loop` or `CronCreate` | Full prompt cost per tick — use for LLM-required work |
-| "Watch across multiple sessions" | `CronCreate` → `RemoteTrigger` | Scheduled remote agent invocation |
-
-**Use Monitor when:** "notify me when CI fails", "tail logs for errors", "watch pods for crashes"
-**Use run_in_background when:** "run these tests and tell me when done"
-**Use /loop when:** each tick requires LLM reasoning, not just detecting a state change
-
-Patterns and recipes: `/monitor-patterns` skill (`ai/skills/monitor-patterns/SKILL.md`)
+Match the primitive to whether the task is event-driven or time-driven: `Monitor` for "notify me when X happens" (zero token cost while silent); `Bash(run_in_background: true)` for one-shot "run this, tell me when done"; `/loop` or `CronCreate` for recurring work that needs LLM reasoning each tick; `CronCreate` → `RemoteTrigger` for cross-session scheduled watching. Full patterns and recipes: `/monitor-patterns` skill (`ai/skills/monitor-patterns/SKILL.md`).
 
 ---
 
@@ -336,8 +172,4 @@ Before editing >3 files: list the files and why each is in scope. Stop if any ar
 
 ## Unified AI Hub Structure
 
-All AI primitives are managed in the `ai/` directory:
-- **Skills**: `ai/skills/`
-- **Commands**: `ai/commands/`
-- **Styles**: `ai/output-styles/`
-- **Rules**: `ai/rules/`
+See "AI Agent Primitives Configuration" above — same `~/.dotfiles/ai/` hub (skills/commands/styles/rules), symlinked into every agent's config directory.

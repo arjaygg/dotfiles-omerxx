@@ -26,12 +26,9 @@ These rules apply to every project on this machine where `pctx` (and its upstrea
 
 **External CLI exception:** For commands invoking external tools (kubectl, gh, az, docker, jq, curl) where no agent-accessible `limit:` parameter exists, piping to `head -N` is explicitly permitted and is the correct pattern.
 
-**If a hook fires blocking your Bash command:**
-1. Switch to the correct dedicated tool immediately — do NOT find a shell workaround
-2. Write a feedback memory NOW: what command was blocked, what the correct tool is
-3. Do not wait for the user to point it out
+**If a hook fires blocking your Bash command:** switch to the correct dedicated tool immediately (no shell workaround), then write a feedback memory noting what was blocked and the correct tool — don't wait for the user to point it out.
 
-**`[HARD-BLOCK — DO NOT RETRY]` marker:** every `_deny()` message in `pre-tool-gate-v2.sh` is prefixed with this literal string. It means the denial is final for this exact command — retrying the same command, or a trivially-rephrased variant of it, will hit the same block again. Switch to the dedicated tool named in the message instead of re-attempting. This marker exists specifically to short-circuit retry loops before `advisor-escalate.py`'s recurrence tracker has to catch them after 3+ repeats.
+**`[HARD-BLOCK — DO NOT RETRY]` marker:** prefixes every `pre-tool-gate-v2.sh` denial. The block is final for that exact command — retrying it, even reworded, hits the same block again. Switch to the named tool instead of re-attempting. It exists to short-circuit retry loops before `advisor-escalate.py`'s recurrence tracker has to catch them after 3+ repeats.
 
 ---
 
@@ -54,267 +51,74 @@ Always use tools in this order. Stop at the first that satisfies your need. **Ne
 
 > **Pre-edit ritual:** Before modifying any symbol, run `findReferencingSymbols` to understand blast radius. This catches breaking changes before they happen.
 
-## 2. Multi-File Context Selection Rule
+---
 
-When working with **5+ files** across multiple packages, choose your approach based on scope and token budget:
+## 2. Multi-File Context Selection
 
-| Scope | Approach | Why |
-|---|---|---|
-| < 5 files | `Read` + `Grep` / `findSymbol` (sequential) | Individual files are faster than full packing |
-| 5–20 files, full context needed | `Repomix --compress` (full scope) | Compresses 300K+ tokens to 40–80K; fits Claude's window |
-| 3–4 specific packages, debug focus | `Repomix --compress --include "pkg/foo/**,pkg/bar/**"` | Focused compression; traces data flows without noise |
-| Single deep file | `Read` (one-shot) or `Serena.getSymbolsOverview` | No packing needed |
+For **5+ files** across multiple packages, or when full-repo/multi-package context is needed, use the **`repomix` skill** (`ai/skills/repomix/SKILL.md`) rather than sequential Reads — it covers scope selection (full repo vs. focused package `--include`), token-budget targets, and the MCP `@repomix` path. For **<5 files**, plain `Read` + `Serena.findSymbol` (sequential) is faster than packing.
 
-### Decision Triggers
-- **"Implement a new transformer following existing patterns"** → Use Repomix (architecture context)
-- **"Trace the FK resolution path across 3+ files"** → Use Repomix (focused scope)
-- **"Debug this cross-file bug"** → Use Repomix if span > 4 files
-- **"Find all usages of symbol X"** → Use `Serena.findReferencingSymbols` (no packing needed)
+---
 
-### Token Budgets (Validated)
-- Full code (pkg/** + cmd/**): ~357K tokens → compress to ~50–70K ✅
-- Specific packages (3–4): ~18–50K tokens (already tight) ✅
-- Keep total context < 180K to leave room for reasoning
+## 3. Batching & Code Mode
 
-> **MCP Tool:** For projects with registered Repomix MCP, use `@repomix` in Claude Code prompts. No manual file generation needed.
-
-## 4. Batching & Code Mode
-Use `pctx execute_typescript` when 2+ operations are planned or when data processing should happen in the sandbox.
-
-> **MCP tool name:** `mcp__pctx__execute_typescript` (call this directly when batching)
+Use `mcp__pctx__execute_typescript` when 2+ operations are planned, or when output needs filtering before it hits context — never make sequential Serena/LeanCtx/Repomix/Qmd calls when one batch would work.
 
 ### Batching Decision Rule
 > Before any tool call, ask: **"What else will I need in the next 3 steps?"**
-> - If 2+ Serena operations are planned → write ONE `execute_typescript`.
-> - If 2+ Read/Grep/Glob ops are independent → fire them in **parallel**.
-> - Never make a sequential Serena call when a batch would work.
+> - 2+ Serena/pctx operations planned → one `execute_typescript` call.
+> - 2+ Read/Grep/Glob ops independent → fire in **parallel**.
 
 ### lean-ctx: native MCP vs pctx
 
-lean-ctx is registered **both** as a native MCP server (`mcp__lean-ctx__*`) and as a pctx sub-server (`LeanCtx.*` in `execute_typescript`). Serena, Repomix, and Qmd are **pctx-only** — no native registration, no decision needed.
+lean-ctx is registered **both** as a native MCP server (`mcp__lean-ctx__*`) and as a pctx sub-server (`LeanCtx.*`). Serena, Repomix, and Qmd are **pctx-only**.
 
 | Situation | Use |
 |---|---|
 | Single lean-ctx call, no output filtering needed | `mcp__lean-ctx__ctx_read` / `ctx_search` / `ctx_shell` directly |
 | 2+ calls (any mix of LeanCtx / Serena / Repomix / Qmd) | `mcp__pctx__execute_typescript` with `Promise.all()` |
-| Need to filter/reduce output before it hits context | `mcp__pctx__execute_typescript` (do it in TypeScript) |
+| Need to filter/reduce output before it hits context | `execute_typescript` (filter in TypeScript) |
 
-### Code Mode Usage (pctx)
-- MUST define a `run()` function.
-- Parallelize independent ops with `Promise.all()`.
-- Filter/map data inside the script; return only final results to the agent.
-- Do NOT call `JSON.parse()` on results (already objects).
+**Code Mode rules:** MUST define a `run()` function; parallelize with `Promise.all()`; filter/map data inside the script and return only what's needed; do NOT call `JSON.parse()` on results (already objects).
 
-```typescript
-// Example: explore a package before editing
-const result = await mcp__pctx__execute_typescript(`
-async function run() {
-  const [overview, refs, file] = await Promise.all([
-    Serena.getSymbolsOverview("pkg/worker/"),
-    Serena.findReferencingSymbols("WorkerPool"),
-    Serena.findFile("config.go"),
-  ]);
-  // Filter only what matters — don't return everything
-  return {
-    exports: overview.symbols?.filter(s => s.exported),
-    usageSites: refs.locations?.length,
-    configPath: file.path,
-  };
-}
-`);
-```
+---
 
-## 5. Serena API Convention
+## 4. Serena API Convention
 All Serena methods use **camelCase**.
 - `Serena.listDir` (NOT `list_dir`)
 - `Serena.findSymbol` (NOT `find_symbol`)
 - `Serena.searchForPattern` (NOT `search_for_pattern`)
 
-## 6. Serena Quirks and Mandatory Rules
+---
 
-### searchForPattern: always restrict to code files
-Always pass `restrict_search_to_code_files: true` to `searchForPattern`. Without it, lock files (`go.sum`, `package-lock.json`) and generated files flood results.
+## 5. Serena Quirks and Mandatory Rules
 
-### findSymbol: dot-directory limitation (issue #853)
-`findSymbol` **fails silently** on files inside dot-directories (`.serena/`, `.claude/`, `.cursor/`, `.mcp.json`). Use `Serena.readMemory()` for Serena memories, and the `Read` tool for other dot-directory files.
+`Serena.initialInstructions()` does not cover any of this — these are project-specific quirks, not part of Serena's own manual.
 
-### readMemory: memory-first before code exploration
-If a `.serena/memories/` directory exists in the project, call `Serena.listMemories()` at session start and read `START_HERE` (or equivalent entry-point memory) before touching source files. Project knowledge in memories prevents re-deriving facts already captured.
+- Always pass `restrict_search_to_code_files: true` to `searchForPattern` — otherwise lock files (`go.sum`, `package-lock.json`) and generated files flood results.
+- `findSymbol` **fails silently** on files inside dot-directories (`.serena/`, `.claude/`, `.cursor/`, `.mcp.json`). Use `Serena.readMemory()` for Serena memories, `Read` for other dot-directory files.
+- If `.serena/memories/` exists, call `Serena.listMemories()` at session start and read `START_HERE` before touching source files.
+- Memory naming: `architecture/<topic>`, `story_<N>_<sprint>/<topic>`, `workflows/<process>`. Don't duplicate to markdown what's already in `.serena/memories/`.
+- gopls LSP timeout (SolidLSP issue #634): call `Serena.restartLanguageServer()` — do not retry the failed call, the server needs to reinitialize first.
 
-### Memory naming (when writing new memories)
-- `architecture/<topic>` — cross-cutting technical decisions
-- `story_<N>_<sprint>/<topic>` — sprint-specific context
-- `workflows/<process>` — repeatable process documentation
+---
 
-Do not duplicate to local markdown what is already in `.serena/memories/`.
-
-### gopls LSP timeout
-If Serena's Go LSP times out (SolidLSP repeated-init issue #634): call `Serena.restartLanguageServer()`. Do not retry the failed call — the server needs to reinitialize first.
-
-## 7. Session Start (Required)
+## 6. Session Start (Required)
 Run `mcp__pctx__list_functions` before the first project access in a session. Write results to `plans/pctx-functions.md` and check its timestamp (TTL: 1 day).
 
-**Enforcement:** `pre-tool-gate-v2.sh` Section 0 will **block** any Grep call until this sequence completes. The gate checks for a session-scoped flag set by `post-tool-analytics.sh` when a Serena or pctx tool is first called. Skipping this step means Grep calls will be blocked mid-task — complete the init sequence first to avoid interruption.
+**Enforcement:** `pre-tool-gate-v2.sh` Section 0 will **block** any Grep call until this sequence completes. Skipping this step means Grep calls will be blocked mid-task — complete the init sequence first to avoid interruption.
 
-## 8. Why Serena Over Grep/Read
+---
 
-This is not stylistic preference — it is a token budget constraint.
+## 7. Extended Tool Ecosystem Routing
 
-**Grep returns raw text lines. Serena returns structured symbol metadata.**
+Beyond §0/§1 above: the full Qmd-vs-LeanCtx-vs-Serena-vs-Grep decision tables, the Graphify pctx/CLI two-interface breakdown, the Qmd/LeanCtx API-consolidation notes, session-continuity tooling, and the complete list of common tool-selection violations all live in the **`tool-routing` skill** (`ai/skills/tool-routing/SKILL.md`). Invoke it when unsure which tool fits a docs search, large-file read, shell command, web fetch, or graph query — or after a hook block you don't understand.
 
-| Operation | Grep result | Serena result |
-|---|---|---|
-| Find function `NewWorker` | Entire file lines matching the regex, including comments and strings | One entry: file path + line + full signature |
-| Find all usages of `WorkerPool` | All lines containing the string across all files | Structured list of reference sites with context type |
-| Explore a package | N/A | Symbol tree: all exported types, funcs, consts in one call |
-
-Grep results flood context. A single Grep for a common symbol name across a Go repo can return 50–200 lines. Serena's `findSymbol` returns 1–5 structured entries. Over a session, this compounds: each Grep that could have been a `findSymbol` wastes 40–200 tokens. At 300+ tool calls per session, the accumulated waste forces early compaction and loses context.
-
-**Secondary reason:** Grep is gitignore-unaware by default and will match lock files, generated code, and vendor directories unless `glob` is carefully restricted. Serena's `searchForPattern` with `restrict_search_to_code_files: true` is filtered by construction.
-
-## 9. Common Violations (How Drift Happens)
-
-Watch for these patterns — they indicate the tool priority rules are being ignored:
-
-| Violation | Correct replacement |
-|---|---|
-| `Grep(pattern: "WorkerPool")` — PascalCase lookup | `Serena.findSymbol("WorkerPool")` |
-| `Grep(pattern: "func New")` — symbol definition search | `Serena.findSymbol("New*")` or `Serena.searchForPattern` |
-| `Read("pkg/worker/pool.go")` without limit — whole file read | `Serena.getSymbolsOverview("pkg/worker/pool.go")`, then Read with limit/offset |
-| Multiple sequential `Serena.*` calls (no batch) | `mcp__pctx__execute_typescript` with `Promise.all()` |
-| Starting session with Grep/Read before Serena init | Call `mcp__pctx__list_functions` → write `plans/pctx-functions.md` → `Serena.initialInstructions()` |
-| `Bash(grep ...)` or `Bash(rg ...)` | Blocked by `permissions.deny`; use `Grep` tool or `Serena.searchForPattern` |
-| `Bash(cat file)` | Blocked; use `Read(file_path)` |
-| `Bash(head -N file)` | Blocked; use `Read(file_path, limit: N)` |
-| `Bash(tail -n +N file)` | Blocked; use `Read(file_path, offset: N)` |
-| `Bash(cmd \| awk 'NR<=N')` to limit output | Blocked; use the tool's built-in `limit:` param |
-| `Bash(find . -name ...)` | Blocked; use `Glob` |
-| `Bash(ls dir/)` | Use `Glob("dir/*")` |
-| `Bash(sed -i ...)` or `Bash(awk)` for file edit | Use `Edit(file, old_string, new_string)` |
-| `LeanCtx.ctxSearch` for "where is X?", "what calls Y?" | `Serena.findSymbol` / `Serena.findReferencingSymbols` |
-| `LeanCtx.ctxRead` to browse a package | `Serena.getSymbolsOverview` first, then `Read` with limit if needed |
-| Defaulting to lean-ctx for any code navigation | lean-ctx has no symbol index — use Serena for code, lean-ctx for text |
-
-If you find yourself reaching for Grep, ask: **"Is this a symbol lookup or a pattern search?"**
-- Symbol lookup (known name) → `Serena.findSymbol`
-- Pattern search (structural) → `Serena.searchForPattern`
-- Pattern search (text, non-code) → `Grep tool` is acceptable
-- Finding a file → `Serena.findFile` or `Glob`
-
-If you find yourself reaching for `LeanCtx.ctxSearch` or `LeanCtx.ctxRead` for **code** navigation, stop:
-- **lean-ctx is a file-access layer, not a code intelligence layer** — it has no symbol index
-- "Where is X defined?", "What calls Y?", "What's in this package?" → **Serena first**
-- lean-ctx is correct only for text/regex patterns across non-code files, or reading a file before editing
-
-## 10. Extended Tool Ecosystem Routing
-
-These rules cover the tools that `tool-priority.md` did not originally address: QMD, LeanCtx, and web research. Many overlap — use the routing table to pick the right one.
-
-### Code Exploration (browsing source, finding symbols, tracing references)
-
-**Priority order: Serena → Repomix → LeanCtx**
-
-| Task | 1st Priority | 2nd Priority | Avoid |
-|---|---|---|---|
-| **"Where is X defined?"** | `Serena.findSymbol` | `Serena.searchForPattern` | `LeanCtx.ctxSearch` |
-| **"What calls Y?"** | `Serena.findReferencingSymbols` | `Serena.searchForPattern` | `LeanCtx.ctxSearch` |
-| **"What's in this package?"** | `Serena.getSymbolsOverview` | `Serena.listDir` | `LeanCtx.ctxTree` |
-| **"Show me how X is used broadly"** | `Repomix --compress --include "pkg/X/**"` | `Serena.findReferencingSymbols` | `LeanCtx.ctxRead` on every file |
-| **Text pattern across non-code files** | `LeanCtx.ctxSearch` | `Grep tool` | — |
-
-**Rule:** lean-ctx is a file-access layer (read, compress, cache). It has no symbol index. For any task phrased as navigation ("where", "what calls", "what's in"), Serena is the correct first call. LeanCtx is correct for text patterns and file reads — not code structure exploration.
-
-### Code/PR Graph Tooling (Graphify — two real interfaces, correction retracted 2026-07-09)
-
-**Correction retracted (2026-07-09):** the prior version of this section claimed no `Graphify` pctx namespace exists. That was wrong — a live `mcp__pctx__list_functions` call this session confirmed `Graphify` **is** a real pctx namespace, exposing `queryGraph`, `getNode`, `getNeighbors`, `getCommunity`, `godNodes`, `graphStats`, `shortestPath`, `listPrs`, `getPrImpact`, `triagePrs`. It is backed by `/Users/axos-agallentes/.local/bin/graphify-mcp-conditional` — the "conditional" naming indicates it registers only when a project has `graphify-out/graph.json`, the same per-project scoping already documented below for the CLI. The two interfaces likely serve the same underlying graph data via different access paths.
-
-| Interface | Access path | Use when |
-|---|---|---|
-| **pctx `Graphify` namespace** | `mcp__pctx__execute_typescript` (`Graphify.queryGraph`, `.getNode`, `.getNeighbors`, `.getCommunity`, `.godNodes`, `.graphStats`, `.shortestPath`, `.listPrs`, `.getPrImpact`, `.triagePrs`) | Already inside an `execute_typescript` batch with other Serena/Qmd/LeanCtx/Repomix calls — combine into one round-trip per §4 |
-| **Standalone `graphify` CLI** | Shell: `graphify query/path/explain/update` (see the per-project `CLAUDE.md`'s `# graphify` section, e.g. `auc-conversion/CLAUDE.md`) | Standalone shell check, no batching need |
-
-Both operate on the same project-local `graphify-out/graph.json`:
-
-| Task | Command |
-|---|---|
-| **Scoped question about the codebase** | `graphify query "<question>"` |
-| **Relationship between two files/symbols** | `graphify path "<A>" "<B>"` |
-| **Focused concept lookup** | `graphify explain "<concept>"` |
-| **Broad navigation** | `graphify-out/wiki/index.md` (if present) |
-| **Full architecture review** | `graphify-out/GRAPH_REPORT.md` (only when query/path/explain don't surface enough) |
-| **Keep graph current after edits** | `graphify update .` (AST-only, no API cost) |
-
-**Rule:** Graphify is per-project either way — both interfaces are only active where `graphify-out/graph.json` exists, and the CLI's invocation details still live in the project's own `CLAUDE.md`. Prefer the pctx namespace when already batching other pctx calls; prefer the CLI for a one-off shell check.
-
-### Documentation & Knowledge Lookup
-
-**API note (2026-07-07):** Qmd's `search`/`vectorSearch`/`deepSearch` were consolidated into a single `Qmd.query({ searches: [{type: "lex"|"vec"|"hyde", query}] })` call — the typed sub-query replaces the old separate function names. `Qmd.get`/`multiGet`/`status` are unchanged. See `plans/pctx-functions.md` for the current snapshot.
-
-| Task | 1st Priority | 2nd Priority | Avoid |
-|---|---|---|---|
-| **Find docs by concept/meaning** | `Qmd.query` with a `hyde` or `vec` sub-query | — | `LeanCtx.ctxSearch` on .md files |
-| **Find docs by keyword** | `Qmd.query` with a `lex` sub-query | `LeanCtx.ctxSearch` | `Grep` on docs/ |
-| **Retrieve a known doc** | `Qmd.get` | `Read(path)` | — |
-| **Project knowledge (structured)** | `Serena.readMemory` | `Qmd.query` | Re-deriving from source |
-
-**Decision rule:** If you know the document path → `Qmd.get` or `Read`. If you're searching by concept or don't know where it lives → `Qmd.query` (use a `hyde` sub-query for fuzzy/semantic asks, `lex` for exact keywords — combine both in one call if unsure). If it's about project architecture/patterns/decisions → `Serena.readMemory` first (structured), then `Qmd.query` (semantic fallback).
-
-**QMD scope:** QMD indexes `docs/**/*.md` from the main repo plus the current worktree (when a worktree session is active). It does NOT index source code — use Serena for that.
-
-### File Reading
-
-**API note (2026-07-07):** LeanCtx consolidated from 23 standalone functions to 11 core functions. `ctxRead`, `ctxSearch`, `ctxShell`, `ctxTree`, `ctxSession` remain direct calls. Former standalone tools `ctxMultiRead` and `ctxSmartRead` are no longer top-level — reach them via `LeanCtx.ctxCall({ name: "ctx_multi_read"|"ctx_smart_read", args: {...} })` dispatch. See `plans/pctx-functions.md` for the full current/prior function list.
-
-| Task | 1st Priority | 2nd Priority | Avoid |
-|---|---|---|---|
-| **Read file for editing** | `Read(path)` | — | `LeanCtx.ctxRead` (use Read before Edit) |
-| **Read file for analysis** | `LeanCtx.ctxRead(mode: "signatures"\|"map"\|"aggressive")` | `Read` with limit/offset | Uncached full `Read` on large files |
-| **Read many files at once** | `LeanCtx.ctxCall({name: "ctx_multi_read", args: {...}})` | Sequential `Read` calls | Calling `ctxMultiRead` directly (removed) |
-| **Read with smart compression** | `LeanCtx.ctxCall({name: "ctx_smart_read", args: {...}})` | `LeanCtx.ctxRead` | Calling `ctxSmartRead` directly (removed) |
-
-**Rule:** Always `Read` before `Edit` (required by the Edit tool). For analysis-only reads of large files, use `LeanCtx.ctxRead` with a compression mode to save tokens.
-
-### Shell Commands
-
-| Task | 1st Priority | Avoid |
-|---|---|---|
-| **Run command, capture output** | `LeanCtx.ctxShell` (compresses output) | `Bash` for commands producing >20 lines |
-| **git/mkdir/rm/mv** | `Bash` (simple, low-output) | `LeanCtx.ctxShell` (overkill for 1-line output) |
-
-### Web Research
-
-| Task | 1st Priority | 2nd Priority | Avoid |
-|---|---|---|---|
-| **Search for external info** | `WebSearch` | — | — |
-| **Fetch a known URL** | `WebFetch(url, prompt)` | — | Fetching without a focused prompt (floods context) |
-
-**Rule:** Always pass a focused `prompt` to `WebFetch` describing exactly what to extract — this uses Claude's built-in summarization to keep output tight. `WebSearch` returns snippets and is preferred for discovery.
-
-### Session Context & Continuity
-
-| Task | Tool |
-|---|---|
-| **What did I work on before?** | `LeanCtx.ctxSession(action: "load")` |
-| **What did a previous agent find?** | `Serena.readMemory` or `LeanCtx.ctxSession(action: "load")` |
-| **Persist finding across sessions** | `LeanCtx.ctxSession(action: "finding")` + `Serena.writeMemory` |
-
-### Common Violations (Extended)
-
-| Violation | Correct replacement |
-|---|---|
-| `Grep` or `LeanCtx.ctxSearch` on `docs/**/*.md` | `Qmd.query` (lex or hyde sub-query) |
-| `WebFetch(url)` without a prompt | Pass a focused `prompt` to `WebFetch` to get a targeted summary |
-| `Read(large_file)` for analysis (no edit intent) | `LeanCtx.ctxCall({name: "ctx_smart_read", ...})` or `ctxRead(mode: "signatures")` |
-| Multiple `Read` calls in sequence | `LeanCtx.ctxCall({name: "ctx_multi_read", ...})` |
-
-### Code Health Routing
-
-| Task | Tool |
-|---|---|
-| **Assess code maintainability / code health score** | `/code-health` skill |
-| **Quick complexity check on a single file** | `/code-health <file>` (pass path as argument) |
-| **Code health as part of code review** | `/hawk` (Quality agent runs code health automatically) |
-| **CI code health gate** | `make code-health` or `make code-health-json` + scorer script |
+Quick digest:
+- **Docs/knowledge lookup:** by concept → `Qmd.query` (`hyde`/`vec` sub-query); by keyword → `Qmd.query` (`lex`). Never Grep/`LeanCtx.ctxSearch` on `docs/**/*.md`.
+- **Code navigation** ("where is X", "what calls Y", "what's in this package") → Serena, never LeanCtx (it has no symbol index).
+- **Shell output >20 lines** → `LeanCtx.ctxShell`; simple git/mkdir/rm → plain `Bash`.
+- **`WebFetch`** always needs a focused `prompt` param; `WebSearch` is preferred for discovery.
+- **Code health** → `/code-health` skill. **PR/graph queries** → `Graphify` (pctx namespace) or the `graphify` CLI.
 
 ---
 *Maintained at: `/Users/axos-agallentes/.dotfiles/ai/rules/tool-priority.md`*
