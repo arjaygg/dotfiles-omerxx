@@ -6,7 +6,7 @@
 - **Request scoping:** Prefer concrete prompts (e.g. "fix `src/db.rs` line 42") over broad ones to reduce tokens and keep focus.
 - **Session discipline:** One task per session when practical. After a significant commit or domain change, start a new chat. Use `/compact` at most 1-2 times per session — prefer checkpointing to a plan and starting fresh.
 - **Screenshots:** Prefer file-path references over pasted screenshots in long working sessions — a pasted image is re-carried in context until compaction (311KB observed); paste images into short dedicated sessions instead.
-- **lean-ctx CCP is active and in use** — `LeanCtx.ctxSession(action: "status"/"load")` returns real, persisted cross-session state (50+ sessions under `~/.config/lean-ctx/sessions`, spanning months), confirming CCP works today and does not depend on any CLI bootstrap step. Use `ctxSession(action: "load"/"finding")` per `ai/rules/tool-priority.md` §10 for cross-session continuity.
+- **lean-ctx CCP is active and in use** — `LeanCtx.ctxSession(action: "status"/"load")` returns real, persisted cross-session state (50+ sessions under `~/.config/lean-ctx/sessions`, spanning months), confirming CCP works today and does not depend on any CLI bootstrap step. Use `ctxSession(action: "load"/"finding")` per the `tool-routing` skill's "Session Context & Continuity" section for cross-session continuity.
   (Note: `decisions/0004-lean-ctx-pctx-upstream.md` records CCP as "not activated" — that line is stale relative to current behavior and should be revisited separately.)
   Unrelated to CCP: if the lean-ctx CLI bootstrap is ever re-run, use `lean-ctx init --agent` only — never `--global` — to avoid shell-hook double-compression conflicts with rtk.
 

@@ -36,10 +36,31 @@ Worktrees are created by **default** (no flag needed). You also get:
 - ✅ Automatic restacking with `stack restack`
 - ✅ Visual stack display with worktree locations
 
+## Branch Naming Conventions
+
+Worktrees live at `.trees/<description>/` with branch names `<type>/<description>`.
+
+**Supported branch types:** `feature/` or `feat/`, `bugfix/` or `fix/`, `hotfix/`, `release/`, `chore/`.
+
+**Determine branch type from intent:**
+- **feature/feat**: add, implement, create, build, new feature
+- **bugfix/fix**: bug, fix, resolve, repair, correct
+- **hotfix**: urgent, critical, security, emergency
+- **release**: release, version, v1.0, v2.0
+- **chore**: docs, cleanup, update dependencies
+
+If unclear, default to `feature/`.
+
+**Branch naming rules:**
+- Use lowercase letters, numbers, and hyphens only (dots allowed for release versions)
+- No consecutive, leading, or trailing hyphens or dots
+- Use hyphens to separate words (e.g., `feature/add-user-login`)
+- Sanitize the description before use: lowercase, spaces→hyphens, strip special chars, collapse hyphens, trim
+
 ## Instructions
 
 1. Parse the user's request to identify:
-   - `branch-name`: The name for the new branch (required)
+   - `branch-name`: The name for the new branch (required) — infer the type per "Branch Naming Conventions" above if the user didn't specify one, and sanitize the description
    - `base-branch`: The branch to base on (default: current branch or main)
 
 2. **No manual worktree detection.** The `stack create` script resolves the **main repository root** (parent of `.trees/`) even when you run it from inside `.trees/<some-branch>/`, so the new worktree is always created as a **sibling** under `<main-repo>/.trees/<sanitized-name>/`, never nested as `.trees/foo/.trees/bar`.

@@ -1,5 +1,21 @@
 # Progress — 2026-06-12
 
+## Done — 2026-07-10 trim CLAUDE.md instruction chain (Fable-reviewed, ADL-018)
+
+Branch `chore/trim-claude-md-instruction-chain`, worktree `.trees/trim-claude-md-instruction-chain`.
+Full rationale and Fable review criterion in `plans/decisions.md` ADL-018.
+
+- [x] Trimmed `ai/rules/tool-priority.md` 320 → 124 lines
+- [x] Trimmed `ai/rules/agent-user-global.md` 343 → 175 lines
+- [x] Created `ai/skills/tool-routing/SKILL.md` (extended Qmd/LeanCtx/Graphify/docs/shell/web routing detail)
+- [x] Created `ai/skills/model-routing/SKILL.md` (model/effort/fast-mode/advisor tables, cross-refs `.cursor/rules/model-routing.mdc`)
+- [x] Fixed stale `ai/skills/qmd-routing/SKILL.md` (old `search`/`vector_search`/`deep_search` names → consolidated `Qmd.query`)
+- [x] Fixed stale cross-reference in `ai/rules/context-and-compaction.md` (pointed at removed tool-priority.md §10)
+- [x] Absorbed Git Worktree Conventions detail (branch-type table, naming/sanitization rules) into `ai/skills/stack-create/SKILL.md`
+- [x] Resolved Cursor/Gemini/Codex reachability question — inline "Quick digest" in `tool-priority.md` §7 (symlinked to all agents), not a mirrored `.mdc` (see ADL-018)
+- [x] Logged `TodoWrite`-tool-availability discrepancy as a flagged-not-fixed follow-up (see ADL-018)
+- [ ] Not yet done: commit, PR (`/stack-pr`)
+
 ## In Progress — 2026-07-09 injection-antipatterns Phase 4 (gate-logic-consolidated-review)
 
 Plan: `auc-conversion/docs/plans/2026-07-09-implement-session-injection-antipatterns.md` (merged
