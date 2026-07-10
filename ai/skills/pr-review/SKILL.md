@@ -5,7 +5,7 @@ description: >
   For Go: 6 agents (hawk's Architecture/Quality/Resilience/Security + Performance + Tests).
   For non-Go: 4 agents (Security/Performance/Style/Tests).
   Stack-aware (Charcoal), forge-aware (GitHub + Azure DevOps), posts findings to PR.
-  Use /pr-review for all reviews, Go and non-Go. (The fast Go-only /hawk skill is currently disabled.)
+  Use /pr-review for all reviews, Go and non-Go. (/hawk is a faster Go-only alternative; availability depends on this project's skillOverrides.)
 triggers:
   - /pr-review
   - thorough pr review
@@ -33,10 +33,11 @@ Orchestrates the right agent set based on detected language, then synthesizes a 
 findings table. Forge-aware and stack-aware — works on GitHub and Azure DevOps, single PRs and stacks.
 
 **Note:** `/pr-review` incorporates the same Architecture/Quality/Resilience/Security agent set
-that the standalone `/hawk` skill used to provide for fast Go-only checks. `/hawk` is currently
-disabled via `skillOverrides`; use `/pr-review --no-post` for a quick, non-posting Go review
-in the meantime. For non-Go it runs a full 4-agent pass. Always posts to the PR unless `--no-post`
-is passed.
+that the standalone `/hawk` skill provides for fast Go-only checks. `/hawk`'s enabled/disabled
+state is per-project (`skillOverrides` in that project's `.claude/settings.json`) — check it
+rather than assuming; where it's off, `/pr-review --no-post` gives an equivalent quick,
+non-posting Go review. For non-Go it runs a full 4-agent pass. Always posts to the PR unless
+`--no-post` is passed.
 
 ## When to Use
 
@@ -341,9 +342,9 @@ For stack reviews: post to each layer's PR with that layer's section only.
 
 | Task | Use |
 |------|-----|
-| Quick Go code review (no posting) | `/pr-review --no-post` (`/hawk` is currently disabled) |
+| Quick Go code review (no posting) | `/pr-review --no-post`, or `/hawk` where this project's `skillOverrides` has it on |
 | Thorough Go review + perf/tests + post | `/pr-review` |
 | Non-Go PR review | `/pr-review` |
 | Stack review (all layers) | `/pr-review --stack` |
 | Release readiness (manifest/CHANGELOG/migrations/rollback) | `/release-prep` |
-| Test generation for gaps found | Write tests manually (`/fury` is currently disabled) |
+| Test generation for gaps found | `/fury` where this project's `skillOverrides` has it on, otherwise write tests manually |
