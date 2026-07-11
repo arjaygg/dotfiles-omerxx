@@ -1,0 +1,41 @@
+{
+  "skill_name": "hook-authoring",
+  "evals": [
+    {
+      "eval_id": 0,
+      "eval_name": "orthogonal-vs-gate-decision",
+      "prompt": "In this dotfiles repo (~/.dotfiles), I want to add a hook that blocks re-running `git status` more than once every 10 seconds in a session, just to cut down on noise. Should this go inside .claude/hooks/pre-tool-gate-v2.sh or be its own file? Write the actual hook script, and tell me how to wire it into .claude/settings.json.",
+      "assertions": [
+        "Recommends a standalone hook file (not folding into pre-tool-gate-v2.sh) because this is a narrow/orthogonal bookkeeping concern",
+        "Hook script parses stdin JSON via jq to extract tool_name/tool_input/session_id",
+        "Hook script falls through safely (exit 0) on parse failure or non-matching tool, not just crashing",
+        "Denial output uses the hookSpecificOutput/permissionDecision:deny JSON schema, not a bare non-zero exit",
+        "Denial reason string uses the '[HARD-BLOCK — DO NOT RETRY]' prefix convention"
+      ]
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "portable-path-fix",
+      "prompt": "There's a PreToolUse hook entry in .claude/settings.json in this dotfiles repo shaped like: {\"type\":\"command\",\"command\":\"bash\",\"args\":[\"/Users/axos-agallentes/.dotfiles/.claude/hooks/rtk-rewrite.sh\"]}. I want this to keep working if I clone this repo onto a different machine under a different username. Is it safe to just replace the hardcoded path with \"$HOME/.dotfiles/.claude/hooks/rtk-rewrite.sh\" inside that same args array and call it done? If not, what's the correct fix, and why?",
+      "assertions": [
+        "Explicitly says it is NOT safe to just swap in $HOME inside the args array as-is",
+        "Correctly explains that this args-array shape is exec-form (direct execve, no shell), so $HOME is not expanded and would be passed through literally",
+        "Recommends converting to shell-form (a single command string, e.g. bash -lc '...') so $HOME actually expands",
+        "Does not recommend $CLAUDE_PROJECT_DIR as the fix for this repo's global settings.json (or if mentioned, correctly rejects it as wrong scope)",
+        "Recommends live-testing the converted entry (triggering the guarded tool call) before trusting it, rather than assuming valid JSON means it works"
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "session-state-hook",
+      "prompt": "Write a new PreToolUse hook (as its own file) for this dotfiles repo that blocks the Bash tool from running 'rm -rf' more than once per session — the first attempt should pass through, but a second attempt in the same session should be denied with a clear reason. What should the state-file naming look like, and what's the exact JSON I need to output to deny the second call?",
+      "assertions": [
+        "Uses an EFFECTIVE_SESSION_ID pattern falling back through SESSION_ID -> CLAUDE_SESSION_ID -> a default value",
+        "State/log file path includes $(id -u) to avoid collisions between users on a shared machine",
+        "State/log file path lives under /tmp and is scoped per-session (not a single global flag shared across all sessions)",
+        "Denial output uses the correct hookSpecificOutput/permissionDecision:deny JSON schema via jq -cn",
+        "Denial reason string uses the '[HARD-BLOCK — DO NOT RETRY]' prefix convention"
+      ]
+    }
+  ]
+}
