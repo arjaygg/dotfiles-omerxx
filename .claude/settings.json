@@ -208,7 +208,6 @@
     "session-next": "off",
     "session-picker": "off",
     "session-undefer": "off",
-    "skill-creator:skill-creator": "off",
     "stark": "off",
     "start-story": "off",
     "story-complete": "off",
@@ -226,10 +225,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/sessionstart.sh"
-            ]
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/sessionstart.sh\""
           }
         ]
       }
@@ -240,10 +236,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/instructions-loaded.sh"
-            ]
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/instructions-loaded.sh\""
           }
         ]
       }
@@ -254,10 +247,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/pre-tool-gate-v2.sh"
-            ]
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/pre-tool-gate-v2.sh\""
           }
         ]
       },
@@ -266,10 +256,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/graphify-redirect.sh"
-            ]
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/graphify-redirect.sh\""
           }
         ]
       },
@@ -278,7 +265,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/axos-agallentes/.dotfiles/.claude/hooks/rtk-rewrite.sh"
+            "command": "$HOME/.dotfiles/.claude/hooks/rtk-rewrite.sh"
           }
         ]
       },
@@ -290,6 +277,15 @@
             "command": "bash -lc 'lean-ctx hook redirect'"
           }
         ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/scratchpad-reread-guard.sh\""
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -298,10 +294,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/post-tool-analytics.sh"
-            ]
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/post-tool-analytics.sh\""
           }
         ]
       },
@@ -310,10 +303,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/prompt-score-commit.sh"
-            ]
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/prompt-score-commit.sh\""
           }
         ]
       },
@@ -322,10 +312,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/teammate-quality-gate.sh"
-            ]
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/teammate-quality-gate.sh\""
           }
         ]
       }
@@ -336,10 +323,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/context-monitor.sh"
-            ]
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/context-monitor.sh\""
           }
         ]
       }
@@ -350,10 +334,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/userpromptsubmit.sh"
-            ],
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/userpromptsubmit.sh\"",
             "timeout": 120
           }
         ]
@@ -365,10 +346,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/pre-compact.sh"
-            ]
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/pre-compact.sh\""
           }
         ]
       }
@@ -379,10 +357,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/stop.sh"
-            ]
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/stop.sh\""
           }
         ]
       }
@@ -393,10 +368,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/task-event-tracker.sh"
-            ]
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/task-event-tracker.sh\""
           }
         ]
       }
@@ -407,10 +379,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/task-event-tracker.sh"
-            ]
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/task-event-tracker.sh\""
           }
         ]
       }
@@ -421,10 +390,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/config-integrity.sh"
-            ]
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/config-integrity.sh\""
           }
         ]
       }
@@ -435,18 +401,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/worktree-create.sh"
-            ]
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/worktree-create.sh\""
           },
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/tmux/scripts/claude-tmux-bridge.sh",
-              "worktree-enter"
-            ]
+            "command": "bash \"$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh\" worktree-enter"
           }
         ]
       }
@@ -457,18 +416,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/.claude/hooks/worktree-remove.sh"
-            ]
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/worktree-remove.sh\""
           },
           {
             "type": "command",
-            "command": "bash",
-            "args": [
-              "/Users/axos-agallentes/.dotfiles/tmux/scripts/claude-tmux-bridge.sh",
-              "worktree-exit"
-            ]
+            "command": "bash \"$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh\" worktree-exit"
           }
         ]
       }
@@ -479,7 +431,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/axos-agallentes/.cargo/bin/lean-ctx hook observe"
+            "command": "$HOME/.cargo/bin/lean-ctx hook observe"
           }
         ]
       }
