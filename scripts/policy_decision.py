@@ -24,6 +24,18 @@ except ModuleNotFoundError as error:
 
 
 DECISIONS = frozenset({"accept", "reject", "defer"})
+LEDGER_FIELDS = frozenset(
+    {
+        "proposal_id",
+        "proposal_sha256",
+        "decision",
+        "rationale",
+        "decided_at",
+        "review_after",
+        "recorded_by",
+        "applied",
+    }
+)
 
 
 def _atomic_write(path: Path, content: str) -> None:
@@ -43,6 +55,45 @@ def _atomic_write(path: Path, content: str) -> None:
         raise
 
 
+def _validate_ledger_entry(value: Any, line_number: int) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError(f"ledger line {line_number} must be an object")
+    missing = sorted(LEDGER_FIELDS - value.keys())
+    if missing:
+        raise ValueError(f"ledger line {line_number} missing fields: {', '.join(missing)}")
+    if not isinstance(value["proposal_id"], str) or not value["proposal_id"].strip():
+        raise ValueError(f"ledger line {line_number} has invalid proposal_id")
+    digest = value["proposal_sha256"]
+    if not isinstance(digest, str) or len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest):
+        raise ValueError(f"ledger line {line_number} has invalid proposal_sha256")
+    if value["decision"] not in DECISIONS:
+        raise ValueError(f"ledger line {line_number} has invalid decision")
+    if not isinstance(value["rationale"], str) or not value["rationale"].strip():
+        raise ValueError(f"ledger line {line_number} has empty rationale")
+    try:
+        date.fromisoformat(value["decided_at"])
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"ledger line {line_number} has invalid decided_at") from error
+    review_after = value["review_after"]
+    if not isinstance(review_after, str) or (
+        not review_after.startswith("condition:")
+        and _parse_date(review_after) is None
+    ):
+        raise ValueError(f"ledger line {line_number} has invalid review_after")
+    if value["recorded_by"] != "human":
+        raise ValueError(f"ledger line {line_number} must be recorded_by human")
+    if value["applied"] is not False:
+        raise ValueError(f"ledger line {line_number} must retain applied=false")
+    return value
+
+
+def _parse_date(value: Any) -> date | None:
+    try:
+        return date.fromisoformat(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _load_ledger(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
@@ -50,10 +101,7 @@ def _load_ledger(path: Path) -> list[dict[str, Any]]:
     for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         if not line.strip():
             continue
-        value = json.loads(line)
-        if not isinstance(value, dict):
-            raise ValueError(f"ledger line {line_number} must be an object")
-        entries.append(value)
+        entries.append(_validate_ledger_entry(json.loads(line), line_number))
     return entries
 
 

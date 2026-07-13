@@ -91,6 +91,22 @@ class PolicyDecisionTests(unittest.TestCase):
                     decided_at="2026-07-13",
                 )
 
+    def test_record_rejects_malformed_existing_ledger_entry(self):
+        with tempfile.TemporaryDirectory() as dir:
+            root = Path(dir)
+            proposal_path = root / "proposal.json"
+            ledger_path = root / "decisions.jsonl"
+            proposal_path.write_text(json.dumps(proposal()), encoding="utf-8")
+            ledger_path.write_text(json.dumps({"applied": True}) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "missing fields"):
+                record_decision(
+                    proposal_path,
+                    ledger_path,
+                    decision="reject",
+                    rationale="Rejecting malformed history.",
+                    decided_at="2026-07-13",
+                )
+
     def test_cli_records_explicit_rejection(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
