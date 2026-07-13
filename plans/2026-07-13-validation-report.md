@@ -167,8 +167,11 @@ references before atomically appending metadata to a caller-selected ledger outs
 repository. Raw transcripts, prompts, outputs, private context, and unknown fields are
 rejected. Every record carries `raw_evidence_stored: false`, `auto_promote: false`,
 `promotion_status: review-required`, and `applied: false`; duplicate IDs are refused.
-This provides a privacy-preserving intake primitive only—runtime hook collection,
-aggregation, evaluation, and promotion remain unimplemented and review-gated.
+The `--summarize` mode groups sanitized records by signal type and hashed recurrence key,
+counts independent sessions, and marks candidates as threshold-met only after two sessions
+or strong evidence. It emits review-only candidate summaries without creating proposals;
+runtime hook collection, baseline evaluation, and promotion remain unimplemented and
+review-gated.
 
 ## Tests not yet run
 

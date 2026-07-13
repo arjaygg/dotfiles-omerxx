@@ -2,7 +2,7 @@
 
 plan: plans/2026-07-13-execution-plan.md
 step: Phase 3 of 5
-focus: privacy-preserving traceable learning-signal intake
+focus: thresholded review-only learning-signal summaries
 
 ## Current (2026-07-13) — Phase 0/1 audit checkpoint
 
@@ -25,6 +25,10 @@ focus: privacy-preserving traceable learning-signal intake
   recorder that hashes private references, rejects raw evidence and unknown fields, and
   marks every record review-required/unapplied. It is not wired into runtime hooks or
   promotion.
+
+- The current child branch extends the signal recorder with `--summarize`: candidates are
+  grouped by hashed recurrence key, require two independent sessions or strong evidence,
+  and remain `review-required`/unapplied. No proposal or canonical policy is generated.
 
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
