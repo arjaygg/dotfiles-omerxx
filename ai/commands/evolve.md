@@ -17,6 +17,16 @@ then validate any proposed policy artifact with the repository-side validator:
 python3 scripts/policy_proposal.py validate path/to/proposal.json
 ```
 
+For a deterministic baseline-vs-candidate review report, provide numeric metric artifacts:
+
+```bash
+python3 scripts/policy_proposal.py review path/to/proposal.json \
+  --baseline path/to/baseline.json \
+  --candidate path/to/candidate.json
+```
+
+The report is always `review-required`; it never promotes or applies the proposal.
+
 An external evolution implementation may be used only when its installed path and
 output directory are explicitly verified. Generated artifacts remain candidates and
 must stay outside canonical policy until human review.

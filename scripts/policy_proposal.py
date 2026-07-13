@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 from datetime import date
@@ -92,6 +93,56 @@ def validate_proposal(value: Any) -> list[str]:
     return errors
 
 
+def _metric_values(value: Any, label: str) -> dict[str, int | float]:
+    if not isinstance(value, dict) or not value:
+        raise ValueError(f"{label} metrics must be a non-empty object")
+    metrics: dict[str, int | float] = {}
+    for name, metric in value.items():
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError(f"{label} metric names must be non-empty strings")
+        if isinstance(metric, bool) or not isinstance(metric, (int, float)) or not math.isfinite(metric):
+            raise ValueError(f"{label} metrics must contain finite numbers")
+        metrics[name] = metric
+    return metrics
+
+
+def build_review_report(
+    proposal: Any,
+    baseline: Any,
+    candidate: Any,
+) -> dict[str, Any]:
+    proposal_errors = validate_proposal(proposal)
+    if proposal_errors:
+        raise ValueError("proposal invalid: " + "; ".join(proposal_errors))
+    baseline_metrics = _metric_values(baseline, "baseline")
+    candidate_metrics = _metric_values(candidate, "candidate")
+    if set(baseline_metrics) != set(candidate_metrics):
+        raise ValueError("baseline and candidate metric names must match")
+
+    metrics: dict[str, dict[str, int | float | bool]] = {}
+    for name in sorted(baseline_metrics):
+        before = baseline_metrics[name]
+        after = candidate_metrics[name]
+        metrics[name] = {
+            "baseline": before,
+            "candidate": after,
+            "delta": after - before,
+            "changed": before != after,
+        }
+    status = "changed" if any(metric["changed"] for metric in metrics.values()) else "unchanged"
+    return {
+        "proposal_id": proposal["id"],
+        "decision": "review-required",
+        "auto_promote": False,
+        "evidence_gate": {
+            "recurrence": proposal["recurrence"],
+            "evidence_class": proposal["evidence_class"],
+        },
+        "review_after": proposal["review_after"],
+        "evaluation": {"status": status, "metrics": metrics},
+    }
+
+
 def _load(path: Path) -> Any:
     text = path.read_text(encoding="utf-8")
     if path.suffix.lower() == ".json":
@@ -106,8 +157,20 @@ def main(argv: list[str] | None = None) -> int:
     subparsers = parser.add_subparsers(dest="command", required=True)
     validate = subparsers.add_parser("validate", help="validate a YAML or JSON proposal")
     validate.add_argument("path", type=Path)
+    review = subparsers.add_parser("review", help="compare a proposal's baseline and candidate metrics")
+    review.add_argument("proposal", type=Path)
+    review.add_argument("--baseline", type=Path, required=True)
+    review.add_argument("--candidate", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == "review":
+            report = build_review_report(
+                _load(args.proposal),
+                _load(args.baseline),
+                _load(args.candidate),
+            )
+            print(json.dumps(report, indent=2, sort_keys=True))
+            return 0
         value = _load(args.path)
     except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as error:
         print(json.dumps({"valid": False, "errors": [str(error)]}, indent=2))

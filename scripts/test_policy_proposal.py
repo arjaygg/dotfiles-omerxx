@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.policy_proposal import validate_proposal
+from scripts.policy_proposal import build_review_report, validate_proposal
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,6 +67,26 @@ class PolicyProposalTests(unittest.TestCase):
 
         self.assertIn("review_after must be an ISO date or condition:<description>", errors)
 
+    def test_review_report_compares_baseline_and_candidate_metrics(self):
+        report = build_review_report(
+            valid_proposal(),
+            {"latency_ms": 100, "tests_passed": 10},
+            {"latency_ms": 80, "tests_passed": 10},
+        )
+
+        self.assertEqual(report["decision"], "review-required")
+        self.assertFalse(report["auto_promote"])
+        self.assertEqual(report["evaluation"]["status"], "changed")
+        self.assertEqual(report["evaluation"]["metrics"]["latency_ms"]["delta"], -20)
+
+    def test_review_report_rejects_mismatched_metric_sets(self):
+        with self.assertRaisesRegex(ValueError, "metric names must match"):
+            build_review_report(valid_proposal(), {"latency_ms": 100}, {"tests_passed": 10})
+
+    def test_review_report_rejects_non_numeric_metric_values(self):
+        with self.assertRaisesRegex(ValueError, "finite numbers"):
+            build_review_report(valid_proposal(), {"latency_ms": "100"}, {"latency_ms": 80})
+
     def test_cli_returns_nonzero_for_invalid_json(self):
         with tempfile.TemporaryDirectory() as directory:
             proposal = Path(directory) / "proposal.json"
@@ -80,6 +100,36 @@ class PolicyProposalTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 1)
         self.assertIn("recurrence evidence requires recurrence >= 2", result.stdout)
+
+    def test_review_cli_emits_human_review_required_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proposal = root / "proposal.json"
+            baseline = root / "baseline.json"
+            candidate = root / "candidate.json"
+            proposal.write_text(json.dumps(valid_proposal()), encoding="utf-8")
+            baseline.write_text(json.dumps({"latency_ms": 100}), encoding="utf-8")
+            candidate.write_text(json.dumps({"latency_ms": 90}), encoding="utf-8")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts/policy_proposal.py"),
+                    "review",
+                    str(proposal),
+                    "--baseline",
+                    str(baseline),
+                    "--candidate",
+                    str(candidate),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(result.stdout)
+        self.assertEqual(report["decision"], "review-required")
+        self.assertFalse(report["auto_promote"])
 
 
 if __name__ == "__main__":
