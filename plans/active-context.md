@@ -71,6 +71,10 @@ focus: Linux/macOS policy-validation matrix
   unsafe identifiers, and runtime paths that escape the home-relative `~/` form;
   focused tests pass without touching live runtime files.
 
+- The isolated bootstrap proof now compares all six staged targets against their
+  proposals (`staged_compare_clean: true`), covering both JSON and TOML without
+  touching live runtime paths.
+
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
   proposal-only client bases/generator.

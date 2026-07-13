@@ -11,14 +11,14 @@ import tempfile
 from pathlib import Path
 
 try:
-    from scripts.ai_config import stage_proposals
+    from scripts.ai_config import compare_proposals, stage_proposals
     from scripts.config_generate import TemplateValidationError, _parse_variables
     from scripts.config_generate_all import build_proposals
 except ModuleNotFoundError as error:
     if error.name != "scripts":
         raise
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from scripts.ai_config import stage_proposals
+    from scripts.ai_config import compare_proposals, stage_proposals
     from scripts.config_generate import TemplateValidationError, _parse_variables
     from scripts.config_generate_all import build_proposals
 
@@ -66,6 +66,10 @@ def verify_bootstrap(root: Path, *, variables: dict[str, str] | None = None) -> 
             path: hashlib.sha256(Path(path).read_bytes()).hexdigest()
             for path in second_stage["written"]
         }
+        staged_comparison = compare_proposals(root, staging_root, variables=values)
+        staged_compare_clean = all(
+            result["status"] == "match" for result in staged_comparison.values()
+        )
         staged_cache_preserved = all(
             cache_path.read_bytes() == content for cache_path, content in cache_files.items()
         )
@@ -78,6 +82,8 @@ def verify_bootstrap(root: Path, *, variables: dict[str, str] | None = None) -> 
         "idempotent": first == second,
         "staged_client_count": len(first_stage["written"]),
         "staged_idempotent": first_hashes == second_hashes,
+        "staged_compare_client_count": len(staged_comparison),
+        "staged_compare_clean": staged_compare_clean,
         "staged_cache_preserved": staged_cache_preserved,
         "temporary_stage_writes": True,
         "writes_performed": False,
@@ -97,7 +103,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"bootstrap check rejected input: {error}", file=sys.stderr)
         return 2
     print(json.dumps(report, indent=2, sort_keys=True))
-    return 0 if report["idempotent"] and report["staged_idempotent"] and report["staged_cache_preserved"] else 1
+    return 0 if (
+        report["idempotent"]
+        and report["staged_idempotent"]
+        and report["staged_compare_clean"]
+        and report["staged_cache_preserved"]
+    ) else 1
 
 
 if __name__ == "__main__":

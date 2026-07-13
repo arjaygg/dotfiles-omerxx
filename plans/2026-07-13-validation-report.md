@@ -77,6 +77,11 @@ unsafe client identifiers, and runtime paths that do not stay beneath the declar
 home-relative `~/` form. Focused manifest tests cover these rejection paths; this
 hardens proposal generation without changing any runtime target.
 
+The bootstrap proof now also compares all six staged targets through the read-only
+`compare_proposals` path and requires `staged_compare_clean: true`. This validates both
+JSON and TOML staged output against the proposal without treating staging as a live
+installation.
+
 ## Transactional staging follow-up
 
 The explicitly marked `ai_config.py stage` path now pre-renders and fsyncs every target

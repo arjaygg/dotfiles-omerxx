@@ -28,6 +28,8 @@ class BootstrapCheckTests(unittest.TestCase):
         self.assertTrue(report["idempotent"])
         self.assertEqual(report["staged_client_count"], 6)
         self.assertTrue(report["staged_idempotent"])
+        self.assertEqual(report["staged_compare_client_count"], 6)
+        self.assertTrue(report["staged_compare_clean"])
         self.assertTrue(report["staged_cache_preserved"])
         self.assertTrue(report["temporary_stage_writes"])
         self.assertFalse(report["writes_performed"])
@@ -60,6 +62,8 @@ class BootstrapCheckTests(unittest.TestCase):
         self.assertEqual(payload["client_count"], 6)
         self.assertEqual(payload["staged_client_count"], 6)
         self.assertTrue(payload["staged_idempotent"])
+        self.assertEqual(payload["staged_compare_client_count"], 6)
+        self.assertTrue(payload["staged_compare_clean"])
         self.assertTrue(payload["staged_cache_preserved"])
         self.assertFalse(payload["writes_performed"])
 
