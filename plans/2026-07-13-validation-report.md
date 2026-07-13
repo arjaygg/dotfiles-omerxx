@@ -10,7 +10,7 @@ instruction-hierarchy, or live-runtime changes.
 
 | Command | Result |
 |---|---|
-| `python3 -m unittest discover -s scripts -p 'test_*.py'` | 34 tests passed |
+| `python3 -m unittest discover -s scripts -p 'test_*.py'` | 35 tests passed |
 | `python3 scripts/hook_fixture_runner.py .claude/hooks/pre-tool-gate-v2.sh scripts/fixtures/pretool-gate-v2.json` | 7 passed, 0 failed |
 | `python3 scripts/hook_config_check.py .claude/settings.json` | 8 static findings; expected nonzero result |
 | `python3 scripts/config_doctor.py --json` | 59 residual findings; 0 missing remediation fields; read-only |

@@ -39,7 +39,7 @@ silently considered accepted.
 - Added `ai/config/claude/settings.base.json`, a portable sanitized snapshot, an
   overlay example, and `scripts/config_generate.py`. The generator deep-merges JSON,
   rejects privacy/secret findings, and prints proposals without writing files.
-- Added boundary and generator tests. The full Python suite now passes 34 tests.
+- Added boundary and generator tests. The full Python suite now passes 35 tests.
 - Current branch recheck: 369 hygiene findings (185 organization names, 133 absolute
   paths, 51 organization URLs); doctor reports 59 findings, all from residual path,
   organization, and blanket-permission data outside the approved boundary changes.

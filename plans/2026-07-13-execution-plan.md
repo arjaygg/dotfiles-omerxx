@@ -28,7 +28,7 @@ for tracked client configs and reports 59 current issues without mutating files.
 organization-specific auto-mode context from tracked Claude settings, makes the
 settings guard detect-only, untracks the machine-local overlay while preserving the
 working-tree file, and adds a portable Claude base plus proposal-only JSON generator.
-The new boundary and generator tests are included in the 34-test suite. No live
+The new boundary and generator tests are included in the 35-test suite. No live
 runtime file has been changed.
 
 1. Classify every organization/path/secret match as portable source, fixture,
