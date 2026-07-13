@@ -2,8 +2,8 @@
 
 ## Active — 2026-07-13 portable governed AI configuration audit
 
-Plan: `plans/2026-07-13-execution-plan.md`; branch
-`chore/phase0-config-boundary`.
+Plan: `plans/2026-07-13-execution-plan.md`; post-merge documentation branch
+`chore/record-phase0-merge`.
 
 - [x] Verify current branch, instruction hierarchy, open-PR overlap, hook schema risks,
   public-repository exposure, and runtime copy-back behavior.
@@ -17,8 +17,8 @@ Plan: `plans/2026-07-13-execution-plan.md`; branch
 - [x] Add test-first explicit placeholder expansion and verify all four portable
   client/PCTX JSON bases generate without reading environment state or mutating inputs.
 - [x] Add and parse-validate a portable Codex TOML base without wiring it into runtime.
-- [x] Publish draft PR [#296](https://github.com/arjaygg/dotfiles-omerxx/pull/296) for
-  review; do not merge or apply runtime changes automatically.
+- [x] Publish and admin-merge PR [#296](https://github.com/arjaygg/dotfiles-omerxx/pull/296)
+  at merge commit `1036a591`; no runtime changes were applied automatically.
 - [ ] Validate the proposal diff and obtain separate approval before live runtime,
   permission, machine-wide hook, or canonical-hierarchy changes.
 

@@ -17,17 +17,16 @@ the proposal before the branch guard is active would leave the old copy-back beh
 in place and could re-adopt the proposal into the main checkout. No live apply was
 performed; branch installation/merge must precede runtime application.
 
-The branch is published as draft PR [#296](https://github.com/arjaygg/dotfiles-omerxx/pull/296)
-for review. It has not been merged.
+PR [#296](https://github.com/arjaygg/dotfiles-omerxx/pull/296) was admin-merged into
+`main` at commit `1036a591` on 2026-07-13. No live runtime application was performed.
 
-As of 2026-07-13, PR #296 is open, draft, mergeable, and both `claude-auto-coverage-gate`
-and `claude-auto-diff-size-gate` have passed. This does not substitute for human review.
+Before merge, both `claude-auto-coverage-gate` and `claude-auto-diff-size-gate` passed.
 
 ## Commands and results
 
 | Command | Result |
 |---|---|
-| `python3 -m unittest discover -s scripts -p 'test_*.py'` | 42 tests passed |
+| `python3 -m unittest discover -s scripts -p 'test_*.py'` | 43 tests passed |
 | `python3 scripts/hook_fixture_runner.py .claude/hooks/pre-tool-gate-v2.sh scripts/fixtures/pretool-gate-v2.json` | 7 passed, 0 failed |
 | `python3 scripts/hook_config_check.py .claude/settings.json` | 8 static findings; expected nonzero result |
 | `python3 scripts/config_doctor.py --json` | 59 residual findings; 0 missing remediation fields; read-only |
@@ -36,7 +35,7 @@ and `claude-auto-diff-size-gate` have passed. This does not substitute for human
 | `python3 scripts/public_hygiene_check.py --json` | 369 findings: 133 absolute paths, 185 private-name matches, 51 private-URL matches |
 | `git diff --check` | passed |
 | Preflight runtime snapshot | `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`; SHA-256 manifest recorded outside Git |
-| `git status --short --branch` | isolated Phase 0 branch; clean after commit |
+| `git status --short --branch` | post-merge documentation branch; clean after commit |
 
 The nonzero scanner and doctor results are expected because they report the unresolved
 baseline; they are not hygiene or configuration acceptance passes.
