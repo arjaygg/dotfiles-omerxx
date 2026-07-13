@@ -40,6 +40,19 @@ python3 scripts/policy_decision.py path/to/proposal.json \
 
 Recording a decision never applies or promotes the proposal.
 
+To evaluate promotion prerequisites without applying anything, join the proposal,
+review report, and decision ledger explicitly:
+
+```bash
+python3 scripts/policy_decision.py path/to/proposal.json \
+  --ledger /path/outside-the-repository/decisions.jsonl \
+  --gate-review path/to/review.json \
+  --evaluated-at 2026-07-14
+```
+
+The gate reports `eligible` only for a current accepted decision and always returns
+`auto_apply: false`; a separate, explicitly reviewed apply operation is still required.
+
 An external evolution implementation may be used only when its installed path and
 output directory are explicitly verified. Generated artifacts remain candidates and
 must stay outside canonical policy until human review.
