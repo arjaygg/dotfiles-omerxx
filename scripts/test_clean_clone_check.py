@@ -2,7 +2,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.clean_clone_check import CleanCloneError, run_check
+from scripts.clean_clone_check import (
+    CleanCloneError,
+    _link_stays_inside_archive,
+    run_check,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +22,23 @@ class CleanCloneCheckTests(unittest.TestCase):
         )
         self.assertEqual(result["client_count"], 6)
         self.assertFalse(result["runtime_writes"])
+        self.assertEqual(result["skipped_symlink_count"], 0)
+
+    def test_archive_link_boundary_is_enforced(self):
+        self.assertTrue(
+            _link_stays_inside_archive(
+                ".cursor/rules/tool-priority.md", "../../ai/rules/tool-priority.md"
+            )
+        )
+        self.assertFalse(
+            _link_stays_inside_archive(
+                ".cursor/rules/tool-priority.md",
+                "/" + "Users/example/.dotfiles/ai/rules/tool-priority.md",
+            )
+        )
+        self.assertFalse(
+            _link_stays_inside_archive(".cursor/rules/tool-priority.md", "../../../outside")
+        )
 
     def test_missing_setup_script_is_reported(self):
         with tempfile.TemporaryDirectory() as directory:

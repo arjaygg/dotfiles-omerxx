@@ -1,1 +1,1 @@
-/Users/axos-agallentes/.dotfiles/ai/rules/tool-priority.md
+../../ai/rules/tool-priority.md

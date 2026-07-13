@@ -6,6 +6,7 @@ import argparse
 import io
 import json
 import os
+import posixpath
 import subprocess
 import tarfile
 import tempfile
@@ -15,6 +16,13 @@ from typing import Any
 
 class CleanCloneError(RuntimeError):
     """Raised when a clean-clone proposal check cannot be completed."""
+
+
+def _link_stays_inside_archive(name: str, linkname: str) -> bool:
+    if posixpath.isabs(linkname):
+        return False
+    target = posixpath.normpath(posixpath.join(posixpath.dirname(name), linkname))
+    return target != ".." and not target.startswith("../")
 
 
 def _archive_clone(root: Path, destination: Path, ref: str) -> int:
@@ -30,9 +38,17 @@ def _archive_clone(root: Path, destination: Path, ref: str) -> int:
     try:
         with tarfile.open(fileobj=io.BytesIO(result.stdout), mode="r:") as archive:
             members = archive.getmembers()
-            regular_members = [member for member in members if not member.issym() and not member.islnk()]
-            archive.extractall(destination, members=regular_members)
-            return len(members) - len(regular_members)
+            safe_members = []
+            skipped_links = 0
+            for member in members:
+                if (member.issym() or member.islnk()) and not _link_stays_inside_archive(
+                    member.name, member.linkname
+                ):
+                    skipped_links += 1
+                    continue
+                safe_members.append(member)
+            archive.extractall(destination, members=safe_members)
+            return skipped_links
     except (OSError, tarfile.TarError) as error:
         raise CleanCloneError(f"cannot extract clean clone: {error}") from error
 
