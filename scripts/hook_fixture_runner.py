@@ -52,6 +52,8 @@ def load_manifest(path: Path) -> list[dict[str, object]]:
                 if missing:
                     names = ", ".join(missing)
                     raise ValueError(f"{case['name']}: expected_updated_input must preserve keys: {names}")
+        if "expected_input" in case and not isinstance(case["expected_input"], dict):
+            raise ValueError(f"{case['name']}: expected_input must be an object")
     return value
 
 
@@ -72,7 +74,7 @@ def check_result(case: dict[str, object], returncode: int, stdout: str, stderr: 
     expected_exit = case.get("expected_exit", 0)
     if returncode != expected_exit:
         failures.append(f"expected exit {expected_exit}, got {returncode}")
-    expects_rewrite = "expected_updated_input" in case
+    expects_rewrite = "expected_updated_input" in case or "expected_input" in case
     output_mode = case.get(
         "output",
         "empty" if expect == "allow" and not expects_rewrite else "decision",
@@ -86,6 +88,10 @@ def check_result(case: dict[str, object], returncode: int, stdout: str, stderr: 
         decision = json.loads(stdout)
     except json.JSONDecodeError:
         failures.append("structured fixture must emit exactly one JSON decision on stdout")
+        return failures
+    if "expected_input" in case:
+        if decision != case["expected_input"]:
+            failures.append("fixture raw input does not match expected rewrite")
         return failures
     output = decision.get("hookSpecificOutput") if isinstance(decision, dict) else None
     if not isinstance(output, dict):

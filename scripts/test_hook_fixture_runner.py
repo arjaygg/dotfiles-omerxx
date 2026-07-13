@@ -65,6 +65,18 @@ class HookFixtureRunnerTests(unittest.TestCase):
 
         self.assertNotEqual(check_result(case, 0, stdout, ""), [])
 
+    def test_raw_rewrite_payload_requires_exact_expected_input(self):
+        case = {
+            "expect": "allow",
+            "expected_input": {"tool_name": "Bash", "tool_input": {"command": "safe"}},
+        }
+
+        self.assertEqual(check_result(case, 0, json.dumps(case["expected_input"]), ""), [])
+        self.assertNotEqual(
+            check_result(case, 0, json.dumps({"tool_name": "Bash", "tool_input": {"command": "unsafe"}}), ""),
+            [],
+        )
+
     def test_deny_result_requires_structured_decision(self):
         stdout = json.dumps(
             {
