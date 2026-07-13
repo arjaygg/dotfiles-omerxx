@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
@@ -255,17 +256,65 @@ def run_doctor(root: Path) -> list[Issue]:
     return issues
 
 
+def _issue_fingerprint(issues: list[Issue]) -> str:
+    encoded = "\n".join(
+        f"{issue.path}\0{issue.rule}\0{issue.severity}" for issue in sorted(issues, key=lambda item: (item.path, item.rule, item.severity))
+    )
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def compare_baseline(root: Path, baseline_path: Path) -> dict[str, object]:
+    """Compare source doctor debt with a reviewed privacy-safe fingerprint."""
+
+    try:
+        baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid config-doctor baseline: {error}") from error
+    if (
+        not isinstance(baseline, dict)
+        or set(baseline) != {"schema", "issue_count", "fingerprint"}
+        or baseline.get("schema") != 1
+        or not isinstance(baseline.get("issue_count"), int)
+        or baseline["issue_count"] < 0
+        or not isinstance(baseline.get("fingerprint"), str)
+        or len(baseline["fingerprint"]) != 64
+        or any(char not in "0123456789abcdef" for char in baseline["fingerprint"])
+    ):
+        raise ValueError("config-doctor baseline has invalid schema, issue_count, or fingerprint")
+    issues = run_doctor(root)
+    fingerprint = _issue_fingerprint(issues)
+    return {
+        "schema": 1,
+        "issue_count": len(issues),
+        "fingerprint": fingerprint,
+        "baseline_issue_count": baseline["issue_count"],
+        "baseline_fingerprint": baseline["fingerprint"],
+        "baseline_match": len(issues) == baseline["issue_count"] and fingerprint == baseline["fingerprint"],
+    }
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", nargs="?", type=Path, default=Path.cwd())
     parser.add_argument("--live-settings", type=Path)
     parser.add_argument("--json", action="store_true", dest="as_json")
+    parser.add_argument("--baseline", type=Path)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     root = args.root.resolve()
+    if args.baseline is not None:
+        if args.live_settings is not None:
+            parser.error("--baseline cannot be combined with --live-settings")
+        try:
+            report = compare_baseline(root, args.baseline)
+        except (OSError, UnicodeError, ValueError) as error:
+            print(f"config doctor baseline rejected: {error}", file=sys.stderr)
+            return 2
+        print(json.dumps(report, indent=2, sort_keys=True) if args.as_json else f"config doctor baseline match: {report['baseline_match']}")
+        return 0 if report["baseline_match"] else 1
     issues = run_doctor(root)
     if args.live_settings:
         issues.extend(compare_runtime_file(root / ".claude/settings.json", args.live_settings))

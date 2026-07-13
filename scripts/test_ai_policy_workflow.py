@@ -37,6 +37,8 @@ class AiPolicyWorkflowTests(unittest.TestCase):
         self.assertIn("scripts/learning_signal.py", text)
         self.assertIn("scripts/public_hygiene_check.py", text)
         self.assertIn("scripts/fixtures/public-hygiene-baseline.json", text)
+        self.assertIn("scripts/config_doctor.py", text)
+        self.assertIn("scripts/fixtures/config-doctor-baseline.json", text)
         self.assertIn("scripts/shellcheck_check.py", text)
         self.assertIn("scripts/fixtures/shellcheck-baseline.json", text)
         self.assertIn("scripts/permission_hook_conflicts.py", text)
