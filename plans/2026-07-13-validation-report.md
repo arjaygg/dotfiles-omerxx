@@ -274,6 +274,11 @@ The policy workflow compares that fingerprint on Linux and macOS and fails on an
 addition or disappearance; this is a no-regressions gate, not a claim that the debt is
 resolved.
 
+The read-only configuration doctor now has the same privacy-safe baseline contract:
+the current 59 source issues are represented by a `(path,rule,severity)` fingerprint
+in `scripts/fixtures/config-doctor-baseline.json`. CI fails on doctor-debt drift while
+live-settings comparison remains a separate review-gated operation.
+
 ## Tests not yet run
 
 - Full behavior coverage for every registered hook event and matcher; the maintained
