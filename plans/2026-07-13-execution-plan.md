@@ -16,9 +16,9 @@ runtime edits do not write back to tracked source; generation from base plus ign
 overlays is deterministic, idempotent, atomic, and secret-safe.
 
 **Safe progress:** `scripts/public_hygiene_check.py` and its five-case unittest suite
-now provide a deterministic baseline scanner. It currently reports 386 findings on
-the initial tracked source scan; the latest recheck reports 390, so the phase remains
-incomplete.
+now provide a deterministic baseline scanner. Earlier audit snapshots recorded 386
+and 390 findings; the current recheck reports 388 findings (195 organization names,
+140 absolute-home paths, and 53 organization URLs), so the phase remains incomplete.
 
 **Additional safe progress:** `scripts/config_doctor.py` provides a read-only doctor
 for tracked client configs and reports 68 current issues without mutating files.

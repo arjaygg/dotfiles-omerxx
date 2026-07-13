@@ -91,14 +91,14 @@ Added `scripts/public_hygiene_check.py` with five deterministic rules for tracke
 files: absolute home paths, private organization URLs/names, secret assignments, and
 private-key material. Five `unittest` cases cover clean portable text, each finding
 class, redacted placeholders, private keys, and tracked-file filtering. The scanner
-passes its tests and reports 386 current baseline findings (absolute paths and private
-organization markers); this is evidence for the required cleanup, not a claim that
+passes its tests and an earlier baseline recorded 386 findings (absolute paths and
+private organization markers); this is evidence for the required cleanup, not a claim that
 public-repository hygiene is complete.
 
-The current committed baseline was subsequently rechecked after the scanner landed:
-390 findings remain — 196 organization-name matches, 141 absolute-home-path matches,
-and 53 organization-URL matches. The largest source areas are `ai/` (114), `.claude/`
-(79), `plans/` (48), `.codex/` (45), and `.gemini/` (26). These counts guide
+The current committed baseline was subsequently rechecked after the audit artifacts
+were added: 388 findings remain — 195 organization-name matches, 140 absolute-home-path
+matches, and 53 organization-URL matches. The largest source areas are `ai/` (114), `.claude/`
+(79), `plans/` (47), `.codex/` (45), and `.gemini/` (26). These counts guide
 classification; they are not permission to delete historical plans or evaluation
 fixtures without a reviewed disposition.
 
