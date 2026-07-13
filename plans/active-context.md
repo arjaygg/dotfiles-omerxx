@@ -44,8 +44,8 @@ focus: file-backed hook reachability baseline
 
 - The current child branch extends the maintained PreToolUse fixture runner with
   event-aware structured-decision validation, explicit empty-output/exit-code contracts,
-  and one malformed-payload deny fixture. Eight fixtures pass; no runtime hook behavior
-  or permission semantics are changed.
+  malformed-payload and sensitive hash-file denial fixtures, plus a safe pipe rewrite.
+  Ten fixtures pass; no runtime hook behavior or permission semantics are changed.
 
 - The current child branch adds a read-only always-loaded instruction compliance check
   for transient session sections, dated current-state headings, absolute user paths, and
@@ -67,7 +67,7 @@ focus: file-backed hook reachability baseline
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
   proposal-only client bases/generator.
-- Current evidence: 147 Python tests pass, 8 maintained PreToolUse fixtures pass, the
+- Current evidence: 148 Python tests pass, 10 maintained PreToolUse fixtures pass, the
   hygiene scanner reports 369 findings, and the doctor reports 59 residual findings.
 - A preflight live-settings backup and SHA-256 manifest are stored outside Git under
   `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`.
