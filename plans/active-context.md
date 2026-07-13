@@ -12,9 +12,9 @@ focus: Linux/macOS policy-validation matrix
   out-of-root references, and enforces chain budgets in CI. No hierarchy or runtime
   configuration was changed.
 
-- This child branch adds a conservative dead-reference scanner. It reports 14 existing
-  broken Claude skill symlinks, finds no missing explicit command-script references, and
-  gates only changes from the reviewed baseline. No stale link is deleted or repaired.
+- This child branch adds a conservative dead-reference scanner. It now reports no broken
+  Claude distribution links or missing explicit command-script references after removing
+  14 stale links to absent private skills; CI gates any new finding.
 
 - The current child branch adds `scripts/bootstrap_check.py`, which renders all six
   manifest clients twice, stages them twice in a marked temporary root, validates

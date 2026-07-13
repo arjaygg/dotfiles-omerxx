@@ -126,10 +126,10 @@ compliance-regression evidence without asserting that the existing finding is re
 
 The new `scripts/dead_reference_check.py` scans canonical command documentation for
 explicit local `scripts/...` references and checks Claude command/skill distribution
-symlinks without following or changing them. The current scan found no missing command
-script references and 14 pre-existing broken skill symlinks. Those exact findings are
-stored in `scripts/fixtures/dead-reference-baseline.json`; CI fails on additions or
-disappearances so debt cannot change silently. No symlink remediation was performed.
+symlinks without following them. The current scan has no missing command-script
+references or broken distribution links; the 14 stale links to absent private skills
+were removed. The empty reviewed baseline is stored in
+`scripts/fixtures/dead-reference-baseline.json`; CI fails on any new finding.
 
 ## Phase 1/5 file-backed hook reference follow-up
 
