@@ -2,7 +2,7 @@
 
 plan: plans/2026-07-13-execution-plan.md
 step: Phase 5 of 5
-focus: event-aware maintained hook fixture contract
+focus: transactional proposal staging and rollback evidence
 
 ## Current (2026-07-13) — Phase 0/1 audit checkpoint
 
@@ -20,6 +20,11 @@ focus: event-aware maintained hook fixture contract
   manifest clients twice, validates proposal parsers, and reports deterministic hashes
   with explicit `writes_performed: false` and `runtime_writes: false`. It does not run
   mutating setup or live migration.
+
+- The current child branch makes marked proposal staging transactional: all rendered
+  files are prepared and fsynced before replacement, opt-in backups are retained on
+  success, and prior replacements are restored if a later target fails. Tests exercise
+  the simulated second-target failure; live runtime writes remain untouched.
 
 - The current child branch adds `scripts/learning_signal.py`, an explicit external-ledger
   recorder that hashes private references, rejects raw evidence and unknown fields, and
@@ -42,7 +47,7 @@ focus: event-aware maintained hook fixture contract
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
   proposal-only client bases/generator.
-- Current evidence: 42 Python tests pass, 7 maintained PreToolUse fixtures pass, the
+- Current evidence: 127 Python tests pass, 8 maintained PreToolUse fixtures pass, the
   hygiene scanner reports 369 findings, and the doctor reports 59 residual findings.
 - A preflight live-settings backup and SHA-256 manifest are stored outside Git under
   `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`.

@@ -115,6 +115,25 @@ def _atomic_write(path: Path, content: str) -> None:
         raise
 
 
+def _write_temporary(path: Path, content: str) -> Path:
+    """Write and fsync a same-directory temporary file without replacing a target."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        return Path(temporary)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
+
 def stage_proposals(
     root: Path,
     output_root: Path,
@@ -139,7 +158,10 @@ def stage_proposals(
         name: (_runtime_path(output_root, proposal["runtime"]), proposal["content"])
         for name, proposal in proposals.items()
     }
+    existed_before = {str(target): target.exists() for target, _content in targets.values()}
     backups: dict[str, Path] = {}
+    temporary_paths: dict[str, Path] = {}
+    replaced: list[Path] = []
     for target, _content in targets.values():
         if target.exists() and not replace:
             raise TemplateValidationError(f"staging target exists; pass --replace explicitly: {target}")
@@ -149,11 +171,30 @@ def stage_proposals(
         if target.exists():
             backups[str(target)] = backup
 
-    for target, _content in targets.values():
-        if target.exists():
-            shutil.copy2(target, backups[str(target)])
-    for target, content in targets.values():
-        _atomic_write(target, content)
+    try:
+        for target, content in targets.values():
+            temporary_paths[str(target)] = _write_temporary(target, content)
+        for target, _content in targets.values():
+            if target.exists() != existed_before[str(target)]:
+                raise TemplateValidationError(f"staging target changed during preflight: {target}")
+            if target.exists():
+                shutil.copy2(target, backups[str(target)])
+        for target, _content in targets.values():
+            os.replace(temporary_paths[str(target)], target)
+            replaced.append(target)
+    except BaseException:
+        for target in reversed(replaced):
+            backup = backups.get(str(target))
+            if backup is not None:
+                shutil.copy2(backup, target)
+            else:
+                target.unlink(missing_ok=True)
+        for backup in backups.values():
+            backup.unlink(missing_ok=True)
+        raise
+    finally:
+        for temporary in temporary_paths.values():
+            temporary.unlink(missing_ok=True)
     return {
         "written": [str(target) for target, _content in targets.values()],
         "backups": [str(backups[str(target)]) for target, _content in targets.values() if str(target) in backups],

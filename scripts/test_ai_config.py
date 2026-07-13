@@ -1,10 +1,12 @@
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import tomllib
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from scripts.ai_config import compare_proposals, stage_proposals
 from scripts.config_generate import TemplateValidationError
@@ -116,6 +118,37 @@ class AiConfigCliTests(unittest.TestCase):
             self.assertEqual(backup.read_text(encoding="utf-8"), "old = true\n")
             self.assertEqual(result["backups"], [str(backup)])
             self.assertNotEqual(target.read_text(encoding="utf-8"), "old = true\n")
+
+    def test_stage_rolls_back_prior_replacements_when_a_later_target_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output_root = Path(directory)
+            (output_root / ".ai-config-staging").touch()
+            codex_target = output_root / ".codex/config.toml"
+            gemini_target = output_root / ".gemini/mcp.json"
+            codex_target.parent.mkdir(parents=True)
+            gemini_target.parent.mkdir(parents=True)
+            codex_target.write_text("codex = 'old'\n", encoding="utf-8")
+            gemini_target.write_text('{"gemini": "old"}\n', encoding="utf-8")
+            real_replace = os.replace
+
+            def replace_or_fail(source, target):
+                if str(target).endswith(".gemini/mcp.json"):
+                    raise OSError("simulated second-target failure")
+                real_replace(source, target)
+
+            with mock.patch("scripts.ai_config.os.replace", side_effect=replace_or_fail):
+                with self.assertRaisesRegex(OSError, "second-target"):
+                    stage_proposals(
+                        ROOT,
+                        output_root,
+                        clients={"codex", "gemini"},
+                        variables={"PCTX_CONFIG": "/tmp/pctx.json"},
+                        replace=True,
+                    )
+
+            self.assertEqual(codex_target.read_text(encoding="utf-8"), "codex = 'old'\n")
+            self.assertEqual(gemini_target.read_text(encoding="utf-8"), '{"gemini": "old"}\n')
+            self.assertEqual(list(output_root.rglob("*.bak")), [])
 
 
 if __name__ == "__main__":

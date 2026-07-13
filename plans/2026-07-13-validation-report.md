@@ -70,6 +70,15 @@ It is a proposal-only check: it does not create directories, alter symlinks, wri
 files, or authorize the default `setup.sh` install path. Clean-machine runtime bootstrap,
 cache preservation, and live migration remain unverified.
 
+## Transactional staging follow-up
+
+The explicitly marked `ai_config.py stage` path now pre-renders and fsyncs every target
+before replacing any destination. When `--replace` is used, backups are created before
+replacement and retained on success; a simulated later-target failure restores earlier
+replacements and removes temporary backups. This proves the staging transaction's failure
+path without touching live runtime paths. Multi-process crash recovery, filesystem-level
+durability across power loss, clean-machine bootstrap, and live migration remain unverified.
+
 ## Phase 4 instruction-budget follow-up
 
 The stacked instruction-budget checker measures lines, words, and bytes deterministically
@@ -197,8 +206,8 @@ review-gated.
 - Full behavior coverage for every registered hook event and matcher; the maintained
   runner currently exercises eight PreToolUse cases only.
 - Cross-platform macOS/Linux execution of the complete hook fleet.
-- Atomic-write, clean-clone, and runtime-wiring tests; JSON/TOML proposal generation is
-  covered, but it remains proposal-only and does not write runtime files.
+- Clean-clone and runtime-wiring tests; marked staging atomicity and simulated rollback
+  are covered, but the path remains proposal-only and does not write live runtime files.
 - Wildcard/regex permission-versus-hook contradiction tests and runtime confirmation.
 - Intentional hook-configuration baseline cleanup and ordering changes; those remain
   review-gated because they would alter current hook behavior.
