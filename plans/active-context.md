@@ -1,10 +1,16 @@
 # Active Context
 
 plan: plans/2026-07-13-execution-plan.md
-step: Phase 0 of 5
-focus: approved Phase 0 source implementation; proposal validation before live migration
+step: Phase 4 of 5
+focus: read-only effective-context measurement and budget enforcement
 
 ## Current (2026-07-13) — Phase 0/1 audit checkpoint
+
+- Current child branch adds a deterministic, read-only effective-context report for
+  repository, Claude, Codex, and Gemini guidance chains. It follows Markdown imports,
+  reads canonical client sources, deduplicates aggregate metrics, reports missing or
+  out-of-root references, and enforces chain budgets in CI. No hierarchy or runtime
+  configuration was changed.
 
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and

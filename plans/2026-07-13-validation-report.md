@@ -66,8 +66,16 @@ The stacked instruction-budget checker measures lines, words, and bytes determin
 and reports explicit threshold violations without editing guidance. A current baseline is
 `AGENTS.md` 132 lines / 742 words, `CLAUDE.md` 11 / 57, and
 `ai/rules/agent-user-global.md` 175 / 1,575; no threshold was exceeded in the baseline
-check. This branch wires the explicit baseline budgets into CI; client-specific
-effective-context calculation remains future work.
+check. The new read-only `scripts/effective_context.py` follows Markdown imports and
+client configuration sources, then reports per-client and deduplicated aggregate totals.
+
+For the current branch, repository guidance is 132 lines / 742 words, the Claude chain is
+143 / 799, the Codex chain is 307 / 2,317, the Gemini chain is 132 / 742, and the
+deduplicated aggregate is 318 / 2,374. All remain under the 400-line / 3,000-word /
+20,000-byte budgets. The report also exposes the existing missing `GEMINI.md` reference;
+this increment reports it but does not change the canonical hierarchy.
+
+The effective-context command is now a read-only CI check on every pull request.
 
 ## Phase 5 permission/hook conflict follow-up
 
