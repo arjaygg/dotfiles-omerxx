@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def valid_proposal(**overrides):
     value = {
         "id": "prefer-explicit-overlays",
+        "owner": "platform-team",
         "problem": "Runtime settings drift from portable source.",
         "evidence": ["session-a: runtime drift detected", "session-b: same drift detected"],
         "recurrence": 2,
@@ -46,6 +47,10 @@ class PolicyProposalTests(unittest.TestCase):
         invalid_destination = validate_proposal(valid_proposal(proposed_destination="canonical-policy"))
         self.assertIn("unsupported proposed_destination: canonical-policy", invalid_destination)
 
+    def test_unknown_fields_are_rejected(self):
+        errors = validate_proposal(valid_proposal(unreviewed_instruction="apply this automatically"))
+        self.assertIn("unsupported field: unreviewed_instruction", errors)
+
     def test_recurrence_threshold_requires_two_observations(self):
         errors = validate_proposal(valid_proposal(recurrence=1, evidence_class="recurrence"))
 
@@ -67,6 +72,11 @@ class PolicyProposalTests(unittest.TestCase):
 
         self.assertIn("review_after must be an ISO date or condition:<description>", errors)
 
+    def test_owner_is_required_and_portable(self):
+        self.assertEqual(validate_proposal(valid_proposal(owner="platform-team")), [])
+        errors = validate_proposal(valid_proposal(owner="../private-owner"))
+        self.assertIn("owner must use portable owner characters and be at most 128 characters", errors)
+
     def test_review_report_compares_baseline_and_candidate_metrics(self):
         report = build_review_report(
             valid_proposal(),
@@ -74,6 +84,7 @@ class PolicyProposalTests(unittest.TestCase):
             {"latency_ms": 80, "tests_passed": 10},
         )
 
+        self.assertEqual(report["owner"], "platform-team")
         self.assertEqual(report["decision"], "review-required")
         self.assertFalse(report["auto_promote"])
         self.assertEqual(report["evaluation"]["status"], "changed")

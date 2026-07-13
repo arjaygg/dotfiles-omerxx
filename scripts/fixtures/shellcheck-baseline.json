@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "findings": [
+    {
+      "path": ".cursor/hooks/before-shell-git-commit.sh",
+      "line": 9,
+      "end_line": 9,
+      "column": 51,
+      "end_column": 55,
+      "level": "error",
+      "code": 2259,
+      "message": "This redirection overrides piped input. To use both, merge or pass filenames."
+    }
+  ]
+}

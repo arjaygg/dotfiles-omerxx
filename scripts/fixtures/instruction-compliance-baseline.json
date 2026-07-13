@@ -1,0 +1,8 @@
+[
+  {
+    "path": ".gemini/GEMINI.md",
+    "rule": "memory-section",
+    "line": 16,
+    "message": "always-loaded guidance contains a session-memory section"
+  }
+]

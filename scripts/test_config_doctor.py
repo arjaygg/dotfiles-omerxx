@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.config_doctor import compare_runtime_file, run_doctor
+from scripts.config_doctor import _issue_fingerprint, compare_baseline, compare_runtime_file, run_doctor
 
 
 CONFIG_FILES = (
@@ -141,6 +141,21 @@ class ConfigDoctorTests(unittest.TestCase):
             [issue.rule for issue in issues],
             ["blanket-permission-allow", "blanket-permission-allow"],
         )
+
+    def test_doctor_baseline_matches_privacy_safe_fingerprint(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            make_config_tree(root)
+            baseline = root / "baseline.json"
+            fingerprint = _issue_fingerprint([])
+            baseline.write_text(
+                json.dumps({"schema": 1, "issue_count": 0, "fingerprint": fingerprint}),
+                encoding="utf-8",
+            )
+            report = compare_baseline(root, baseline)
+
+        self.assertTrue(report["baseline_match"])
+        self.assertEqual(report["issue_count"], 0)
 
     def test_manifest_base_is_validated_when_present(self):
         with tempfile.TemporaryDirectory() as directory:

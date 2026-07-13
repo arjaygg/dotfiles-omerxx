@@ -24,6 +24,26 @@
     }
   },
   {
+    "name": "read-hash-file-denied",
+    "expect": "deny",
+    "input": {
+      "tool_name": "Read",
+      "tool_input": {"file_path": "/tmp/go.sum"}
+    }
+  },
+  {
+    "name": "bash-safe-head-rewritten",
+    "expect": "allow",
+    "input": {
+      "tool_name": "Bash",
+      "tool_input": {"command": "git status --short | head"}
+    },
+    "expected_input": {
+      "tool_name": "Bash",
+      "tool_input": {"command": "git status --short"}
+    }
+  },
+  {
     "name": "grep-capitalized-symbol-blocked",
     "expect": "deny",
     "input": {
@@ -39,6 +59,11 @@
       "tool_name": "",
       "tool_input": {"pattern": "anything"}
     }
+  },
+  {
+    "name": "malformed-payload-missing-tool-name-denied",
+    "expect": "deny",
+    "input": {"tool_input": {}}
   },
   {
     "name": "grep-general-pattern-blocked",

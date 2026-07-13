@@ -14,6 +14,17 @@ CLIENTS = {"claude", "codex", "gemini", "cursor", "windsurf", "pctx"}
 
 
 class ConfigGenerateAllTests(unittest.TestCase):
+    def _manifest_root(self, clients):
+        directory = tempfile.TemporaryDirectory()
+        root = Path(directory.name)
+        config_dir = root / "ai/config"
+        config_dir.mkdir(parents=True)
+        (config_dir / "base.json").write_text("{}\n", encoding="utf-8")
+        (config_dir / "manifest.json").write_text(
+            json.dumps({"version": 1, "clients": clients}), encoding="utf-8"
+        )
+        return directory, root
+
     def test_builds_all_manifest_clients_with_explicit_variables(self):
         proposals = build_proposals(
             ROOT,
@@ -33,6 +44,47 @@ class ConfigGenerateAllTests(unittest.TestCase):
     def test_rejects_unresolved_placeholders(self):
         with self.assertRaises(TemplateValidationError):
             build_proposals(ROOT, clients={"pctx"})
+
+    def test_rejects_duplicate_client_names(self):
+        directory, root = self._manifest_root(
+            [
+                {"name": "one", "format": "json", "base": "ai/config/base.json", "runtime": "~/.one.json"},
+                {"name": "one", "format": "json", "base": "ai/config/base.json", "runtime": "~/.two.json"},
+            ]
+        )
+        with directory:
+            with self.assertRaisesRegex(TemplateValidationError, "duplicate client name"):
+                build_proposals(root)
+
+    def test_rejects_unsafe_client_names(self):
+        directory, root = self._manifest_root(
+            [
+                {"name": "../escape", "format": "json", "base": "ai/config/base.json", "runtime": "~/.one.json"},
+            ]
+        )
+        with directory:
+            with self.assertRaisesRegex(TemplateValidationError, "unsafe name"):
+                build_proposals(root)
+
+    def test_rejects_runtime_escape_and_duplicate_targets(self):
+        directory, root = self._manifest_root(
+            [
+                {"name": "one", "format": "json", "base": "ai/config/base.json", "runtime": "~/../escape.json"},
+            ]
+        )
+        with directory:
+            with self.assertRaisesRegex(TemplateValidationError, "runtime escapes"):
+                build_proposals(root)
+
+        directory, root = self._manifest_root(
+            [
+                {"name": "one", "format": "json", "base": "ai/config/base.json", "runtime": "~/.same.json"},
+                {"name": "two", "format": "json", "base": "ai/config/base.json", "runtime": "~/.same.json"},
+            ]
+        )
+        with directory:
+            with self.assertRaisesRegex(TemplateValidationError, "duplicate runtime target"):
+                build_proposals(root)
 
     def test_merges_toml_overlay_without_mutating_inputs(self):
         with tempfile.TemporaryDirectory() as directory:

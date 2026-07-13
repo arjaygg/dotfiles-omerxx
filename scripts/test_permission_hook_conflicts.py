@@ -44,6 +44,24 @@ class PermissionHookConflictTests(unittest.TestCase):
 
         self.assertEqual(check_conflicts(settings), [])
 
+    def test_opt_in_overlap_mode_reports_conservative_tool_overlap(self):
+        settings = {
+            "permissions": {"deny": ["Bash(git push *)"]},
+            "hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "check.sh"}]}]},
+        }
+
+        conflicts = check_conflicts(settings, include_overlaps=True)
+
+        self.assertEqual([conflict.rule for conflict in conflicts], ["potential-wildcard-overlap"])
+
+    def test_exact_mode_does_not_change_for_overlap_candidate(self):
+        settings = {
+            "permissions": {"deny": ["Bash(git push *)"]},
+            "hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "check.sh"}]}]},
+        }
+
+        self.assertEqual(check_conflicts(settings), [])
+
     def test_cli_reports_json_findings(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "settings.json"

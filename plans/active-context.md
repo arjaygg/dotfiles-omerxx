@@ -1,16 +1,108 @@
 # Active Context
 
 plan: plans/2026-07-13-execution-plan.md
-step: Phase 0 of 5
-focus: approved Phase 0 source implementation; proposal validation before live migration
+step: Phase 5 of 5
+focus: Linux/macOS policy-validation matrix
 
 ## Current (2026-07-13) — Phase 0/1 audit checkpoint
+
+- Current child branch adds a deterministic, read-only effective-context report for
+  repository, Claude, Codex, and Gemini guidance chains. It follows Markdown imports,
+  reads canonical client sources, deduplicates aggregate metrics, reports missing or
+  out-of-root references, and enforces chain budgets in CI. No hierarchy or runtime
+  configuration was changed.
+
+- This child branch adds a conservative dead-reference scanner. It now reports no broken
+  Claude distribution links or missing explicit command-script references after removing
+  14 stale links to absent private skills; CI gates any new finding.
+
+- The current child branch adds `scripts/bootstrap_check.py`, which renders all six
+  manifest clients twice, stages them twice in a marked temporary root, validates
+  deterministic hashes, and preserves unmanaged cache sentinels. It reports
+  `temporary_stage_writes: true` while keeping `writes_performed: false` and
+  `runtime_writes: false`; it does not run mutating setup or live migration.
+
+- The current child branch makes marked proposal staging transactional: all rendered
+  files are prepared and fsynced before replacement, opt-in backups are retained on
+  success, prior replacements are restored if a later target fails, and unmanaged
+  client cache sentinels remain unchanged. Symlinked markers, parents, and targets are
+  rejected before writes. Tests exercise rollback, cache preservation, and escape
+  rejection; live runtime writes remain untouched.
+
+- The current child branch adds `scripts/learning_signal.py`, an explicit external-ledger
+  recorder that hashes private references, rejects raw evidence and unknown fields, and
+  marks every record review-required/unapplied. It is not wired into runtime hooks or
+  promotion.
+
+- The current child branch extends the signal recorder with `--summarize`: candidates are
+  grouped by hashed recurrence key, require two independent sessions or strong evidence,
+  and remain `review-required`/unapplied. No proposal or canonical policy is generated.
+
+- The current child branch adds a required ShellCheck baseline gate for the 88 governed
+  shell files. One existing SC2259 finding is recorded; no shell or hook behavior is
+  changed.
+
+- The current child branch extends the maintained PreToolUse fixture runner with
+  event-aware structured-decision validation, explicit empty-output/exit-code contracts,
+  malformed-payload and sensitive hash-file denial fixtures, plus a safe pipe rewrite.
+  Ten fixtures pass; no runtime hook behavior or permission semantics are changed.
+
+- The current child branch adds a read-only always-loaded instruction compliance check
+  for transient session sections, dated current-state headings, absolute user paths, and
+  reviewed memory-section debt. The baseline records one existing Gemini memory section;
+  CI fails on new or disappearing findings without modifying instruction hierarchy.
+
+- The current child branch adds a read-only file-backed hook reference check. All tracked
+  settings references currently resolve, so the reviewed baseline is empty; runtime-only
+  commands are intentionally skipped and no missing reference is repaired automatically.
+
+- The current child branch adds a maintained representative-payload matrix for all 14
+  configured hook events, including a PreToolUse MCP-call payload. Matrix coverage is
+  schema-checked in CI but does not execute hooks or claim ordering/platform behavior.
+
+- The current child branch adds an opt-in conservative permission/hook overlap analyzer.
+  It reports 62 potential overlaps in the current settings, remains non-blocking and
+  un-baselined pending human review, and leaves exact conflict CI behavior unchanged.
+
+- The policy-validation workflow now runs its read-only checks on both
+  `ubuntu-latest` and `macos-latest`, including `bash setup.sh --dry-run`. Draft PR
+  [#316](https://github.com/arjaygg/dotfiles-omerxx/pull/316) now represents this branch;
+  no hosted CI pass is claimed yet.
+
+- Proposal manifest loading now rejects duplicate client names or runtime targets,
+  unsafe identifiers, and runtime paths that escape the home-relative `~/` form;
+  focused tests pass without touching live runtime files.
+
+- The isolated bootstrap proof now compares all six staged targets against their
+  proposals (`staged_compare_clean: true`), covering both JSON and TOML without
+  touching live runtime paths.
+
+- The policy matrix now archives tracked source into an isolated temporary clone
+  and runs `setup.sh --dry-run` with an isolated `HOME`; all six clients pass with
+  `runtime_writes: false`. All tracked links pass the archive boundary check; full
+  clean-machine bootstrap and runtime wiring remain unverified.
+
+- Proposals now require a bounded portable owner, carried into review reports and
+  decision entries for explicit expiry accountability.
+
+- `policy_decision.py --gate-review` now reports current accepted eligibility only;
+  it always keeps `auto_apply: false` and performs no policy or ledger writes.
+
+- Proposal validation rejects unknown fields, preventing unmodeled promotion metadata
+  from entering the review workflow.
+
+- Decision-ledger appends now validate existing entries and reject malformed history or
+  any prior record with `applied: true`.
+
+- The review-only decision ledger rejects dated `accept` decisions after a proposal's
+  `review_after` deadline; no proposal or canonical policy is applied automatically.
 
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
   proposal-only client bases/generator.
-- Current evidence: 42 Python tests pass, 7 maintained PreToolUse fixtures pass, the
-  hygiene scanner reports 369 findings, and the doctor reports 59 residual findings.
+- Current evidence: 168 Python tests pass, 10 maintained PreToolUse fixtures pass, the
+  hygiene scanner reports 329 findings against a reviewed fingerprint baseline, and
+  the doctor reports 59 residual findings against a reviewed fingerprint baseline.
 - A preflight live-settings backup and SHA-256 manifest are stored outside Git under
   `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`.
 - Live apply is held: the runtime symlink still targets the main checkout and its

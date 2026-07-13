@@ -1,1 +1,1 @@
-/Users/axos-agallentes/.dotfiles/ai/rules/context-and-compaction.md
+../../ai/rules/context-and-compaction.md

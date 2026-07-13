@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+"""Record explicit human decisions for policy proposals without applying them."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import tempfile
+from datetime import date
+from pathlib import Path
+from typing import Any
+
+try:
+    from scripts.policy_proposal import _load, validate_proposal
+except ModuleNotFoundError as error:
+    if error.name != "scripts":
+        raise
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from scripts.policy_proposal import _load, validate_proposal
+
+
+DECISIONS = frozenset({"accept", "reject", "defer"})
+LEDGER_FIELDS = frozenset(
+    {
+        "proposal_id",
+        "owner",
+        "proposal_sha256",
+        "decision",
+        "rationale",
+        "decided_at",
+        "review_after",
+        "recorded_by",
+        "applied",
+    }
+)
+
+
+def _atomic_write(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def _validate_ledger_entry(value: Any, line_number: int) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError(f"ledger line {line_number} must be an object")
+    missing = sorted(LEDGER_FIELDS - value.keys())
+    if missing:
+        raise ValueError(f"ledger line {line_number} missing fields: {', '.join(missing)}")
+    if not isinstance(value["proposal_id"], str) or not value["proposal_id"].strip():
+        raise ValueError(f"ledger line {line_number} has invalid proposal_id")
+    owner = value["owner"]
+    if not isinstance(owner, str) or not owner.strip() or len(owner) > 128 or any(ord(char) < 32 for char in owner):
+        raise ValueError(f"ledger line {line_number} has invalid owner")
+    digest = value["proposal_sha256"]
+    if not isinstance(digest, str) or len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest):
+        raise ValueError(f"ledger line {line_number} has invalid proposal_sha256")
+    if value["decision"] not in DECISIONS:
+        raise ValueError(f"ledger line {line_number} has invalid decision")
+    if not isinstance(value["rationale"], str) or not value["rationale"].strip():
+        raise ValueError(f"ledger line {line_number} has empty rationale")
+    try:
+        date.fromisoformat(value["decided_at"])
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"ledger line {line_number} has invalid decided_at") from error
+    review_after = value["review_after"]
+    if not isinstance(review_after, str) or (
+        not review_after.startswith("condition:")
+        and _parse_date(review_after) is None
+    ):
+        raise ValueError(f"ledger line {line_number} has invalid review_after")
+    if value["recorded_by"] != "human":
+        raise ValueError(f"ledger line {line_number} must be recorded_by human")
+    if value["applied"] is not False:
+        raise ValueError(f"ledger line {line_number} must retain applied=false")
+    return value
+
+
+def _parse_date(value: Any) -> date | None:
+    try:
+        return date.fromisoformat(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _load_ledger(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    entries: list[dict[str, Any]] = []
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        entries.append(_validate_ledger_entry(json.loads(line), line_number))
+    return entries
+
+
+def record_decision(
+    proposal_path: Path,
+    ledger_path: Path,
+    *,
+    decision: str,
+    rationale: str,
+    decided_at: str,
+) -> dict[str, Any]:
+    if decision not in DECISIONS:
+        raise ValueError(f"decision must be one of: {', '.join(sorted(DECISIONS))}")
+    if not isinstance(rationale, str) or not rationale.strip():
+        raise ValueError("rationale must be non-empty")
+    try:
+        date.fromisoformat(decided_at)
+    except (TypeError, ValueError) as error:
+        raise ValueError("decided_at must be an ISO date") from error
+
+    raw = proposal_path.read_bytes()
+    proposal = _load(proposal_path)
+    errors = validate_proposal(proposal)
+    if errors:
+        raise ValueError("proposal invalid: " + "; ".join(errors))
+    review_after = proposal["review_after"]
+    if decision == "accept" and not review_after.startswith("condition:"):
+        if date.fromisoformat(decided_at) > date.fromisoformat(review_after):
+            raise ValueError("accept decision is past the proposal review deadline")
+    entry: dict[str, Any] = {
+        "proposal_id": proposal["id"],
+        "owner": proposal["owner"],
+        "proposal_sha256": hashlib.sha256(raw).hexdigest(),
+        "decision": decision,
+        "rationale": rationale.strip(),
+        "decided_at": decided_at,
+        "review_after": review_after,
+        "recorded_by": "human",
+        "applied": False,
+    }
+    entries = _load_ledger(ledger_path)
+    if entry in entries:
+        raise ValueError("identical decision is already recorded")
+    content = "\n".join(json.dumps(item, sort_keys=True) for item in [*entries, entry]) + "\n"
+    _atomic_write(ledger_path, content)
+    return entry
+
+
+def evaluate_gate(
+    proposal_path: Path,
+    review_path: Path,
+    ledger_path: Path,
+    *,
+    evaluated_at: str,
+) -> dict[str, Any]:
+    """Evaluate promotion prerequisites without applying or mutating policy."""
+
+    evaluation_date = _parse_date(evaluated_at)
+    if evaluation_date is None:
+        raise ValueError("evaluated_at must be an ISO date")
+    raw = proposal_path.read_bytes()
+    proposal = _load(proposal_path)
+    errors = validate_proposal(proposal)
+    if errors:
+        raise ValueError("proposal invalid: " + "; ".join(errors))
+    review = _load(review_path)
+    if not isinstance(review, dict):
+        raise ValueError("review report must be an object")
+    if review.get("proposal_id") != proposal["id"]:
+        raise ValueError("review report proposal_id does not match proposal")
+    for field in ("owner", "review_after"):
+        if review.get(field) != proposal[field]:
+            raise ValueError(f"review report {field} does not match proposal")
+    if review.get("decision") != "review-required" or review.get("auto_promote") is not False:
+        raise ValueError("review report must remain review-required and non-promoting")
+    evaluation = review.get("evaluation")
+    if (
+        not isinstance(evaluation, dict)
+        or evaluation.get("status") not in {"changed", "unchanged"}
+        or not isinstance(evaluation.get("metrics"), dict)
+    ):
+        raise ValueError("review report has no valid metric evaluation")
+
+    proposal_hash = hashlib.sha256(raw).hexdigest()
+    matches = [
+        entry
+        for entry in _load_ledger(ledger_path)
+        if entry["proposal_id"] == proposal["id"]
+        and entry["owner"] == proposal["owner"]
+        and entry["proposal_sha256"] == proposal_hash
+    ]
+    base = {
+        "schema": 1,
+        "proposal_id": proposal["id"],
+        "owner": proposal["owner"],
+        "review_after": proposal["review_after"],
+        "auto_apply": False,
+        "requires_explicit_apply": True,
+    }
+    if not matches:
+        return {**base, "eligible": False, "promotion_status": "review-required", "reason": "no-matching-decision"}
+
+    latest = max(enumerate(matches), key=lambda item: (_parse_date(item[1]["decided_at"]), item[0]))[1]
+    base["latest_decision"] = latest["decision"]
+    base["decided_at"] = latest["decided_at"]
+    if latest["decision"] != "accept":
+        return {**base, "eligible": False, "promotion_status": "review-required", "reason": "latest-decision-not-accepted"}
+    decided_date = _parse_date(latest["decided_at"])
+    if decided_date is not None and evaluation_date < decided_date:
+        return {**base, "eligible": False, "promotion_status": "review-required", "reason": "evaluation-before-decision"}
+    review_after = proposal["review_after"]
+    if review_after.startswith("condition:"):
+        return {**base, "eligible": False, "promotion_status": "review-required", "reason": "condition-review-required"}
+    deadline = _parse_date(review_after)
+    if deadline is not None and evaluation_date > deadline:
+        return {**base, "eligible": False, "promotion_status": "review-required", "reason": "review-expired"}
+    return {**base, "eligible": True, "promotion_status": "eligible-review-gated", "reason": "accepted-and-current"}
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("proposal", type=Path)
+    parser.add_argument("--ledger", type=Path, required=True)
+    parser.add_argument("--decision", choices=sorted(DECISIONS))
+    parser.add_argument("--rationale")
+    parser.add_argument("--decided-at")
+    parser.add_argument("--gate-review", type=Path)
+    parser.add_argument("--evaluated-at")
+    args = parser.parse_args(argv)
+    try:
+        if args.gate_review is not None:
+            if args.evaluated_at is None:
+                raise ValueError("--evaluated-at is required with --gate-review")
+            report = evaluate_gate(
+                args.proposal,
+                args.gate_review,
+                args.ledger,
+                evaluated_at=args.evaluated_at,
+            )
+            print(json.dumps(report, indent=2, sort_keys=True))
+            return 0
+        if args.decision is None or args.rationale is None or args.decided_at is None:
+            raise ValueError("--decision, --rationale, and --decided-at are required unless --gate-review is used")
+        entry = record_decision(
+            args.proposal,
+            args.ledger,
+            decision=args.decision,
+            rationale=args.rationale,
+            decided_at=args.decided_at,
+        )
+    except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as error:
+        print(json.dumps({"recorded": False, "error": str(error)}, indent=2))
+        return 2
+    print(json.dumps({"recorded": entry, "ledger": str(args.ledger)}, indent=2, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
