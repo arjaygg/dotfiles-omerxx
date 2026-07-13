@@ -79,13 +79,17 @@ def record_decision(
     errors = validate_proposal(proposal)
     if errors:
         raise ValueError("proposal invalid: " + "; ".join(errors))
+    review_after = proposal["review_after"]
+    if decision == "accept" and not review_after.startswith("condition:"):
+        if date.fromisoformat(decided_at) > date.fromisoformat(review_after):
+            raise ValueError("accept decision is past the proposal review deadline")
     entry: dict[str, Any] = {
         "proposal_id": proposal["id"],
         "proposal_sha256": hashlib.sha256(raw).hexdigest(),
         "decision": decision,
         "rationale": rationale.strip(),
         "decided_at": decided_at,
-        "review_after": proposal["review_after"],
+        "review_after": review_after,
         "recorded_by": "human",
         "applied": False,
     }

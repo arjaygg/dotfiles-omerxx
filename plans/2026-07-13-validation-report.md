@@ -233,6 +233,10 @@ caller-selected JSONL ledger using only the proposal ID, SHA-256, rationale, dat
 `applied: false` marker. It appends atomically, rejects invalid proposals, and never writes
 canonical policy or raw evidence. The ledger path is intentionally explicit and should be
 kept outside the public repository when it contains private review rationale.
+The decision boundary now rejects an `accept` recorded after a proposal's dated
+`review_after` deadline; reject/defer outcomes remain recordable for audit purposes,
+and condition-based review dates remain human-review gates. This prevents stale
+proposals from being accepted without revalidation while preserving the no-apply rule.
 
 ## Phase 3 traceable signal intake
 

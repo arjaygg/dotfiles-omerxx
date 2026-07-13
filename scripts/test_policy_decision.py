@@ -75,6 +75,22 @@ class PolicyDecisionTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "decision"):
                 record_decision(proposal_path, ledger_path, decision="promote", rationale="reason", decided_at="2026-07-13")
 
+    def test_record_rejects_accept_after_review_deadline(self):
+        with tempfile.TemporaryDirectory() as dir:
+            root = Path(dir)
+            proposal_path = root / "proposal.json"
+            ledger_path = root / "decisions.jsonl"
+            expired = proposal() | {"review_after": "2026-07-12"}
+            proposal_path.write_text(json.dumps(expired), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "past the proposal review deadline"):
+                record_decision(
+                    proposal_path,
+                    ledger_path,
+                    decision="accept",
+                    rationale="Accepting after review.",
+                    decided_at="2026-07-13",
+                )
+
     def test_cli_records_explicit_rejection(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
