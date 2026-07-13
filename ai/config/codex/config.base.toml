@@ -1,0 +1,21 @@
+personality = "pragmatic"
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+model_instructions_file = "~/.dotfiles/ai/rules/agent-user-global.md"
+project_doc_fallback_filenames = ["AGENTS.md"]
+
+[mcp_servers.pctx]
+type = "stdio"
+cmd = "pctx"
+args = ["mcp", "start", "--stdio", "-c", "~/.config/pctx/pctx.json"]
+startup_timeout_sec = 90
+
+[features]
+unified_exec = true
+shell_snapshot = true
+multi_agent = true
+prevent_idle_sleep = true
+
+[status_line]
+items = ["model-with-reasoning", "current-dir", "git-branch", "context-remaining"]
+use_colors = true

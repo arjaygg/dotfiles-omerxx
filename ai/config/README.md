@@ -14,6 +14,8 @@ runtime file or adopts runtime drift.
 
 ## Other clients
 
+- `codex/config.base.toml` is a portable Codex base; it is parser-validated but
+  is not wired into runtime generation yet.
 - `gemini/mcp.base.json`, `cursor/mcp.base.json`, and
   `windsurf/mcp_config.base.json` contain portable PCTX client definitions.
 - `pctx/pctx.base.json` uses executable names resolved by the local `PATH`, rather

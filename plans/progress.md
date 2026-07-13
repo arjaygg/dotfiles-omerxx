@@ -16,6 +16,7 @@ Plan: `plans/2026-07-13-execution-plan.md`; branch
   and add portable Claude/client/PCTX bases plus proposal-only generator expansion.
 - [x] Add test-first explicit placeholder expansion and verify all four portable
   client/PCTX JSON bases generate without reading environment state or mutating inputs.
+- [x] Add and parse-validate a portable Codex TOML base without wiring it into runtime.
 - [x] Publish draft PR [#296](https://github.com/arjaygg/dotfiles-omerxx/pull/296) for
   review; do not merge or apply runtime changes automatically.
 - [ ] Validate the proposal diff and obtain separate approval before live runtime,

@@ -1,4 +1,5 @@
 import json
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -14,6 +15,7 @@ TEMPLATES = (
     TEMPLATE_ROOT / "windsurf" / "mcp_config.base.json",
     TEMPLATE_ROOT / "pctx" / "pctx.base.json",
 )
+CODEX_TEMPLATE = TEMPLATE_ROOT / "codex" / "config.base.toml"
 VARIABLES = {"PCTX_CONFIG": "/tmp/pctx.json", "USER_NAME": "portable-user"}
 
 
@@ -25,6 +27,14 @@ class PortableConfigTemplateTests(unittest.TestCase):
                 text = path.read_text(encoding="utf-8")
                 self.assertEqual(scan_text(path.as_posix(), text), [])
                 self.assertIsInstance(json.loads(text), dict)
+
+    def test_codex_template_is_portable_and_valid_toml(self):
+        self.assertTrue(CODEX_TEMPLATE.is_file())
+        text = CODEX_TEMPLATE.read_text(encoding="utf-8")
+        self.assertEqual(scan_text(CODEX_TEMPLATE.as_posix(), text), [])
+        config = tomllib.loads(text)
+        self.assertEqual(config["mcp_servers"]["pctx"]["cmd"], "pctx")
+        self.assertEqual(config["project_doc_fallback_filenames"], ["AGENTS.md"])
 
     def test_all_client_templates_generate_without_mutating_inputs(self):
         for path in TEMPLATES:
