@@ -2,9 +2,10 @@
 
 ## Scope
 
-This report records validation for the approved Phase 0 source branch,
-`chore/phase0-config-boundary`. It does not authorize live runtime application,
-instruction-hierarchy, or live-runtime changes.
+This report records the Phase 0 baseline and the review-gated Phase 1 test-harness
+follow-up on `chore/phase1-hook-validation-tests`. Phase 0 is merged through PR #296;
+this report does not authorize live runtime application, instruction-hierarchy, or
+live-runtime changes.
 
 Requirement-by-requirement status is tracked in
 `plans/2026-07-13-completion-audit.md`.
@@ -17,18 +18,18 @@ the proposal before the branch guard is active would leave the old copy-back beh
 in place and could re-adopt the proposal into the main checkout. No live apply was
 performed; branch installation/merge must precede runtime application.
 
-The branch is published as draft PR [#296](https://github.com/arjaygg/dotfiles-omerxx/pull/296)
-for review. It has not been merged.
-
-As of 2026-07-13, PR #296 is open, draft, mergeable, and both `claude-auto-coverage-gate`
-and `claude-auto-diff-size-gate` have passed. This does not substitute for human review.
+PR [#296](https://github.com/arjaygg/dotfiles-omerxx/pull/296) merged the Phase 0
+configuration-boundary changes at `1036a591`. The current test-only follow-up is
+published on branch
+[`chore/phase1-hook-validation-tests`](https://github.com/arjaygg/dotfiles-omerxx/tree/chore/phase1-hook-validation-tests)
+and is tracked by draft PR [#297](https://github.com/arjaygg/dotfiles-omerxx/pull/297).
 
 ## Commands and results
 
 | Command | Result |
 |---|---|
-| `python3 -m unittest discover -s scripts -p 'test_*.py'` | 42 tests passed |
-| `python3 scripts/hook_fixture_runner.py .claude/hooks/pre-tool-gate-v2.sh scripts/fixtures/pretool-gate-v2.json` | 7 passed, 0 failed |
+| `python3 -m unittest discover -s scripts -p 'test_*.py'` | 48 tests passed |
+| `python3 scripts/hook_fixture_runner.py .claude/hooks/pre-tool-gate-v2.sh scripts/fixtures/pretool-gate-v2.json` | not runnable: referenced hook absent from the public branch |
 | `python3 scripts/hook_config_check.py .claude/settings.json` | 8 static findings; expected nonzero result |
 | `python3 scripts/config_doctor.py --json` | 59 residual findings; 0 missing remediation fields; read-only |
 | `python3 -m scripts.config_doctor --live-settings "$HOME/.claude/settings.json" --json` | 59 source findings plus 1 expected runtime-drift; no mutation |
@@ -40,6 +41,16 @@ and `claude-auto-diff-size-gate` have passed. This does not substitute for human
 
 The nonzero scanner and doctor results are expected because they report the unresolved
 baseline; they are not hygiene or configuration acceptance passes.
+
+## Phase 1 test-harness follow-up
+
+The follow-up adds static required-field validation for command, HTTP, MCP-tool, prompt,
+and agent hook handlers, then extends the fixture contract to cover `ask` decisions,
+non-empty reasons, and exact `updatedInput` rewrites. Commits `8906e03` and `424be3c`
+touch only `scripts/hook_config_check.py`, `scripts/test_hook_config_check.py`,
+`scripts/hook_fixture_runner.py`, and `scripts/test_hook_fixture_runner.py`.
+The current settings still produce eight static findings, and live behavior coverage is
+not claimed because the referenced `pre-tool-gate-v2.sh` is absent from this branch.
 
 ## Tests not yet run
 

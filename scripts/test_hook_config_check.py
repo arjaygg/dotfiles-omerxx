@@ -73,6 +73,51 @@ class HookConfigCheckTests(unittest.TestCase):
             ["unknown-event", "missing-command", "unknown-handler-type", "invalid-command"],
         )
 
+    def test_accepts_each_handler_type_with_required_fields(self):
+        settings = {
+            "hooks": {
+                "PreToolUse": [
+                    {
+                        "hooks": [
+                            {"type": "command", "command": "bash hook.sh"},
+                            {"type": "http", "url": "https://hooks.example.test/check"},
+                            {"type": "mcp_tool", "server": "policy", "tool": "check"},
+                            {"type": "prompt", "prompt": "Evaluate $ARGUMENTS"},
+                            {"type": "agent", "prompt": "Verify $ARGUMENTS"},
+                        ]
+                    }
+                ]
+            }
+        }
+
+        self.assertEqual(check_hooks(settings), [])
+
+    def test_reports_missing_and_invalid_handler_fields(self):
+        settings = {
+            "hooks": {
+                "PostToolUse": [
+                    {
+                        "hooks": [
+                            {"type": "http"},
+                            {"type": "mcp_tool", "server": "policy"},
+                            {"type": "prompt", "prompt": 3},
+                            {"type": "agent"},
+                        ]
+                    }
+                ]
+            }
+        }
+
+        self.assertEqual(
+            [issue.rule for issue in check_hooks(settings)],
+            [
+                "missing-url",
+                "missing-tool",
+                "invalid-prompt",
+                "missing-prompt",
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

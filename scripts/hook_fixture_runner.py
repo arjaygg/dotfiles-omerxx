@@ -26,10 +26,12 @@ def load_manifest(path: Path) -> list[dict[str, object]]:
     for case in value:
         if not isinstance(case, dict) or not isinstance(case.get("name"), str):
             raise ValueError("each fixture must be an object with a name")
-        if case.get("expect") not in {"allow", "deny"}:
-            raise ValueError(f"{case['name']}: expect must be allow or deny")
+        if case.get("expect") not in {"allow", "ask", "deny"}:
+            raise ValueError(f"{case['name']}: expect must be allow, ask, or deny")
         if not isinstance(case.get("input"), dict):
             raise ValueError(f"{case['name']}: input must be an object")
+        if "expected_updated_input" in case and not isinstance(case["expected_updated_input"], dict):
+            raise ValueError(f"{case['name']}: expected_updated_input must be an object")
     return value
 
 
@@ -65,10 +67,12 @@ def check_result(case: dict[str, object], returncode: int, stdout: str, stderr: 
         return failures
     if output.get("hookEventName") != "PreToolUse":
         failures.append("deny fixture must identify PreToolUse")
-    if output.get("permissionDecision") != "deny":
-        failures.append("deny fixture must set permissionDecision=deny")
+    if output.get("permissionDecision") != expect:
+        failures.append(f"{expect} fixture must set permissionDecision={expect}")
     if not isinstance(output.get("permissionDecisionReason"), str) or not output["permissionDecisionReason"]:
-        failures.append("deny fixture must include a reason")
+        failures.append(f"{expect} fixture must include a reason")
+    if "expected_updated_input" in case and output.get("updatedInput") != case["expected_updated_input"]:
+        failures.append("fixture updatedInput does not match expected rewrite")
     return failures
 
 
