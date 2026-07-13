@@ -77,6 +77,15 @@ this increment reports it but does not change the canonical hierarchy.
 
 The effective-context command is now a read-only CI check on every pull request.
 
+## Phase 5 dead-reference follow-up
+
+The new `scripts/dead_reference_check.py` scans canonical command documentation for
+explicit local `scripts/...` references and checks Claude command/skill distribution
+symlinks without following or changing them. The current scan found no missing command
+script references and 14 pre-existing broken skill symlinks. Those exact findings are
+stored in `scripts/fixtures/dead-reference-baseline.json`; CI fails on additions or
+disappearances so debt cannot change silently. No symlink remediation was performed.
+
 ## Phase 5 permission/hook conflict follow-up
 
 The stacked checker reports exact permission contradictions and exact tool-hook matchers

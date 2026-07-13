@@ -1,8 +1,8 @@
 # Active Context
 
 plan: plans/2026-07-13-execution-plan.md
-step: Phase 4 of 5
-focus: read-only effective-context measurement and budget enforcement
+step: Phase 5 of 5
+focus: detection-only dead-reference baseline and CI drift gate
 
 ## Current (2026-07-13) — Phase 0/1 audit checkpoint
 
@@ -11,6 +11,10 @@ focus: read-only effective-context measurement and budget enforcement
   reads canonical client sources, deduplicates aggregate metrics, reports missing or
   out-of-root references, and enforces chain budgets in CI. No hierarchy or runtime
   configuration was changed.
+
+- This child branch adds a conservative dead-reference scanner. It reports 14 existing
+  broken Claude skill symlinks, finds no missing explicit command-script references, and
+  gates only changes from the reviewed baseline. No stale link is deleted or repaired.
 
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
