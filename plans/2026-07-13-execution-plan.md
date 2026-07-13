@@ -53,6 +53,8 @@ its 12-test combined suite passes and the current settings produce eight finding
 The existing hook fixture harness was run separately and yielded 0 passes/0 failures/
 8 skips because two referenced hooks are absent; runtime coverage is therefore not
 established.
+The new focused scratchpad-guard runtime tests pass and cover only that isolated hook
+path.
 
 1. Capture representative payloads for PreToolUse, PostToolUse, UserPromptSubmit,
    SessionStart, Stop, PreCompact, ConfigChange, worktree, and MCP calls.

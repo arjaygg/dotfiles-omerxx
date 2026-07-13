@@ -137,6 +137,11 @@ The existing `.claude/hooks/test-hook.sh --all` harness was also executed. It pr
 that the current fixture suite cannot validate the live hook set; it must be repaired
 or replaced before claiming hook behavior coverage.
 
+Added three runtime tests for `scratchpad-reread-guard.sh`: the first Read is silent,
+the second produces a schema-valid `PreToolUse` deny, and non-Read tools are ignored.
+The combined validation suite now passes 15 tests. This proves one narrow hook path
+only; it does not generalize to the rest of the hook fleet.
+
 ## Recommendation
 
 Do not begin broad Phase 0/1 implementation in the same change as this report. First
