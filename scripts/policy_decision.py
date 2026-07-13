@@ -154,15 +154,101 @@ def record_decision(
     return entry
 
 
+def evaluate_gate(
+    proposal_path: Path,
+    review_path: Path,
+    ledger_path: Path,
+    *,
+    evaluated_at: str,
+) -> dict[str, Any]:
+    """Evaluate promotion prerequisites without applying or mutating policy."""
+
+    evaluation_date = _parse_date(evaluated_at)
+    if evaluation_date is None:
+        raise ValueError("evaluated_at must be an ISO date")
+    raw = proposal_path.read_bytes()
+    proposal = _load(proposal_path)
+    errors = validate_proposal(proposal)
+    if errors:
+        raise ValueError("proposal invalid: " + "; ".join(errors))
+    review = _load(review_path)
+    if not isinstance(review, dict):
+        raise ValueError("review report must be an object")
+    if review.get("proposal_id") != proposal["id"]:
+        raise ValueError("review report proposal_id does not match proposal")
+    for field in ("owner", "review_after"):
+        if review.get(field) != proposal[field]:
+            raise ValueError(f"review report {field} does not match proposal")
+    if review.get("decision") != "review-required" or review.get("auto_promote") is not False:
+        raise ValueError("review report must remain review-required and non-promoting")
+    evaluation = review.get("evaluation")
+    if (
+        not isinstance(evaluation, dict)
+        or evaluation.get("status") not in {"changed", "unchanged"}
+        or not isinstance(evaluation.get("metrics"), dict)
+    ):
+        raise ValueError("review report has no valid metric evaluation")
+
+    proposal_hash = hashlib.sha256(raw).hexdigest()
+    matches = [
+        entry
+        for entry in _load_ledger(ledger_path)
+        if entry["proposal_id"] == proposal["id"]
+        and entry["owner"] == proposal["owner"]
+        and entry["proposal_sha256"] == proposal_hash
+    ]
+    base = {
+        "schema": 1,
+        "proposal_id": proposal["id"],
+        "owner": proposal["owner"],
+        "review_after": proposal["review_after"],
+        "auto_apply": False,
+        "requires_explicit_apply": True,
+    }
+    if not matches:
+        return {**base, "eligible": False, "promotion_status": "review-required", "reason": "no-matching-decision"}
+
+    latest = max(enumerate(matches), key=lambda item: (_parse_date(item[1]["decided_at"]), item[0]))[1]
+    base["latest_decision"] = latest["decision"]
+    base["decided_at"] = latest["decided_at"]
+    if latest["decision"] != "accept":
+        return {**base, "eligible": False, "promotion_status": "review-required", "reason": "latest-decision-not-accepted"}
+    decided_date = _parse_date(latest["decided_at"])
+    if decided_date is not None and evaluation_date < decided_date:
+        return {**base, "eligible": False, "promotion_status": "review-required", "reason": "evaluation-before-decision"}
+    review_after = proposal["review_after"]
+    if review_after.startswith("condition:"):
+        return {**base, "eligible": False, "promotion_status": "review-required", "reason": "condition-review-required"}
+    deadline = _parse_date(review_after)
+    if deadline is not None and evaluation_date > deadline:
+        return {**base, "eligible": False, "promotion_status": "review-required", "reason": "review-expired"}
+    return {**base, "eligible": True, "promotion_status": "eligible-review-gated", "reason": "accepted-and-current"}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("proposal", type=Path)
     parser.add_argument("--ledger", type=Path, required=True)
-    parser.add_argument("--decision", required=True, choices=sorted(DECISIONS))
-    parser.add_argument("--rationale", required=True)
-    parser.add_argument("--decided-at", required=True)
+    parser.add_argument("--decision", choices=sorted(DECISIONS))
+    parser.add_argument("--rationale")
+    parser.add_argument("--decided-at")
+    parser.add_argument("--gate-review", type=Path)
+    parser.add_argument("--evaluated-at")
     args = parser.parse_args(argv)
     try:
+        if args.gate_review is not None:
+            if args.evaluated_at is None:
+                raise ValueError("--evaluated-at is required with --gate-review")
+            report = evaluate_gate(
+                args.proposal,
+                args.gate_review,
+                args.ledger,
+                evaluated_at=args.evaluated_at,
+            )
+            print(json.dumps(report, indent=2, sort_keys=True))
+            return 0
+        if args.decision is None or args.rationale is None or args.decided_at is None:
+            raise ValueError("--decision, --rationale, and --decided-at are required unless --gate-review is used")
         entry = record_decision(
             args.proposal,
             args.ledger,

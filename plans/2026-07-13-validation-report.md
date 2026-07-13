@@ -243,6 +243,10 @@ malformed or already-applied history is rejected rather than silently extended.
 Proposals now require a bounded portable `owner`; review reports and decision entries
 carry that owner forward so expiry review has explicit accountability without storing
 raw evidence.
+The new `policy_decision.py --gate-review` path joins a valid review report to the
+latest matching human decision and dated expiry. It reports eligibility only when the
+decision is current and accepted, always emits `auto_apply: false`, and never writes
+policy or the decision ledger.
 
 ## Phase 3 traceable signal intake
 
