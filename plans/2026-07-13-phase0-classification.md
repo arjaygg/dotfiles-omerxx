@@ -7,7 +7,7 @@ proposal artifact, not an allowlist and not authorization to delete or rewrite f
 
 ## Measured baseline
 
-- Public-hygiene scanner: 388 findings — 195 organization names, 140 absolute home
+- Public-hygiene scanner: 390 findings — 196 organization names, 141 absolute home
   paths, and 53 organization URLs.
 - Highest-count files: `.codex/config.toml` (45), `.claude/agents/claude-code-review-agent.md`
   (22), `ai/agents/claude-code-review-agent.md` (22), `.claude-global/CLAUDE.md` (19),

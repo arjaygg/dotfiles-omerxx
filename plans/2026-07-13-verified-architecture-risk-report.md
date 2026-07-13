@@ -96,7 +96,7 @@ organization markers); this is evidence for the required cleanup, not a claim th
 public-repository hygiene is complete.
 
 The current committed baseline was subsequently rechecked after the scanner landed:
-388 findings remain — 195 organization-name matches, 140 absolute-home-path matches,
+390 findings remain — 196 organization-name matches, 141 absolute-home-path matches,
 and 53 organization-URL matches. The largest source areas are `ai/` (114), `.claude/`
 (79), `plans/` (48), `.codex/` (45), and `.gemini/` (26). These counts guide
 classification; they are not permission to delete historical plans or evaluation
