@@ -184,6 +184,13 @@ Claude, Codex, Cursor, Gemini, and support-script shell trees. The current inven
 syntax coverage only and does not claim ShellCheck, shfmt, runtime portability, or hook
 behavioral coverage.
 
+## shfmt baseline follow-up
+
+The CI matrix installs pinned `shfmt` and compares the 88-file governed shell fleet
+against `scripts/fixtures/shfmt-baseline.json`. The current baseline records 78
+unformatted files without rewriting them; this is a formatting no-regressions gate,
+not a claim that the existing formatting debt is resolved.
+
 ## ShellCheck baseline follow-up
 
 The read-only `scripts/shellcheck_check.py` runner scans the same governed shell inventory
