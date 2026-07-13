@@ -49,6 +49,18 @@ and rendered proposal. It never writes the bases, overlays, or runtime files. Pa
 `--overlay-dir` explicitly to merge ignored local overlays, or `--client NAME` to limit
 the bundle to selected manifest clients.
 
+The unified read-only interface exposes equivalent subcommands:
+
+```sh
+python3 scripts/ai_config.py generate --set PCTX_CONFIG=~/.config/pctx/pctx.json --set USER_NAME=portable-user
+python3 scripts/ai_config.py diff --runtime-root "$HOME" --client codex
+python3 scripts/ai_config.py doctor --root .
+```
+
+`diff` reports `match`, `drift`, `missing`, or `invalid-target` with hashes and changed
+paths only; it never prints target configuration content or modifies files. Runtime
+application, atomic replacement, and backups remain separate review-gated work.
+
 Portable client bases use explicit `${NAME}` markers. Supply replacements with
 `--set`; the generator never reads process environment variables implicitly:
 
