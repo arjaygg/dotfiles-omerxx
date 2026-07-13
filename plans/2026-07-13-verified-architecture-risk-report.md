@@ -142,6 +142,14 @@ the second produces a schema-valid `PreToolUse` deny, and non-Read tools are ign
 The combined validation suite now passes 15 tests. This proves one narrow hook path
 only; it does not generalize to the rest of the hook fleet.
 
+As an additional read-only runtime check, the seven archived `pre-tool-gate-v2`
+fixtures were piped directly into the current gate: two allowed cases passed silently
+and five blocked cases emitted JSON `PreToolUse` denies with exit code 0. The fixture
+filenames still encode `.exit1`, so the archived harness expectations are stale relative
+to the current blocking contract; the observed behavior matches the hook's documented
+JSON-decision path. This evidence is useful but does not replace a maintained current
+fixture suite.
+
 ## Recommendation
 
 Do not begin broad Phase 0/1 implementation in the same change as this report. First

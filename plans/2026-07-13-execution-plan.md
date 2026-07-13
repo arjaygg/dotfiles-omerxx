@@ -55,6 +55,9 @@ The existing hook fixture harness was run separately and yielded 0 passes/0 fail
 established.
 The new focused scratchpad-guard runtime tests pass and cover only that isolated hook
 path.
+Direct execution of the seven archived `pre-tool-gate-v2` fixtures observed two silent
+allows and five JSON denies with exit 0; their `.exit1` names are stale and need a
+maintained fixture-contract update before Phase 1 can be accepted.
 
 1. Capture representative payloads for PreToolUse, PostToolUse, UserPromptSubmit,
    SessionStart, Stop, PreCompact, ConfigChange, worktree, and MCP calls.
