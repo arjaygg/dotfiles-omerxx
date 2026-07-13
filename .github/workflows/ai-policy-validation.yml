@@ -33,6 +33,9 @@ jobs:
           .claude/settings.json
           --baseline scripts/fixtures/hook-config-baseline.json
 
+      - name: Check Bash syntax
+        run: python3 scripts/shell_syntax_check.py
+
       - name: Enforce instruction budgets
         run: >-
           python3 scripts/instruction_budget.py
