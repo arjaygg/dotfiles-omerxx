@@ -28,7 +28,7 @@ and is tracked by draft PR [#297](https://github.com/arjaygg/dotfiles-omerxx/pul
 
 | Command | Result |
 |---|---|
-| `python3 -m unittest discover -s scripts -p 'test_*.py'` | 48 tests passed |
+| `python3 -m unittest discover -s scripts -p 'test_*.py'` | 51 tests passed |
 | `python3 scripts/hook_fixture_runner.py .claude/hooks/pre-tool-gate-v2.sh scripts/fixtures/pretool-gate-v2.json` | not runnable: referenced hook absent from the public branch |
 | `python3 scripts/hook_config_check.py .claude/settings.json` | 8 static findings; expected nonzero result |
 | `python3 scripts/config_doctor.py --json` | 59 residual findings; 0 missing remediation fields; read-only |
@@ -51,6 +51,14 @@ touch only `scripts/hook_config_check.py`, `scripts/test_hook_config_check.py`,
 `scripts/hook_fixture_runner.py`, and `scripts/test_hook_fixture_runner.py`.
 The current settings still produce eight static findings, and live behavior coverage is
 not claimed because the referenced `pre-tool-gate-v2.sh` is absent from this branch.
+
+## Phase 2 read-only doctor follow-up
+
+Draft PR [#298](https://github.com/arjaygg/dotfiles-omerxx/pull/298) adds manifest-driven
+validation for canonical client bases, rejects missing or unsafe base paths, validates
+their declared JSON/TOML format, and makes the direct `scripts/config_doctor.py` entrypoint
+work from the repository root. It does not replace tracked-runtime scanning, write files,
+or change `setup.sh`; the observed doctor baseline remains 59 issues.
 
 ## Tests not yet run
 

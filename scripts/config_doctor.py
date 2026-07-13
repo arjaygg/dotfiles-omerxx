@@ -12,7 +12,13 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Sequence
 
-from scripts.public_hygiene_check import Finding, scan_text
+try:
+    from scripts.public_hygiene_check import Finding, scan_text
+except ModuleNotFoundError as error:
+    if error.name != "scripts":
+        raise
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from scripts.public_hygiene_check import Finding, scan_text
 
 
 CONFIG_SPECS: tuple[tuple[str, str], ...] = (
@@ -24,6 +30,7 @@ CONFIG_SPECS: tuple[tuple[str, str], ...] = (
     (".windsurf/mcp_config.json", "json"),
     ("mcp.json", "json"),
 )
+MANIFEST_PATH = Path("ai/config/manifest.json")
 BROAD_ALLOW_RULES = frozenset({"Bash(*)", "Read(*)", "Write(*)", "Edit(*)", "Glob(*)", "Grep(*)"})
 
 
@@ -78,6 +85,76 @@ def _parse_config(text: str, kind: str) -> object:
     raise ValueError(f"unsupported config kind: {kind}")
 
 
+def _check_manifest(root: Path) -> list[Issue]:
+    path = root / MANIFEST_PATH
+    if not path.is_file():
+        return []
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        return [Issue(str(MANIFEST_PATH), "manifest-invalid", "error", str(error))]
+    if not isinstance(manifest, dict) or manifest.get("version") != 1:
+        return [Issue(str(MANIFEST_PATH), "manifest-invalid", "error", "manifest version must be 1")]
+    clients = manifest.get("clients")
+    if not isinstance(clients, list):
+        return [Issue(str(MANIFEST_PATH), "manifest-invalid", "error", "clients must be an array")]
+
+    issues: list[Issue] = []
+    for index, client in enumerate(clients):
+        if not isinstance(client, dict):
+            issues.append(Issue(str(MANIFEST_PATH), "manifest-invalid", "error", f"client {index} must be an object"))
+            continue
+        base_value = client.get("base")
+        format_value = client.get("format")
+        if not isinstance(base_value, str) or not isinstance(format_value, str):
+            issues.append(
+                Issue(
+                    str(MANIFEST_PATH),
+                    "manifest-invalid",
+                    "error",
+                    f"client {index} requires string base and format",
+                )
+            )
+            continue
+        base = Path(base_value)
+        if base.is_absolute() or ".." in base.parts:
+            issues.append(
+                Issue(
+                    str(MANIFEST_PATH),
+                    "manifest-invalid-base",
+                    "error",
+                    f"client {index} base must remain inside the repository: {base_value}",
+                )
+            )
+            continue
+        base_path = root / base
+        if not base_path.is_file():
+            issues.append(
+                Issue(
+                    str(MANIFEST_PATH),
+                    "manifest-missing-base",
+                    "error",
+                    f"client {index} base does not exist: {base_value}",
+                )
+            )
+            continue
+        text = ""
+        try:
+            text = base_path.read_text(encoding="utf-8")
+            _parse_config(text, format_value)
+        except (OSError, UnicodeError, tomllib.TOMLDecodeError, json.JSONDecodeError, ValueError) as error:
+            issues.append(
+                Issue(
+                    base_value,
+                    "manifest-invalid-config",
+                    "error",
+                    str(error),
+                )
+            )
+        issues.extend(_issue_from_finding(finding) for finding in scan_text(base_value, text))
+    return issues
+
+
 def compare_runtime_file(source: Path, runtime: Path) -> list[Issue]:
     """Report source/runtime drift without copying either file."""
 
@@ -103,7 +180,7 @@ def compare_runtime_file(source: Path, runtime: Path) -> list[Issue]:
 def run_doctor(root: Path) -> list[Issue]:
     """Return configuration issues; never writes to ``root``."""
 
-    issues: list[Issue] = []
+    issues: list[Issue] = _check_manifest(root)
     for relative_path, kind in CONFIG_SPECS:
         path = root / relative_path
         if not path.is_file():
