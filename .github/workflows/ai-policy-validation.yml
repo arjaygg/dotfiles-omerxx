@@ -41,6 +41,14 @@ jobs:
           .claude/settings.json
           --baseline scripts/fixtures/hook-config-baseline.json
 
+      - name: Check file-backed hook references
+        run: >-
+          python3 scripts/hook_reference_check.py
+          .claude/settings.json
+          --root .
+          --baseline scripts/fixtures/hook-reference-baseline.json
+          --json
+
       - name: Check Bash syntax
         run: python3 scripts/shell_syntax_check.py
 
