@@ -1,8 +1,8 @@
 # Active Context
 
 plan: plans/2026-07-13-execution-plan.md
-step: Phase 2 of 5
-focus: read-only all-client bootstrap and idempotency proof
+step: Phase 3 of 5
+focus: privacy-preserving traceable learning-signal intake
 
 ## Current (2026-07-13) — Phase 0/1 audit checkpoint
 
@@ -20,6 +20,11 @@ focus: read-only all-client bootstrap and idempotency proof
   manifest clients twice, validates proposal parsers, and reports deterministic hashes
   with explicit `writes_performed: false` and `runtime_writes: false`. It does not run
   mutating setup or live migration.
+
+- The current child branch adds `scripts/learning_signal.py`, an explicit external-ledger
+  recorder that hashes private references, rejects raw evidence and unknown fields, and
+  marks every record review-required/unapplied. It is not wired into runtime hooks or
+  promotion.
 
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and

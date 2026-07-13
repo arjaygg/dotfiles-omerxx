@@ -159,6 +159,17 @@ caller-selected JSONL ledger using only the proposal ID, SHA-256, rationale, dat
 canonical policy or raw evidence. The ledger path is intentionally explicit and should be
 kept outside the public repository when it contains private review rationale.
 
+## Phase 3 traceable signal intake
+
+The new `scripts/learning_signal.py` validates an enumerated signal type, timezone-aware
+timestamp, evidence class, and recurrence count, then hashes session/event/recurrence
+references before atomically appending metadata to a caller-selected ledger outside the
+repository. Raw transcripts, prompts, outputs, private context, and unknown fields are
+rejected. Every record carries `raw_evidence_stored: false`, `auto_promote: false`,
+`promotion_status: review-required`, and `applied: false`; duplicate IDs are refused.
+This provides a privacy-preserving intake primitive only—runtime hook collection,
+aggregation, evaluation, and promotion remain unimplemented and review-gated.
+
 ## Tests not yet run
 
 - Full behavior coverage for every registered hook event and matcher.
@@ -170,6 +181,8 @@ kept outside the public repository when it contains private review rationale.
   review-gated because they would alter current hook behavior.
 - Clean-machine bootstrap and runtime migration verification.
 - Full Git-history and out-of-worktree local-overlay exposure review.
+- Runtime wiring that emits signals from hooks, PR systems, or session telemetry; the
+  current recorder requires an explicit input file and external ledger path.
 
 The legacy shell harness remains incomplete: its last run produced 0 passes, 0 failures,
 and 8 skips because two referenced hooks are absent. The maintained fixture runner is
