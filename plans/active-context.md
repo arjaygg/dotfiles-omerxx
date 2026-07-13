@@ -1,8 +1,8 @@
 # Active Context
 
 plan: plans/2026-07-13-execution-plan.md
-step: Phase 5 of 5
-focus: detection-only dead-reference baseline and CI drift gate
+step: Phase 2 of 5
+focus: read-only all-client bootstrap and idempotency proof
 
 ## Current (2026-07-13) — Phase 0/1 audit checkpoint
 
@@ -15,6 +15,11 @@ focus: detection-only dead-reference baseline and CI drift gate
 - This child branch adds a conservative dead-reference scanner. It reports 14 existing
   broken Claude skill symlinks, finds no missing explicit command-script references, and
   gates only changes from the reviewed baseline. No stale link is deleted or repaired.
+
+- The current child branch adds `scripts/bootstrap_check.py`, which renders all six
+  manifest clients twice, validates proposal parsers, and reports deterministic hashes
+  with explicit `writes_performed: false` and `runtime_writes: false`. It does not run
+  mutating setup or live migration.
 
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and

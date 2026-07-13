@@ -60,6 +60,16 @@ their declared JSON/TOML format, and makes the direct `scripts/config_doctor.py`
 work from the repository root. It does not replace tracked-runtime scanning, write files,
 or change `setup.sh`; the observed doctor baseline remains 59 issues.
 
+## Phase 2 read-only bootstrap proof
+
+The new `scripts/bootstrap_check.py` renders all six manifest clients twice from tracked
+bases using explicit portable placeholder values, validates the generated JSON/TOML via
+the existing generator, and emits per-client SHA-256 hashes. The current proof reports
+six clients, `idempotent: true`, `writes_performed: false`, and `runtime_writes: false`.
+It is a proposal-only check: it does not create directories, alter symlinks, write runtime
+files, or authorize the default `setup.sh` install path. Clean-machine runtime bootstrap,
+cache preservation, and live migration remain unverified.
+
 ## Phase 4 instruction-budget follow-up
 
 The stacked instruction-budget checker measures lines, words, and bytes deterministically
