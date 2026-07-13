@@ -2,7 +2,7 @@
 
 plan: plans/2026-07-13-execution-plan.md
 step: Phase 5 of 5
-focus: isolated all-client bootstrap and staging proof
+focus: symlink-safe isolated bootstrap staging
 
 ## Current (2026-07-13) — Phase 0/1 audit checkpoint
 
@@ -25,8 +25,9 @@ focus: isolated all-client bootstrap and staging proof
 - The current child branch makes marked proposal staging transactional: all rendered
   files are prepared and fsynced before replacement, opt-in backups are retained on
   success, prior replacements are restored if a later target fails, and unmanaged
-  client cache sentinels remain unchanged. Tests exercise both failure rollback and
-  cache preservation; live runtime writes remain untouched.
+  client cache sentinels remain unchanged. Symlinked markers, parents, and targets are
+  rejected before writes. Tests exercise rollback, cache preservation, and escape
+  rejection; live runtime writes remain untouched.
 
 - The current child branch adds `scripts/learning_signal.py`, an explicit external-ledger
   recorder that hashes private references, rejects raw evidence and unknown fields, and
@@ -49,7 +50,7 @@ focus: isolated all-client bootstrap and staging proof
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
   proposal-only client bases/generator.
-- Current evidence: 128 Python tests pass, 8 maintained PreToolUse fixtures pass, the
+- Current evidence: 129 Python tests pass, 8 maintained PreToolUse fixtures pass, the
   hygiene scanner reports 369 findings, and the doctor reports 59 residual findings.
 - A preflight live-settings backup and SHA-256 manifest are stored outside Git under
   `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`.

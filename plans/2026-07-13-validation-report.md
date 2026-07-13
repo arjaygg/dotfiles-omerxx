@@ -82,7 +82,9 @@ path without touching live runtime paths. Multi-process crash recovery, filesyst
 durability across power loss, actual clean-machine bootstrap, and live migration remain unverified.
 The staging test also places unmanaged cache sentinels under two client directories and
 verifies their bytes are unchanged after staging; this is isolated temporary-root evidence,
-not proof about caches on a live machine.
+not proof about caches on a live machine. Staging also rejects symlinked marker, parent,
+and target paths before any temporary write, preventing an explicitly marked root from
+redirecting output outside itself.
 
 ## Phase 4 instruction-budget follow-up
 

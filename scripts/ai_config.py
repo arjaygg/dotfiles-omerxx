@@ -134,6 +134,24 @@ def _write_temporary(path: Path, content: str) -> Path:
         raise
 
 
+def _validate_staging_target(root: Path, target: Path) -> None:
+    """Reject symlinked staging components that could redirect a write outside root."""
+
+    try:
+        relative = target.relative_to(root)
+    except ValueError as error:
+        raise TemplateValidationError(f"staging target escapes root: {target}") from error
+    current = root
+    for component in relative.parts[:-1]:
+        current /= component
+        if current.is_symlink():
+            raise TemplateValidationError(f"staging path component must not be a symlink: {current}")
+        if current.exists() and not current.is_dir():
+            raise TemplateValidationError(f"staging path component is not a directory: {current}")
+    if target.is_symlink():
+        raise TemplateValidationError(f"staging target must not be a symlink: {target}")
+
+
 def stage_proposals(
     root: Path,
     output_root: Path,
@@ -146,7 +164,8 @@ def stage_proposals(
     """Atomically write proposals below an explicitly marked staging root."""
 
     output_root = output_root.expanduser().resolve()
-    if not (output_root / ".ai-config-staging").is_file():
+    marker = output_root / ".ai-config-staging"
+    if marker.is_symlink() or not marker.is_file():
         raise TemplateValidationError("staging root must contain a .ai-config-staging marker file")
     proposals = build_proposals(
         root,
@@ -158,6 +177,8 @@ def stage_proposals(
         name: (_runtime_path(output_root, proposal["runtime"]), proposal["content"])
         for name, proposal in proposals.items()
     }
+    for target, _content in targets.values():
+        _validate_staging_target(output_root, target)
     existed_before = {str(target): target.exists() for target, _content in targets.values()}
     backups: dict[str, Path] = {}
     temporary_paths: dict[str, Path] = {}

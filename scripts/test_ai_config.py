@@ -172,6 +172,20 @@ class AiConfigCliTests(unittest.TestCase):
             for path, content in caches.items():
                 self.assertEqual(path.read_bytes(), content)
 
+    def test_stage_rejects_symlinked_parent_that_escapes_staging_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output_root = Path(directory) / "staging"
+            outside = Path(directory) / "outside"
+            output_root.mkdir()
+            outside.mkdir()
+            (output_root / ".ai-config-staging").touch()
+            (output_root / ".codex").symlink_to(outside, target_is_directory=True)
+
+            with self.assertRaisesRegex(TemplateValidationError, "symlink"):
+                stage_proposals(ROOT, output_root, clients={"codex"})
+
+            self.assertFalse((outside / "config.toml").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
