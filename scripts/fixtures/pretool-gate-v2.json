@@ -27,6 +27,7 @@
     "name": "grep-capitalized-symbol-blocked",
     "expect": "deny",
     "input": {
+      "session_id": "fixture-session",
       "tool_name": "Grep",
       "tool_input": {"pattern": "WorkerPool"}
     }
@@ -43,6 +44,7 @@
     "name": "grep-general-pattern-blocked",
     "expect": "deny",
     "input": {
+      "session_id": "fixture-session",
       "tool_name": "Grep",
       "tool_input": {"pattern": "error handling"}
     }
@@ -51,6 +53,7 @@
     "name": "grep-symbol-pattern-blocked",
     "expect": "deny",
     "input": {
+      "session_id": "fixture-session",
       "tool_name": "Grep",
       "tool_input": {"pattern": "^WorkerPool$"}
     }
