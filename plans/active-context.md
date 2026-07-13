@@ -1,8 +1,8 @@
 # Active Context
 
 plan: plans/2026-07-13-execution-plan.md
-step: Phase 3 of 5
-focus: thresholded review-only learning-signal summaries
+step: Phase 5 of 5
+focus: detection-only ShellCheck baseline and CI drift gate
 
 ## Current (2026-07-13) — Phase 0/1 audit checkpoint
 
@@ -29,6 +29,10 @@ focus: thresholded review-only learning-signal summaries
 - The current child branch extends the signal recorder with `--summarize`: candidates are
   grouped by hashed recurrence key, require two independent sessions or strong evidence,
   and remain `review-required`/unapplied. No proposal or canonical policy is generated.
+
+- The current child branch adds a required ShellCheck baseline gate for the 88 governed
+  shell files. One existing SC2259 finding is recorded; no shell or hook behavior is
+  changed.
 
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and

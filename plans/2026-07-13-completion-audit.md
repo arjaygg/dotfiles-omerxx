@@ -8,7 +8,7 @@ completion while review-gated work or acceptance criteria remain open.
 
 - `origin/main` is at merged Phase 0 commit `1036a591`; PR [#296](https://github.com/arjaygg/dotfiles-omerxx/pull/296) is merged.
 - Current review stack is clean through draft PR [#315](https://github.com/arjaygg/dotfiles-omerxx/pull/315); PRs [#297](https://github.com/arjaygg/dotfiles-omerxx/pull/297)–[#315](https://github.com/arjaygg/dotfiles-omerxx/pull/315) are open and mergeable.
-- Current branch validation: 120 Python tests, 7 maintained pre-tool fixtures, 88 Bash syntax checks, hook-configuration and dead-reference baseline comparisons, workflow YAML parsing, read-only all-client bootstrap proof, sanitized signal-schema/threshold coverage, per-file and effective-chain instruction-budget checks, exact conflict checks, and `git diff --check` pass.
+- Current branch validation: 123 Python tests, 7 maintained pre-tool fixtures, 88 Bash syntax checks plus ShellCheck baseline comparison, hook-configuration and dead-reference baseline comparisons, workflow YAML parsing, read-only all-client bootstrap proof, sanitized signal-schema/threshold coverage, per-file and effective-chain instruction-budget checks, exact conflict checks, and `git diff --check` pass.
 - Public hygiene baseline remains 369 findings across 88 tracked files.
 - Configuration-doctor baseline remains 59 source findings; live drift remains review-gated.
 - No live runtime configuration, permission semantics, canonical instruction hierarchy, or ordering-sensitive hook behavior was changed in the stack.
@@ -27,7 +27,7 @@ completion while review-gated work or acceptance criteria remain open.
 | Phase 2 multi-client generation/bootstrap | **partially implemented** | `generate`, `diff`, `doctor`, marked `stage`, manifest validation, TOML rendering, read-only `setup.sh` modes, and a six-client/idempotency proof exist; mutating bootstrap, cache preservation, and live migration remain |
 | Phase 3 governed self-improvement funnel | **partially implemented** | Proposal validation, expiry checks, baseline/candidate review reports, decision ledger, sanitized external-ledger signal intake, thresholded candidate summaries, and no-auto-promotion guidance exist; runtime collection, baseline evaluation, and promotion workflow remain |
 | Phase 4 instruction-cost reduction | **partially implemented** | Per-file and effective-chain budget measurement now run in CI; rule extraction, specialized-layer migration, and compliance evals remain |
-| Phase 5 governance/CI coverage | **partially implemented** | 120-test CI job, maintained fixtures, reviewed hook/dead-reference baselines, Bash syntax checks, workflow YAML parsing, budgets, and exact conflict checks exist; full shell/schema/runtime matrix remains |
+| Phase 5 governance/CI coverage | **partially implemented** | 123-test CI job, maintained fixtures, reviewed hook/dead-reference/ShellCheck baselines, Bash syntax checks, workflow YAML parsing, budgets, and exact conflict checks exist; shfmt, full shell/schema/runtime matrix remain |
 | Human review gates | **open** | Draft stack requires review; public hygiene, live migration, permissions, machine-wide hooks, and canonical hierarchy remain approval-gated |
 
 ## Conclusion

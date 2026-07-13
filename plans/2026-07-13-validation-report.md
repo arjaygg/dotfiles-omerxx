@@ -128,6 +128,15 @@ Claude, Codex, Cursor, Gemini, and support-script shell trees. The current inven
 syntax coverage only and does not claim ShellCheck, shfmt, runtime portability, or hook
 behavioral coverage.
 
+## ShellCheck baseline follow-up
+
+The read-only `scripts/shellcheck_check.py` runner scans the same governed shell inventory
+with `--severity error` and compares structured findings against
+`scripts/fixtures/shellcheck-baseline.json`. The current 88-file scan has one known
+SC2259 finding in `.cursor/hooks/before-shell-git-commit.sh`; the baseline matches with
+no added or removed findings. CI requires ShellCheck and fails on drift. The finding is
+not fixed in this increment because changing hook behavior remains a separate review.
+
 ## Read-only setup modes
 
 `setup.sh --dry-run` now emits the six-client proposal bundle and returns before any
