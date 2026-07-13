@@ -86,7 +86,15 @@ Example:
 5. Show promotion candidates (project -> global) when applicable
 6. If `--generate` is passed, write files to:
    - Project scope: `~/.claude/homunculus/projects/<project-id>/evolved/`
-   - Global fallback: `~/.claude/homunculus/evolved/`
+- Global fallback: `~/.claude/homunculus/evolved/`
+
+Generated artifacts are candidates only. They must be represented by a validated,
+evidence-backed proposal before review; `/evolve` must not edit canonical policy,
+change enforcement levels, or promote/merge its own output. Validate a proposal with:
+
+```bash
+python3 scripts/policy_proposal.py validate path/to/proposal.yaml
+```
 
 ## Output Format
 
