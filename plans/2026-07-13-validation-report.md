@@ -121,6 +121,11 @@ The proposal validator now requires `review_after` to be either a valid ISO date
 explicit `condition:<description>`, making revalidation/expiry metadata machine-checkable
 without promoting or applying the proposal.
 
+The new read-only `policy_proposal.py review` command compares explicitly supplied numeric
+baseline and candidate metric artifacts, reports deltas, and always emits
+`decision: review-required` with `auto_promote: false`. It does not collect transcripts,
+write proposals, or infer whether a metric is better; human review remains required.
+
 ## Tests not yet run
 
 - Full behavior coverage for every registered hook event and matcher.
