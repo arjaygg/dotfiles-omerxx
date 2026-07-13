@@ -21,6 +21,12 @@ jobs:
       - name: Run maintained policy tests
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
 
+      - name: Execute pre-tool hook fixtures
+        run: >-
+          python3 scripts/hook_fixture_runner.py
+          .claude/hooks/pre-tool-gate-v2.sh
+          scripts/fixtures/pretool-gate-v2.json
+
       - name: Enforce instruction budgets
         run: >-
           python3 scripts/instruction_budget.py
