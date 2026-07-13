@@ -27,6 +27,19 @@ python3 scripts/policy_proposal.py review path/to/proposal.json \
 
 The report is always `review-required`; it never promotes or applies the proposal.
 
+After a human review, record an accept, reject, or defer decision in an explicitly chosen
+JSONL ledger. The ledger stores a proposal hash and rationale, not raw evidence:
+
+```bash
+python3 scripts/policy_decision.py path/to/proposal.json \
+  --ledger /path/outside-the-repository/decisions.jsonl \
+  --decision reject \
+  --rationale "Insufficient recurrence" \
+  --decided-at 2026-07-13
+```
+
+Recording a decision never applies or promotes the proposal.
+
 An external evolution implementation may be used only when its installed path and
 output directory are explicitly verified. Generated artifacts remain candidates and
 must stay outside canonical policy until human review.
