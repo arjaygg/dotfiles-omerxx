@@ -164,8 +164,10 @@ the maintained pre-tool fixture runner, the explicit instruction budgets, and th
 permission/hook conflict checker on every PR layer. A matrix runs the same read-only job
 on `ubuntu-latest` and `macos-latest`. It has read-only repository permissions and parses
 its own YAML with pinned `PyYAML==6.0.2`. It does not run runtime diff, setup, migration,
-or unresolved baseline hygiene scanners as blocking checks; no hosted CI result is claimed
-because the follow-up branches still lack PR records.
+or unresolved baseline hygiene scanners as blocking checks. Draft PR
+[#316](https://github.com/arjaygg/dotfiles-omerxx/pull/316) now represents
+`ci/shellcheck-baseline`; no hosted CI pass is claimed yet because its checks
+were still pending at PR creation time.
 
 ## Reviewed hook-configuration baseline follow-up
 
