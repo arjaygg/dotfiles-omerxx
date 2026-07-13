@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import sys
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +23,13 @@ except ModuleNotFoundError as error:
 
 class TemplateValidationError(ValueError):
     """Raised when a base or overlay contains non-portable content."""
+
+
+@dataclass(frozen=True)
+class ProposalComparison:
+    changed_paths: list[str]
+    proposal_sha256: str
+    target_sha256: str
 
 
 def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
@@ -59,13 +68,60 @@ def build_proposal(base_path: Path, overlay_path: Path | None = None) -> str:
     return rendered
 
 
+def _flatten(value: Any, prefix: str = "") -> dict[str, Any]:
+    if isinstance(value, dict):
+        if not value:
+            return {prefix: value}
+        flattened: dict[str, Any] = {}
+        for key, child in value.items():
+            child_prefix = f"{prefix}.{key}" if prefix else key
+            flattened.update(_flatten(child, child_prefix))
+        return flattened
+    if isinstance(value, list):
+        if not value:
+            return {prefix: value}
+        flattened = {}
+        for index, child in enumerate(value):
+            flattened.update(_flatten(child, f"{prefix}[{index}]"))
+        return flattened
+    return {prefix: value}
+
+
+def compare_proposal(
+    base_path: Path, overlay_path: Path | None, target_path: Path
+) -> ProposalComparison:
+    """Compare a proposal with a target without printing target contents."""
+    proposal_text = build_proposal(base_path, overlay_path)
+    target_bytes = target_path.read_bytes()
+    target = json.loads(target_bytes)
+    if not isinstance(target, dict):
+        raise TemplateValidationError(f"{target_path}: target root must be a JSON object")
+    proposal = json.loads(proposal_text)
+    proposal_values = _flatten(proposal)
+    target_values = _flatten(target)
+    changed_paths = sorted(
+        path
+        for path in proposal_values.keys() | target_values.keys()
+        if proposal_values.get(path) != target_values.get(path)
+    )
+    return ProposalComparison(
+        changed_paths=changed_paths,
+        proposal_sha256=hashlib.sha256(proposal_text.encode("utf-8")).hexdigest(),
+        target_sha256=hashlib.sha256(target_bytes).hexdigest(),
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("base", type=Path)
     parser.add_argument("--overlay", type=Path)
+    parser.add_argument("--compare-against", type=Path)
     args = parser.parse_args(argv)
     try:
-        sys.stdout.write(build_proposal(args.base, args.overlay))
+        if args.compare_against:
+            print(json.dumps(asdict(compare_proposal(args.base, args.overlay, args.compare_against))))
+        else:
+            sys.stdout.write(build_proposal(args.base, args.overlay))
     except (OSError, UnicodeError, json.JSONDecodeError, TemplateValidationError) as error:
         print(f"config proposal rejected: {error}", file=sys.stderr)
         return 2

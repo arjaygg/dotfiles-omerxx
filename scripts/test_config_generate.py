@@ -5,7 +5,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.config_generate import TemplateValidationError, build_proposal, deep_merge
+from scripts.config_generate import (
+    TemplateValidationError,
+    build_proposal,
+    compare_proposal,
+    deep_merge,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -68,6 +73,24 @@ class ConfigGenerateTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIsInstance(json.loads(result.stdout), dict)
+
+    def test_compare_proposal_reports_paths_and_hashes_without_content(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = root / "base.json"
+            overlay = root / "overlay.json"
+            target = root / "target.json"
+            base.write_text('{"model": "portable", "nested": {"a": 1}}\n', encoding="utf-8")
+            overlay.write_text('{"nested": {"b": 2}}\n', encoding="utf-8")
+            target.write_text('{"model": "portable", "nested": {"a": 1, "b": 3}}\n', encoding="utf-8")
+            target_before = target.read_bytes()
+
+            comparison = compare_proposal(base, overlay, target)
+
+            self.assertEqual(comparison.changed_paths, ["nested.b"])
+            self.assertEqual(len(comparison.proposal_sha256), 64)
+            self.assertEqual(len(comparison.target_sha256), 64)
+            self.assertEqual(target.read_bytes(), target_before)
 
 
 if __name__ == "__main__":
