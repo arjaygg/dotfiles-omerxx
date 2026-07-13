@@ -81,8 +81,8 @@ conflicts. This is intentionally conservative: it does not claim to model wildca
 The new `.github/workflows/ai-policy-validation.yml` runs the maintained Python tests,
 the maintained pre-tool fixture runner, the explicit instruction budgets, and the exact
 permission/hook conflict checker on every PR layer. It has read-only repository permissions
-and does not run runtime diff, setup, migration, or unresolved baseline hygiene scanners as
-blocking checks.
+and parses its own YAML with pinned `PyYAML==6.0.2`. It does not run runtime diff, setup,
+migration, or unresolved baseline hygiene scanners as blocking checks.
 
 ## Reviewed hook-configuration baseline follow-up
 
