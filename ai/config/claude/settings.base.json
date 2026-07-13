@@ -1,0 +1,483 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "AR_DISABLE_SIMPLIFY_GATE": "1",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_CODE_FORK_SUBAGENT": "1",
+    "USE_BUILTIN_RIPGREP": "0",
+    "SUPERMEMORY_API_URL": "http://localhost:6767"
+  },
+  "permissions": {
+    "allow": [
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "Agent(*)",
+      "Skill(*)",
+      "ToolSearch(*)",
+      "AskUserQuestion(*)",
+      "EnterPlanMode(*)",
+      "ExitPlanMode(*)",
+      "EnterWorktree(*)",
+      "ExitWorktree(*)",
+      "NotebookEdit(*)",
+      "CronCreate(*)",
+      "CronDelete(*)",
+      "CronList(*)",
+      "RemoteTrigger(*)",
+      "TaskCreate(*)",
+      "TaskGet(*)",
+      "TaskList(*)",
+      "TaskOutput(*)",
+      "TaskStop(*)",
+      "TaskUpdate(*)",
+      "mcp__pctx__*",
+      "mcp__graphify__*",
+      "mcp__supermemory__*",
+      "mcp__notebooklm__*",
+      "mcp__exa__*",
+      "mcp__qmd__*",
+      "mcp__repomix__*",
+      "mcp__lean-ctx__ctx_read",
+      "mcp__lean-ctx__ctx_search",
+      "mcp__lean-ctx__ctx_tree",
+      "mcp__lean-ctx__ctx_overview",
+      "mcp__lean-ctx__ctx_plan",
+      "mcp__lean-ctx__ctx_metrics",
+      "mcp__lean-ctx__ctx_compress",
+      "mcp__lean-ctx__ctx_session",
+      "mcp__lean-ctx__ctx_knowledge",
+      "mcp__lean-ctx__ctx_graph",
+      "mcp__lean-ctx__ctx_retrieve",
+      "mcp__lean-ctx__ctx_provider"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(curl * | bash)",
+      "Bash(curl * | sh)",
+      "Bash(wget * -O- | sh)",
+      "Bash(wget * | bash)",
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)",
+      "Bash(git clean -fd*)",
+      "Bash(git checkout .)",
+      "Bash(git restore .)",
+      "Bash(killall *)",
+      "Bash(pkill *)",
+      "Bash(kill -9 *)",
+      "Bash(find * -delete*)",
+      "Bash(find *)",
+      "Bash(shred *)",
+      "Bash(dd if=*)",
+      "Bash(chmod 777 *)",
+      "Bash(chmod -R 777 *)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Edit(./.env)",
+      "Edit(./.env.*)",
+      "Edit(./secrets/**)",
+      "Write(./.env)",
+      "Write(./.env.*)",
+      "Write(./secrets/**)",
+      "Read(~/.ssh/*)",
+      "Edit(~/.ssh/*)",
+      "Write(~/.ssh/*)",
+      "Read(~/.aws/*)",
+      "Edit(~/.aws/*)",
+      "Write(~/.aws/*)",
+      "Read(~/.gnupg/**)",
+      "Edit(~/.gnupg/**)",
+      "Write(~/.gnupg/**)",
+      "Bash(rg *)",
+      "Bash(grep *)",
+      "Bash(grep -*)",
+      "Read(**/package-lock.json)",
+      "Read(**/yarn.lock)",
+      "Read(**/Cargo.lock)",
+      "Read(**/pnpm-lock.yaml)",
+      "Read(**/composer.lock)",
+      "Read(**/Gemfile.lock)"
+    ],
+    "defaultMode": "acceptEdits"
+  },
+  "model": "sonnet",
+  "enableAllProjectMcpServers": true,
+  "skillOverrides": {
+    "ado-workitem": "off",
+    "analytics-api-analyst": "off",
+    "aside": "off",
+    "auc-dev-a": "off",
+    "auc-dev-b": "off",
+    "auc-dev-c": "off",
+    "auc-devintegration-suite": "off",
+    "auc-qa": "off",
+    "auc-sm": "off",
+    "auc-tech-writer": "off",
+    "autoresearch": "off",
+    "bmad-bmad-master.agent": "off",
+    "bmad-bmm-analyst.agent": "off",
+    "bmad-bmm-architect.agent": "off",
+    "bmad-bmm-check-implementation-readiness": "off",
+    "bmad-bmm-code-review": "off",
+    "bmad-bmm-correct-course": "off",
+    "bmad-bmm-create-architecture": "off",
+    "bmad-bmm-create-epics-and-stories": "off",
+    "bmad-bmm-create-excalidraw-dataflow": "off",
+    "bmad-bmm-create-excalidraw-diagram": "off",
+    "bmad-bmm-create-excalidraw-flowchart": "off",
+    "bmad-bmm-create-excalidraw-wireframe": "off",
+    "bmad-bmm-create-prd": "off",
+    "bmad-bmm-create-product-brief": "off",
+    "bmad-bmm-create-story": "off",
+    "bmad-bmm-create-ux-design": "off",
+    "bmad-bmm-dev-story": "off",
+    "bmad-bmm-dev.agent": "off",
+    "bmad-bmm-document-project": "off",
+    "bmad-bmm-pm.agent": "off",
+    "bmad-bmm-quick-dev": "off",
+    "bmad-bmm-quick-flow-solo-dev.agent": "off",
+    "bmad-bmm-quick-spec": "off",
+    "bmad-bmm-research": "off",
+    "bmad-bmm-retrospective": "off",
+    "bmad-bmm-sm.agent": "off",
+    "bmad-bmm-sprint-planning": "off",
+    "bmad-bmm-sprint-status": "off",
+    "bmad-bmm-tea.agent": "off",
+    "bmad-bmm-tech-writer-tech-writer.agent": "off",
+    "bmad-bmm-testarch-atdd": "off",
+    "bmad-bmm-testarch-automate": "off",
+    "bmad-bmm-testarch-ci": "off",
+    "bmad-bmm-testarch-framework": "off",
+    "bmad-bmm-testarch-nfr": "off",
+    "bmad-bmm-testarch-test-design": "off",
+    "bmad-bmm-testarch-test-review": "off",
+    "bmad-bmm-testarch-trace": "off",
+    "bmad-bmm-ux-designer.agent": "off",
+    "bmad-brainstorming": "off",
+    "bmad-custom-pr-review": "off",
+    "bmad-editorial-review-prose": "off",
+    "bmad-editorial-review-structure": "off",
+    "bmad-help": "off",
+    "bmad-index-docs": "off",
+    "bmad-party-mode": "off",
+    "bmad-review-adversarial-general": "off",
+    "bmad-shard-doc": "off",
+    "checkpoint": "off",
+    "claude-api": "off",
+    "claude-architect": "off",
+    "claude-auto": "off",
+    "claude-in-chrome": "off",
+    "code-health": "off",
+    "context-eval": "off",
+    "continuous-learning": "off",
+    "data-analyst": "off",
+    "evolve": "off",
+    "fewer-permission-prompts": "off",
+    "findings": "off",
+    "fury": "off",
+    "hawk": "off",
+    "hookify": "off",
+    "hookify-list": "off",
+    "hyper-commit-setup": "off",
+    "ia": "off",
+    "init": "off",
+    "instinct-export": "off",
+    "ironman": "off",
+    "keybindings-help": "off",
+    "lit-ingest": "off",
+    "loop": "off",
+    "monitor-patterns": "off",
+    "ollama": "off",
+    "pctx-code-mode": "off",
+    "quarantine-analyst": "off",
+    "quarantine-triage-live": "off",
+    "resource-guard": "off",
+    "schedule": "off",
+    "session-defer": "off",
+    "session-done": "off",
+    "session-next": "off",
+    "session-picker": "off",
+    "session-undefer": "off",
+    "stark": "off",
+    "start-story": "off",
+    "story-complete": "off",
+    "tech-lead": "off",
+    "tmux-automation": "off",
+    "update-config": "off",
+    "vision": "off",
+    "watchdog-remediate": "off",
+    "bmad-bmm-master": "off"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/sessionstart.sh\""
+          }
+        ]
+      }
+    ],
+    "InstructionsLoaded": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/instructions-loaded.sh\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Edit|Write|MultiEdit|Grep|Glob|Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/pre-tool-gate-v2.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/graphify-redirect.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.dotfiles/.claude/hooks/rtk-rewrite.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|read|ReadFile|read_file|View|view|Grep|grep|Search|search|ListFiles|list_files|ListDirectory|list_directory",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'lean-ctx hook redirect'"
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/scratchpad-reread-guard.sh\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/post-tool-analytics.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/prompt-score-commit.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/teammate-quality-gate.sh\""
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/context-monitor.sh\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/userpromptsubmit.sh\"",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/pre-compact.sh\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/stop.sh\""
+          }
+        ]
+      }
+    ],
+    "TaskCreated": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/task-event-tracker.sh\""
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/task-event-tracker.sh\""
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "matcher": ".*_settings",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/config-integrity.sh\""
+          }
+        ]
+      }
+    ],
+    "WorktreeCreate": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/worktree-create.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh\" worktree-enter"
+          }
+        ]
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/worktree-remove.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh\" worktree-exit"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.cargo/bin/lean-ctx hook observe"
+          }
+        ]
+      }
+    ]
+  },
+  "worktree": {},
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ Cache: %cache_hit% ▸ %time% ▸ %project%%git_status%%task_list_id%'"
+  },
+  "enabledPlugins": {
+    "autoresearch@autoresearch": false,
+    "bash-language-server@claude-code-lsps": false,
+    "gopls-lsp@claude-plugins-official": false,
+    "skill-creator@claude-plugins-official": true,
+    "supermemory@supermemory-plugins": true
+  },
+  "extraKnownMarketplaces": {
+    "autoresearch": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/uditgoenka/autoresearch.git"
+      }
+    },
+    "supermemory-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "supermemoryai/claude-supermemory"
+      },
+      "autoUpdate": true
+    }
+  },
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "high",
+  "advisorModel": "fable",
+  "plansDirectory": "./plans",
+  "tui": "fullscreen",
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
+  "skipWorkflowUsageWarning": true,
+  "preferredNotifChannel": "ghostty",
+  "teammateMode": "auto",
+  "voiceEnabled": true,
+  "compactCustomInstructions": "After compaction, immediately re-read plans/session-snapshot.md first if it exists — it is generated fresh from the live transcript and git state at the moment of compaction, so it is more trustworthy than hand-edited files. Fall back to plans/active-context.md only if session-snapshot.md is absent, and treat active-context.md with suspicion if its content conflicts with session-snapshot.md or the verified conversation history — it can carry over stale content from an earlier or unrelated task. Do not waste summary tokens on content already captured in plans/ files (active-context.md, decisions.md, progress.md) — those files persist on disk and will be re-read. Focus the summary on: in-flight tool call results not yet written to disk, ephemeral error messages, and any decisions made verbally that have not been recorded. Always preserve: current branch name, uncommitted file list, active plan file path, and the exact task being worked on at the moment of compaction. Do not re-Read CLAUDE.md, AGENTS.md, or any file they @-import (RTK.md, rules/*.md) after compaction — their content is reloaded automatically as part of the system prompt and a manual re-read wastes tokens on content already in context. Never copy hook advisory text into the summary — exclude [SESSION INIT ...] banners, MANDATORY: graphify-out lines, [STACK HEALTH]/[PLANS HEALTH]/hook: stack-health/hook: plans-health output, and <supermemory-recall>/<supermemory-context> blocks entirely; they are re-injected live by hooks and only compound noise across compaction cycles.",
+  "autoCompact": true,
+  "autoMemory": false
+}
