@@ -121,6 +121,15 @@ script references and 14 pre-existing broken skill symlinks. Those exact finding
 stored in `scripts/fixtures/dead-reference-baseline.json`; CI fails on additions or
 disappearances so debt cannot change silently. No symlink remediation was performed.
 
+## Phase 1/5 file-backed hook reference follow-up
+
+The new `scripts/hook_reference_check.py` extracts `$HOME/.dotfiles` file-backed command
+references from `.claude/settings.json` and checks them against the tracked distribution.
+The current scan finds no missing references, so `scripts/fixtures/hook-reference-baseline.json`
+is intentionally empty. Runtime command strings such as `lean-ctx hook redirect` are not
+treated as file paths; this check does not prove matcher reachability, ordering, or runtime
+execution on every platform.
+
 ## Phase 5 permission/hook conflict follow-up
 
 The stacked checker reports exact permission contradictions and exact tool-hook matchers
