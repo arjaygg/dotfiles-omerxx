@@ -48,6 +48,9 @@ execution and ignored matchers on several current event types; the tracked setti
 contain six such unsupported matchers and two-handler worktree groups. No hook code has
 been changed yet.
 
+**Safe progress:** `scripts/hook_config_check.py` now validates this static contract;
+its 12-test combined suite passes and the current settings produce eight findings.
+
 1. Capture representative payloads for PreToolUse, PostToolUse, UserPromptSubmit,
    SessionStart, Stop, PreCompact, ConfigChange, worktree, and MCP calls.
 2. Validate the current hook schema and exit semantics on macOS and Linux-compatible

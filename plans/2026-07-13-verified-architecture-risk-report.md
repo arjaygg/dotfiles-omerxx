@@ -124,6 +124,13 @@ execution as their authors appear to intend, and the two-handler worktree groups
 not be assumed to run sequentially. Runtime fixture tests are still required to prove
 actual blocking, rewriting, and exit-code behavior.
 
+Added `scripts/hook_config_check.py`, a read-only validator for event names, group and
+handler structure, unsupported matchers, and parallel worktree handlers. The combined
+12-test suite passes. Running it against the tracked settings reports eight static
+issues: six ignored matchers and two parallel-handler warnings. It intentionally does
+not claim runtime reachability or blocking correctness; fixture execution remains the
+next Phase 1 evidence step.
+
 ## Recommendation
 
 Do not begin broad Phase 0/1 implementation in the same change as this report. First
