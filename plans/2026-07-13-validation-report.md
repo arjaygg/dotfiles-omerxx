@@ -281,6 +281,10 @@ The policy workflow compares that fingerprint on Linux and macOS and fails on an
 addition or disappearance; this is a no-regressions gate, not a claim that the debt is
 resolved.
 
+The same read-only Linux/macOS matrix now executes `bash setup.sh --dry-run` directly.
+This exercises proposal-only setup without invoking the default install or symlink path;
+live runtime application remains deferred.
+
 The read-only configuration doctor now has the same privacy-safe baseline contract:
 the current 59 source issues are represented by a `(path,rule,severity)` fingerprint
 in `scripts/fixtures/config-doctor-baseline.json`. CI fails on doctor-debt drift while

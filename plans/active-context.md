@@ -65,7 +65,8 @@ focus: Linux/macOS policy-validation matrix
   un-baselined pending human review, and leaves exact conflict CI behavior unchanged.
 
 - The policy-validation workflow now runs its read-only checks on both
-  `ubuntu-latest` and `macos-latest`; no CI result is claimed until a PR record exists.
+  `ubuntu-latest` and `macos-latest`, including `bash setup.sh --dry-run`; no CI result
+  is claimed until a PR record exists.
 
 - Proposal manifest loading now rejects duplicate client names or runtime targets,
   unsafe identifiers, and runtime paths that escape the home-relative `~/` form;
