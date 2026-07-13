@@ -65,5 +65,11 @@ jobs:
           --baseline scripts/fixtures/dead-reference-baseline.json
           --json
 
+      - name: Verify read-only all-client bootstrap
+        run: >-
+          python3 scripts/bootstrap_check.py
+          --set PCTX_CONFIG=~/.config/pctx/pctx.json
+          --set USER_NAME=portable-user
+
       - name: Check exact permission and hook conflicts
         run: python3 scripts/permission_hook_conflicts.py .claude/settings.json
