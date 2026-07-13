@@ -52,14 +52,14 @@ What do you need?
 
 ## MODE 0 — Project Overview (unfamiliar area)
 
-Use `LeanCtx.ctxIntent` to let the tool auto-select relevant files based on a natural language query.
+Use `LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query } })` to let lean-ctx auto-select relevant files.
 Follow with `LeanCtx.ctxOverview` for the full project map.
 
 ```typescript
 // mcp__pctx__execute_typescript
 async function run() {
   const [intent, overview] = await Promise.all([
-    LeanCtx.ctxIntent({ query: "YOUR QUERY HERE" }),
+    LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "YOUR QUERY HERE" } }),
     LeanCtx.ctxOverview({ task: "YOUR QUERY HERE" }),
   ]);
   return { intent, overview };
@@ -74,7 +74,7 @@ async function run() {
 // mcp__pctx__execute_typescript
 async function run() {
   const results = await Serena.findSymbol({
-    name_path: "SymbolName",  // e.g. "HandleRequest" or "MyClass/myMethod"
+    name_path_pattern: "SymbolName",  // e.g. "HandleRequest" or "MyClass/myMethod"
     depth: 1,                 // 0 = symbol only, 1 = include children (e.g. class methods)
   });
   return results;
@@ -82,9 +82,9 @@ async function run() {
 ```
 
 **Tips:**
-- `name_path: "methodName"` — finds any symbol with that name across all files
-- `name_path: "ClassName/methodName"` — scoped to parent
-- `name_path: "/ClassName/methodName"` — exact match only
+- `name_path_pattern: "methodName"` — finds any symbol with that name across all files
+- `name_path_pattern: "ClassName/methodName"` — scoped to parent
+- `name_path_pattern: "/ClassName/methodName"` — exact match only
 - `depth: 1` — include children (use for classes to get all methods)
 
 ---
@@ -95,10 +95,10 @@ async function run() {
 // mcp__pctx__execute_typescript
 async function run() {
   // Step 1: Locate the symbol first
-  const sym = await Serena.findSymbol({ name_path: "SymbolName", depth: 0 });
+  const sym = await Serena.findSymbol({ name_path_pattern: "SymbolName", depth: 0 });
   
-  // Step 2: Find everything that calls/uses it
-  const refs = await Serena.findReferencingSymbols({ name_path: "SymbolName" });
+  // Step 2: Find everything that calls/uses it; relative_path must be the file containing the symbol
+  const refs = await Serena.findReferencingSymbols({ name_path: "SymbolName", relative_path: "path/to/file.go" });
   
   return { definition: sym, references: refs };
 }
@@ -141,14 +141,14 @@ async function run() {
 // mcp__pctx__execute_typescript
 async function run() {
   return await Serena.searchForPattern({
-    pattern: "YourPattern",           // Regex, DOTALL-enabled
+    substring_pattern: "YourPattern", // Regex, DOTALL-enabled
     relative_path: ".",               // Scope: "." = whole project, or a subdir
     restrict_search_to_code_files: true,  // Skip non-code files
     context_lines_before: 2,
     context_lines_after: 2,
     // Optional: restrict by glob
-    // include_pattern: "*.go",
-    // exclude_pattern: "vendor/**",
+    // paths_include_glob: "*.go",
+    // paths_exclude_glob: "vendor/**",
   });
 }
 ```
@@ -168,8 +168,8 @@ Combine modes when you'll need multiple things. **One `execute_typescript` call 
 // mcp__pctx__execute_typescript — example: understand a handler and its callers
 async function run() {
   const [symbol, refs, fileStructure, relatedFiles] = await Promise.all([
-    Serena.findSymbol({ name_path: "ProcessPayment", depth: 1 }),
-    Serena.findReferencingSymbols({ name_path: "ProcessPayment" }),
+    Serena.findSymbol({ name_path_pattern: "ProcessPayment", depth: 1 }),
+    Serena.findReferencingSymbols({ name_path: "ProcessPayment", relative_path: "src/payments/handler.go" }),
     Serena.getSymbolsOverview({ relative_path: "src/payments/handler.go" }),
     Serena.findFile({ file_mask: "*payment*.go", relative_path: "." }),
   ]);
@@ -206,9 +206,8 @@ When Serena is unavailable or for non-code files:
 | Task | LeanCtx tool |
 |---|---|
 | Read file (token-efficient) | `LeanCtx.ctxRead({ path, mode: "signatures" })` |
-| Read many files | `LeanCtx.ctxMultiRead({ paths: [...], mode: "map" })` |
 | Directory tree | `LeanCtx.ctxTree({ path: "." })` |
-| Intent-driven exploration | `LeanCtx.ctxIntent({ query: "..." })` |
+| Intent-driven exploration | `LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "..." } })` |
 | Project overview | `LeanCtx.ctxOverview({ task: "..." })` |
 | Dependency graph | `LeanCtx.ctxGraph({ action: "related", file: "path/to/file" })` |
 
@@ -225,6 +224,6 @@ When this skill is invoked:
 5. Do NOT fall back to Bash, Grep, or Glob for operations Serena can handle
 
 **If Serena returns empty results:**
-- Try a broader `name_path` (remove the class prefix)
+- Try a broader `name_path_pattern` (remove the class prefix)
 - Try `searchForPattern` with the name as a literal string
 - Check if the project is indexed: run `Serena.getCurrentConfig()`

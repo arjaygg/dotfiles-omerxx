@@ -82,6 +82,24 @@ lean-ctx is registered **both** as a native MCP server (`mcp__lean-ctx__*`) and 
 
 ---
 
+
+### pctx execute_typescript Schema Guardrails
+
+Common failures seen in session logs are schema-name drift, not pctx runtime instability. Use these exact names unless `get_function_details` says otherwise:
+
+| Function | Correct pctx SDK call | Common failing call |
+|---|---|---|
+| `get_function_details` tool | `{"functions":["Serena.findSymbol"]}` | `{"function_name":"Serena.findSymbol"}` |
+| `Serena.readMemory` | `{ memory_name: "START_HERE" }` | `{ name: "START_HERE" }` |
+| `Serena.findSymbol` | `{ name_path_pattern: "Symbol", depth: 0 }` | `{ name_path: "Symbol" }` |
+| `Serena.searchForPattern` | `{ substring_pattern: "regex" }` | `{ pattern: "regex" }` |
+| `LeanCtx.ctxSearch` | `{ pattern: "regex", path: "/abs/path" }` | `{ query: "regex" }` |
+| `LeanCtx.ctxRead/ctxTree/ctxCall` | camelCase SDK methods | `ctx_read` / `ctx_tree` / `ctx_call` |
+
+If an `execute_typescript` batch mixes successful results with `.catch(() => ({error}))`, normalize/cast before reading fields; the sandbox type-checks unions strictly.
+
+---
+
 ## 4. Serena API Convention
 All Serena methods use **camelCase**.
 - `Serena.listDir` (NOT `list_dir`)
