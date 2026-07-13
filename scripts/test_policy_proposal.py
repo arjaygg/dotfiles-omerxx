@@ -47,6 +47,10 @@ class PolicyProposalTests(unittest.TestCase):
         invalid_destination = validate_proposal(valid_proposal(proposed_destination="canonical-policy"))
         self.assertIn("unsupported proposed_destination: canonical-policy", invalid_destination)
 
+    def test_unknown_fields_are_rejected(self):
+        errors = validate_proposal(valid_proposal(unreviewed_instruction="apply this automatically"))
+        self.assertIn("unsupported field: unreviewed_instruction", errors)
+
     def test_recurrence_threshold_requires_two_observations(self):
         errors = validate_proposal(valid_proposal(recurrence=1, evidence_class="recurrence"))
 

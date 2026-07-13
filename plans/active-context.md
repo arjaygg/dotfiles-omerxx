@@ -81,6 +81,9 @@ focus: Linux/macOS policy-validation matrix
 - `policy_decision.py --gate-review` now reports current accepted eligibility only;
   it always keeps `auto_apply: false` and performs no policy or ledger writes.
 
+- Proposal validation rejects unknown fields, preventing unmodeled promotion metadata
+  from entering the review workflow.
+
 - Decision-ledger appends now validate existing entries and reject malformed history or
   any prior record with `applied: true`.
 
@@ -90,7 +93,7 @@ focus: Linux/macOS policy-validation matrix
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
   proposal-only client bases/generator.
-- Current evidence: 158 Python tests pass, 10 maintained PreToolUse fixtures pass, the
+- Current evidence: 159 Python tests pass, 10 maintained PreToolUse fixtures pass, the
   hygiene scanner reports 369 findings, and the doctor reports 59 residual findings.
 - A preflight live-settings backup and SHA-256 manifest are stored outside Git under
   `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`.

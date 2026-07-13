@@ -35,6 +35,8 @@ REQUIRED_FIELDS = (
     "review_after",
     "evidence_class",
 )
+OPTIONAL_FIELDS = frozenset({"auto_promote", "auto_apply"})
+ALLOWED_FIELDS = frozenset(REQUIRED_FIELDS) | OPTIONAL_FIELDS
 DESTINATIONS = frozenset({"AGENTS.md", "CLAUDE.md", "rule", "skill", "hook", "CI", "docs", "memory"})
 EVIDENCE_CLASSES = frozenset({"recurrence", "security", "compliance", "production", "data_loss", "cost", "deterministic"})
 ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]+$")
@@ -57,6 +59,8 @@ def validate_proposal(value: Any) -> list[str]:
     if not isinstance(value, dict):
         return ["proposal must be an object"]
     errors = [f"missing required field: {field}" for field in REQUIRED_FIELDS if field not in value]
+    unknown = sorted(set(value) - ALLOWED_FIELDS)
+    errors.extend(f"unsupported field: {field}" for field in unknown)
     if errors:
         return errors
     if not isinstance(value["id"], str) or not ID_PATTERN.fullmatch(value["id"]):

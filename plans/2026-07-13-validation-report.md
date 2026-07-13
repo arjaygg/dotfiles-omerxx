@@ -247,6 +247,8 @@ The new `policy_decision.py --gate-review` path joins a valid review report to t
 latest matching human decision and dated expiry. It reports eligibility only when the
 decision is current and accepted, always emits `auto_apply: false`, and never writes
 policy or the decision ledger.
+Proposal validation is now closed-schema: only declared required fields and the two
+explicitly false-by-default promotion flags are accepted; unknown fields are rejected.
 
 ## Phase 3 traceable signal intake
 
