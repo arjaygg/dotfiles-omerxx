@@ -123,6 +123,22 @@ class ConfigDoctorTests(unittest.TestCase):
             ["tracked-local-overlay"],
         )
 
+    def test_blanket_permission_allow_is_reported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            make_config_tree(root)
+            (root / ".claude/settings.json").write_text(
+                json.dumps({"permissions": {"allow": ["Bash(*)", "Read(*)"]}}),
+                encoding="utf-8",
+            )
+
+            issues = run_doctor(root)
+
+        self.assertEqual(
+            [issue.rule for issue in issues],
+            ["blanket-permission-allow", "blanket-permission-allow"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -24,6 +24,7 @@ CONFIG_SPECS: tuple[tuple[str, str], ...] = (
     (".windsurf/mcp_config.json", "json"),
     ("mcp.json", "json"),
 )
+BROAD_ALLOW_RULES = frozenset({"Bash(*)", "Read(*)", "Write(*)", "Edit(*)", "Glob(*)", "Grep(*)"})
 
 
 @dataclass(frozen=True)
@@ -104,6 +105,19 @@ def run_doctor(root: Path) -> list[Issue]:
                         "skipDangerousModePermissionPrompt must not be enabled in tracked source",
                     )
                 )
+            permissions = parsed.get("permissions")
+            allow = permissions.get("allow") if isinstance(permissions, dict) else []
+            if isinstance(allow, list):
+                for rule in allow:
+                    if rule in BROAD_ALLOW_RULES:
+                        issues.append(
+                            Issue(
+                                relative_path,
+                                "blanket-permission-allow",
+                                "error",
+                                f"broad permission allow requires explicit review: {rule}",
+                            )
+                        )
 
     tracked_local = subprocess.run(
         ["git", "-C", str(root), "ls-files", "--error-unmatch", "--", ".claude/settings.local.json"],

@@ -106,8 +106,9 @@ Added a proposal-only `scripts/config_doctor.py`. It validates the tracked JSON/
 client configs, reuses the privacy rules for config files, detects the tracked
 `skipDangerousModePermissionPrompt` bypass, and detects live-settings copy-back in the
 symlink guard without writing files. Its eight-test combined suite passes. The current
-doctor baseline is 62 issues: 59 warnings for config privacy/path findings and three
-errors (`unsafe-bypass`, `tracked-local-overlay`, and `runtime-copyback`).
+doctor baseline is 68 issues: 59 warnings for config privacy/path findings and nine
+errors — six `blanket-permission-allow` findings plus `unsafe-bypass`,
+`tracked-local-overlay`, and `runtime-copyback`.
 
 ## Hook-schema verification update
 
@@ -158,7 +159,7 @@ stale archived expectations, so both results are recorded rather than conflated.
 Extended the doctor with read-only source/runtime drift detection. The live
 `~/.claude/settings.json` currently resolves to the main checkout; comparing it with
 this branch's tracked settings produced no `runtime-drift` issue. The doctor still
-reports the same 62 source issues. No file was copied, linked, or modified.
+reports the same 68 source issues. No file was copied, linked, or modified.
 
 Added an explicit `.gitignore` entry for future `.claude/settings.local.json` files.
 Verification shows the path is now ignored for new files but remains tracked (`tracked=yes`)
