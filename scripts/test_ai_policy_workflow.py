@@ -18,6 +18,8 @@ class AiPolicyWorkflowTests(unittest.TestCase):
         self.assertIn("scripts/hook_config_check.py", text)
         self.assertIn("scripts/fixtures/hook-config-baseline.json", text)
         self.assertIn("scripts/shell_syntax_check.py", text)
+        self.assertIn("PyYAML==6.0.2", text)
+        self.assertIn("yaml.safe_load", text)
         self.assertIn("scripts/instruction_budget.py", text)
         self.assertIn("scripts/permission_hook_conflicts.py", text)
 
