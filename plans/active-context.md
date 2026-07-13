@@ -2,7 +2,7 @@
 
 plan: plans/2026-07-13-execution-plan.md
 step: Phase 5 of 5
-focus: symlink-safe isolated bootstrap staging
+focus: always-loaded instruction compliance baseline
 
 ## Current (2026-07-13) — Phase 0/1 audit checkpoint
 
@@ -47,10 +47,15 @@ focus: symlink-safe isolated bootstrap staging
   and one malformed-payload deny fixture. Eight fixtures pass; no runtime hook behavior
   or permission semantics are changed.
 
+- The current child branch adds a read-only always-loaded instruction compliance check
+  for transient session sections, dated current-state headings, absolute user paths, and
+  reviewed memory-section debt. The baseline records one existing Gemini memory section;
+  CI fails on new or disappearing findings without modifying instruction hierarchy.
+
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
   proposal-only client bases/generator.
-- Current evidence: 129 Python tests pass, 8 maintained PreToolUse fixtures pass, the
+- Current evidence: 134 Python tests pass, 8 maintained PreToolUse fixtures pass, the
   hygiene scanner reports 369 findings, and the doctor reports 59 residual findings.
 - A preflight live-settings backup and SHA-256 manifest are stored outside Git under
   `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`.

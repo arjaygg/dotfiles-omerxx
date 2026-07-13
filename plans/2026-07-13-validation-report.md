@@ -103,6 +103,15 @@ this increment reports it but does not change the canonical hierarchy.
 
 The effective-context command is now a read-only CI check on every pull request.
 
+## Phase 4 always-loaded compliance follow-up
+
+The new `scripts/instruction_compliance.py` checks the always-loaded entrypoints for
+dated current-state sections, transient session markers, absolute user paths, and
+session-memory headings. The reviewed baseline contains one existing
+`memory-section` finding in `.gemini/GEMINI.md`; no instruction files were changed.
+CI compares exact structured findings and fails on new or disappearing debt, providing
+compliance-regression evidence without asserting that the existing finding is resolved.
+
 ## Phase 5 dead-reference follow-up
 
 The new `scripts/dead_reference_check.py` scans canonical command documentation for
