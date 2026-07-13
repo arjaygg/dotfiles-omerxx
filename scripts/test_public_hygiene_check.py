@@ -16,10 +16,12 @@ class PublicHygieneCheckTests(unittest.TestCase):
         self.assertEqual(findings, [])
 
     def test_detects_private_paths_org_urls_and_secret_assignments(self):
+        home_path = "/" + "Users/alice/.config"
+        org_url = "https://dev." + "azure.com/bofaz/project"
         findings = scan_text(
             "runtime.md",
-            "path=/Users/alice/.config\n"
-            "ado=https://dev.azure.com/bofaz/project\n"
+            f"path={home_path}\n"
+            f"ado={org_url}\n"
             'tok' + 'en = "sk-live-12345678901234567890"\n',
         )
 
@@ -65,7 +67,7 @@ class PublicHygieneCheckTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "target.md").write_text("portable\n", encoding="utf-8")
-            (root / "link.md").symlink_to("/Users/alice/.config")
+            (root / "link.md").symlink_to("/" + "Users/alice/.config")
             subprocess.run(["git", "init", "-q", str(root)], check=True)
             subprocess.run(["git", "-C", str(root), "add", "target.md", "link.md"], check=True)
 
@@ -79,7 +81,8 @@ class PublicHygieneCheckTests(unittest.TestCase):
     def test_baseline_reports_added_and_removed_findings(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "tracked.md").write_text("path=/Users/alice/.config\n", encoding="utf-8")
+            home_path = "/" + "Users/alice/.config"
+            (root / "tracked.md").write_text(f"path={home_path}\n", encoding="utf-8")
             subprocess.run(["git", "init", "-q", str(root)], check=True)
             subprocess.run(["git", "-C", str(root), "add", "tracked.md"], check=True)
             baseline = root / "baseline.json"
@@ -92,7 +95,8 @@ class PublicHygieneCheckTests(unittest.TestCase):
     def test_baseline_matches_finding_fingerprint(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "tracked.md").write_text("path=/Users/alice/.config\n", encoding="utf-8")
+            home_path = "/" + "Users/alice/.config"
+            (root / "tracked.md").write_text(f"path={home_path}\n", encoding="utf-8")
             subprocess.run(["git", "init", "-q", str(root)], check=True)
             subprocess.run(["git", "-C", str(root), "add", "tracked.md"], check=True)
             fingerprint = _fingerprint({("tracked.md", 1, "absolute-home-path")})
