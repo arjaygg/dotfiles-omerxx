@@ -6,6 +6,9 @@ This report records validation for the approved Phase 0 source branch,
 `chore/phase0-config-boundary`. It does not authorize live runtime application,
 instruction-hierarchy, or live-runtime changes.
 
+Requirement-by-requirement status is tracked in
+`plans/2026-07-13-completion-audit.md`.
+
 ## Live-apply precondition
 
 The live `~/.claude/settings.json` still resolves to the main checkout, and its
