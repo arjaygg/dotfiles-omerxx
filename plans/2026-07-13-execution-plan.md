@@ -21,7 +21,7 @@ the initial tracked source scan; the latest recheck reports 390, so the phase re
 incomplete.
 
 **Additional safe progress:** `scripts/config_doctor.py` provides a read-only doctor
-for tracked client configs and reports 61 current issues without mutating files.
+for tracked client configs and reports 62 current issues without mutating files.
 
 1. Classify every organization/path/secret match as portable source, fixture,
    historical record, work context, or sensitive data; preserve only intentional
@@ -62,7 +62,7 @@ maintained fixture-contract update before Phase 1 can be accepted.
 The new Python runner and seven-case current manifest pass all cases while asserting
 the structured decision, providing the first maintained runtime evidence for the gate.
 The read-only doctor now accepts `--live-settings`; the current live settings compare
-cleanly with this branch's source, while the 61 source issues remain.
+cleanly with this branch's source, while the 62 source issues remain.
 The proposed disposition matrix is recorded in
 `plans/2026-07-13-phase0-classification.md`; no cleanup decision is implied by that
 classification.

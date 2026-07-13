@@ -1,4 +1,5 @@
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -102,6 +103,25 @@ class ConfigDoctorTests(unittest.TestCase):
         self.assertEqual([issue.rule for issue in issues], ["runtime-drift"])
         self.assertEqual(after_source, before_source)
         self.assertEqual(after_runtime, before_runtime)
+
+    def test_tracked_local_overlay_is_reported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            make_config_tree(root)
+            local_settings = root / ".claude/settings.local.json"
+            local_settings.parent.mkdir(parents=True, exist_ok=True)
+            local_settings.write_text('{"local": true}\n', encoding="utf-8")
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(
+                ["git", "-C", str(root), "add", "-f", ".claude/settings.local.json"], check=True
+            )
+
+            issues = run_doctor(root)
+
+        self.assertEqual(
+            [issue.rule for issue in issues],
+            ["tracked-local-overlay"],
+        )
 
 
 if __name__ == "__main__":

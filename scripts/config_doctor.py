@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import tomllib
 from dataclasses import asdict, dataclass
@@ -103,6 +104,21 @@ def run_doctor(root: Path) -> list[Issue]:
                         "skipDangerousModePermissionPrompt must not be enabled in tracked source",
                     )
                 )
+
+    tracked_local = subprocess.run(
+        ["git", "-C", str(root), "ls-files", "--error-unmatch", "--", ".claude/settings.local.json"],
+        capture_output=True,
+        check=False,
+    )
+    if tracked_local.returncode == 0:
+        issues.append(
+            Issue(
+                ".claude/settings.local.json",
+                "tracked-local-overlay",
+                "error",
+                "machine-local settings are tracked; move them to an ignored overlay after review",
+            )
+        )
 
     guard_path = root / ".claude/hooks/settings-symlink-guard.sh"
     if guard_path.is_file():
