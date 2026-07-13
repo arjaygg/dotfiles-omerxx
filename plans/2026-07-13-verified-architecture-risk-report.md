@@ -150,6 +150,11 @@ to the current blocking contract; the observed behavior matches the hook's docum
 JSON-decision path. This evidence is useful but does not replace a maintained current
 fixture suite.
 
+Added a maintained Python fixture runner and seven-case manifest for the current
+`pre-tool-gate-v2.sh`. It asserts both silent allows and schema-valid JSON denies; the
+runner passes all seven cases. The old shell harness remains unchanged and still has
+stale archived expectations, so both results are recorded rather than conflated.
+
 ## Recommendation
 
 Do not begin broad Phase 0/1 implementation in the same change as this report. First
