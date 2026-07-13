@@ -43,6 +43,11 @@ for tracked client configs and reports 61 current issues without mutating files.
 before contextual checks; each invocation emits one valid decision; blocking and
 rewriting are proven by observed behavior; analytics is off the synchronous path.
 
+**Verified baseline:** the official hooks reference confirms parallel handler
+execution and ignored matchers on several current event types; the tracked settings
+contain six such unsupported matchers and two-handler worktree groups. No hook code has
+been changed yet.
+
 1. Capture representative payloads for PreToolUse, PostToolUse, UserPromptSubmit,
    SessionStart, Stop, PreCompact, ConfigChange, worktree, and MCP calls.
 2. Validate the current hook schema and exit semantics on macOS and Linux-compatible

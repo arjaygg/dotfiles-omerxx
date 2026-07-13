@@ -109,6 +109,21 @@ symlink guard without writing files. Its eight-test combined suite passes. The c
 doctor baseline is 61 issues: 59 warnings for config privacy/path findings and two
 errors (`unsafe-bypass` and `runtime-copyback`).
 
+## Hook-schema verification update
+
+The current Claude Code hooks reference documents that matching hook handlers execute
+in parallel, that `matcher` is ignored for `UserPromptSubmit`, `Stop`, `TaskCreated`,
+`TaskCompleted`, `WorktreeCreate`, and `WorktreeRemove`, and that tool matchers use
+exact-string or JavaScript-regex semantics depending on their characters. See the
+[official hooks reference](https://code.claude.com/docs/en/hooks).
+
+Against that reference, the tracked settings contain six matcher fields on those
+matcher-unsupported events, plus two handlers each for `WorktreeCreate` and
+`WorktreeRemove`. This is a confirmed configuration risk: the six filters do not scope
+execution as their authors appear to intend, and the two-handler worktree groups must
+not be assumed to run sequentially. Runtime fixture tests are still required to prove
+actual blocking, rewriting, and exit-code behavior.
+
 ## Recommendation
 
 Do not begin broad Phase 0/1 implementation in the same change as this report. First
