@@ -35,6 +35,20 @@ python3 scripts/config_generate.py \
 
 Review the JSON output; do not redirect it to a live configuration path.
 
+To build a deterministic, proposal-only bundle for every manifest client (including
+Codex TOML), use:
+
+```sh
+python3 scripts/config_generate_all.py \\
+  --set PCTX_CONFIG=~/.config/pctx/pctx.json \\
+  --set USER_NAME=portable-user
+```
+
+The command emits a JSON envelope containing each client's format, runtime destination,
+and rendered proposal. It never writes the bases, overlays, or runtime files. Pass
+`--overlay-dir` explicitly to merge ignored local overlays, or `--client NAME` to limit
+the bundle to selected manifest clients.
+
 Portable client bases use explicit `${NAME}` markers. Supply replacements with
 `--set`; the generator never reads process environment variables implicitly:
 
