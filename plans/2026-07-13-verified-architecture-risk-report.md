@@ -160,6 +160,11 @@ Extended the doctor with read-only source/runtime drift detection. The live
 this branch's tracked settings produced no `runtime-drift` issue. The doctor still
 reports the same 62 source issues. No file was copied, linked, or modified.
 
+Added an explicit `.gitignore` entry for future `.claude/settings.local.json` files.
+Verification shows the path is now ignored for new files but remains tracked (`tracked=yes`)
+and still produces the doctor error; untracking it is intentionally deferred to the
+review-gated migration.
+
 Added `plans/2026-07-13-phase0-classification.md`, which maps the scanner findings to
 portable base templates, ignored local/work overlays, sanitized fixtures, or human
 review. It specifically identifies tracked `.claude/settings.local.json`, Codex trust

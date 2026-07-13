@@ -66,6 +66,8 @@ cleanly with this branch's source, while the 62 source issues remain.
 The proposed disposition matrix is recorded in
 `plans/2026-07-13-phase0-classification.md`; no cleanup decision is implied by that
 classification.
+The future local-overlay ignore rule is now present, but the existing tracked file is
+intentionally not removed until review.
 
 1. Capture representative payloads for PreToolUse, PostToolUse, UserPromptSubmit,
    SessionStart, Stop, PreCompact, ConfigChange, worktree, and MCP calls.
