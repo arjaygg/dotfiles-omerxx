@@ -93,6 +93,14 @@ worktree handlers visible as explicit debt without changing the current settings
 pretending that those findings are resolved. The baseline comparison and malformed-entry
 handling are covered by unit tests; the CI workflow runs the comparison on each PR.
 
+## Shell syntax validation follow-up
+
+The read-only `scripts/shell_syntax_check.py` validator runs `bash -n` over the governed
+Claude, Codex, Cursor, Gemini, and support-script shell trees. The current inventory is 88
+`.sh`/`.bash` files and passes locally; the validator is now a blocking CI step. This is
+syntax coverage only and does not claim ShellCheck, shfmt, runtime portability, or hook
+behavioral coverage.
+
 ## Tests not yet run
 
 - Full behavior coverage for every registered hook event and matcher.
