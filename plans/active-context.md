@@ -93,7 +93,7 @@ focus: Linux/macOS policy-validation matrix
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
   proposal-only client bases/generator.
-- Current evidence: 161 Python tests pass, 10 maintained PreToolUse fixtures pass, the
+- Current evidence: 162 Python tests pass, 10 maintained PreToolUse fixtures pass, the
   hygiene scanner reports 372 findings against a reviewed fingerprint baseline, and
   the doctor reports 59 residual findings against a reviewed fingerprint baseline.
 - A preflight live-settings backup and SHA-256 manifest are stored outside Git under
