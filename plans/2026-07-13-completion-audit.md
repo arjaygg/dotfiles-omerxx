@@ -22,9 +22,9 @@ completion while review-gated work or acceptance criteria remain open.
 | Phase 0 copy-back prevention and unsafe bypass removal | **merged, runtime apply pending** | PR #296 and post-merge checks; live installation was not performed |
 | Portable bases and proposal-only generation | **partially implemented** | Six-client JSON/TOML proposals, explicit overlays/placeholders, 55+ tests; no runtime wiring |
 | Public repository hygiene and secret scanning | **not achieved** | 369 findings remain; user deferred remediation |
-| Atomic runtime generation, backups, and clean bootstrap | **not achieved** | Read-only staging/diff exists; no atomic live writer, backup migration, or clean-machine proof |
+| Atomic runtime generation, backups, and clean bootstrap | **staging-only implemented** | Marked staging tree now writes atomically and backs up opt-in replacements; live runtime writer, migration, and clean-machine proof remain absent |
 | Phase 1 deterministic hook/permission architecture | **partially implemented** | Static handler/fixture contracts and exact conflict checker; runtime hook is absent and eight static matcher findings remain |
-| Phase 2 multi-client generation/bootstrap | **partially implemented** | `generate`, `diff`, `doctor`, manifest validation, and TOML rendering exist; `setup.sh` wiring and migration remain |
+| Phase 2 multi-client generation/bootstrap | **partially implemented** | `generate`, `diff`, `doctor`, marked `stage`, manifest validation, and TOML rendering exist; `setup.sh` wiring and live migration remain |
 | Phase 3 governed self-improvement funnel | **partially implemented** | Proposal validator and no-auto-promotion guidance exist; signal collection, recurrence storage, evals, and promotion workflow remain |
 | Phase 4 instruction-cost reduction | **partially implemented** | Budget checker and CI baseline exist; effective-context measurement and rule extraction/evals remain |
 | Phase 5 governance/CI coverage | **partially implemented** | 73-test CI job, budgets, and exact conflict checks exist; full shell/schema/dead-reference/runtime matrix remains |
