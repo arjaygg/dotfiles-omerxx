@@ -11,6 +11,8 @@ focus: approved Phase 0 source implementation; proposal validation before live m
   proposal-only Claude generator.
 - Current evidence: 34 Python tests pass, 7 maintained PreToolUse fixtures pass, the
   hygiene scanner reports 369 findings, and the doctor reports 59 residual findings.
+- A preflight live-settings backup and SHA-256 manifest are stored outside Git under
+  `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`.
 - Live runtime configuration, broad permission allows, canonical instruction hierarchy,
   and ordering-sensitive Phase 1 hooks remain unchanged pending separate review.
 

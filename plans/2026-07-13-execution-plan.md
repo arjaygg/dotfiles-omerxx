@@ -131,7 +131,7 @@ conflicting permissions/hooks, dead references, and instruction-budget regressio
 ## Migration, rollback, and review gates
 
 - Before Phase 0, snapshot live runtime settings outside Git and record checksums;
-  never commit secrets or raw transcripts.
+  this preflight snapshot is complete. Never commit secrets or raw transcripts.
 - Generate proposal-only diffs first; apply runtime changes only after explicit review.
 - Keep the old distribution path available until a clean-machine bootstrap and a
   repeated idempotency run pass.

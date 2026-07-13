@@ -17,6 +17,7 @@ instruction-hierarchy, or live-runtime changes.
 | `python3 -m scripts.config_doctor --live-settings "$HOME/.claude/settings.json" --json` | 59 source findings plus 1 expected runtime-drift; no mutation |
 | `python3 scripts/public_hygiene_check.py --json` | 369 findings: 133 absolute paths, 185 private-name matches, 51 private-URL matches |
 | `git diff --check` | passed |
+| Preflight runtime snapshot | `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`; SHA-256 manifest recorded outside Git |
 | `git status --short --branch` | isolated Phase 0 branch; clean after commit |
 
 The nonzero scanner and doctor results are expected because they report the unresolved
@@ -47,8 +48,8 @@ therefore the only current multi-case runtime evidence for the pre-tool gate.
 
 ## Review-gated migration sequence
 
-1. Snapshot live runtime settings and checksums outside Git; exclude secrets and
-   transcripts from all artifacts.
+1. Completed: snapshot live runtime settings and checksums outside Git; exclude secrets
+   and transcripts from all repository artifacts.
 2. Review the Phase 0 branch diff and proposal output.
 3. Create any remaining sanitized tracked bases plus ignored identity, path, work-context, and secret
    overlays; generate proposal-only diffs first.
