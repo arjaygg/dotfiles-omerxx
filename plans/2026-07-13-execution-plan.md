@@ -62,6 +62,9 @@ The new Python runner and seven-case current manifest pass all cases while asser
 the structured decision, providing the first maintained runtime evidence for the gate.
 The read-only doctor now accepts `--live-settings`; the current live settings compare
 cleanly with this branch's source, while the 61 source issues remain.
+The proposed disposition matrix is recorded in
+`plans/2026-07-13-phase0-classification.md`; no cleanup decision is implied by that
+classification.
 
 1. Capture representative payloads for PreToolUse, PostToolUse, UserPromptSubmit,
    SessionStart, Stop, PreCompact, ConfigChange, worktree, and MCP calls.

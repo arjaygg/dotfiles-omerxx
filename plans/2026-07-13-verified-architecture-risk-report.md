@@ -160,6 +160,12 @@ Extended the doctor with read-only source/runtime drift detection. The live
 this branch's tracked settings produced no `runtime-drift` issue. The doctor still
 reports the same 61 source issues. No file was copied, linked, or modified.
 
+Added `plans/2026-07-13-phase0-classification.md`, which maps the scanner findings to
+portable base templates, ignored local/work overlays, sanitized fixtures, or human
+review. It specifically identifies tracked `.claude/settings.local.json`, Codex trust
+lists, MCP binary paths, organization-specific skills, and historical work context;
+it does not delete or rewrite any of them.
+
 ## Recommendation
 
 Do not begin broad Phase 0/1 implementation in the same change as this report. First
