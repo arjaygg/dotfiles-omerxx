@@ -1,19 +1,4 @@
 {
   "schema": 1,
-  "findings": [
-    {"kind": "broken-symlink", "source": ".claude/skills/auc-dev-a", "reference": "../../ai/skills/auc-dev-a", "message": "symlink target does not exist"},
-    {"kind": "broken-symlink", "source": ".claude/skills/auc-dev-b", "reference": "../../ai/skills/auc-dev-b", "message": "symlink target does not exist"},
-    {"kind": "broken-symlink", "source": ".claude/skills/auc-dev-c", "reference": "../../ai/skills/auc-dev-c", "message": "symlink target does not exist"},
-    {"kind": "broken-symlink", "source": ".claude/skills/auc-devintegration-suite", "reference": "../../ai/skills/auc-devintegration-suite", "message": "symlink target does not exist"},
-    {"kind": "broken-symlink", "source": ".claude/skills/auc-manifest-review", "reference": "../../ai/skills/auc-manifest-review", "message": "symlink target does not exist"},
-    {"kind": "broken-symlink", "source": ".claude/skills/auc-qa", "reference": "../../ai/skills/auc-qa", "message": "symlink target does not exist"},
-    {"kind": "broken-symlink", "source": ".claude/skills/auc-sm", "reference": "../../ai/skills/auc-sm", "message": "symlink target does not exist"},
-    {"kind": "broken-symlink", "source": ".claude/skills/auc-tech-writer", "reference": "../../ai/skills/auc-tech-writer", "message": "symlink target does not exist"},
-    {"kind": "broken-symlink", "source": ".claude/skills/migration-clean", "reference": "../../ai/skills/migration-clean", "message": "symlink target does not exist"},
-    {"kind": "broken-symlink", "source": ".claude/skills/migration-watchdog", "reference": "../../ai/skills/migration-watchdog", "message": "symlink target does not exist"},
-    {"kind": "broken-symlink", "source": ".claude/skills/migration-watchdog-auto", "reference": "../../ai/skills/migration-watchdog-auto", "message": "symlink target does not exist"},
-    {"kind": "broken-symlink", "source": ".claude/skills/sqlserver-integration-tester", "reference": "../../ai/skills/sqlserver-integration-tester", "message": "symlink target does not exist"},
-    {"kind": "broken-symlink", "source": ".claude/skills/watchdog-cron-setup", "reference": "../../ai/skills/watchdog-cron-setup", "message": "symlink target does not exist"},
-    {"kind": "broken-symlink", "source": ".claude/skills/watchdog-remediate", "reference": "../../ai/skills/watchdog-remediate", "message": "symlink target does not exist"}
-  ]
+  "findings": []
 }
