@@ -4,6 +4,22 @@
 # point back to the Unified AI Hub (ai/skills/).
 # GNU Stow mirrors this structure into your Home directory automatically.
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Read-only proposal and doctor modes must return before any directory creation,
+# stow operation, package installation, or symlink mutation below.
+case "${1:-}" in
+    --dry-run)
+        exec python3 "$ROOT_DIR/scripts/ai_config.py" generate \
+            --root "$ROOT_DIR" \
+            --set PCTX_CONFIG='~/.config/pctx/pctx.json' \
+            --set USER_NAME=portable-user
+        ;;
+    --check)
+        exec python3 "$ROOT_DIR/scripts/ai_config.py" doctor --root "$ROOT_DIR"
+        ;;
+esac
+
 # Ensure directories exist for stow to link into if they aren't already managed
 mkdir -p ~/.config/pctx
 mkdir -p ~/.cursor
