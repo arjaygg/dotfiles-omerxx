@@ -22,7 +22,7 @@ PR [#296](https://github.com/arjaygg/dotfiles-omerxx/pull/296) merged the Phase 
 configuration-boundary changes at `1036a591`. The current test-only follow-up is
 published on branch
 [`chore/phase1-hook-validation-tests`](https://github.com/arjaygg/dotfiles-omerxx/tree/chore/phase1-hook-validation-tests)
-and has no PR yet.
+and is tracked by draft PR [#297](https://github.com/arjaygg/dotfiles-omerxx/pull/297).
 
 ## Commands and results
 
