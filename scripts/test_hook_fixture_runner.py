@@ -12,6 +12,59 @@ class HookFixtureRunnerTests(unittest.TestCase):
 
         self.assertEqual(failures, [])
 
+    def test_allow_rewrite_requires_structured_updated_input(self):
+        case = {
+            "expect": "allow",
+            "input": {"tool_input": {"command": "git status", "description": "status"}},
+            "expected_updated_input": {
+                "command": "git status --short",
+                "description": "status",
+            },
+        }
+        stdout = json.dumps(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "allow",
+                    "permissionDecisionReason": "normalized",
+                    "updatedInput": case["expected_updated_input"],
+                }
+            }
+        )
+
+        self.assertEqual(check_result(case, 0, stdout, ""), [])
+        self.assertNotEqual(check_result(case, 0, stdout.replace('"description": "status"', ""), ""), [])
+
+    def test_rewrite_requires_object_updated_input(self):
+        case = {"expect": "allow", "expected_updated_input": {"command": "safe"}}
+        stdout = json.dumps(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "allow",
+                    "permissionDecisionReason": "normalized",
+                    "updatedInput": ["safe"],
+                }
+            }
+        )
+
+        self.assertNotEqual(check_result(case, 0, stdout, ""), [])
+
+    def test_structured_rewrite_rejects_stdout_contamination(self):
+        case = {"expect": "allow", "expected_updated_input": {"command": "safe"}}
+        stdout = "debug\n" + json.dumps(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "allow",
+                    "permissionDecisionReason": "normalized",
+                    "updatedInput": {"command": "safe"},
+                }
+            }
+        )
+
+        self.assertNotEqual(check_result(case, 0, stdout, ""), [])
+
     def test_deny_result_requires_structured_decision(self):
         stdout = json.dumps(
             {
@@ -92,6 +145,28 @@ class HookFixtureRunnerTests(unittest.TestCase):
             cases = load_manifest(manifest)
 
         self.assertEqual([case["expect"] for case in cases], ["ask", "deny"])
+
+    def test_manifest_rejects_rewrite_that_drops_original_tool_input(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "fixtures.json"
+            manifest.write_text(
+                json.dumps(
+                    [
+                        {
+                            "name": "rewrite",
+                            "expect": "allow",
+                            "input": {
+                                "tool_input": {"command": "safe", "description": "keep me"}
+                            },
+                            "expected_updated_input": {"command": "safer"},
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "description"):
+                load_manifest(manifest)
 
     def test_runner_executes_a_fixture_and_loads_manifest(self):
         with tempfile.TemporaryDirectory() as directory:
