@@ -126,6 +126,12 @@ baseline and candidate metric artifacts, reports deltas, and always emits
 `decision: review-required` with `auto_promote: false`. It does not collect transcripts,
 write proposals, or infer whether a metric is better; human review remains required.
 
+The explicit `policy_decision.py` command records human accept/reject/defer outcomes in a
+caller-selected JSONL ledger using only the proposal ID, SHA-256, rationale, dates, and an
+`applied: false` marker. It appends atomically, rejects invalid proposals, and never writes
+canonical policy or raw evidence. The ledger path is intentionally explicit and should be
+kept outside the public repository when it contains private review rationale.
+
 ## Tests not yet run
 
 - Full behavior coverage for every registered hook event and matcher.
