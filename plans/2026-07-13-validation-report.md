@@ -60,12 +60,21 @@ their declared JSON/TOML format, and makes the direct `scripts/config_doctor.py`
 work from the repository root. It does not replace tracked-runtime scanning, write files,
 or change `setup.sh`; the observed doctor baseline remains 59 issues.
 
+## Phase 4 instruction-budget follow-up
+
+The stacked instruction-budget checker measures lines, words, and bytes deterministically
+and reports explicit threshold violations without editing guidance. A current baseline is
+`AGENTS.md` 132 lines / 742 words, `CLAUDE.md` 11 / 57, and
+`ai/rules/agent-user-global.md` 175 / 1,575; no threshold was exceeded in the baseline
+check. The checker is not yet wired into CI or a client-specific effective-context
+calculation.
+
 ## Tests not yet run
 
 - Full behavior coverage for every registered hook event and matcher.
 - Cross-platform macOS/Linux execution of the complete hook fleet.
-- Atomic-write, clean-clone, TOML generation, and runtime-wiring tests; the generator
-  remains proposal-only JSON and does not write runtime files.
+- Atomic-write, clean-clone, and runtime-wiring tests; JSON/TOML proposal generation is
+  covered, but it remains proposal-only and does not write runtime files.
 - Permission-versus-hook contradiction tests after a reviewed policy disposition.
 - Clean-machine bootstrap and runtime migration verification.
 - Full Git-history and out-of-worktree local-overlay exposure review.
