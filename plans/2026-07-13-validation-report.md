@@ -17,6 +17,9 @@ performed; branch installation/merge must precede runtime application.
 The branch is published as draft PR [#296](https://github.com/arjaygg/dotfiles-omerxx/pull/296)
 for review. It has not been merged.
 
+As of 2026-07-13, PR #296 is open, draft, mergeable, and both `claude-auto-coverage-gate`
+and `claude-auto-diff-size-gate` have passed. This does not substitute for human review.
+
 ## Commands and results
 
 | Command | Result |
