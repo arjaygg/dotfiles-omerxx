@@ -117,6 +117,10 @@ and explicitly forbids inferred plugin paths or canonical-policy mutation. A reg
 test checks the stale path and preserves the proposal-only boundary; no learning data or
 policy files are auto-generated.
 
+The proposal validator now requires `review_after` to be either a valid ISO date or an
+explicit `condition:<description>`, making revalidation/expiry metadata machine-checkable
+without promoting or applying the proposal.
+
 ## Tests not yet run
 
 - Full behavior coverage for every registered hook event and matcher.
