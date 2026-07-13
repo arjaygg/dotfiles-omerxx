@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -96,16 +97,69 @@ def scan_repo(root: Path) -> list[Finding]:
     return findings
 
 
+def _finding_key(finding: Finding) -> tuple[str, int, str]:
+    return finding.path, finding.line, finding.rule
+
+
+def _fingerprint(keys: set[tuple[str, int, str]]) -> str:
+    encoded = "\n".join(f"{path}\0{line}\0{rule}" for path, line, rule in sorted(keys))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _load_baseline(path: Path) -> tuple[int, str]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid public-hygiene baseline: {error}") from error
+    if not isinstance(payload, dict) or set(payload) != {"schema", "finding_count", "fingerprint"}:
+        raise ValueError("public-hygiene baseline must contain schema, finding_count, and fingerprint")
+    if payload["schema"] != 1 or not isinstance(payload["finding_count"], int) or payload["finding_count"] < 0:
+        raise ValueError("public-hygiene baseline has invalid schema or finding_count")
+    fingerprint = payload["fingerprint"]
+    if not isinstance(fingerprint, str) or len(fingerprint) != 64 or any(char not in "0123456789abcdef" for char in fingerprint):
+        raise ValueError("public-hygiene baseline has invalid fingerprint")
+    return payload["finding_count"], fingerprint
+
+
+def compare_baseline(root: Path, baseline_path: Path) -> dict[str, object]:
+    """Compare tracked findings with a reviewed no-regressions baseline."""
+
+    actual = {_finding_key(finding) for finding in scan_repo(root)}
+    expected_count, expected_fingerprint = _load_baseline(baseline_path)
+    actual_fingerprint = _fingerprint(actual)
+    return {
+        "schema": 1,
+        "finding_count": len(actual),
+        "baseline_finding_count": expected_count,
+        "fingerprint": actual_fingerprint,
+        "baseline_fingerprint": expected_fingerprint,
+        "baseline_match": len(actual) == expected_count and actual_fingerprint == expected_fingerprint,
+    }
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", nargs="?", type=Path, default=Path.cwd())
     parser.add_argument("--json", action="store_true", dest="as_json")
+    parser.add_argument("--baseline", type=Path)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     root = args.root.resolve()
+    if args.baseline is not None:
+        try:
+            report = compare_baseline(root, args.baseline)
+        except (OSError, UnicodeError, ValueError) as error:
+            print(f"public hygiene baseline rejected: {error}", file=sys.stderr)
+            return 2
+        if args.as_json:
+            print(json.dumps(report, indent=2, sort_keys=True))
+        else:
+            print(f"public hygiene findings: {report['finding_count']}")
+            print(f"baseline match: {report['baseline_match']}")
+        return 0 if report["baseline_match"] else 1
     findings = scan_repo(root)
     if args.as_json:
         print(json.dumps([asdict(finding) for finding in findings], indent=2))

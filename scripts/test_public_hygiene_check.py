@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.public_hygiene_check import scan_repo, scan_text
+from scripts.public_hygiene_check import _fingerprint, compare_baseline, scan_repo, scan_text
 
 
 class PublicHygieneCheckTests(unittest.TestCase):
@@ -60,6 +60,34 @@ class PublicHygieneCheckTests(unittest.TestCase):
             findings = scan_repo(root)
 
         self.assertEqual([(finding.path, finding.rule) for finding in findings], [("tracked.md", "private-org-name")])
+
+    def test_baseline_reports_added_and_removed_findings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "tracked.md").write_text("path=/Users/alice/.config\n", encoding="utf-8")
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "-C", str(root), "add", "tracked.md"], check=True)
+            baseline = root / "baseline.json"
+            baseline.write_text('{"schema": 1, "finding_count": 0, "fingerprint": "' + "0" * 64 + '"}', encoding="utf-8")
+            report = compare_baseline(root, baseline)
+
+        self.assertEqual(report["finding_count"], 1)
+        self.assertFalse(report["baseline_match"])
+
+    def test_baseline_matches_finding_fingerprint(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "tracked.md").write_text("path=/Users/alice/.config\n", encoding="utf-8")
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "-C", str(root), "add", "tracked.md"], check=True)
+            fingerprint = _fingerprint({("tracked.md", 1, "absolute-home-path")})
+            baseline = root / "baseline.json"
+            baseline.write_text(
+                f'{{"schema": 1, "finding_count": 1, "fingerprint": "{fingerprint}"}}',
+                encoding="utf-8",
+            )
+            report = compare_baseline(root, baseline)
+        self.assertTrue(report["baseline_match"])
 
 
 if __name__ == "__main__":
