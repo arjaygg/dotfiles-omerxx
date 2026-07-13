@@ -4,6 +4,16 @@ plan: plans/2026-07-13-execution-plan.md
 step: Phase 0 of 5
 focus: read-only validation complete; review-gated configuration migration
 
+## Current (2026-07-13) — Phase 0/1 audit checkpoint
+
+- Read-only hygiene, config-doctor, hook-schema, and maintained fixture validation are
+  complete on `chore/add-scratchpad-compaction-rule`.
+- Current evidence: 22 Python tests pass, 7 maintained PreToolUse fixtures pass, the
+  hygiene scanner reports 388 findings, and the doctor reports 68 findings with
+  remediation guidance.
+- Permission semantics, machine-wide hooks, canonical instruction hierarchy, and live
+  runtime configuration remain unchanged pending human review.
+
 ## Current (2026-07-09) — Phase 4 checkpoint, session restart required
 
 **Why checkpointing now instead of continuing:** this session has hit its 3rd `/compact` this
