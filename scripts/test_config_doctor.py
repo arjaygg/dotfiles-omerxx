@@ -1,5 +1,6 @@
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,6 +17,7 @@ CONFIG_FILES = (
     (".windsurf/mcp_config.json", "json"),
     ("mcp.json", "json"),
 )
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def make_config_tree(root: Path) -> None:
@@ -139,6 +141,78 @@ class ConfigDoctorTests(unittest.TestCase):
             [issue.rule for issue in issues],
             ["blanket-permission-allow", "blanket-permission-allow"],
         )
+
+    def test_manifest_base_is_validated_when_present(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            make_config_tree(root)
+            base = root / "ai/config/claude/settings.base.json"
+            base.parent.mkdir(parents=True, exist_ok=True)
+            base.write_text('{"portable": true}\n', encoding="utf-8")
+            (root / "ai/config/manifest.json").write_text(
+                json.dumps(
+                    {
+                        "version": 1,
+                        "clients": [
+                            {
+                                "name": "claude",
+                                "format": "json",
+                                "base": "ai/config/claude/settings.base.json",
+                                "runtime": "~/.claude/settings.json",
+                                "overlay": "~/.config/dotfiles-ai/claude.overlay.json",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            issues = run_doctor(root)
+
+        self.assertEqual([issue.rule for issue in issues if issue.rule.startswith("manifest-")], [])
+
+    def test_manifest_missing_base_is_reported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            make_config_tree(root)
+            manifest = root / "ai/config/manifest.json"
+            manifest.parent.mkdir(parents=True, exist_ok=True)
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "version": 1,
+                        "clients": [
+                            {
+                                "name": "claude",
+                                "format": "json",
+                                "base": "ai/config/claude/missing.json",
+                                "runtime": "~/.claude/settings.json",
+                                "overlay": "~/.config/dotfiles-ai/claude.overlay.json",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            issues = run_doctor(root)
+
+        self.assertEqual(
+            [issue.rule for issue in issues if issue.rule.startswith("manifest-")],
+            ["manifest-missing-base"],
+        )
+
+    def test_script_entrypoint_can_run_from_repository_root(self):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "scripts/config_doctor.py"), "--json"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIsInstance(json.loads(result.stdout), list)
 
 
 if __name__ == "__main__":
