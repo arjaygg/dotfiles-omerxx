@@ -79,9 +79,19 @@ conflicts. This is intentionally conservative: it does not claim to model wildca
 ## Phase 5 CI validation follow-up
 
 The new `.github/workflows/ai-policy-validation.yml` runs the maintained Python tests,
-the explicit instruction budgets, and the exact permission/hook conflict checker on PRs
-targeting `main`. It has read-only repository permissions and does not run runtime diff,
-setup, migration, or unresolved baseline hygiene scanners as blocking checks.
+the maintained pre-tool fixture runner, the explicit instruction budgets, and the exact
+permission/hook conflict checker on every PR layer. It has read-only repository permissions
+and does not run runtime diff, setup, migration, or unresolved baseline hygiene scanners as
+blocking checks.
+
+## Reviewed hook-configuration baseline follow-up
+
+The read-only `hook_config_check.py --baseline` mode now records the eight known findings
+in `scripts/fixtures/hook-config-baseline.json` and fails when a new finding appears or a
+reviewed finding disappears unexpectedly. This makes unsupported matchers and parallel
+worktree handlers visible as explicit debt without changing the current settings or
+pretending that those findings are resolved. The baseline comparison and malformed-entry
+handling are covered by unit tests; the CI workflow runs the comparison on each PR.
 
 ## Tests not yet run
 
@@ -90,6 +100,8 @@ setup, migration, or unresolved baseline hygiene scanners as blocking checks.
 - Atomic-write, clean-clone, and runtime-wiring tests; JSON/TOML proposal generation is
   covered, but it remains proposal-only and does not write runtime files.
 - Wildcard/regex permission-versus-hook contradiction tests and runtime confirmation.
+- Intentional hook-configuration baseline cleanup and ordering changes; those remain
+  review-gated because they would alter current hook behavior.
 - Clean-machine bootstrap and runtime migration verification.
 - Full Git-history and out-of-worktree local-overlay exposure review.
 
