@@ -41,6 +41,7 @@ ai/skills/coach/coach-persona.ts
 # Local configurations (do not commit secrets or machine-specific paths)
 .config/
 !.config/pctx/
+.config/dotfiles-ai/
 .claude/settings.local.json
 .mcp.json
 .mcp.local.json
