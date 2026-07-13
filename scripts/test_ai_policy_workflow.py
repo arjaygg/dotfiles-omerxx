@@ -27,6 +27,8 @@ class AiPolicyWorkflowTests(unittest.TestCase):
         self.assertIn("scripts/fixtures/dead-reference-baseline.json", text)
         self.assertIn("scripts/bootstrap_check.py", text)
         self.assertIn("scripts/learning_signal.py", text)
+        self.assertIn("scripts/shellcheck_check.py", text)
+        self.assertIn("scripts/fixtures/shellcheck-baseline.json", text)
         self.assertIn("scripts/permission_hook_conflicts.py", text)
 
     def test_workflow_is_read_only_and_scoped_to_main_prs(self):

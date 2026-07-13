@@ -74,5 +74,12 @@ jobs:
       - name: Validate learning signal CLI surface
         run: python3 scripts/learning_signal.py --help
 
+      - name: Check ShellCheck errors against reviewed baseline
+        run: >-
+          python3 scripts/shellcheck_check.py
+          --baseline scripts/fixtures/shellcheck-baseline.json
+          --require
+          --json
+
       - name: Check exact permission and hook conflicts
         run: python3 scripts/permission_hook_conflicts.py .claude/settings.json
