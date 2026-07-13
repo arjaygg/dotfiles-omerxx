@@ -111,6 +111,9 @@ jobs:
           --set PCTX_CONFIG=~/.config/pctx/pctx.json
           --set USER_NAME=portable-user
 
+      - name: Verify proposal-only setup dry-run
+        run: bash setup.sh --dry-run
+
       - name: Validate learning signal CLI surface
         run: python3 scripts/learning_signal.py --help
 

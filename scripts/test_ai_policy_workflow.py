@@ -38,6 +38,7 @@ class AiPolicyWorkflowTests(unittest.TestCase):
         self.assertIn("scripts/dead_reference_check.py", text)
         self.assertIn("scripts/fixtures/dead-reference-baseline.json", text)
         self.assertIn("scripts/bootstrap_check.py", text)
+        self.assertIn("bash setup.sh --dry-run", text)
         self.assertIn("scripts/learning_signal.py", text)
         self.assertIn("scripts/public_hygiene_check.py", text)
         self.assertIn("scripts/fixtures/public-hygiene-baseline.json", text)
@@ -54,7 +55,7 @@ class AiPolicyWorkflowTests(unittest.TestCase):
         self.assertNotIn("branches: [main]", text)
         self.assertIn("contents: read", text)
         self.assertNotIn("scripts/ai_config.py diff", text)
-        self.assertNotIn("setup.sh", text)
+        self.assertNotIn("bash setup.sh --check", text)
 
 
 if __name__ == "__main__":
