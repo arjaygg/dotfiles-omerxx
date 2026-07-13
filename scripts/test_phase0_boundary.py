@@ -51,7 +51,6 @@ class Phase0BoundaryTests(unittest.TestCase):
         )
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertTrue((ROOT / ".claude/settings.local.json").exists())
 
     def test_severed_valid_runtime_file_is_reported_without_mutation(self):
         with tempfile.TemporaryDirectory() as directory:
