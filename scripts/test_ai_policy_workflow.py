@@ -21,6 +21,8 @@ class AiPolicyWorkflowTests(unittest.TestCase):
         self.assertIn("PyYAML==6.0.2", text)
         self.assertIn("yaml.safe_load", text)
         self.assertIn("scripts/instruction_budget.py", text)
+        self.assertIn("scripts/instruction_compliance.py", text)
+        self.assertIn("scripts/fixtures/instruction-compliance-baseline.json", text)
         self.assertIn("scripts/effective_context.py", text)
         self.assertIn("--max-lines 400", text)
         self.assertIn("scripts/dead_reference_check.py", text)

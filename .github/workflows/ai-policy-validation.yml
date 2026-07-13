@@ -52,6 +52,14 @@ jobs:
           --max-bytes 20000
           AGENTS.md CLAUDE.md ai/rules/agent-user-global.md
 
+      - name: Check always-loaded instruction compliance
+        run: >-
+          python3 scripts/instruction_compliance.py
+          --baseline scripts/fixtures/instruction-compliance-baseline.json
+          --json
+          AGENTS.md CLAUDE.md .codex/AGENT.md .gemini/GEMINI.md
+          ai/rules/agent-user-global.md
+
       - name: Measure effective instruction chains
         run: >-
           python3 scripts/effective_context.py
