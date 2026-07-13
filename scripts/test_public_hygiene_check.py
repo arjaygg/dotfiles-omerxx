@@ -61,6 +61,21 @@ class PublicHygieneCheckTests(unittest.TestCase):
 
         self.assertEqual([(finding.path, finding.rule) for finding in findings], [("tracked.md", "private-org-name")])
 
+    def test_repo_scan_inspects_symlink_payload_without_following_target(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "target.md").write_text("portable\n", encoding="utf-8")
+            (root / "link.md").symlink_to("/Users/alice/.config")
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "-C", str(root), "add", "target.md", "link.md"], check=True)
+
+            findings = scan_repo(root)
+
+        self.assertEqual(
+            [(finding.path, finding.rule) for finding in findings],
+            [("link.md", "absolute-home-path")],
+        )
+
     def test_baseline_reports_added_and_removed_findings(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

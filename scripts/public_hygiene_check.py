@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -78,13 +79,21 @@ def _tracked_paths(root: Path) -> Iterable[Path]:
             yield root / raw_path.decode("utf-8")
 
 
+def _tracked_bytes(path: Path) -> bytes:
+    """Read symlink payloads without following links into another checkout."""
+
+    if path.is_symlink():
+        return os.readlink(path).encode("utf-8")
+    return path.read_bytes()
+
+
 def scan_repo(root: Path) -> list[Finding]:
     """Scan UTF-8 tracked files under a git worktree."""
 
     findings: list[Finding] = []
     for path in _tracked_paths(root):
         try:
-            data = path.read_bytes()
+            data = _tracked_bytes(path)
         except OSError:
             continue
         if b"\0" in data:
