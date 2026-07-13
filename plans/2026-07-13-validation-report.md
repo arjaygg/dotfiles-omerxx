@@ -109,6 +109,14 @@ read-only doctor and preserves its nonzero result when findings exist. Both mode
 covered by subprocess tests; the default `setup.sh` install path is unchanged and remains
 review-gated.
 
+## Self-improvement command reference follow-up
+
+`ai/commands/evolve.md` no longer points at the absent `continuous-learning-v2` CLI.
+It now describes review-only guidance, points to the repository-side proposal validator,
+and explicitly forbids inferred plugin paths or canonical-policy mutation. A regression
+test checks the stale path and preserves the proposal-only boundary; no learning data or
+policy files are auto-generated.
+
 ## Tests not yet run
 
 - Full behavior coverage for every registered hook event and matcher.
