@@ -1,6 +1,6 @@
 ---
 name: evolve
-description: Analyze instincts and suggest or generate evolved structures
+description: Analyze instincts and suggest reviewable evolution candidates
 command: true
 ---
 
@@ -8,17 +8,18 @@ command: true
 
 ## Implementation
 
-Run the instinct CLI using the plugin root path:
+This repository does not ship an `instinct-cli.py` implementation. Treat `/evolve` as
+review guidance, not as permission to execute a guessed plugin path or mutate canonical
+policy. Use the `continuous-learning` skill to inspect the documented instinct format,
+then validate any proposed policy artifact with the repository-side validator:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/continuous-learning-v2/scripts/instinct-cli.py" evolve [--generate]
+python3 scripts/policy_proposal.py validate path/to/proposal.json
 ```
 
-Or if `CLAUDE_PLUGIN_ROOT` is not set (manual installation):
-
-```bash
-python3 ~/.claude/skills/continuous-learning-v2/scripts/instinct-cli.py evolve [--generate]
-```
+An external evolution implementation may be used only when its installed path and
+output directory are explicitly verified. Generated artifacts remain candidates and
+must stay outside canonical policy until human review.
 
 Analyzes instincts and clusters related ones into higher-level structures:
 - **Commands**: When instincts describe user-invoked actions
@@ -29,7 +30,6 @@ Analyzes instincts and clusters related ones into higher-level structures:
 
 ```
 /evolve                    # Analyze all instincts and suggest evolutions
-/evolve --generate         # Also generate files under evolved/{skills,commands,agents}
 ```
 
 ## Evolution Rules
@@ -84,9 +84,9 @@ Example:
    - Command candidates (high-confidence workflow instincts)
    - Agent candidates (larger, high-confidence clusters)
 5. Show promotion candidates (project -> global) when applicable
-6. If `--generate` is passed, write files to:
-   - Project scope: `~/.claude/homunculus/projects/<project-id>/evolved/`
-- Global fallback: `~/.claude/homunculus/evolved/`
+6. If a reviewer explicitly requests candidate generation, write only to an ignored,
+   explicitly selected staging directory outside canonical policy; do not infer a home
+   path or write directly into `AGENTS.md`, `CLAUDE.md`, rules, skills, hooks, or CI.
 
 Generated artifacts are candidates only. They must be represented by a validated,
 evidence-backed proposal before review; `/evolve` must not edit canonical policy,
@@ -127,7 +127,8 @@ High confidence instincts (>=80%): 5
 
 ## Flags
 
-- `--generate`: Generate evolved files in addition to analysis output
+No repository-side execution flags are provided. External plugin flags must not be
+assumed to exist; verify the installed implementation before using them.
 
 ## Generated File Format
 
