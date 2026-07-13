@@ -93,8 +93,9 @@ focus: Linux/macOS policy-validation matrix
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
   proposal-only client bases/generator.
-- Current evidence: 159 Python tests pass, 10 maintained PreToolUse fixtures pass, the
-  hygiene scanner reports 369 findings, and the doctor reports 59 residual findings.
+- Current evidence: 161 Python tests pass, 10 maintained PreToolUse fixtures pass, the
+  hygiene scanner reports 372 findings against a reviewed fingerprint baseline, and
+  the doctor reports 59 residual findings.
 - A preflight live-settings backup and SHA-256 manifest are stored outside Git under
   `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`.
 - Live apply is held: the runtime symlink still targets the main checkout and its
