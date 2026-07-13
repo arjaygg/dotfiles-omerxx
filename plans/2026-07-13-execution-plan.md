@@ -132,6 +132,9 @@ conflicting permissions/hooks, dead references, and instruction-budget regressio
 
 ## Immediate next step
 
+Validation commands, residual risks, and migration prerequisites are recorded in
+`plans/2026-07-13-validation-report.md`.
+
 Review this report and plan, then approve a dedicated Phase 0 implementation branch.
 The current branch contains audit documentation plus read-only validation tooling; it
 does not silently apply the high-impact safety or runtime-configuration changes
