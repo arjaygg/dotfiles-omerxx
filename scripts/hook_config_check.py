@@ -60,6 +60,13 @@ MATCHER_UNSUPPORTED = frozenset(
     }
 )
 HANDLER_TYPES = frozenset({"command", "http", "mcp_tool", "prompt", "agent"})
+REQUIRED_STRING_FIELDS = {
+    "command": ("command",),
+    "http": ("url",),
+    "mcp_tool": ("server", "tool"),
+    "prompt": ("prompt",),
+    "agent": ("prompt",),
+}
 
 
 @dataclass(frozen=True)
@@ -104,14 +111,14 @@ def check_hooks(settings: dict[str, object]) -> list[Issue]:
                     issues.append(Issue(event, "invalid-handler", "handler must be an object"))
                     continue
                 handler_type = handler.get("type")
-                if handler_type not in HANDLER_TYPES:
+                if not isinstance(handler_type, str) or handler_type not in HANDLER_TYPES:
                     issues.append(Issue(event, "unknown-handler-type", "handler type is unsupported"))
                     continue
-                if handler_type == "command":
-                    if "command" not in handler:
-                        issues.append(Issue(event, "missing-command", "command handler requires command"))
-                    elif not isinstance(handler["command"], str):
-                        issues.append(Issue(event, "invalid-command", "command must be a string"))
+                for field in REQUIRED_STRING_FIELDS[handler_type]:
+                    if field not in handler:
+                        issues.append(Issue(event, f"missing-{field}", f"{handler_type} handler requires {field}"))
+                    elif not isinstance(handler[field], str):
+                        issues.append(Issue(event, f"invalid-{field}", f"{field} must be a string"))
     return issues
 
 
