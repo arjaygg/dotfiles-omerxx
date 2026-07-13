@@ -100,6 +100,12 @@ jobs:
       - name: Validate learning signal CLI surface
         run: python3 scripts/learning_signal.py --help
 
+      - name: Check public hygiene against reviewed baseline
+        run: >-
+          python3 scripts/public_hygiene_check.py
+          --baseline scripts/fixtures/public-hygiene-baseline.json
+          --json
+
       - name: Check ShellCheck errors against reviewed baseline
         run: >-
           python3 scripts/shellcheck_check.py
