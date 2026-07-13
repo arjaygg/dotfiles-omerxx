@@ -100,7 +100,7 @@ focus: Linux/macOS policy-validation matrix
   sanitized settings, detect-only symlink guard, untracked local overlay, and
   proposal-only client bases/generator.
 - Current evidence: 168 Python tests pass, 10 maintained PreToolUse fixtures pass, the
-  hygiene scanner reports 334 findings against a reviewed fingerprint baseline, and
+  hygiene scanner reports 329 findings against a reviewed fingerprint baseline, and
   the doctor reports 59 residual findings against a reviewed fingerprint baseline.
 - A preflight live-settings backup and SHA-256 manifest are stored outside Git under
   `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`.

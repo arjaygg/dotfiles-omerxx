@@ -34,7 +34,7 @@ and is tracked by draft PR [#297](https://github.com/arjaygg/dotfiles-omerxx/pul
 | `python3 scripts/config_doctor.py --json` | 59 residual findings; 0 missing remediation fields; read-only |
 | `python3 -m scripts.config_doctor --live-settings "$HOME/.claude/settings.json" --json` | 59 source findings plus 1 expected runtime-drift; no mutation |
 | `python3 scripts/config_generate.py ... --compare-against "$HOME/.claude/settings.json"` | 6 changed JSON paths; hashes only, no target content emitted |
-| `python3 scripts/public_hygiene_check.py --json` | 334 findings: 122 absolute paths, 161 private-name matches, 51 private-URL matches |
+| `python3 scripts/public_hygiene_check.py --json` | 329 findings: 118 absolute paths, 161 private-name matches, 50 private-URL matches |
 | `git diff --check` | passed |
 | Preflight runtime snapshot | `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`; SHA-256 manifest recorded outside Git |
 | `git status --short --branch` | isolated Phase 0 branch; clean after commit |
@@ -282,8 +282,8 @@ review-gated.
 
 ## Public-hygiene no-regressions baseline
 
-The remaining broad cleanup is deferred: the current tracked tree has 334 findings
-(122 absolute-home paths, 161 private-organization names, and 51 private URLs).
+The remaining broad cleanup is deferred: the current tracked tree has 329 findings
+(118 absolute-home paths, 161 private-organization names, and 50 private URLs).
 `scripts/fixtures/public-hygiene-baseline.json` stores only the count and a SHA-256
 fingerprint of `(path,line,rule)` keys, avoiding a second copy of sensitive excerpts.
 The policy workflow compares that fingerprint on Linux and macOS and fails on any
