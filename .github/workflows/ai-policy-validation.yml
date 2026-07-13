@@ -108,7 +108,7 @@ jobs:
       - name: Verify read-only all-client bootstrap
         run: >-
           python3 scripts/bootstrap_check.py
-          --set PCTX_CONFIG=~/.config/pctx/pctx.json
+          --set 'PCTX_CONFIG=~/.config/pctx/pctx.json'
           --set USER_NAME=portable-user
 
       - name: Verify proposal-only setup dry-run
