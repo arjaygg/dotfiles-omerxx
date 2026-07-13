@@ -8,8 +8,8 @@ focus: approved Phase 0 source implementation; proposal validation before live m
 
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
-  proposal-only Claude generator.
-- Current evidence: 35 Python tests pass, 7 maintained PreToolUse fixtures pass, the
+  proposal-only client bases/generator.
+- Current evidence: 41 Python tests pass, 7 maintained PreToolUse fixtures pass, the
   hygiene scanner reports 369 findings, and the doctor reports 59 residual findings.
 - A preflight live-settings backup and SHA-256 manifest are stored outside Git under
   `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`.

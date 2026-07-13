@@ -7,6 +7,7 @@ import argparse
 import copy
 import hashlib
 import json
+import re
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -32,6 +33,9 @@ class ProposalComparison:
     target_sha256: str
 
 
+_PLACEHOLDER = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
 def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
     """Return a recursively merged copy; overlay values replace base values."""
     result = copy.deepcopy(base)
@@ -41,6 +45,26 @@ def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
         else:
             result[key] = copy.deepcopy(value)
     return result
+
+
+def expand_placeholders(value: Any, variables: dict[str, str]) -> Any:
+    """Replace explicit ``${NAME}`` markers without reading process environment."""
+    if isinstance(value, dict):
+        return {
+            key: expand_placeholders(child, variables) for key, child in value.items()
+        }
+    if isinstance(value, list):
+        return [expand_placeholders(child, variables) for child in value]
+    if not isinstance(value, str):
+        return copy.deepcopy(value)
+
+    def replace(match: re.Match[str]) -> str:
+        name = match.group(1)
+        if name not in variables:
+            raise TemplateValidationError(f"unresolved template variable: {name}")
+        return variables[name]
+
+    return _PLACEHOLDER.sub(replace, value)
 
 
 def _load_template(path: Path) -> dict[str, Any]:
@@ -55,11 +79,15 @@ def _load_template(path: Path) -> dict[str, Any]:
     return value
 
 
-def build_proposal(base_path: Path, overlay_path: Path | None = None) -> str:
+def build_proposal(
+    base_path: Path,
+    overlay_path: Path | None = None,
+    variables: dict[str, str] | None = None,
+) -> str:
     """Return merged JSON for review; never writes either input or runtime files."""
     base = _load_template(base_path)
     overlay = _load_template(overlay_path) if overlay_path else {}
-    proposal = deep_merge(base, overlay)
+    proposal = expand_placeholders(deep_merge(base, overlay), variables or {})
     rendered = json.dumps(proposal, indent=2, sort_keys=True) + "\n"
     findings = scan_text("<proposal>", rendered)
     if findings:
@@ -88,10 +116,13 @@ def _flatten(value: Any, prefix: str = "") -> dict[str, Any]:
 
 
 def compare_proposal(
-    base_path: Path, overlay_path: Path | None, target_path: Path
+    base_path: Path,
+    overlay_path: Path | None,
+    target_path: Path,
+    variables: dict[str, str] | None = None,
 ) -> ProposalComparison:
     """Compare a proposal with a target without printing target contents."""
-    proposal_text = build_proposal(base_path, overlay_path)
+    proposal_text = build_proposal(base_path, overlay_path, variables)
     target_bytes = target_path.read_bytes()
     target = json.loads(target_bytes)
     if not isinstance(target, dict):
@@ -111,17 +142,37 @@ def compare_proposal(
     )
 
 
+def _parse_variables(values: list[str]) -> dict[str, str]:
+    variables: dict[str, str] = {}
+    for value in values:
+        name, separator, replacement = value.partition("=")
+        if not separator or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+            raise TemplateValidationError(f"invalid --set value: {value!r}")
+        variables[name] = replacement
+    return variables
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("base", type=Path)
     parser.add_argument("--overlay", type=Path)
     parser.add_argument("--compare-against", type=Path)
+    parser.add_argument("--set", action="append", default=[], metavar="NAME=VALUE")
     args = parser.parse_args(argv)
     try:
+        variables = _parse_variables(args.set)
         if args.compare_against:
-            print(json.dumps(asdict(compare_proposal(args.base, args.overlay, args.compare_against))))
+            print(
+                json.dumps(
+                    asdict(
+                        compare_proposal(
+                            args.base, args.overlay, args.compare_against, variables
+                        )
+                    )
+                )
+            )
         else:
-            sys.stdout.write(build_proposal(args.base, args.overlay))
+            sys.stdout.write(build_proposal(args.base, args.overlay, variables))
     except (OSError, UnicodeError, json.JSONDecodeError, TemplateValidationError) as error:
         print(f"config proposal rejected: {error}", file=sys.stderr)
         return 2

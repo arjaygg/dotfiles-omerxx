@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -10,6 +11,7 @@ from scripts.config_generate import (
     build_proposal,
     compare_proposal,
     deep_merge,
+    expand_placeholders,
 )
 
 
@@ -17,6 +19,45 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ConfigGenerateTests(unittest.TestCase):
+    def test_expand_placeholders_replaces_nested_values(self):
+        value = {
+            "command": "${PCTX_COMMAND}",
+            "args": ["--config", "${PCTX_CONFIG}"],
+        }
+
+        self.assertEqual(
+            expand_placeholders(
+                value,
+                {"PCTX_COMMAND": "pctx", "PCTX_CONFIG": "/tmp/pctx.json"},
+            ),
+            {"command": "pctx", "args": ["--config", "/tmp/pctx.json"]},
+        )
+
+    def test_expand_placeholders_rejects_unresolved_variables(self):
+        with self.assertRaises(TemplateValidationError):
+            expand_placeholders({"path": "${MISSING}"}, {})
+
+    def test_build_proposal_expands_explicit_variables_without_environment_reads(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = root / "base.json"
+            base.write_text('{"path": "${CONFIG_PATH}"}\n', encoding="utf-8")
+
+            original = os.environ.get("CONFIG_PATH")
+            os.environ["CONFIG_PATH"] = "/tmp/should-not-be-used"
+            try:
+                proposal = build_proposal(
+                    base,
+                    variables={"CONFIG_PATH": "/tmp/pctx.json"},
+                )
+            finally:
+                if original is None:
+                    os.environ.pop("CONFIG_PATH", None)
+                else:
+                    os.environ["CONFIG_PATH"] = original
+
+        self.assertEqual(json.loads(proposal), {"path": "/tmp/pctx.json"})
+
     def test_deep_merge_recurses_and_replaces_lists(self):
         base = {"model": "portable", "nested": {"keep": True, "replace": 1}, "list": [1]}
         overlay = {"nested": {"replace": 2}, "list": [2], "local": True}
@@ -73,6 +114,26 @@ class ConfigGenerateTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIsInstance(json.loads(result.stdout), dict)
+
+    def test_script_entrypoint_accepts_explicit_variables(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory) / "base.json"
+            base.write_text('{"path": "${CONFIG_PATH}"}\n', encoding="utf-8")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts/config_generate.py"),
+                    str(base),
+                    "--set",
+                    "CONFIG_PATH=/tmp/pctx.json",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {"path": "/tmp/pctx.json"})
 
     def test_compare_proposal_reports_paths_and_hashes_without_content(self):
         with tempfile.TemporaryDirectory() as directory:

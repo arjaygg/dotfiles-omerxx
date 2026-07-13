@@ -24,7 +24,7 @@ and `claude-auto-diff-size-gate` have passed. This does not substitute for human
 
 | Command | Result |
 |---|---|
-| `python3 -m unittest discover -s scripts -p 'test_*.py'` | 35 tests passed |
+| `python3 -m unittest discover -s scripts -p 'test_*.py'` | 41 tests passed |
 | `python3 scripts/hook_fixture_runner.py .claude/hooks/pre-tool-gate-v2.sh scripts/fixtures/pretool-gate-v2.json` | 7 passed, 0 failed |
 | `python3 scripts/hook_config_check.py .claude/settings.json` | 8 static findings; expected nonzero result |
 | `python3 scripts/config_doctor.py --json` | 59 residual findings; 0 missing remediation fields; read-only |
@@ -42,7 +42,7 @@ baseline; they are not hygiene or configuration acceptance passes.
 
 - Full behavior coverage for every registered hook event and matcher.
 - Cross-platform macOS/Linux execution of the complete hook fleet.
-- Atomic-write, clean-clone, and multi-client generator tests; the current generator is
+- Atomic-write, clean-clone, TOML, and runtime-wiring tests; the generator remains
   proposal-only JSON and does not write runtime files.
 - Permission-versus-hook contradiction tests after a reviewed policy disposition.
 - Clean-machine bootstrap and runtime migration verification.
@@ -55,7 +55,8 @@ therefore the only current multi-case runtime evidence for the pre-tool gate.
 ## Residual risks
 
 1. Broad permission allows remain for separate permission review.
-2. The portable generator currently covers the Claude JSON proposal path only.
+2. Portable JSON proposal bases now cover Claude, Gemini, Cursor, Windsurf, and PCTX;
+   Codex/TOML generation and runtime wiring remain Phase 2 work.
 3. Six configured matchers are ignored for their event types; two worktree groups have
    multiple handlers whose ordering must not be assumed.
 4. Public-repository hygiene is not clean; every finding still needs a reviewed
