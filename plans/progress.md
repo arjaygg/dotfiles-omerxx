@@ -14,6 +14,8 @@ Plan: `plans/2026-07-13-execution-plan.md`; branch
 - [x] Implement the approved Phase 0 source-boundary changes: remove unsafe/private
   settings context, make the symlink guard proposal-only, untrack the local overlay,
   and add a portable Claude base plus proposal generator.
+- [x] Publish draft PR [#296](https://github.com/arjaygg/dotfiles-omerxx/pull/296) for
+  review; do not merge or apply runtime changes automatically.
 - [ ] Validate the proposal diff and obtain separate approval before live runtime,
   permission, machine-wide hook, or canonical-hierarchy changes.
 

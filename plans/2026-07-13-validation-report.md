@@ -14,6 +14,9 @@ the proposal before the branch guard is active would leave the old copy-back beh
 in place and could re-adopt the proposal into the main checkout. No live apply was
 performed; branch installation/merge must precede runtime application.
 
+The branch is published as draft PR [#296](https://github.com/arjaygg/dotfiles-omerxx/pull/296)
+for review. It has not been merged.
+
 ## Commands and results
 
 | Command | Result |
