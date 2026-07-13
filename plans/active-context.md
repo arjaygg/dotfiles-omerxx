@@ -67,10 +67,14 @@ focus: Linux/macOS policy-validation matrix
 - The policy-validation workflow now runs its read-only checks on both
   `ubuntu-latest` and `macos-latest`; no CI result is claimed until a PR record exists.
 
+- Proposal manifest loading now rejects duplicate client names or runtime targets,
+  unsafe identifiers, and runtime paths that escape the home-relative `~/` form;
+  focused tests pass without touching live runtime files.
+
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
   proposal-only client bases/generator.
-- Current evidence: 148 Python tests pass, 10 maintained PreToolUse fixtures pass, the
+- Current evidence: 151 Python tests pass, 10 maintained PreToolUse fixtures pass, the
   hygiene scanner reports 369 findings, and the doctor reports 59 residual findings.
 - A preflight live-settings backup and SHA-256 manifest are stored outside Git under
   `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`.

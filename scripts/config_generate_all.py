@@ -61,11 +61,28 @@ def _load_manifest(root: Path) -> list[dict[str, str]]:
     if not isinstance(clients, list):
         raise TemplateValidationError("config manifest clients must be an array")
     normalized: list[dict[str, str]] = []
+    names: set[str] = set()
+    runtimes: set[str] = set()
     for index, client in enumerate(clients):
         if not isinstance(client, dict) or not all(isinstance(client.get(key), str) for key in ("name", "format", "base", "runtime")):
             raise TemplateValidationError(f"manifest client {index} has invalid required fields")
+        name = client["name"]
+        runtime = client["runtime"]
+        if not _KEY.fullmatch(name):
+            raise TemplateValidationError(f"manifest client {index} has unsafe name: {name}")
+        if name in names:
+            raise TemplateValidationError(f"manifest has duplicate client name: {name}")
         if client["format"] not in SUPPORTED_FORMATS:
-            raise TemplateValidationError(f"manifest client {client['name']} has unsupported format")
+            raise TemplateValidationError(f"manifest client {name} has unsupported format")
+        if not runtime.startswith("~/"):
+            raise TemplateValidationError(f"manifest runtime must use ~/ portability form: {runtime}")
+        runtime_path = Path(runtime[2:])
+        if not runtime_path.parts or runtime_path.is_absolute() or ".." in runtime_path.parts:
+            raise TemplateValidationError(f"manifest runtime escapes its home root: {runtime}")
+        if runtime in runtimes:
+            raise TemplateValidationError(f"manifest has duplicate runtime target: {runtime}")
+        names.add(name)
+        runtimes.add(runtime)
         normalized.append({key: client[key] for key in ("name", "format", "base", "runtime")})
     return normalized
 

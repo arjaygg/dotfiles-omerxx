@@ -72,6 +72,11 @@ checks true, `temporary_stage_writes: true`, `writes_performed: false`, and
 the default `setup.sh` install path, or touch live runtime paths. Actual clean-machine
 bootstrap, live cache preservation, and live migration remain unverified.
 
+The manifest loader now rejects duplicate client names, duplicate runtime targets,
+unsafe client identifiers, and runtime paths that do not stay beneath the declared
+home-relative `~/` form. Focused manifest tests cover these rejection paths; this
+hardens proposal generation without changing any runtime target.
+
 ## Transactional staging follow-up
 
 The explicitly marked `ai_config.py stage` path now pre-renders and fsyncs every target
