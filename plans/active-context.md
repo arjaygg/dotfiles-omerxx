@@ -76,6 +76,11 @@ focus: Linux/macOS policy-validation matrix
   proposals (`staged_compare_clean: true`), covering both JSON and TOML without
   touching live runtime paths.
 
+- The policy matrix now archives tracked regular files into an isolated temporary clone
+  and runs `setup.sh --dry-run` with an isolated `HOME`; all six clients pass with
+  `runtime_writes: false`. It excludes 96 tracked symlink entries, so full clean-clone
+  portability remains unverified.
+
 - Proposals now require a bounded portable owner, carried into review reports and
   decision entries for explicit expiry accountability.
 
@@ -94,7 +99,7 @@ focus: Linux/macOS policy-validation matrix
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
   proposal-only client bases/generator.
-- Current evidence: 164 Python tests pass, 10 maintained PreToolUse fixtures pass, the
+- Current evidence: 166 Python tests pass, 10 maintained PreToolUse fixtures pass, the
   hygiene scanner reports 372 findings against a reviewed fingerprint baseline, and
   the doctor reports 59 residual findings against a reviewed fingerprint baseline.
 - A preflight live-settings backup and SHA-256 manifest are stored outside Git under

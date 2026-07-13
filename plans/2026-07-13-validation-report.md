@@ -28,7 +28,7 @@ and is tracked by draft PR [#297](https://github.com/arjaygg/dotfiles-omerxx/pul
 
 | Command | Result |
 |---|---|
-| `python3 -m unittest discover -s scripts -p 'test_*.py'` | 51 tests passed |
+| `python3 -m unittest discover -s scripts -p 'test_*.py'` | 166 tests passed |
 | `python3 scripts/hook_fixture_runner.py .claude/hooks/pre-tool-gate-v2.sh scripts/fixtures/pretool-gate-v2.json` | not runnable: referenced hook absent from the public branch |
 | `python3 scripts/hook_config_check.py .claude/settings.json` | 8 static findings; expected nonzero result |
 | `python3 scripts/config_doctor.py --json` | 59 residual findings; 0 missing remediation fields; read-only |
@@ -218,6 +218,17 @@ read-only doctor and preserves its nonzero result when findings exist. Both mode
 covered by subprocess tests; the default `setup.sh` install path is unchanged and remains
 review-gated.
 
+## Clean tracked-archive proposal check
+
+`scripts/clean_clone_check.py` archives the current tracked revision into an isolated
+temporary directory, excludes tracked symlink entries from extraction, and runs
+`setup.sh --dry-run` with an isolated `HOME`. The check verifies all six manifest clients,
+returns `runtime_writes: false`, and passed locally. The archive currently skips 96 tracked
+symlink entries, including four absolute links into the main checkout; this is explicit
+evidence that the public source is not yet a fully portable clean clone. The check is
+therefore proposal-only coverage, not proof of clean-machine installation or symlink
+remediation.
+
 ## Self-improvement command reference follow-up
 
 `ai/commands/evolve.md` no longer points at the absent `continuous-learning-v2` CLI.
@@ -296,8 +307,8 @@ live-settings comparison remains a separate review-gated operation.
   runner currently exercises ten PreToolUse cases and the matrix inventories all 14 events.
 - Hosted cross-platform macOS/Linux execution; the workflow matrix is configured but has
   no recorded run until the branch is represented by a PR.
-- Clean-clone and runtime-wiring tests; marked staging atomicity and simulated rollback
-  are covered, but the path remains proposal-only and does not write live runtime files.
+- Full clean-clone and runtime-wiring tests; the regular-file tracked-archive proposal
+  check passes, but 96 symlink entries are excluded and the path remains proposal-only.
 - Wildcard/regex permission-versus-hook contradiction tests and runtime confirmation.
 - Intentional hook-configuration baseline cleanup and ordering changes; those remain
   review-gated because they would alter current hook behavior.
