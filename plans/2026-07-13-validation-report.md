@@ -15,7 +15,7 @@ instruction-hierarchy, or live-runtime changes.
 | `python3 scripts/hook_config_check.py .claude/settings.json` | 8 static findings; expected nonzero result |
 | `python3 scripts/config_doctor.py --json` | 59 residual findings; 0 missing remediation fields; read-only |
 | `python3 -m scripts.config_doctor --live-settings "$HOME/.claude/settings.json" --json` | 59 source findings plus 1 expected runtime-drift; no mutation |
-| `python3 scripts/public_hygiene_check.py --json` | 368 findings: 132 absolute paths, 185 private-name matches, 51 private-URL matches |
+| `python3 scripts/public_hygiene_check.py --json` | 369 findings: 133 absolute paths, 185 private-name matches, 51 private-URL matches |
 | `git diff --check` | passed |
 | `git status --short --branch` | isolated Phase 0 branch; clean after commit |
 

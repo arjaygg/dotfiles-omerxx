@@ -17,8 +17,8 @@ overlays is deterministic, idempotent, atomic, and secret-safe.
 
 **Safe progress:** `scripts/public_hygiene_check.py` and its five-case unittest suite
 now provide a deterministic baseline scanner. Earlier audit snapshots recorded 386,
-390, 388, and 370 findings; the current Phase 0 branch recheck reports 368 findings
-(185 organization names, 132 absolute-home paths, and 51 organization URLs), so the phase
+390, 388, and 368 findings; the current Phase 0 branch recheck reports 369 findings
+(185 organization names, 133 absolute-home paths, and 51 organization URLs), so the phase
 remains incomplete.
 
 **Additional safe progress:** `scripts/config_doctor.py` provides a read-only doctor

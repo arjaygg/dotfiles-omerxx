@@ -40,7 +40,7 @@ silently considered accepted.
   overlay example, and `scripts/config_generate.py`. The generator deep-merges JSON,
   rejects privacy/secret findings, and prints proposals without writing files.
 - Added boundary and generator tests. The full Python suite now passes 34 tests.
-- Current branch recheck: 368 hygiene findings (185 organization names, 132 absolute
+- Current branch recheck: 369 hygiene findings (185 organization names, 133 absolute
   paths, 51 organization URLs); doctor reports 59 findings, all from residual path,
   organization, and blanket-permission data outside the approved boundary changes.
 
@@ -120,8 +120,8 @@ passes its tests and an earlier baseline recorded 386 findings (absolute paths a
 private organization markers); this is evidence for the required cleanup, not a claim that
 public-repository hygiene is complete.
 
-The audit baseline recorded 388 findings. The Phase 0 branch recheck now reports 368
-findings — 185 organization-name matches, 132 absolute-home-path matches, and 51
+The audit baseline recorded 388 findings. The Phase 0 branch recheck now reports 369
+findings — 185 organization-name matches, 133 absolute-home-path matches, and 51
 organization-URL matches. These counts guide
 classification; they are not permission to delete historical plans or evaluation
 fixtures without a reviewed disposition.
