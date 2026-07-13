@@ -60,10 +60,14 @@ focus: file-backed hook reachability baseline
   configured hook events, including a PreToolUse MCP-call payload. Matrix coverage is
   schema-checked in CI but does not execute hooks or claim ordering/platform behavior.
 
+- The current child branch adds an opt-in conservative permission/hook overlap analyzer.
+  It reports 62 potential overlaps in the current settings, remains non-blocking and
+  un-baselined pending human review, and leaves exact conflict CI behavior unchanged.
+
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
   proposal-only client bases/generator.
-- Current evidence: 145 Python tests pass, 8 maintained PreToolUse fixtures pass, the
+- Current evidence: 147 Python tests pass, 8 maintained PreToolUse fixtures pass, the
   hygiene scanner reports 369 findings, and the doctor reports 59 residual findings.
 - A preflight live-settings backup and SHA-256 manifest are stored outside Git under
   `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`.

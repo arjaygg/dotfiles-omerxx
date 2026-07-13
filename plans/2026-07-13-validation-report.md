@@ -142,8 +142,10 @@ reachability, establish ordering, or prove macOS/Linux runtime behavior.
 
 The stacked checker reports exact permission contradictions and exact tool-hook matchers
 covered by a permission deny. The current `.claude/settings.json` produced zero exact
-conflicts. This is intentionally conservative: it does not claim to model wildcard
-  permission semantics, regex matcher overlap, declaration ordering, or runtime behavior.
+conflicts. An opt-in `--include-overlaps` mode now reports 62 potential overlaps for
+review, while skipping alternation/regex-like matchers rather than guessing semantics.
+The overlap mode is not a blocking CI check and does not claim declaration ordering or
+runtime behavior.
 
 ## Phase 5 CI validation follow-up
 
