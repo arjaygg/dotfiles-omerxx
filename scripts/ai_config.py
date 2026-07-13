@@ -6,7 +6,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import shutil
 import sys
+import tempfile
 import tomllib
 from dataclasses import asdict
 from pathlib import Path
@@ -95,6 +98,68 @@ def compare_proposals(
     return results
 
 
+def _atomic_write(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def stage_proposals(
+    root: Path,
+    output_root: Path,
+    *,
+    clients: set[str] | None = None,
+    overlay_dir: Path | None = None,
+    variables: dict[str, str] | None = None,
+    replace: bool = False,
+) -> dict[str, list[str]]:
+    """Atomically write proposals below an explicitly marked staging root."""
+
+    output_root = output_root.expanduser().resolve()
+    if not (output_root / ".ai-config-staging").is_file():
+        raise TemplateValidationError("staging root must contain a .ai-config-staging marker file")
+    proposals = build_proposals(
+        root,
+        clients=clients,
+        overlay_dir=overlay_dir,
+        variables=variables,
+    )
+    targets = {
+        name: (_runtime_path(output_root, proposal["runtime"]), proposal["content"])
+        for name, proposal in proposals.items()
+    }
+    backups: dict[str, Path] = {}
+    for target, _content in targets.values():
+        if target.exists() and not replace:
+            raise TemplateValidationError(f"staging target exists; pass --replace explicitly: {target}")
+        backup = target.with_name(target.name + ".bak")
+        if target.exists() and backup.exists():
+            raise TemplateValidationError(f"staging backup already exists; refusing to overwrite: {backup}")
+        if target.exists():
+            backups[str(target)] = backup
+
+    for target, _content in targets.values():
+        if target.exists():
+            shutil.copy2(target, backups[str(target)])
+    for target, content in targets.values():
+        _atomic_write(target, content)
+    return {
+        "written": [str(target) for target, _content in targets.values()],
+        "backups": [str(backups[str(target)]) for target, _content in targets.values() if str(target) in backups],
+    }
+
+
 def _add_proposal_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--client", action="append", dest="clients")
@@ -112,6 +177,11 @@ def _parser() -> argparse.ArgumentParser:
     diff = subparsers.add_parser("diff", help="report drift without target content")
     _add_proposal_args(diff)
     diff.add_argument("--runtime-root", type=Path, required=True)
+
+    stage = subparsers.add_parser("stage", help="atomically write below a marked staging root")
+    _add_proposal_args(stage)
+    stage.add_argument("--output-root", type=Path, required=True)
+    stage.add_argument("--replace", action="store_true")
 
     doctor = subparsers.add_parser("doctor", help="emit the read-only configuration report")
     doctor.add_argument("--root", type=Path, default=Path.cwd())
@@ -142,6 +212,17 @@ def main(argv: list[str] | None = None) -> int:
                     sort_keys=True,
                 )
             )
+            return 0
+        if args.command == "stage":
+            result = stage_proposals(
+                args.root,
+                args.output_root,
+                clients=clients,
+                overlay_dir=args.overlay_dir,
+                variables=variables,
+                replace=args.replace,
+            )
+            print(json.dumps({"stage": result}, indent=2, sort_keys=True))
             return 0
         result = compare_proposals(
             args.root,

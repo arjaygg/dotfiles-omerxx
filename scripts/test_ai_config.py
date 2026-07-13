@@ -6,7 +6,8 @@ import tomllib
 import unittest
 from pathlib import Path
 
-from scripts.ai_config import compare_proposals
+from scripts.ai_config import compare_proposals, stage_proposals
+from scripts.config_generate import TemplateValidationError
 from scripts.config_generate_all import build_proposals
 
 
@@ -69,6 +70,52 @@ class AiConfigCliTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 1)
         self.assertIsInstance(json.loads(result.stdout), list)
+
+    def test_stage_requires_explicit_marker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(TemplateValidationError):
+                stage_proposals(ROOT, Path(directory), clients={"codex"})
+
+    def test_stage_writes_atomic_proposal_under_marked_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output_root = Path(directory)
+            (output_root / ".ai-config-staging").touch()
+
+            result = stage_proposals(ROOT, output_root, clients={"codex"})
+            target = (output_root / ".codex/config.toml").resolve()
+            content = target.read_text(encoding="utf-8")
+
+        self.assertEqual(result["backups"], [])
+        self.assertEqual(result["written"], [str(target)])
+        self.assertIn('model = "gpt-5.5"', content)
+
+    def test_stage_refuses_existing_target_without_replace(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output_root = Path(directory)
+            (output_root / ".ai-config-staging").touch()
+            target = (output_root / ".codex/config.toml").resolve()
+            target.parent.mkdir(parents=True)
+            target.write_text("old = true\n", encoding="utf-8")
+
+            with self.assertRaises(TemplateValidationError):
+                stage_proposals(ROOT, output_root, clients={"codex"})
+
+            self.assertEqual(target.read_text(encoding="utf-8"), "old = true\n")
+
+    def test_stage_replace_creates_backup_before_replacing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output_root = Path(directory)
+            (output_root / ".ai-config-staging").touch()
+            target = (output_root / ".codex/config.toml").resolve()
+            target.parent.mkdir(parents=True)
+            target.write_text("old = true\n", encoding="utf-8")
+
+            result = stage_proposals(ROOT, output_root, clients={"codex"}, replace=True)
+
+            backup = target.with_name(target.name + ".bak")
+            self.assertEqual(backup.read_text(encoding="utf-8"), "old = true\n")
+            self.assertEqual(result["backups"], [str(backup)])
+            self.assertNotEqual(target.read_text(encoding="utf-8"), "old = true\n")
 
 
 if __name__ == "__main__":
