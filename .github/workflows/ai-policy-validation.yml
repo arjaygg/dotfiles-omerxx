@@ -106,6 +106,12 @@ jobs:
           --baseline scripts/fixtures/public-hygiene-baseline.json
           --json
 
+      - name: Check configuration doctor against reviewed baseline
+        run: >-
+          python3 scripts/config_doctor.py
+          --baseline scripts/fixtures/config-doctor-baseline.json
+          --json
+
       - name: Check ShellCheck errors against reviewed baseline
         run: >-
           python3 scripts/shellcheck_check.py
