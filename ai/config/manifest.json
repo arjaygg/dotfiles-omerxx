@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "clients": [
+    {
+      "name": "claude",
+      "format": "json",
+      "base": "ai/config/claude/settings.base.json",
+      "runtime": "~/.claude/settings.json",
+      "overlay": "~/.config/dotfiles-ai/claude.overlay.json"
+    },
+    {
+      "name": "codex",
+      "format": "toml",
+      "base": "ai/config/codex/config.base.toml",
+      "runtime": "~/.codex/config.toml",
+      "overlay": "~/.config/dotfiles-ai/codex.overlay.toml"
+    },
+    {
+      "name": "gemini",
+      "format": "json",
+      "base": "ai/config/gemini/mcp.base.json",
+      "runtime": "~/.gemini/mcp.json",
+      "overlay": "~/.config/dotfiles-ai/gemini.overlay.json"
+    },
+    {
+      "name": "cursor",
+      "format": "json",
+      "base": "ai/config/cursor/mcp.base.json",
+      "runtime": "~/.cursor/mcp.json",
+      "overlay": "~/.config/dotfiles-ai/cursor.overlay.json"
+    },
+    {
+      "name": "windsurf",
+      "format": "json",
+      "base": "ai/config/windsurf/mcp_config.base.json",
+      "runtime": "~/.windsurf/mcp_config.json",
+      "overlay": "~/.config/dotfiles-ai/windsurf.overlay.json"
+    },
+    {
+      "name": "pctx",
+      "format": "json",
+      "base": "ai/config/pctx/pctx.base.json",
+      "runtime": "~/.config/pctx/pctx.json",
+      "overlay": "~/.config/dotfiles-ai/pctx.overlay.json"
+    }
+  ]
+}

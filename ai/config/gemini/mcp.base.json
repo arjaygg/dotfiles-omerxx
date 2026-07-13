@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/gemini-cli-settings.json",
+  "mcpServers": {
+    "pctx": {
+      "command": "pctx",
+      "args": [
+        "mcp",
+        "start",
+        "-q",
+        "--stdio",
+        "-c",
+        "${PCTX_CONFIG}"
+      ]
+    }
+  }
+}

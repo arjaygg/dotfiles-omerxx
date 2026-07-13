@@ -1,4 +1,4 @@
-# pctx Functions — 2026-07-12 (refreshed; no drift vs 2026-07-10 snapshot)
+# pctx Functions — 2026-07-13 (refreshed; no drift vs 2026-07-12 snapshot)
 
 Namespaces: Serena, Qmd, LeanCtx, Repomix, Graphify
 
@@ -100,4 +100,4 @@ godNodes/graphStats/shortestPath). The 2026-07-07 snapshot's "not documented any
 stale/resolved.
 
 ---
-Next refresh due: 2026-07-09 (24h TTL per `ai/rules/tool-priority.md` §7).
+Next refresh due: 2026-07-14 (24h TTL per `ai/rules/tool-priority.md` §7).

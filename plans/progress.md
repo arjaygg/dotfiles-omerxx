@@ -1,5 +1,27 @@
 # Progress — 2026-06-12
 
+## Active — 2026-07-13 portable governed AI configuration audit
+
+Plan: `plans/2026-07-13-execution-plan.md`; branch
+`chore/phase0-config-boundary`.
+
+- [x] Verify current branch, instruction hierarchy, open-PR overlap, hook schema risks,
+  public-repository exposure, and runtime copy-back behavior.
+- [x] Add read-only hygiene scanning, configuration doctor, hook static validation, and
+  maintained PreToolUse fixture coverage.
+- [x] Record Phase 0 classification, remediation guidance, current baseline counts, and
+  review gates without changing permission semantics or live runtime configuration.
+- [x] Implement the approved Phase 0 source-boundary changes: remove unsafe/private
+  settings context, make the symlink guard proposal-only, untrack the local overlay,
+  and add portable Claude/client/PCTX bases plus proposal-only generator expansion.
+- [x] Add test-first explicit placeholder expansion and verify all four portable
+  client/PCTX JSON bases generate without reading environment state or mutating inputs.
+- [x] Add and parse-validate a portable Codex TOML base without wiring it into runtime.
+- [x] Publish draft PR [#296](https://github.com/arjaygg/dotfiles-omerxx/pull/296) for
+  review; do not merge or apply runtime changes automatically.
+- [ ] Validate the proposal diff and obtain separate approval before live runtime,
+  permission, machine-wide hook, or canonical-hierarchy changes.
+
 ## Done — 2026-07-10 trim CLAUDE.md instruction chain (Fable-reviewed, ADL-018)
 
 Branch `chore/trim-claude-md-instruction-chain`, worktree `.trees/trim-claude-md-instruction-chain`.

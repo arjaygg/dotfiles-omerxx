@@ -1,8 +1,23 @@
 # Active Context
 
-plan: /Users/axos-agallentes/git/auc-conversion/docs/plans/2026-07-09-implement-session-injection-antipatterns.md
-step: Phase 4 of 5 (Phase 4 only — user explicitly deferred Phase 5 for this pass)
-focus: gate-logic consolidated review of pre-tool-gate-v2.sh + advisor-escalate.py, worktree .trees/gate-logic-consolidated-review, branch fix/gate-logic-consolidated-review
+plan: plans/2026-07-13-execution-plan.md
+step: Phase 0 of 5
+focus: approved Phase 0 source implementation; proposal validation before live migration
+
+## Current (2026-07-13) — Phase 0/1 audit checkpoint
+
+- Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
+  sanitized settings, detect-only symlink guard, untracked local overlay, and
+  proposal-only client bases/generator.
+- Current evidence: 42 Python tests pass, 7 maintained PreToolUse fixtures pass, the
+  hygiene scanner reports 369 findings, and the doctor reports 59 residual findings.
+- A preflight live-settings backup and SHA-256 manifest are stored outside Git under
+  `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`.
+- Live apply is held: the runtime symlink still targets the main checkout and its
+  installed symlink guard differs from this branch, so applying now could reactivate
+  copy-back behavior.
+- Live runtime configuration, broad permission allows, canonical instruction hierarchy,
+  and ordering-sensitive Phase 1 hooks remain unchanged pending separate review.
 
 ## Current (2026-07-09) — Phase 4 checkpoint, session restart required
 
