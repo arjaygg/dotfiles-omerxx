@@ -81,8 +81,8 @@ conflicts. This is intentionally conservative: it does not claim to model wildca
 The new `.github/workflows/ai-policy-validation.yml` runs the maintained Python tests,
 the maintained pre-tool fixture runner, the explicit instruction budgets, and the exact
 permission/hook conflict checker on every PR layer. It has read-only repository permissions
-and does not run runtime diff, setup, migration, or unresolved baseline hygiene scanners as
-blocking checks.
+and parses its own YAML with pinned `PyYAML==6.0.2`. It does not run runtime diff, setup,
+migration, or unresolved baseline hygiene scanners as blocking checks.
 
 ## Reviewed hook-configuration baseline follow-up
 
@@ -92,6 +92,14 @@ reviewed finding disappears unexpectedly. This makes unsupported matchers and pa
 worktree handlers visible as explicit debt without changing the current settings or
 pretending that those findings are resolved. The baseline comparison and malformed-entry
 handling are covered by unit tests; the CI workflow runs the comparison on each PR.
+
+## Shell syntax validation follow-up
+
+The read-only `scripts/shell_syntax_check.py` validator runs `bash -n` over the governed
+Claude, Codex, Cursor, Gemini, and support-script shell trees. The current inventory is 88
+`.sh`/`.bash` files and passes locally; the validator is now a blocking CI step. This is
+syntax coverage only and does not claim ShellCheck, shfmt, runtime portability, or hook
+behavioral coverage.
 
 ## Tests not yet run
 

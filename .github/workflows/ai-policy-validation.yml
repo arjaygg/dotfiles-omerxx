@@ -18,6 +18,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install YAML parser
+        run: python3 -m pip install --disable-pip-version-check --no-input "PyYAML==6.0.2"
+
+      - name: Validate workflow YAML
+        run: >-
+          python3 -c
+          'import pathlib, yaml; yaml.safe_load(pathlib.Path(".github/workflows/ai-policy-validation.yml").read_text(encoding="utf-8"))'
+
       - name: Run maintained policy tests
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
 
@@ -32,6 +40,9 @@ jobs:
           python3 scripts/hook_config_check.py
           .claude/settings.json
           --baseline scripts/fixtures/hook-config-baseline.json
+
+      - name: Check Bash syntax
+        run: python3 scripts/shell_syntax_check.py
 
       - name: Enforce instruction budgets
         run: >-
