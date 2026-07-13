@@ -1,5 +1,19 @@
 # Progress — 2026-06-12
 
+## Active — 2026-07-13 portable governed AI configuration audit
+
+Plan: `plans/2026-07-13-execution-plan.md`; branch
+`chore/add-scratchpad-compaction-rule`.
+
+- [x] Verify current branch, instruction hierarchy, open-PR overlap, hook schema risks,
+  public-repository exposure, and runtime copy-back behavior.
+- [x] Add read-only hygiene scanning, configuration doctor, hook static validation, and
+  maintained PreToolUse fixture coverage.
+- [x] Record Phase 0 classification, remediation guidance, current baseline counts, and
+  review gates without changing permission semantics or live runtime configuration.
+- [ ] Obtain human review before permission, machine-wide hook, canonical-hierarchy, or
+  live-runtime migration changes.
+
 ## Done — 2026-07-10 trim CLAUDE.md instruction chain (Fable-reviewed, ADL-018)
 
 Branch `chore/trim-claude-md-instruction-chain`, worktree `.trees/trim-claude-md-instruction-chain`.
