@@ -11,6 +11,8 @@ class AiPolicyWorkflowTests(unittest.TestCase):
         text = WORKFLOW.read_text(encoding="utf-8")
 
         self.assertIn("name: ai-policy-validation", text)
+        self.assertIn("os: [ubuntu-latest, macos-latest]", text)
+        self.assertIn("runs-on: ${{ matrix.os }}", text)
         self.assertIn("python3 -m unittest discover -s scripts -p 'test_*.py'", text)
         self.assertIn("scripts/hook_fixture_runner.py", text)
         self.assertIn(".claude/hooks/pre-tool-gate-v2.sh", text)
