@@ -130,6 +130,14 @@ is intentionally empty. Runtime command strings such as `lean-ctx hook redirect`
 treated as file paths; this check does not prove matcher reachability, ordering, or runtime
 execution on every platform.
 
+## Phase 1 representative hook-event matrix follow-up
+
+The new `scripts/hook_event_matrix.py` validates one representative, required-key-checked
+payload for each of the 14 configured hook events. The PreToolUse case uses an
+`mcp__pctx__execute_typescript` tool name so MCP-shaped input is represented explicitly.
+This is a maintained payload/schema inventory only: it does not invoke hooks, test matcher
+reachability, establish ordering, or prove macOS/Linux runtime behavior.
+
 ## Phase 5 permission/hook conflict follow-up
 
 The stacked checker reports exact permission contradictions and exact tool-hook matchers

@@ -56,10 +56,14 @@ focus: file-backed hook reachability baseline
   settings references currently resolve, so the reviewed baseline is empty; runtime-only
   commands are intentionally skipped and no missing reference is repaired automatically.
 
+- The current child branch adds a maintained representative-payload matrix for all 14
+  configured hook events, including a PreToolUse MCP-call payload. Matrix coverage is
+  schema-checked in CI but does not execute hooks or claim ordering/platform behavior.
+
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
   proposal-only client bases/generator.
-- Current evidence: 140 Python tests pass, 8 maintained PreToolUse fixtures pass, the
+- Current evidence: 145 Python tests pass, 8 maintained PreToolUse fixtures pass, the
   hygiene scanner reports 369 findings, and the doctor reports 59 residual findings.
 - A preflight live-settings backup and SHA-256 manifest are stored outside Git under
   `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`.
