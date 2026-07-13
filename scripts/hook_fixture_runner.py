@@ -30,8 +30,16 @@ def load_manifest(path: Path) -> list[dict[str, object]]:
             raise ValueError(f"{case['name']}: expect must be allow, ask, or deny")
         if not isinstance(case.get("input"), dict):
             raise ValueError(f"{case['name']}: input must be an object")
-        if "expected_updated_input" in case and not isinstance(case["expected_updated_input"], dict):
-            raise ValueError(f"{case['name']}: expected_updated_input must be an object")
+        if "expected_updated_input" in case:
+            expected = case["expected_updated_input"]
+            if not isinstance(expected, dict):
+                raise ValueError(f"{case['name']}: expected_updated_input must be an object")
+            tool_input = case["input"].get("tool_input")
+            if isinstance(tool_input, dict):
+                missing = sorted(set(tool_input) - set(expected))
+                if missing:
+                    names = ", ".join(missing)
+                    raise ValueError(f"{case['name']}: expected_updated_input must preserve keys: {names}")
     return value
 
 
@@ -51,7 +59,8 @@ def check_result(case: dict[str, object], returncode: int, stdout: str, stderr: 
     failures: list[str] = []
     if returncode != 0:
         failures.append(f"expected exit 0, got {returncode}")
-    if expect == "allow":
+    expects_rewrite = "expected_updated_input" in case
+    if expect == "allow" and not expects_rewrite:
         if stdout.strip():
             failures.append("allow fixture must produce no stdout")
         return failures
@@ -59,19 +68,21 @@ def check_result(case: dict[str, object], returncode: int, stdout: str, stderr: 
     try:
         decision = json.loads(stdout)
     except json.JSONDecodeError:
-        failures.append("deny fixture must emit JSON on stdout")
+        failures.append("structured fixture must emit exactly one JSON decision on stdout")
         return failures
     output = decision.get("hookSpecificOutput") if isinstance(decision, dict) else None
     if not isinstance(output, dict):
-        failures.append("deny fixture is missing hookSpecificOutput")
+        failures.append("structured fixture is missing hookSpecificOutput")
         return failures
     if output.get("hookEventName") != "PreToolUse":
-        failures.append("deny fixture must identify PreToolUse")
+        failures.append("structured fixture must identify PreToolUse")
     if output.get("permissionDecision") != expect:
         failures.append(f"{expect} fixture must set permissionDecision={expect}")
     if not isinstance(output.get("permissionDecisionReason"), str) or not output["permissionDecisionReason"]:
         failures.append(f"{expect} fixture must include a reason")
-    if "expected_updated_input" in case and output.get("updatedInput") != case["expected_updated_input"]:
+    if "updatedInput" in output and not isinstance(output["updatedInput"], dict):
+        failures.append("updatedInput must be an object when present")
+    if expects_rewrite and output.get("updatedInput") != case["expected_updated_input"]:
         failures.append("fixture updatedInput does not match expected rewrite")
     return failures
 
