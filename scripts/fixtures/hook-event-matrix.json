@@ -1,0 +1,16 @@
+[
+  {"event": "SessionStart", "required": ["session_id", "source"], "payload": {"session_id": "fixture-session", "source": "startup"}},
+  {"event": "InstructionsLoaded", "required": ["session_id"], "payload": {"session_id": "fixture-session"}},
+  {"event": "PreToolUse", "required": ["session_id", "tool_name", "tool_input"], "payload": {"session_id": "fixture-session", "tool_name": "mcp__pctx__execute_typescript", "tool_input": {"command": "fixture"}}},
+  {"event": "PostToolUse", "required": ["session_id", "tool_name", "tool_input"], "payload": {"session_id": "fixture-session", "tool_name": "Bash", "tool_input": {"command": "true"}, "tool_response": {}}},
+  {"event": "Notification", "required": ["notification_type", "message"], "payload": {"notification_type": "info", "message": "fixture"}},
+  {"event": "UserPromptSubmit", "required": ["session_id", "prompt"], "payload": {"session_id": "fixture-session", "prompt": "fixture"}},
+  {"event": "PreCompact", "required": ["session_id", "trigger"], "payload": {"session_id": "fixture-session", "trigger": "manual"}},
+  {"event": "Stop", "required": ["session_id", "stop_hook_active"], "payload": {"session_id": "fixture-session", "stop_hook_active": false}},
+  {"event": "TaskCreated", "required": ["session_id", "task_id"], "payload": {"session_id": "fixture-session", "task_id": "fixture-task", "task_subject": "fixture"}},
+  {"event": "TaskCompleted", "required": ["session_id", "task_id"], "payload": {"session_id": "fixture-session", "task_id": "fixture-task", "task_subject": "fixture"}},
+  {"event": "ConfigChange", "required": ["session_id", "source"], "payload": {"session_id": "fixture-session", "source": "settings"}},
+  {"event": "WorktreeCreate", "required": ["session_id", "name"], "payload": {"session_id": "fixture-session", "name": "fixture-worktree"}},
+  {"event": "WorktreeRemove", "required": ["session_id", "name"], "payload": {"session_id": "fixture-session", "name": "fixture-worktree"}},
+  {"event": "SessionEnd", "required": ["session_id", "reason"], "payload": {"session_id": "fixture-session", "reason": "exit"}}
+]

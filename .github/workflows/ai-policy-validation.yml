@@ -35,6 +35,13 @@ jobs:
           .claude/hooks/pre-tool-gate-v2.sh
           scripts/fixtures/pretool-gate-v2.json
 
+      - name: Check configured hook event matrix
+        run: >-
+          python3 scripts/hook_event_matrix.py
+          .claude/settings.json
+          scripts/fixtures/hook-event-matrix.json
+          --json
+
       - name: Check hook configuration against reviewed baseline
         run: >-
           python3 scripts/hook_config_check.py
