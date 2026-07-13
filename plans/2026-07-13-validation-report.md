@@ -69,13 +69,20 @@ and reports explicit threshold violations without editing guidance. A current ba
 check. The checker is not yet wired into CI or a client-specific effective-context
 calculation.
 
+## Phase 5 permission/hook conflict follow-up
+
+The stacked checker reports exact permission contradictions and exact tool-hook matchers
+covered by a permission deny. The current `.claude/settings.json` produced zero exact
+conflicts. This is intentionally conservative: it does not claim to model wildcard
+permission semantics, regex matcher overlap, declaration ordering, or runtime behavior.
+
 ## Tests not yet run
 
 - Full behavior coverage for every registered hook event and matcher.
 - Cross-platform macOS/Linux execution of the complete hook fleet.
 - Atomic-write, clean-clone, and runtime-wiring tests; JSON/TOML proposal generation is
   covered, but it remains proposal-only and does not write runtime files.
-- Permission-versus-hook contradiction tests after a reviewed policy disposition.
+- Wildcard/regex permission-versus-hook contradiction tests and runtime confirmation.
 - Clean-machine bootstrap and runtime migration verification.
 - Full Git-history and out-of-worktree local-overlay exposure review.
 
