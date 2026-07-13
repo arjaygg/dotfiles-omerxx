@@ -155,6 +155,11 @@ Added a maintained Python fixture runner and seven-case manifest for the current
 runner passes all seven cases. The old shell harness remains unchanged and still has
 stale archived expectations, so both results are recorded rather than conflated.
 
+Extended the doctor with read-only source/runtime drift detection. The live
+`~/.claude/settings.json` currently resolves to the main checkout; comparing it with
+this branch's tracked settings produced no `runtime-drift` issue. The doctor still
+reports the same 61 source issues. No file was copied, linked, or modified.
+
 ## Recommendation
 
 Do not begin broad Phase 0/1 implementation in the same change as this report. First

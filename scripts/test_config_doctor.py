@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.config_doctor import run_doctor
+from scripts.config_doctor import compare_runtime_file, run_doctor
 
 
 CONFIG_FILES = (
@@ -74,6 +74,34 @@ class ConfigDoctorTests(unittest.TestCase):
             },
         )
         self.assertEqual(before, b'cp "$LIVE" "$SRC"\n')
+
+    def test_identical_source_and_runtime_settings_have_no_drift(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.json"
+            runtime = root / "runtime.json"
+            source.write_text('{"safe": true}\n', encoding="utf-8")
+            runtime.write_bytes(source.read_bytes())
+
+            self.assertEqual(compare_runtime_file(source, runtime), [])
+
+    def test_runtime_drift_is_reported_without_mutation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.json"
+            runtime = root / "runtime.json"
+            source.write_text('{"safe": true}\n', encoding="utf-8")
+            runtime.write_text('{"safe": false}\n', encoding="utf-8")
+            before_source = source.read_bytes()
+            before_runtime = runtime.read_bytes()
+
+            issues = compare_runtime_file(source, runtime)
+            after_source = source.read_bytes()
+            after_runtime = runtime.read_bytes()
+
+        self.assertEqual([issue.rule for issue in issues], ["runtime-drift"])
+        self.assertEqual(after_source, before_source)
+        self.assertEqual(after_runtime, before_runtime)
 
 
 if __name__ == "__main__":

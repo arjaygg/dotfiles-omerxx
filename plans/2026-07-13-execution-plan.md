@@ -60,6 +60,8 @@ allows and five JSON denies with exit 0; their `.exit1` names are stale and need
 maintained fixture-contract update before Phase 1 can be accepted.
 The new Python runner and seven-case current manifest pass all cases while asserting
 the structured decision, providing the first maintained runtime evidence for the gate.
+The read-only doctor now accepts `--live-settings`; the current live settings compare
+cleanly with this branch's source, while the 61 source issues remain.
 
 1. Capture representative payloads for PreToolUse, PostToolUse, UserPromptSubmit,
    SessionStart, Stop, PreCompact, ConfigChange, worktree, and MCP calls.
