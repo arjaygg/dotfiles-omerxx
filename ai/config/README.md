@@ -25,3 +25,13 @@ python3 scripts/config_generate.py \
 ```
 
 Review the JSON output; do not redirect it to a live configuration path.
+
+For a content-safe review against an existing JSON target, use
+`--compare-against`; it reports only changed JSON paths and SHA-256 values:
+
+```sh
+python3 scripts/config_generate.py \
+  ai/config/claude/settings.base.json \
+  --overlay ai/config/claude/settings.overlay.example.json \
+  --compare-against "$HOME/.claude/settings.json"
+```

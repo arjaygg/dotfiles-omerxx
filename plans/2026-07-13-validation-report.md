@@ -15,6 +15,7 @@ instruction-hierarchy, or live-runtime changes.
 | `python3 scripts/hook_config_check.py .claude/settings.json` | 8 static findings; expected nonzero result |
 | `python3 scripts/config_doctor.py --json` | 59 residual findings; 0 missing remediation fields; read-only |
 | `python3 -m scripts.config_doctor --live-settings "$HOME/.claude/settings.json" --json` | 59 source findings plus 1 expected runtime-drift; no mutation |
+| `python3 scripts/config_generate.py ... --compare-against "$HOME/.claude/settings.json"` | 6 changed JSON paths; hashes only, no target content emitted |
 | `python3 scripts/public_hygiene_check.py --json` | 369 findings: 133 absolute paths, 185 private-name matches, 51 private-URL matches |
 | `git diff --check` | passed |
 | Preflight runtime snapshot | `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`; SHA-256 manifest recorded outside Git |
