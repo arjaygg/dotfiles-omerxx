@@ -81,9 +81,19 @@ existing scratchpad-rule commit.
 
 **Not yet checked:** live Claude hook response schema against fixtures; matcher reachability;
 parallel mutation races; all hook exit statuses; every tool adapter's portability;
-secret scanner results; runtime symlink state; generated-config idempotency; Codex,
+runtime symlink state; generated-config idempotency; Codex,
 Gemini, Cursor, Windsurf, and PCTX schema validation; full Git history exposure; and
 whether local-only overlays already exist outside this worktree.
+
+## New safe-phase progress
+
+Added `scripts/public_hygiene_check.py` with five deterministic rules for tracked UTF-8
+files: absolute home paths, private organization URLs/names, secret assignments, and
+private-key material. Five `unittest` cases cover clean portable text, each finding
+class, redacted placeholders, private keys, and tracked-file filtering. The scanner
+passes its tests and reports 386 current baseline findings (absolute paths and private
+organization markers); this is evidence for the required cleanup, not a claim that
+public-repository hygiene is complete.
 
 ## Recommendation
 

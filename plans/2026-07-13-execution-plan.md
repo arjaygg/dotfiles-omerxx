@@ -15,6 +15,10 @@ permission boundary; policy changes require human approval.
 runtime edits do not write back to tracked source; generation from base plus ignored
 overlays is deterministic, idempotent, atomic, and secret-safe.
 
+**Safe progress:** `scripts/public_hygiene_check.py` and its five-case unittest suite
+now provide a deterministic baseline scanner. It currently reports 386 findings on
+the tracked source, so the phase remains incomplete.
+
 1. Classify every organization/path/secret match as portable source, fixture,
    historical record, work context, or sensitive data; preserve only intentional
    examples and scrub or relocate the rest.
