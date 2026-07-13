@@ -72,6 +72,21 @@ python3 scripts/ai_config.py doctor --root .
 paths only; it never prints target configuration content or modifies files. Runtime
 application, atomic replacement, and backups remain separate review-gated work.
 
+To measure the effective always-loaded guidance chains for repository guidance, Claude,
+Codex, and Gemini without changing any files, run:
+
+```sh
+python3 scripts/effective_context.py \
+  --max-lines 400 \
+  --max-words 3000 \
+  --max-bytes 20000
+```
+
+The JSON report follows line-oriented Markdown imports, resolves the canonical Codex
+base and Gemini context settings, deduplicates aggregate files, and reports missing or
+out-of-root references. Budget violations return exit status 1; the command is
+read-only and does not rewrite the instruction hierarchy.
+
 For a local proposal tree, create an explicit marker and use `stage`:
 
 ```sh

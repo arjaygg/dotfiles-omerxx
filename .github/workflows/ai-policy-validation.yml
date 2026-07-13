@@ -8,7 +8,10 @@ permissions:
 
 jobs:
   ai-policy-validation:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -35,14 +38,43 @@ jobs:
           .claude/hooks/pre-tool-gate-v2.sh
           scripts/fixtures/pretool-gate-v2.json
 
+      - name: Check configured hook event matrix
+        run: >-
+          python3 scripts/hook_event_matrix.py
+          .claude/settings.json
+          scripts/fixtures/hook-event-matrix.json
+          --json
+
       - name: Check hook configuration against reviewed baseline
         run: >-
           python3 scripts/hook_config_check.py
           .claude/settings.json
           --baseline scripts/fixtures/hook-config-baseline.json
 
+      - name: Check file-backed hook references
+        run: >-
+          python3 scripts/hook_reference_check.py
+          .claude/settings.json
+          --root .
+          --baseline scripts/fixtures/hook-reference-baseline.json
+          --json
+
       - name: Check Bash syntax
         run: python3 scripts/shell_syntax_check.py
+
+      - name: Set up Go for shfmt
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+
+      - name: Install pinned shfmt
+        run: go install mvdan.cc/sh/v3/cmd/shfmt@v3.13.1
+
+      - name: Check shell formatting against reviewed baseline
+        run: >-
+          python3 scripts/shfmt_check.py
+          --baseline scripts/fixtures/shfmt-baseline.json
+          --json
 
       - name: Enforce instruction budgets
         run: >-
@@ -51,6 +83,65 @@ jobs:
           --max-words 3000
           --max-bytes 20000
           AGENTS.md CLAUDE.md ai/rules/agent-user-global.md
+
+      - name: Check always-loaded instruction compliance
+        run: >-
+          python3 scripts/instruction_compliance.py
+          --baseline scripts/fixtures/instruction-compliance-baseline.json
+          --json
+          AGENTS.md CLAUDE.md .codex/AGENT.md .gemini/GEMINI.md
+          ai/rules/agent-user-global.md
+
+      - name: Measure effective instruction chains
+        run: >-
+          python3 scripts/effective_context.py
+          --max-lines 400
+          --max-words 3000
+          --max-bytes 20000
+
+      - name: Check dead references against reviewed baseline
+        run: >-
+          python3 scripts/dead_reference_check.py
+          --baseline scripts/fixtures/dead-reference-baseline.json
+          --json
+
+      - name: Verify read-only all-client bootstrap
+        run: >-
+          python3 scripts/bootstrap_check.py
+          --set 'PCTX_CONFIG=~/.config/pctx/pctx.json'
+          --set USER_NAME=portable-user
+
+      - name: Verify proposal-only setup dry-run
+        run: bash setup.sh --dry-run
+
+      - name: Verify proposal-only setup from tracked archive
+        run: python3 scripts/clean_clone_check.py --root .
+
+      - name: Validate learning signal CLI surface
+        run: python3 scripts/learning_signal.py --help
+
+      - name: Install ShellCheck on macOS
+        if: runner.os == 'macOS'
+        run: brew install shellcheck
+
+      - name: Check public hygiene against reviewed baseline
+        run: >-
+          python3 scripts/public_hygiene_check.py
+          --baseline scripts/fixtures/public-hygiene-baseline.json
+          --json
+
+      - name: Check configuration doctor against reviewed baseline
+        run: >-
+          python3 scripts/config_doctor.py
+          --baseline scripts/fixtures/config-doctor-baseline.json
+          --json
+
+      - name: Check ShellCheck errors against reviewed baseline
+        run: >-
+          python3 scripts/shellcheck_check.py
+          --baseline scripts/fixtures/shellcheck-baseline.json
+          --require
+          --json
 
       - name: Check exact permission and hook conflicts
         run: python3 scripts/permission_hook_conflicts.py .claude/settings.json

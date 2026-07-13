@@ -20,6 +20,7 @@ except ModuleNotFoundError:  # pragma: no cover - optional local convenience
 
 REQUIRED_FIELDS = (
     "id",
+    "owner",
     "problem",
     "evidence",
     "recurrence",
@@ -34,9 +35,12 @@ REQUIRED_FIELDS = (
     "review_after",
     "evidence_class",
 )
+OPTIONAL_FIELDS = frozenset({"auto_promote", "auto_apply"})
+ALLOWED_FIELDS = frozenset(REQUIRED_FIELDS) | OPTIONAL_FIELDS
 DESTINATIONS = frozenset({"AGENTS.md", "CLAUDE.md", "rule", "skill", "hook", "CI", "docs", "memory"})
 EVIDENCE_CLASSES = frozenset({"recurrence", "security", "compliance", "production", "data_loss", "cost", "deterministic"})
 ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]+$")
+OWNER_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._@:+-]{0,127}$")
 CONDITION_PREFIX = "condition:"
 TEXT_FIELDS = (
     "problem",
@@ -55,10 +59,14 @@ def validate_proposal(value: Any) -> list[str]:
     if not isinstance(value, dict):
         return ["proposal must be an object"]
     errors = [f"missing required field: {field}" for field in REQUIRED_FIELDS if field not in value]
+    unknown = sorted(set(value) - ALLOWED_FIELDS)
+    errors.extend(f"unsupported field: {field}" for field in unknown)
     if errors:
         return errors
     if not isinstance(value["id"], str) or not ID_PATTERN.fullmatch(value["id"]):
         errors.append("id must use lowercase letters, digits, dots, underscores, or hyphens")
+    if not isinstance(value["owner"], str) or not OWNER_PATTERN.fullmatch(value["owner"]):
+        errors.append("owner must use portable owner characters and be at most 128 characters")
     for field in TEXT_FIELDS:
         if not isinstance(value[field], str) or not value[field].strip():
             errors.append(f"{field} must be a non-empty string")
@@ -132,6 +140,7 @@ def build_review_report(
     status = "changed" if any(metric["changed"] for metric in metrics.values()) else "unchanged"
     return {
         "proposal_id": proposal["id"],
+        "owner": proposal["owner"],
         "decision": "review-required",
         "auto_promote": False,
         "evidence_gate": {

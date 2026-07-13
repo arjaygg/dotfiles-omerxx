@@ -1,1 +1,1 @@
-/Users/axos-agallentes/.dotfiles/ai/rules/global-developer-guidelines.md
+../../ai/rules/global-developer-guidelines.md
