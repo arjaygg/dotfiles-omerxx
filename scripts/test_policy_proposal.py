@@ -58,6 +58,15 @@ class PolicyProposalTests(unittest.TestCase):
 
         self.assertEqual(errors, ["auto_promote must not be true"])
 
+    def test_review_after_accepts_date_or_named_condition(self):
+        self.assertEqual(validate_proposal(valid_proposal(review_after="2026-10-01")), [])
+        self.assertEqual(validate_proposal(valid_proposal(review_after="condition: after next quarterly eval")), [])
+
+    def test_review_after_rejects_unstructured_expiry_text(self):
+        errors = validate_proposal(valid_proposal(review_after="sometime later"))
+
+        self.assertIn("review_after must be an ISO date or condition:<description>", errors)
+
     def test_cli_returns_nonzero_for_invalid_json(self):
         with tempfile.TemporaryDirectory() as directory:
             proposal = Path(directory) / "proposal.json"

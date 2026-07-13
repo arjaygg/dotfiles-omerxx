@@ -7,6 +7,7 @@ import argparse
 import json
 import re
 import sys
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +36,7 @@ REQUIRED_FIELDS = (
 DESTINATIONS = frozenset({"AGENTS.md", "CLAUDE.md", "rule", "skill", "hook", "CI", "docs", "memory"})
 EVIDENCE_CLASSES = frozenset({"recurrence", "security", "compliance", "production", "data_loss", "cost", "deterministic"})
 ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]+$")
+CONDITION_PREFIX = "condition:"
 TEXT_FIELDS = (
     "problem",
     "current_behavior",
@@ -59,6 +61,16 @@ def validate_proposal(value: Any) -> list[str]:
     for field in TEXT_FIELDS:
         if not isinstance(value[field], str) or not value[field].strip():
             errors.append(f"{field} must be a non-empty string")
+    review_after = value["review_after"]
+    valid_date = False
+    if isinstance(review_after, str):
+        try:
+            date.fromisoformat(review_after)
+            valid_date = True
+        except ValueError:
+            valid_date = review_after.startswith(CONDITION_PREFIX) and bool(review_after[len(CONDITION_PREFIX) :].strip())
+    if not valid_date:
+        errors.append("review_after must be an ISO date or condition:<description>")
     evidence = value["evidence"]
     if not isinstance(evidence, list) or not evidence or not all(isinstance(item, str) and item.strip() for item in evidence):
         errors.append("evidence must be a non-empty list of strings")
