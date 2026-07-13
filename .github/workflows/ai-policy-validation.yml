@@ -27,6 +27,12 @@ jobs:
           .claude/hooks/pre-tool-gate-v2.sh
           scripts/fixtures/pretool-gate-v2.json
 
+      - name: Check hook configuration against reviewed baseline
+        run: >-
+          python3 scripts/hook_config_check.py
+          .claude/settings.json
+          --baseline scripts/fixtures/hook-config-baseline.json
+
       - name: Enforce instruction budgets
         run: >-
           python3 scripts/instruction_budget.py

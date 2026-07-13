@@ -15,6 +15,8 @@ class AiPolicyWorkflowTests(unittest.TestCase):
         self.assertIn("scripts/hook_fixture_runner.py", text)
         self.assertIn(".claude/hooks/pre-tool-gate-v2.sh", text)
         self.assertIn("scripts/fixtures/pretool-gate-v2.json", text)
+        self.assertIn("scripts/hook_config_check.py", text)
+        self.assertIn("scripts/fixtures/hook-config-baseline.json", text)
         self.assertIn("scripts/instruction_budget.py", text)
         self.assertIn("scripts/permission_hook_conflicts.py", text)
 

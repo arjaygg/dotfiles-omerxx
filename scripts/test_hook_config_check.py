@@ -1,6 +1,9 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
-from scripts.hook_config_check import check_hooks
+from scripts.hook_config_check import Issue, check_hooks, compare_baseline, load_baseline
 
 
 class HookConfigCheckTests(unittest.TestCase):
@@ -117,6 +120,27 @@ class HookConfigCheckTests(unittest.TestCase):
                 "missing-prompt",
             ],
         )
+
+    def test_matching_baseline_has_no_findings(self):
+        issue = Issue("PreToolUse", "parallel-handlers", "ordering is not guaranteed")
+
+        self.assertEqual(compare_baseline([issue], [issue]), [])
+
+    def test_baseline_reports_new_and_missing_findings(self):
+        expected = [Issue("PreToolUse", "ignored-matcher", "matcher is ignored")]
+        actual = [Issue("PreToolUse", "parallel-handlers", "ordering is not guaranteed")]
+
+        findings = compare_baseline(actual, expected)
+
+        self.assertEqual([issue.rule for issue in findings], ["baseline-missing", "baseline-new"])
+
+    def test_load_baseline_rejects_malformed_entries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "baseline.json"
+            path.write_text(json.dumps([{"event": "PreToolUse"}]), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "event, rule, and message"):
+                load_baseline(path)
 
 
 if __name__ == "__main__":
