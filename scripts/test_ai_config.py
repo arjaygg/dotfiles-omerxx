@@ -150,6 +150,28 @@ class AiConfigCliTests(unittest.TestCase):
             self.assertEqual(gemini_target.read_text(encoding="utf-8"), '{"gemini": "old"}\n')
             self.assertEqual(list(output_root.rglob("*.bak")), [])
 
+    def test_stage_preserves_unmanaged_client_cache_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output_root = Path(directory)
+            (output_root / ".ai-config-staging").touch()
+            caches = {
+                output_root / ".codex/cache/session.db": b"codex-cache-v1",
+                output_root / ".gemini/cache/index.sqlite": b"gemini-cache-v1",
+            }
+            for path, content in caches.items():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(content)
+
+            stage_proposals(
+                ROOT,
+                output_root,
+                clients={"codex", "gemini"},
+                variables={"PCTX_CONFIG": "/tmp/pctx.json"},
+            )
+
+            for path, content in caches.items():
+                self.assertEqual(path.read_bytes(), content)
+
 
 if __name__ == "__main__":
     unittest.main()

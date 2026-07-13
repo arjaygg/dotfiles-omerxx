@@ -68,7 +68,7 @@ the existing generator, and emits per-client SHA-256 hashes. The current proof r
 six clients, `idempotent: true`, `writes_performed: false`, and `runtime_writes: false`.
 It is a proposal-only check: it does not create directories, alter symlinks, write runtime
 files, or authorize the default `setup.sh` install path. Clean-machine runtime bootstrap,
-cache preservation, and live migration remain unverified.
+live cache preservation, and live migration remain unverified.
 
 ## Transactional staging follow-up
 
@@ -78,6 +78,9 @@ replacement and retained on success; a simulated later-target failure restores e
 replacements and removes temporary backups. This proves the staging transaction's failure
 path without touching live runtime paths. Multi-process crash recovery, filesystem-level
 durability across power loss, clean-machine bootstrap, and live migration remain unverified.
+The staging test also places unmanaged cache sentinels under two client directories and
+verifies their bytes are unchanged after staging; this is isolated temporary-root evidence,
+not proof about caches on a live machine.
 
 ## Phase 4 instruction-budget follow-up
 
