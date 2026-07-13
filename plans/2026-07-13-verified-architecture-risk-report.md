@@ -161,6 +161,10 @@ Extended the doctor with read-only source/runtime drift detection. The live
 this branch's tracked settings produced no `runtime-drift` issue. The doctor still
 reports the same 68 source issues. No file was copied, linked, or modified.
 
+The doctor now attaches remediation guidance to every issue and exposes it in both
+human-readable and JSON output. Verification found 68 issues with zero missing
+remediation fields; this improves proposal quality without applying any fix.
+
 Added an explicit `.gitignore` entry for future `.claude/settings.local.json` files.
 Verification shows the path is now ignored for new files but remains tracked (`tracked=yes`)
 and still produces the doctor error; untracking it is intentionally deferred to the

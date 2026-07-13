@@ -33,6 +33,31 @@ class Issue:
     rule: str
     severity: str
     message: str
+    remediation: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.remediation:
+            object.__setattr__(
+                self,
+                "remediation",
+                REMEDIATIONS.get(self.rule, "Review the finding and choose a portable, reviewed fix."),
+            )
+
+
+REMEDIATIONS = {
+    "absolute-home-path": "Replace user-specific paths with HOME/PATH expansion or an ignored local overlay.",
+    "private-org-url": "Remove organization URLs from public source or move them to private context.",
+    "private-org-name": "Remove organization-specific context or retain only a sanitized generic example.",
+    "secret-assignment": "Remove the value and load secrets from an ignored secret store or environment.",
+    "private-key": "Remove key material immediately and rotate it if it was ever real.",
+    "invalid-config": "Fix syntax and validate the file against its client schema before generation.",
+    "unsafe-bypass": "Remove the bypass after explicit permission-policy review; do not auto-adopt runtime changes.",
+    "blanket-permission-allow": "Replace blanket allows with the narrowest reviewed tool patterns.",
+    "tracked-local-overlay": "Move the machine-local file to an ignored overlay after migration review.",
+    "runtime-copyback": "Report runtime drift and require a reviewed proposal instead of copying live settings back.",
+    "runtime-drift": "Compare source and runtime ownership, then apply only an explicitly reviewed migration.",
+    "runtime-missing": "Verify the runtime path and bootstrap it from a reviewed portable template if needed.",
+}
 
 
 def _issue_from_finding(finding: Finding) -> Issue:

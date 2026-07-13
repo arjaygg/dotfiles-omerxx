@@ -101,6 +101,7 @@ class ConfigDoctorTests(unittest.TestCase):
             after_runtime = runtime.read_bytes()
 
         self.assertEqual([issue.rule for issue in issues], ["runtime-drift"])
+        self.assertTrue(issues[0].remediation)
         self.assertEqual(after_source, before_source)
         self.assertEqual(after_runtime, before_runtime)
 

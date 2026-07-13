@@ -63,6 +63,8 @@ The new Python runner and seven-case current manifest pass all cases while asser
 the structured decision, providing the first maintained runtime evidence for the gate.
 The read-only doctor now accepts `--live-settings`; the current live settings compare
 cleanly with this branch's source, while the 68 source issues remain.
+Every doctor issue now includes explicit remediation guidance in its output; no
+remediation is auto-applied.
 The proposed disposition matrix is recorded in
 `plans/2026-07-13-phase0-classification.md`; no cleanup decision is implied by that
 classification.
