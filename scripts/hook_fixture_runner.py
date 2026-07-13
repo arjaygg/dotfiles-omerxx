@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Sequence
 
 
+VALID_OUTPUT_MODES = frozenset({"empty", "decision"})
+
+
 @dataclass(frozen=True)
 class HookResult:
     returncode: int
@@ -28,6 +31,15 @@ def load_manifest(path: Path) -> list[dict[str, object]]:
             raise ValueError("each fixture must be an object with a name")
         if case.get("expect") not in {"allow", "ask", "deny"}:
             raise ValueError(f"{case['name']}: expect must be allow, ask, or deny")
+        event = case.get("event", "PreToolUse")
+        if not isinstance(event, str) or not event:
+            raise ValueError(f"{case['name']}: event must be a non-empty string")
+        expected_exit = case.get("expected_exit", 0)
+        if isinstance(expected_exit, bool) or not isinstance(expected_exit, int) or expected_exit < 0:
+            raise ValueError(f"{case['name']}: expected_exit must be a non-negative integer")
+        output_mode = case.get("output")
+        if output_mode is not None and output_mode not in VALID_OUTPUT_MODES:
+            raise ValueError(f"{case['name']}: output must be empty or decision")
         if not isinstance(case.get("input"), dict):
             raise ValueError(f"{case['name']}: input must be an object")
         if "expected_updated_input" in case:
@@ -57,12 +69,17 @@ def run_case(hook: Path, case: dict[str, object]) -> HookResult:
 def check_result(case: dict[str, object], returncode: int, stdout: str, stderr: str) -> list[str]:
     expect = case["expect"]
     failures: list[str] = []
-    if returncode != 0:
-        failures.append(f"expected exit 0, got {returncode}")
+    expected_exit = case.get("expected_exit", 0)
+    if returncode != expected_exit:
+        failures.append(f"expected exit {expected_exit}, got {returncode}")
     expects_rewrite = "expected_updated_input" in case
-    if expect == "allow" and not expects_rewrite:
+    output_mode = case.get(
+        "output",
+        "empty" if expect == "allow" and not expects_rewrite else "decision",
+    )
+    if output_mode == "empty":
         if stdout.strip():
-            failures.append("allow fixture must produce no stdout")
+            failures.append("empty-output fixture must produce no stdout")
         return failures
 
     try:
@@ -74,8 +91,9 @@ def check_result(case: dict[str, object], returncode: int, stdout: str, stderr: 
     if not isinstance(output, dict):
         failures.append("structured fixture is missing hookSpecificOutput")
         return failures
-    if output.get("hookEventName") != "PreToolUse":
-        failures.append("structured fixture must identify PreToolUse")
+    expected_event = case.get("event", "PreToolUse")
+    if output.get("hookEventName") != expected_event:
+        failures.append(f"structured fixture must identify {expected_event}")
     if output.get("permissionDecision") != expect:
         failures.append(f"{expect} fixture must set permissionDecision={expect}")
     if not isinstance(output.get("permissionDecisionReason"), str) or not output["permissionDecisionReason"]:

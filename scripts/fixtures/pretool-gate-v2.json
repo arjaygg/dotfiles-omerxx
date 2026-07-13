@@ -41,6 +41,11 @@
     }
   },
   {
+    "name": "malformed-payload-missing-tool-name-denied",
+    "expect": "deny",
+    "input": {"tool_input": {}}
+  },
+  {
     "name": "grep-general-pattern-blocked",
     "expect": "deny",
     "input": {

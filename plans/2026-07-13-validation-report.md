@@ -137,6 +137,16 @@ SC2259 finding in `.cursor/hooks/before-shell-git-commit.sh`; the baseline match
 no added or removed findings. CI requires ShellCheck and fails on drift. The finding is
 not fixed in this increment because changing hook behavior remains a separate review.
 
+## Maintained hook fixture contract follow-up
+
+The maintained `scripts/hook_fixture_runner.py` now validates the declared hook event,
+expected exit code, and either an explicitly empty stdout contract or one structured
+decision. It still requires non-empty decision reasons and exact object-shaped rewrites,
+and it rejects rewrite fixtures that drop original tool-input keys. The manifest adds a
+malformed-payload case with observed structured denial; eight PreToolUse fixtures pass
+locally. This is fixture-level evidence for the current gate only, not proof of every
+registered event, matcher, platform, or runtime hook ordering.
+
 ## Read-only setup modes
 
 `setup.sh --dry-run` now emits the six-client proposal bundle and returns before any
@@ -184,7 +194,8 @@ review-gated.
 
 ## Tests not yet run
 
-- Full behavior coverage for every registered hook event and matcher.
+- Full behavior coverage for every registered hook event and matcher; the maintained
+  runner currently exercises eight PreToolUse cases only.
 - Cross-platform macOS/Linux execution of the complete hook fleet.
 - Atomic-write, clean-clone, and runtime-wiring tests; JSON/TOML proposal generation is
   covered, but it remains proposal-only and does not write runtime files.

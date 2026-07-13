@@ -2,7 +2,7 @@
 
 plan: plans/2026-07-13-execution-plan.md
 step: Phase 5 of 5
-focus: detection-only ShellCheck baseline and CI drift gate
+focus: event-aware maintained hook fixture contract
 
 ## Current (2026-07-13) — Phase 0/1 audit checkpoint
 
@@ -33,6 +33,11 @@ focus: detection-only ShellCheck baseline and CI drift gate
 - The current child branch adds a required ShellCheck baseline gate for the 88 governed
   shell files. One existing SC2259 finding is recorded; no shell or hook behavior is
   changed.
+
+- The current child branch extends the maintained PreToolUse fixture runner with
+  event-aware structured-decision validation, explicit empty-output/exit-code contracts,
+  and one malformed-payload deny fixture. Eight fixtures pass; no runtime hook behavior
+  or permission semantics are changed.
 
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and

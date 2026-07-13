@@ -79,6 +79,30 @@ class HookFixtureRunnerTests(unittest.TestCase):
         self.assertEqual(check_result({"expect": "deny"}, 0, stdout, ""), [])
         self.assertNotEqual(check_result({"expect": "deny"}, 0, "", ""), [])
 
+    def test_nonzero_exit_and_empty_output_can_be_expected(self):
+        case = {"expect": "deny", "expected_exit": 2, "output": "empty"}
+
+        self.assertEqual(check_result(case, 2, "", "blocked"), [])
+        self.assertNotEqual(check_result(case, 0, "", "blocked"), [])
+
+    def test_structured_result_uses_declared_event_name(self):
+        case = {"event": "PostToolUse", "expect": "deny"}
+        stdout = json.dumps(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PostToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": "blocked",
+                }
+            }
+        )
+
+        self.assertEqual(check_result(case, 0, stdout, ""), [])
+        self.assertNotEqual(
+            check_result(case, 0, stdout.replace("PostToolUse", "PreToolUse"), ""),
+            [],
+        )
+
     def test_ask_result_requires_matching_decision_and_reason(self):
         stdout = json.dumps(
             {
@@ -166,6 +190,27 @@ class HookFixtureRunnerTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(ValueError, "description"):
+                load_manifest(manifest)
+
+    def test_manifest_rejects_invalid_exit_and_output_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "fixtures.json"
+            manifest.write_text(
+                json.dumps(
+                    [
+                        {
+                            "name": "invalid",
+                            "expect": "deny",
+                            "expected_exit": True,
+                            "output": "json",
+                            "input": {},
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "expected_exit"):
                 load_manifest(manifest)
 
     def test_runner_executes_a_fixture_and_loads_manifest(self):
