@@ -114,6 +114,9 @@ jobs:
       - name: Verify proposal-only setup dry-run
         run: bash setup.sh --dry-run
 
+      - name: Verify proposal-only setup from tracked archive
+        run: python3 scripts/clean_clone_check.py --root .
+
       - name: Validate learning signal CLI surface
         run: python3 scripts/learning_signal.py --help
 

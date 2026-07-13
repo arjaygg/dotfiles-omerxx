@@ -39,6 +39,7 @@ class AiPolicyWorkflowTests(unittest.TestCase):
         self.assertIn("scripts/fixtures/dead-reference-baseline.json", text)
         self.assertIn("scripts/bootstrap_check.py", text)
         self.assertIn("bash setup.sh --dry-run", text)
+        self.assertIn("scripts/clean_clone_check.py", text)
         self.assertIn("scripts/learning_signal.py", text)
         self.assertIn("scripts/public_hygiene_check.py", text)
         self.assertIn("scripts/fixtures/public-hygiene-baseline.json", text)
