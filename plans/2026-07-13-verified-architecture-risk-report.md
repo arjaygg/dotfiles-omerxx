@@ -95,6 +95,20 @@ passes its tests and reports 386 current baseline findings (absolute paths and p
 organization markers); this is evidence for the required cleanup, not a claim that
 public-repository hygiene is complete.
 
+The current committed baseline was subsequently rechecked after the scanner landed:
+388 findings remain — 195 organization-name matches, 140 absolute-home-path matches,
+and 53 organization-URL matches. The largest source areas are `ai/` (114), `.claude/`
+(79), `plans/` (48), `.codex/` (45), and `.gemini/` (26). These counts guide
+classification; they are not permission to delete historical plans or evaluation
+fixtures without a reviewed disposition.
+
+Added a proposal-only `scripts/config_doctor.py`. It validates the tracked JSON/TOML
+client configs, reuses the privacy rules for config files, detects the tracked
+`skipDangerousModePermissionPrompt` bypass, and detects live-settings copy-back in the
+symlink guard without writing files. Its eight-test combined suite passes. The current
+doctor baseline is 61 issues: 59 warnings for config privacy/path findings and two
+errors (`unsafe-bypass` and `runtime-copyback`).
+
 ## Recommendation
 
 Do not begin broad Phase 0/1 implementation in the same change as this report. First

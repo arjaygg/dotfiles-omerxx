@@ -19,6 +19,9 @@ overlays is deterministic, idempotent, atomic, and secret-safe.
 now provide a deterministic baseline scanner. It currently reports 386 findings on
 the tracked source, so the phase remains incomplete.
 
+**Additional safe progress:** `scripts/config_doctor.py` provides a read-only doctor
+for tracked client configs and reports 61 current issues without mutating files.
+
 1. Classify every organization/path/secret match as portable source, fixture,
    historical record, work context, or sensitive data; preserve only intentional
    examples and scrub or relocate the rest.
@@ -102,6 +105,6 @@ conflicting permissions/hooks, dead references, and instruction-budget regressio
 ## Immediate next step
 
 Review this report and plan, then approve a dedicated Phase 0 implementation branch.
-The current branch intentionally contains only the pctx snapshot refresh; it does not
-silently apply the high-impact safety or runtime-configuration changes identified
-above.
+The current branch contains audit documentation plus read-only validation tooling; it
+does not silently apply the high-impact safety or runtime-configuration changes
+identified above.
