@@ -23,6 +23,8 @@ class AiPolicyWorkflowTests(unittest.TestCase):
         self.assertIn("scripts/instruction_budget.py", text)
         self.assertIn("scripts/effective_context.py", text)
         self.assertIn("--max-lines 400", text)
+        self.assertIn("scripts/dead_reference_check.py", text)
+        self.assertIn("scripts/fixtures/dead-reference-baseline.json", text)
         self.assertIn("scripts/permission_hook_conflicts.py", text)
 
     def test_workflow_is_read_only_and_scoped_to_main_prs(self):

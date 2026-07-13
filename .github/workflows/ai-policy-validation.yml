@@ -59,5 +59,11 @@ jobs:
           --max-words 3000
           --max-bytes 20000
 
+      - name: Check dead references against reviewed baseline
+        run: >-
+          python3 scripts/dead_reference_check.py
+          --baseline scripts/fixtures/dead-reference-baseline.json
+          --json
+
       - name: Check exact permission and hook conflicts
         run: python3 scripts/permission_hook_conflicts.py .claude/settings.json
