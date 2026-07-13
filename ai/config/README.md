@@ -61,6 +61,20 @@ python3 scripts/ai_config.py doctor --root .
 paths only; it never prints target configuration content or modifies files. Runtime
 application, atomic replacement, and backups remain separate review-gated work.
 
+For a local proposal tree, create an explicit marker and use `stage`:
+
+```sh
+mkdir -p /tmp/dotfiles-ai-stage
+touch /tmp/dotfiles-ai-stage/.ai-config-staging
+python3 scripts/ai_config.py stage \\
+  --output-root /tmp/dotfiles-ai-stage \\
+  --client codex
+```
+
+Staging writes atomically below the marked directory. Existing files are refused by
+default; `--replace` creates a sibling `.bak` before replacement. Do not point this
+command at a live home-directory configuration tree.
+
 Portable client bases use explicit `${NAME}` markers. Supply replacements with
 `--set`; the generator never reads process environment variables implicitly:
 
