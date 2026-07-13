@@ -187,8 +187,8 @@ The maintained `scripts/hook_fixture_runner.py` now validates the declared hook 
 expected exit code, and either an explicitly empty stdout contract or one structured
 decision. It still requires non-empty decision reasons and exact object-shaped rewrites,
 and it rejects rewrite fixtures that drop original tool-input keys. The manifest adds a
-malformed-payload case with observed structured denial; eight PreToolUse fixtures pass
-locally. This is fixture-level evidence for the current gate only, not proof of every
+malformed-payload, sensitive hash-file denial, and safe pipe-rewrite cases; ten PreToolUse
+fixtures pass locally. This is fixture-level evidence for the current gate only, not proof of every
 registered event, matcher, platform, or runtime hook ordering.
 
 ## Read-only setup modes
