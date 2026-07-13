@@ -2,21 +2,22 @@
 
 ## Scope
 
-This report records read-only validation for the Phase 0/1 control-plane audit on
-`chore/add-scratchpad-compaction-rule`. It does not authorize permission, hook,
+This report records validation for the approved Phase 0 source branch,
+`chore/phase0-config-boundary`. It does not authorize live runtime application,
 instruction-hierarchy, or live-runtime changes.
 
 ## Commands and results
 
 | Command | Result |
 |---|---|
-| `python3 -m unittest discover -s scripts -p 'test_*.py'` | 22 tests passed |
+| `python3 -m unittest discover -s scripts -p 'test_*.py'` | 34 tests passed |
 | `python3 scripts/hook_fixture_runner.py .claude/hooks/pre-tool-gate-v2.sh scripts/fixtures/pretool-gate-v2.json` | 7 passed, 0 failed |
 | `python3 scripts/hook_config_check.py .claude/settings.json` | 8 static findings; expected nonzero result |
-| `python3 scripts/config_doctor.py --json` | 68 findings; 0 missing remediation fields; read-only |
-| `python3 scripts/public_hygiene_check.py --json` | 388 findings: 140 absolute paths, 195 private-name matches, 53 private-URL matches |
+| `python3 scripts/config_doctor.py --json` | 59 residual findings; 0 missing remediation fields; read-only |
+| `python3 -m scripts.config_doctor --live-settings "$HOME/.claude/settings.json" --json` | 59 source findings plus 1 expected runtime-drift; no mutation |
+| `python3 scripts/public_hygiene_check.py --json` | 368 findings: 132 absolute paths, 185 private-name matches, 51 private-URL matches |
 | `git diff --check` | passed |
-| `git status --short --branch` | clean worktree on the isolated audit branch |
+| `git status --short --branch` | isolated Phase 0 branch; clean after commit |
 
 The nonzero scanner and doctor results are expected because they report the unresolved
 baseline; they are not hygiene or configuration acceptance passes.
@@ -25,8 +26,8 @@ baseline; they are not hygiene or configuration acceptance passes.
 
 - Full behavior coverage for every registered hook event and matcher.
 - Cross-platform macOS/Linux execution of the complete hook fleet.
-- Generator schema, atomic-write, idempotency, and clean-clone tests; no generator has
-  been introduced yet.
+- Atomic-write, clean-clone, and multi-client generator tests; the current generator is
+  proposal-only JSON and does not write runtime files.
 - Permission-versus-hook contradiction tests after a reviewed policy disposition.
 - Clean-machine bootstrap and runtime migration verification.
 - Full Git-history and out-of-worktree local-overlay exposure review.
@@ -37,20 +38,19 @@ therefore the only current multi-case runtime evidence for the pre-tool gate.
 
 ## Residual risks
 
-1. Tracked settings still contain an unsafe bypass default and broad permission allows.
-2. The settings symlink guard still adopts live settings into tracked source.
-3. A machine-local settings overlay remains tracked, despite a future-file ignore rule.
-4. Six configured matchers are ignored for their event types; two worktree groups have
+1. Broad permission allows remain for separate permission review.
+2. The portable generator currently covers the Claude JSON proposal path only.
+3. Six configured matchers are ignored for their event types; two worktree groups have
    multiple handlers whose ordering must not be assumed.
-5. Public-repository hygiene is not clean; every finding still needs a reviewed
+4. Public-repository hygiene is not clean; every finding still needs a reviewed
    portable-source, fixture, history, or sensitive-data disposition.
 
 ## Review-gated migration sequence
 
 1. Snapshot live runtime settings and checksums outside Git; exclude secrets and
    transcripts from all artifacts.
-2. Approve the Phase 0 disposition matrix and permission/runtime ownership boundaries.
-3. Create sanitized tracked bases plus ignored identity, path, work-context, and secret
+2. Review the Phase 0 branch diff and proposal output.
+3. Create any remaining sanitized tracked bases plus ignored identity, path, work-context, and secret
    overlays; generate proposal-only diffs first.
 4. Validate schemas, privacy rules, secret rules, atomicity, and idempotency.
 5. Apply only the approved migration, then verify runtime behavior and a clean repeated

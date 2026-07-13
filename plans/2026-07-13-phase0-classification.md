@@ -7,19 +7,19 @@ proposal artifact, not an allowlist and not authorization to delete or rewrite f
 
 ## Measured baseline
 
-- Public-hygiene scanner: 388 findings — 195 organization names, 140 absolute home
-  paths, and 53 organization URLs (current recheck after audit artifacts were added).
+- Public-hygiene scanner: 368 findings — 185 organization names, 132 absolute home
+  paths, and 51 organization URLs (current Phase 0 branch recheck).
 - Highest-count files: `.codex/config.toml` (45), `.claude/agents/claude-code-review-agent.md`
   (22), `ai/agents/claude-code-review-agent.md` (22), `.claude-global/CLAUDE.md` (19),
-  `ai/skills/azure-devops-cli/SKILL.md` (13), `.claude/settings.local.json` (12),
-  `.gemini/config/mcp_config.json` (12), and `.config/pctx/pctx.json` (10).
+  `ai/skills/azure-devops-cli/SKILL.md` (13), `.gemini/config/mcp_config.json` (12),
+  `.config/pctx/pctx.json` (10), and `ai/skills/ado-workitem/SKILL.md` (10).
 
 ## Disposition matrix
 
 | Area | Current evidence | Proposed disposition | Risk/gate |
 |---|---|---|---|
-| `.claude/settings.json` | tracked runtime settings, bypass flag, org env | portable base plus reviewed local overlay | permission/runtime review |
-| `.claude/settings.local.json` | tracked local permissions and worktree-specific absolute paths | remove from tracked source; generate ignored local file | permission review |
+| `.claude/settings.json` | sanitized tracked settings; portable base now added | proposal base plus reviewed local overlay | live-runtime review |
+| `.claude/settings.local.json` | local permissions and worktree-specific paths; now untracked | preserve ignored local file; generate only after review | runtime review |
 | `.codex/config.toml` | project trust list, absolute paths, local MCP paths | base model/MCP defaults plus ignored trust/path overlay | runtime review |
 | `.gemini/config/mcp_config.json` | absolute binaries, local data/config paths | `${HOME}`/PATH-based base plus optional local overlay | runtime review |
 | `.config/pctx/pctx.json` | absolute server binaries and Homebrew paths | portable command names/PATH defaults plus machine overlay | MCP bootstrap review |
@@ -32,8 +32,8 @@ proposal artifact, not an allowlist and not authorization to delete or rewrite f
 ## Required migration order
 
 1. Snapshot live settings and hashes outside Git; do not copy secrets into the repo.
-2. Obtain human approval for the settings/permission and symlink-guard changes.
-3. Create sanitized base templates and ignored local/work overlays.
+2. Implement the approved settings/permission and symlink-guard branch changes.
+3. Review the sanitized base templates and ignored local/work overlays.
 4. Generate proposal-only diffs and validate JSON/TOML/YAML plus privacy rules.
 5. Apply atomically only after review; back up runtime files and verify idempotency.
 6. Re-run the scanner and doctor; require zero unsanctioned findings before claiming
@@ -43,5 +43,5 @@ proposal artifact, not an allowlist and not authorization to delete or rewrite f
 
 This classification does not decide whether specialized ADO skills belong in a public
 repo, which runtime fields are user-managed, or whether the live settings should be
-replaced immediately. Those are human decisions required before the high-impact
-Phase 0 implementation step.
+replaced immediately. Live application and any Phase 1 permission changes remain
+separate human decisions.

@@ -3,7 +3,7 @@
 ## Active — 2026-07-13 portable governed AI configuration audit
 
 Plan: `plans/2026-07-13-execution-plan.md`; branch
-`chore/add-scratchpad-compaction-rule`.
+`chore/phase0-config-boundary`.
 
 - [x] Verify current branch, instruction hierarchy, open-PR overlap, hook schema risks,
   public-repository exposure, and runtime copy-back behavior.
@@ -11,8 +11,11 @@ Plan: `plans/2026-07-13-execution-plan.md`; branch
   maintained PreToolUse fixture coverage.
 - [x] Record Phase 0 classification, remediation guidance, current baseline counts, and
   review gates without changing permission semantics or live runtime configuration.
-- [ ] Obtain human review before permission, machine-wide hook, canonical-hierarchy, or
-  live-runtime migration changes.
+- [x] Implement the approved Phase 0 source-boundary changes: remove unsafe/private
+  settings context, make the symlink guard proposal-only, untrack the local overlay,
+  and add a portable Claude base plus proposal generator.
+- [ ] Validate the proposal diff and obtain separate approval before live runtime,
+  permission, machine-wide hook, or canonical-hierarchy changes.
 
 ## Done — 2026-07-10 trim CLAUDE.md instruction chain (Fable-reviewed, ADL-018)
 

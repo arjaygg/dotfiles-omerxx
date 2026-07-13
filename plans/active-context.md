@@ -2,17 +2,17 @@
 
 plan: plans/2026-07-13-execution-plan.md
 step: Phase 0 of 5
-focus: read-only validation complete; review-gated configuration migration
+focus: approved Phase 0 source implementation; proposal validation before live migration
 
 ## Current (2026-07-13) — Phase 0/1 audit checkpoint
 
-- Read-only hygiene, config-doctor, hook-schema, and maintained fixture validation are
-  complete on `chore/add-scratchpad-compaction-rule`.
-- Current evidence: 22 Python tests pass, 7 maintained PreToolUse fixtures pass, the
-  hygiene scanner reports 388 findings, and the doctor reports 68 findings with
-  remediation guidance.
-- Permission semantics, machine-wide hooks, canonical instruction hierarchy, and live
-  runtime configuration remain unchanged pending human review.
+- Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
+  sanitized settings, detect-only symlink guard, untracked local overlay, and
+  proposal-only Claude generator.
+- Current evidence: 34 Python tests pass, 7 maintained PreToolUse fixtures pass, the
+  hygiene scanner reports 368 findings, and the doctor reports 59 residual findings.
+- Live runtime configuration, broad permission allows, canonical instruction hierarchy,
+  and ordering-sensitive Phase 1 hooks remain unchanged pending separate review.
 
 ## Current (2026-07-09) — Phase 4 checkpoint, session restart required
 

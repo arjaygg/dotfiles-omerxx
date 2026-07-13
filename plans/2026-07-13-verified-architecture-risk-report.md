@@ -8,8 +8,8 @@ hook, and self-modification audit; it does not authorize behavior-changing fixes
 
 ## Verified current state
 
-- Repository: `/Users/axos-agallentes/.dotfiles`; working branch is the isolated
-  `chore/add-scratchpad-compaction-rule` worktree, based on `origin/main`.
+- Repository: `.dotfiles`; working branch is the isolated
+  `chore/phase0-config-boundary` worktree, based on the audit branch.
 - Open-PR check: Graphify reported **0 open PRs targeting `main`**.
 - The tracked source contains `ai/`, tool adapters, `setup.sh`, hooks, plans, and
   decisions, matching the intended multi-agent control-plane shape.
@@ -21,6 +21,31 @@ hook, and self-modification audit; it does not authorize behavior-changing fixes
   result; live namespaces are Serena, Qmd, LeanCtx, Repomix, and Graphify.
 
 ## Confirmed risks
+
+The risks below describe the pre-approval audit baseline. Current Phase 0 branch
+resolutions are recorded in the implementation update below; remaining risks are not
+silently considered accepted.
+
+## Approved Phase 0 implementation update
+
+- Removed `skipDangerousModePermissionPrompt` and the organization-specific `autoMode`
+  environment block from `.claude/settings.json`; the file remains valid JSON and
+  passes the hygiene scanner in isolation.
+- Replaced the settings symlink guard's runtime-to-source adoption with a read-only
+  warning path. Valid and invalid severed runtime files remain unchanged, and intact
+  symlinks remain untouched.
+- Removed `.claude/settings.local.json` from Git's index while preserving the local
+  working-tree file and existing ignore rule.
+- Added `ai/config/claude/settings.base.json`, a portable sanitized snapshot, an
+  overlay example, and `scripts/config_generate.py`. The generator deep-merges JSON,
+  rejects privacy/secret findings, and prints proposals without writing files.
+- Added boundary and generator tests. The full Python suite now passes 34 tests.
+- Current branch recheck: 368 hygiene findings (185 organization names, 132 absolute
+  paths, 51 organization URLs); doctor reports 59 findings, all from residual path,
+  organization, and blanket-permission data outside the approved boundary changes.
+
+No live runtime file, canonical instruction hierarchy, broad permission allow, or
+ordering-sensitive Phase 1 hook was changed.
 
 ### P0/P1 — public-repository boundary is not clean
 
@@ -95,10 +120,9 @@ passes its tests and an earlier baseline recorded 386 findings (absolute paths a
 private organization markers); this is evidence for the required cleanup, not a claim that
 public-repository hygiene is complete.
 
-The current committed baseline was subsequently rechecked after the audit artifacts
-were added: 388 findings remain — 195 organization-name matches, 140 absolute-home-path
-matches, and 53 organization-URL matches. The largest source areas are `ai/` (114), `.claude/`
-(79), `plans/` (47), `.codex/` (45), and `.gemini/` (26). These counts guide
+The audit baseline recorded 388 findings. The Phase 0 branch recheck now reports 368
+findings — 185 organization-name matches, 132 absolute-home-path matches, and 51
+organization-URL matches. These counts guide
 classification; they are not permission to delete historical plans or evaluation
 fixtures without a reviewed disposition.
 
@@ -106,9 +130,10 @@ Added a proposal-only `scripts/config_doctor.py`. It validates the tracked JSON/
 client configs, reuses the privacy rules for config files, detects the tracked
 `skipDangerousModePermissionPrompt` bypass, and detects live-settings copy-back in the
 symlink guard without writing files. Its eight-test combined suite passes. The current
-doctor baseline is 68 issues: 59 warnings for config privacy/path findings and nine
-errors — six `blanket-permission-allow` findings plus `unsafe-bypass`,
-`tracked-local-overlay`, and `runtime-copyback`.
+doctor baseline was 68 issues. The Phase 0 branch now reports 59 residual issues: 26
+absolute-path findings, 27 organization-name findings, and six
+`blanket-permission-allow` errors; the bypass, tracked-overlay, and runtime-copyback
+findings are resolved on this branch.
 
 ## Hook-schema verification update
 
@@ -156,19 +181,17 @@ Added a maintained Python fixture runner and seven-case manifest for the current
 runner passes all seven cases. The old shell harness remains unchanged and still has
 stale archived expectations, so both results are recorded rather than conflated.
 
-Extended the doctor with read-only source/runtime drift detection. The live
-`~/.claude/settings.json` currently resolves to the main checkout; comparing it with
-this branch's tracked settings produced no `runtime-drift` issue. The doctor still
-reports the same 68 source issues. No file was copied, linked, or modified.
+Extended the doctor with read-only source/runtime drift detection. A live-settings
+comparison must be rerun after this branch's source changes; no live file was copied,
+linked, or modified by the Phase 0 implementation.
 
 The doctor now attaches remediation guidance to every issue and exposes it in both
-human-readable and JSON output. Verification found 68 issues with zero missing
+human-readable and JSON output. Verification found 59 issues with zero missing
 remediation fields; this improves proposal quality without applying any fix.
 
 Added an explicit `.gitignore` entry for future `.claude/settings.local.json` files.
-Verification shows the path is now ignored for new files but remains tracked (`tracked=yes`)
-and still produces the doctor error; untracking it is intentionally deferred to the
-review-gated migration.
+The Phase 0 branch now leaves the existing local file in place but removes it from the
+Git index; the doctor no longer reports a tracked-overlay finding.
 
 Added `plans/2026-07-13-phase0-classification.md`, which maps the scanner findings to
 portable base templates, ignored local/work overlays, sanitized fixtures, or human
@@ -178,6 +201,6 @@ it does not delete or rewrite any of them.
 
 ## Recommendation
 
-Do not begin broad Phase 0/1 implementation in the same change as this report. First
-review the execution plan below, then handle the tracked unsafe settings and
-settings-symlink adoption behavior in a dedicated, explicitly approved safety branch.
+Review the Phase 0 branch diff and validation output. Keep live runtime application,
+permission-rule changes, canonical hierarchy changes, and Phase 1 ordering work as
+separate explicitly approved steps.

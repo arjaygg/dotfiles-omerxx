@@ -16,12 +16,20 @@ runtime edits do not write back to tracked source; generation from base plus ign
 overlays is deterministic, idempotent, atomic, and secret-safe.
 
 **Safe progress:** `scripts/public_hygiene_check.py` and its five-case unittest suite
-now provide a deterministic baseline scanner. Earlier audit snapshots recorded 386
-and 390 findings; the current recheck reports 388 findings (195 organization names,
-140 absolute-home paths, and 53 organization URLs), so the phase remains incomplete.
+now provide a deterministic baseline scanner. Earlier audit snapshots recorded 386,
+390, 388, and 370 findings; the current Phase 0 branch recheck reports 368 findings
+(185 organization names, 132 absolute-home paths, and 51 organization URLs), so the phase
+remains incomplete.
 
 **Additional safe progress:** `scripts/config_doctor.py` provides a read-only doctor
-for tracked client configs and reports 68 current issues without mutating files.
+for tracked client configs and reports 59 current issues without mutating files.
+
+**Approved implementation progress:** the Phase 0 branch removes the unsafe bypass and
+organization-specific auto-mode context from tracked Claude settings, makes the
+settings guard detect-only, untracks the machine-local overlay while preserving the
+working-tree file, and adds a portable Claude base plus proposal-only JSON generator.
+The new boundary and generator tests are included in the 34-test suite. No live
+runtime file has been changed.
 
 1. Classify every organization/path/secret match as portable source, fixture,
    historical record, work context, or sensitive data; preserve only intentional
@@ -46,8 +54,9 @@ rewriting are proven by observed behavior; analytics is off the synchronous path
 
 **Verified baseline:** the official hooks reference confirms parallel handler
 execution and ignored matchers on several current event types; the tracked settings
-contain six such unsupported matchers and two-handler worktree groups. No hook code has
-been changed yet.
+contain six such unsupported matchers and two-handler worktree groups. No
+ordering-sensitive Phase 1 hook logic has been changed; the Phase 0 symlink guard is
+now detect-only.
 
 **Safe progress:** `scripts/hook_config_check.py` now validates this static contract;
 its 12-test combined suite passes and the current settings produce eight findings.
@@ -61,15 +70,16 @@ allows and five JSON denies with exit 0; their `.exit1` names are stale and need
 maintained fixture-contract update before Phase 1 can be accepted.
 The new Python runner and seven-case current manifest pass all cases while asserting
 the structured decision, providing the first maintained runtime evidence for the gate.
-The read-only doctor now accepts `--live-settings`; the current live settings compare
-cleanly with this branch's source, while the 68 source issues remain.
+The read-only doctor accepts `--live-settings`; a fresh live-settings comparison is
+still required after this branch's source changes, while the branch doctor baseline is
+now 59 issues.
 Every doctor issue now includes explicit remediation guidance in its output; no
 remediation is auto-applied.
 The proposed disposition matrix is recorded in
 `plans/2026-07-13-phase0-classification.md`; no cleanup decision is implied by that
 classification.
-The future local-overlay ignore rule is now present, but the existing tracked file is
-intentionally not removed until review.
+The local-overlay ignore rule is present and the existing file is now untracked while
+remaining in the worktree; live installation is intentionally unchanged.
 
 1. Capture representative payloads for PreToolUse, PostToolUse, UserPromptSubmit,
    SessionStart, Stop, PreCompact, ConfigChange, worktree, and MCP calls.
@@ -135,7 +145,6 @@ conflicting permissions/hooks, dead references, and instruction-budget regressio
 Validation commands, residual risks, and migration prerequisites are recorded in
 `plans/2026-07-13-validation-report.md`.
 
-Review this report and plan, then approve a dedicated Phase 0 implementation branch.
-The current branch contains audit documentation plus read-only validation tooling; it
-does not silently apply the high-impact safety or runtime-configuration changes
-identified above.
+Review the Phase 0 branch proposal and validation output. A separate approval is still
+required before applying generated settings to the live runtime or changing Phase 1
+permissions and ordering-sensitive hooks.
