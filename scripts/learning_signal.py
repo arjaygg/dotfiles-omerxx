@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import defaultdict
 import hashlib
 import json
 import os
@@ -35,6 +36,9 @@ SIGNAL_TYPES = frozenset(
 EVIDENCE_CLASSES = frozenset(
     {"recurrence", "security", "compliance", "production", "data_loss", "cost", "deterministic"}
 )
+STRONG_EVIDENCE_CLASSES = frozenset(
+    {"security", "compliance", "production", "data_loss", "cost", "deterministic"}
+)
 SIGNAL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 INPUT_FIELDS = frozenset(
     {
@@ -46,6 +50,23 @@ INPUT_FIELDS = frozenset(
         "recurrence_key",
         "evidence_class",
         "recurrence_count",
+    }
+)
+OUTPUT_FIELDS = frozenset(
+    {
+        "schema",
+        "signal_id",
+        "signal_type",
+        "occurred_at",
+        "session_ref_sha256",
+        "event_ref_sha256",
+        "recurrence_key_sha256",
+        "evidence_class",
+        "recurrence_count",
+        "raw_evidence_stored",
+        "auto_promote",
+        "promotion_status",
+        "applied",
     }
 )
 
@@ -129,17 +150,93 @@ def _read_existing(path: Path) -> bytes:
     return content
 
 
-def record_signal(root: Path, ledger_path: Path, signal: Any) -> dict[str, Any]:
-    """Atomically append sanitized metadata to an explicitly external ledger."""
-
+def _external_ledger(root: Path, ledger_path: Path) -> Path:
     root = root.resolve()
     ledger = ledger_path.expanduser().resolve()
     try:
         ledger.relative_to(root)
     except ValueError:
-        pass
-    else:
-        raise SignalValidationError("signal ledger must remain outside the repository")
+        return ledger
+    raise SignalValidationError("signal ledger must remain outside the repository")
+
+
+def _load_ledger(path: Path) -> list[dict[str, Any]]:
+    content = _read_existing(path)
+    entries: list[dict[str, Any]] = []
+    for line in content.splitlines():
+        entry = json.loads(line)
+        if set(entry) != OUTPUT_FIELDS or entry.get("schema") != 1:
+            raise SignalValidationError("signal ledger contains an invalid sanitized entry")
+        if not all(
+            isinstance(entry.get(field), str) and len(entry[field]) == 64
+            for field in ("session_ref_sha256", "event_ref_sha256", "recurrence_key_sha256")
+        ):
+            raise SignalValidationError("signal ledger contains an invalid reference hash")
+        if (
+            entry.get("signal_type") not in SIGNAL_TYPES
+            or entry.get("evidence_class") not in EVIDENCE_CLASSES
+            or not isinstance(entry.get("recurrence_count"), int)
+            or isinstance(entry.get("recurrence_count"), bool)
+            or entry["recurrence_count"] < 1
+            or entry.get("raw_evidence_stored") is not False
+            or entry.get("auto_promote") is not False
+            or entry.get("promotion_status") != "review-required"
+            or entry.get("applied") is not False
+        ):
+            raise SignalValidationError("signal ledger contains unsafe promotion metadata")
+        entries.append(entry)
+    return entries
+
+
+def summarize_ledger(root: Path, ledger_path: Path) -> dict[str, Any]:
+    """Aggregate sanitized signals into thresholded, review-only candidates."""
+
+    ledger = _external_ledger(root, ledger_path)
+    groups: dict[tuple[str, str], dict[str, Any]] = defaultdict(
+        lambda: {"sessions": set(), "evidence_classes": set(), "signal_count": 0, "recurrence_total": 0}
+    )
+    for entry in _load_ledger(ledger):
+        key = (entry["signal_type"], entry["recurrence_key_sha256"])
+        group = groups[key]
+        group["sessions"].add(entry["session_ref_sha256"])
+        group["evidence_classes"].add(entry["evidence_class"])
+        group["signal_count"] += 1
+        group["recurrence_total"] += entry["recurrence_count"]
+
+    candidates: list[dict[str, Any]] = []
+    for (signal_type, recurrence_key), group in groups.items():
+        unique_session_count = len(group["sessions"])
+        evidence_classes = sorted(group["evidence_classes"])
+        if unique_session_count >= 2:
+            threshold_reason = "recurrence>=2-sessions"
+        elif set(evidence_classes) & STRONG_EVIDENCE_CLASSES:
+            threshold_reason = "strong-evidence"
+        else:
+            threshold_reason = "not-met"
+        candidate_id = hashlib.sha256(f"{signal_type}:{recurrence_key}".encode("utf-8")).hexdigest()
+        candidates.append(
+            {
+                "candidate_id": candidate_id,
+                "signal_type": signal_type,
+                "evidence_classes": evidence_classes,
+                "signal_count": group["signal_count"],
+                "unique_session_count": unique_session_count,
+                "recurrence_total": group["recurrence_total"],
+                "threshold_reason": threshold_reason,
+                "threshold_met": threshold_reason != "not-met",
+                "decision": "review-required",
+                "auto_promote": False,
+                "applied": False,
+            }
+        )
+    candidates.sort(key=lambda item: item["candidate_id"])
+    return {"schema": 1, "candidate_count": len(candidates), "candidates": candidates}
+
+
+def record_signal(root: Path, ledger_path: Path, signal: Any) -> dict[str, Any]:
+    """Atomically append sanitized metadata to an explicitly external ledger."""
+
+    ledger = _external_ledger(root, ledger_path)
 
     sanitized = sanitize_signal(signal)
     existing = _read_existing(ledger)
@@ -169,12 +266,20 @@ def record_signal(root: Path, ledger_path: Path, signal: Any) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd())
-    parser.add_argument("--input", type=Path, required=True)
+    parser.add_argument("--input", type=Path)
     parser.add_argument("--ledger", type=Path, required=True)
+    parser.add_argument("--summarize", action="store_true")
     args = parser.parse_args(argv)
     try:
-        signal = json.loads(args.input.read_text(encoding="utf-8"))
-        result = record_signal(args.root, args.ledger, signal)
+        if args.summarize:
+            if args.input is not None:
+                raise SignalValidationError("--input cannot be combined with --summarize")
+            result = summarize_ledger(args.root, args.ledger)
+        else:
+            if args.input is None:
+                raise SignalValidationError("--input is required unless --summarize is used")
+            signal = json.loads(args.input.read_text(encoding="utf-8"))
+            result = record_signal(args.root, args.ledger, signal)
     except (OSError, UnicodeError, json.JSONDecodeError, SignalValidationError) as error:
         print(f"learning signal rejected: {error}", file=sys.stderr)
         return 2
