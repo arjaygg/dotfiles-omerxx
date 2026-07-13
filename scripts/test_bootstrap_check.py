@@ -26,6 +26,10 @@ class BootstrapCheckTests(unittest.TestCase):
         after = {path: path.read_bytes() for path in before}
         self.assertEqual(set(report["clients"]), EXPECTED_CLIENTS)
         self.assertTrue(report["idempotent"])
+        self.assertEqual(report["staged_client_count"], 6)
+        self.assertTrue(report["staged_idempotent"])
+        self.assertTrue(report["staged_cache_preserved"])
+        self.assertTrue(report["temporary_stage_writes"])
         self.assertFalse(report["writes_performed"])
         self.assertFalse(report["runtime_writes"])
         self.assertEqual(before, after)
@@ -54,6 +58,9 @@ class BootstrapCheckTests(unittest.TestCase):
         self.assertEqual(payload["schema"], 1)
         self.assertTrue(payload["idempotent"])
         self.assertEqual(payload["client_count"], 6)
+        self.assertEqual(payload["staged_client_count"], 6)
+        self.assertTrue(payload["staged_idempotent"])
+        self.assertTrue(payload["staged_cache_preserved"])
         self.assertFalse(payload["writes_performed"])
 
     def test_cli_rejects_malformed_variable_assignments(self):

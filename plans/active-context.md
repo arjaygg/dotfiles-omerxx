@@ -2,7 +2,7 @@
 
 plan: plans/2026-07-13-execution-plan.md
 step: Phase 5 of 5
-focus: isolated cache-preservation proof for proposal staging
+focus: isolated all-client bootstrap and staging proof
 
 ## Current (2026-07-13) — Phase 0/1 audit checkpoint
 
@@ -17,9 +17,10 @@ focus: isolated cache-preservation proof for proposal staging
   gates only changes from the reviewed baseline. No stale link is deleted or repaired.
 
 - The current child branch adds `scripts/bootstrap_check.py`, which renders all six
-  manifest clients twice, validates proposal parsers, and reports deterministic hashes
-  with explicit `writes_performed: false` and `runtime_writes: false`. It does not run
-  mutating setup or live migration.
+  manifest clients twice, stages them twice in a marked temporary root, validates
+  deterministic hashes, and preserves unmanaged cache sentinels. It reports
+  `temporary_stage_writes: true` while keeping `writes_performed: false` and
+  `runtime_writes: false`; it does not run mutating setup or live migration.
 
 - The current child branch makes marked proposal staging transactional: all rendered
   files are prepared and fsynced before replacement, opt-in backups are retained on
