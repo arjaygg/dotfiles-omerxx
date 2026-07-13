@@ -19,7 +19,7 @@ class AiPolicyWorkflowTests(unittest.TestCase):
         text = WORKFLOW.read_text(encoding="utf-8")
 
         self.assertIn("pull_request:", text)
-        self.assertIn("branches: [main]", text)
+        self.assertNotIn("branches: [main]", text)
         self.assertIn("contents: read", text)
         self.assertNotIn("scripts/ai_config.py diff", text)
         self.assertNotIn("setup.sh", text)
