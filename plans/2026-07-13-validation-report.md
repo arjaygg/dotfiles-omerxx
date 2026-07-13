@@ -151,9 +151,11 @@ runtime behavior.
 
 The new `.github/workflows/ai-policy-validation.yml` runs the maintained Python tests,
 the maintained pre-tool fixture runner, the explicit instruction budgets, and the exact
-permission/hook conflict checker on every PR layer. It has read-only repository permissions
-and parses its own YAML with pinned `PyYAML==6.0.2`. It does not run runtime diff, setup,
-migration, or unresolved baseline hygiene scanners as blocking checks.
+permission/hook conflict checker on every PR layer. A matrix runs the same read-only job
+on `ubuntu-latest` and `macos-latest`. It has read-only repository permissions and parses
+its own YAML with pinned `PyYAML==6.0.2`. It does not run runtime diff, setup, migration,
+or unresolved baseline hygiene scanners as blocking checks; no hosted CI result is claimed
+because the follow-up branches still lack PR records.
 
 ## Reviewed hook-configuration baseline follow-up
 
@@ -239,8 +241,9 @@ review-gated.
 ## Tests not yet run
 
 - Full behavior coverage for every registered hook event and matcher; the maintained
-  runner currently exercises eight PreToolUse cases only.
-- Cross-platform macOS/Linux execution of the complete hook fleet.
+  runner currently exercises ten PreToolUse cases and the matrix inventories all 14 events.
+- Hosted cross-platform macOS/Linux execution; the workflow matrix is configured but has
+  no recorded run until the branch is represented by a PR.
 - Clean-clone and runtime-wiring tests; marked staging atomicity and simulated rollback
   are covered, but the path remains proposal-only and does not write live runtime files.
 - Wildcard/regex permission-versus-hook contradiction tests and runtime confirmation.

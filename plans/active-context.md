@@ -2,7 +2,7 @@
 
 plan: plans/2026-07-13-execution-plan.md
 step: Phase 5 of 5
-focus: file-backed hook reachability baseline
+focus: Linux/macOS policy-validation matrix
 
 ## Current (2026-07-13) — Phase 0/1 audit checkpoint
 
@@ -63,6 +63,9 @@ focus: file-backed hook reachability baseline
 - The current child branch adds an opt-in conservative permission/hook overlap analyzer.
   It reports 62 potential overlaps in the current settings, remains non-blocking and
   un-baselined pending human review, and leaves exact conflict CI behavior unchanged.
+
+- The policy-validation workflow now runs its read-only checks on both
+  `ubuntu-latest` and `macos-latest`; no CI result is claimed until a PR record exists.
 
 - Approved Phase 0 source changes are implemented on `chore/phase0-config-boundary`:
   sanitized settings, detect-only symlink guard, untracked local overlay, and
