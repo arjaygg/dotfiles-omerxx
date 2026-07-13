@@ -1,0 +1,34 @@
+name: ai-policy-validation
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ai-policy-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run maintained policy tests
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
+      - name: Enforce instruction budgets
+        run: >-
+          python3 scripts/instruction_budget.py
+          --max-lines 400
+          --max-words 3000
+          --max-bytes 20000
+          AGENTS.md CLAUDE.md ai/rules/agent-user-global.md
+
+      - name: Check exact permission and hook conflicts
+        run: python3 scripts/permission_hook_conflicts.py .claude/settings.json

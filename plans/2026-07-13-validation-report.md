@@ -66,15 +66,22 @@ The stacked instruction-budget checker measures lines, words, and bytes determin
 and reports explicit threshold violations without editing guidance. A current baseline is
 `AGENTS.md` 132 lines / 742 words, `CLAUDE.md` 11 / 57, and
 `ai/rules/agent-user-global.md` 175 / 1,575; no threshold was exceeded in the baseline
-check. The checker is not yet wired into CI or a client-specific effective-context
-calculation.
+check. This branch wires the explicit baseline budgets into CI; client-specific
+effective-context calculation remains future work.
 
 ## Phase 5 permission/hook conflict follow-up
 
 The stacked checker reports exact permission contradictions and exact tool-hook matchers
 covered by a permission deny. The current `.claude/settings.json` produced zero exact
 conflicts. This is intentionally conservative: it does not claim to model wildcard
-permission semantics, regex matcher overlap, declaration ordering, or runtime behavior.
+  permission semantics, regex matcher overlap, declaration ordering, or runtime behavior.
+
+## Phase 5 CI validation follow-up
+
+The new `.github/workflows/ai-policy-validation.yml` runs the maintained Python tests,
+the explicit instruction budgets, and the exact permission/hook conflict checker on PRs
+targeting `main`. It has read-only repository permissions and does not run runtime diff,
+setup, migration, or unresolved baseline hygiene scanners as blocking checks.
 
 ## Tests not yet run
 

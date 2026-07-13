@@ -1,19 +1,17 @@
 # Completion Audit — 2026-07-13
 
 This is an evidence-based status audit for
-`Downloads/codex-goal-prompt-dotfiles-omerxx.md`. It intentionally does not
-claim completion while review-gated work or acceptance criteria remain open.
+`Downloads/codex-goal-prompt-dotfiles-omerxx.md`. It intentionally does not claim
+completion while review-gated work or acceptance criteria remain open.
 
 ## Evidence inspected
 
-- Current branch: `chore/phase0-config-boundary`; worktree clean.
-- PR [#296](https://github.com/arjaygg/dotfiles-omerxx/pull/296): open, draft,
-  mergeable, checks green, no reviews or comments.
-- Local validation: 42 Python tests, 7 maintained hook fixtures, TOML parser
-  validation, deterministic proposal checks, and `git diff --check` pass.
-- Current public hygiene baseline: 369 findings across 88 tracked files.
-- Current configuration-doctor baseline: 59 source findings; live drift remains
-  review-gated.
+- `origin/main` is at merged Phase 0 commit `1036a591`; PR [#296](https://github.com/arjaygg/dotfiles-omerxx/pull/296) is merged.
+- Current review stack is clean on `chore/ai-policy-validation`; draft PRs [#297](https://github.com/arjaygg/dotfiles-omerxx/pull/297) through [#304](https://github.com/arjaygg/dotfiles-omerxx/pull/304) are open and mergeable.
+- Current branch validation: 73 Python tests, workflow YAML parsing, instruction-budget checks, exact conflict checks, and `git diff --check` pass.
+- Public hygiene baseline remains 369 findings across 88 tracked files.
+- Configuration-doctor baseline remains 59 source findings; live drift remains review-gated.
+- No live runtime configuration, permission semantics, canonical instruction hierarchy, or ordering-sensitive hook behavior was changed in the stack.
 
 ## Requirement status
 
@@ -21,20 +19,19 @@ claim completion while review-gated work or acceptance criteria remain open.
 |---|---|---|
 | Verified architecture/risk report | **verified** | `plans/2026-07-13-verified-architecture-risk-report.md` |
 | Execution plan and migration/rollback sequence | **verified** | `plans/2026-07-13-execution-plan.md` |
-| Phase 0 copy-back prevention and unsafe bypass removal | **implemented, review pending** | Branch tests and PR diff; live installation not performed |
-| Portable bases and proposal-only generation | **partially implemented** | Claude/Codex/Gemini/Cursor/Windsurf/PCTX bases and 42 tests; no runtime wiring |
-| Public repository hygiene and secret scanning | **not achieved** | 369 hygiene findings remain; no clean-clone pass |
-| Phase 0 idempotent runtime generation | **not achieved** | Proposal determinism is tested; atomic writes, backups, and runtime generation are not |
-| Phase 1 deterministic hook/permission architecture | **not started** | Static findings are documented; behavior changes require separate review |
-| Phase 2 multi-agent generation/bootstrap | **not started** | Bases exist, but no supported `generate/diff/doctor` runtime workflow |
-| Phase 3 governed self-improvement funnel | **not verified** | Existing learning mechanisms have not been rationalized or evaluated end-to-end |
-| Phase 4 instruction-cost reduction | **not verified in this run** | Prior work exists, but current-main completion evidence is absent |
-| Phase 5 governance/CI coverage | **partially implemented** | Scanner, doctor, hook checker, and fixture runner exist; listed check matrix is incomplete |
-| Human review gates | **open** | PR #296 remains draft; no live migration or Phase 1 change is authorized |
+| Phase 0 copy-back prevention and unsafe bypass removal | **merged, runtime apply pending** | PR #296 and post-merge checks; live installation was not performed |
+| Portable bases and proposal-only generation | **partially implemented** | Six-client JSON/TOML proposals, explicit overlays/placeholders, 55+ tests; no runtime wiring |
+| Public repository hygiene and secret scanning | **not achieved** | 369 findings remain; user deferred remediation |
+| Atomic runtime generation, backups, and clean bootstrap | **not achieved** | Read-only staging/diff exists; no atomic live writer, backup migration, or clean-machine proof |
+| Phase 1 deterministic hook/permission architecture | **partially implemented** | Static handler/fixture contracts and exact conflict checker; runtime hook is absent and eight static matcher findings remain |
+| Phase 2 multi-client generation/bootstrap | **partially implemented** | `generate`, `diff`, `doctor`, manifest validation, and TOML rendering exist; `setup.sh` wiring and migration remain |
+| Phase 3 governed self-improvement funnel | **partially implemented** | Proposal validator and no-auto-promotion guidance exist; signal collection, recurrence storage, evals, and promotion workflow remain |
+| Phase 4 instruction-cost reduction | **partially implemented** | Budget checker and CI baseline exist; effective-context measurement and rule extraction/evals remain |
+| Phase 5 governance/CI coverage | **partially implemented** | 73-test CI job, budgets, and exact conflict checks exist; full shell/schema/dead-reference/runtime matrix remains |
+| Human review gates | **open** | Draft stack requires review; public hygiene, live migration, permissions, machine-wide hooks, and canonical hierarchy remain approval-gated |
 
 ## Conclusion
 
-The objective is **not complete**. The strongest next action is human review and
-merge of PR #296, followed by a separately approved public-hygiene/migration
-sequence. No completion claim or live application is justified from the current
-evidence.
+The objective is **not complete**. The current stack provides reviewable, proposal-only
+progress across Phases 1–5, while the highest-impact acceptance gaps remain deliberately
+unapplied. No completion claim or live application is justified from this evidence.
