@@ -131,6 +131,12 @@ issues: six ignored matchers and two parallel-handler warnings. It intentionally
 not claim runtime reachability or blocking correctness; fixture execution remains the
 next Phase 1 evidence step.
 
+The existing `.claude/hooks/test-hook.sh --all` harness was also executed. It produced
+0 passes, 0 failures, and 8 skips because its fixtures reference missing
+`edit-without-read.sh` and `serena-tool-priority.sh` hooks. This is direct evidence
+that the current fixture suite cannot validate the live hook set; it must be repaired
+or replaced before claiming hook behavior coverage.
+
 ## Recommendation
 
 Do not begin broad Phase 0/1 implementation in the same change as this report. First

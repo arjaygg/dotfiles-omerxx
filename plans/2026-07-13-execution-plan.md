@@ -50,6 +50,9 @@ been changed yet.
 
 **Safe progress:** `scripts/hook_config_check.py` now validates this static contract;
 its 12-test combined suite passes and the current settings produce eight findings.
+The existing hook fixture harness was run separately and yielded 0 passes/0 failures/
+8 skips because two referenced hooks are absent; runtime coverage is therefore not
+established.
 
 1. Capture representative payloads for PreToolUse, PostToolUse, UserPromptSubmit,
    SessionStart, Stop, PreCompact, ConfigChange, worktree, and MCP calls.
