@@ -240,6 +240,9 @@ proposals from being accepted without revalidation while preserving the no-apply
 Before appending, the ledger now validates every existing entry's required fields,
 decision enum, hash shape, dates, human attribution, and `applied: false` invariant;
 malformed or already-applied history is rejected rather than silently extended.
+Proposals now require a bounded portable `owner`; review reports and decision entries
+carry that owner forward so expiry review has explicit accountability without storing
+raw evidence.
 
 ## Phase 3 traceable signal intake
 

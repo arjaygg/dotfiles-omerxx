@@ -27,6 +27,7 @@ DECISIONS = frozenset({"accept", "reject", "defer"})
 LEDGER_FIELDS = frozenset(
     {
         "proposal_id",
+        "owner",
         "proposal_sha256",
         "decision",
         "rationale",
@@ -63,6 +64,9 @@ def _validate_ledger_entry(value: Any, line_number: int) -> dict[str, Any]:
         raise ValueError(f"ledger line {line_number} missing fields: {', '.join(missing)}")
     if not isinstance(value["proposal_id"], str) or not value["proposal_id"].strip():
         raise ValueError(f"ledger line {line_number} has invalid proposal_id")
+    owner = value["owner"]
+    if not isinstance(owner, str) or not owner.strip() or len(owner) > 128 or any(ord(char) < 32 for char in owner):
+        raise ValueError(f"ledger line {line_number} has invalid owner")
     digest = value["proposal_sha256"]
     if not isinstance(digest, str) or len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest):
         raise ValueError(f"ledger line {line_number} has invalid proposal_sha256")
@@ -133,6 +137,7 @@ def record_decision(
             raise ValueError("accept decision is past the proposal review deadline")
     entry: dict[str, Any] = {
         "proposal_id": proposal["id"],
+        "owner": proposal["owner"],
         "proposal_sha256": hashlib.sha256(raw).hexdigest(),
         "decision": decision,
         "rationale": rationale.strip(),

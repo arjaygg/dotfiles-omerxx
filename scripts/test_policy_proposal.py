@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def valid_proposal(**overrides):
     value = {
         "id": "prefer-explicit-overlays",
+        "owner": "platform-team",
         "problem": "Runtime settings drift from portable source.",
         "evidence": ["session-a: runtime drift detected", "session-b: same drift detected"],
         "recurrence": 2,
@@ -67,6 +68,11 @@ class PolicyProposalTests(unittest.TestCase):
 
         self.assertIn("review_after must be an ISO date or condition:<description>", errors)
 
+    def test_owner_is_required_and_portable(self):
+        self.assertEqual(validate_proposal(valid_proposal(owner="platform-team")), [])
+        errors = validate_proposal(valid_proposal(owner="../private-owner"))
+        self.assertIn("owner must use portable owner characters and be at most 128 characters", errors)
+
     def test_review_report_compares_baseline_and_candidate_metrics(self):
         report = build_review_report(
             valid_proposal(),
@@ -74,6 +80,7 @@ class PolicyProposalTests(unittest.TestCase):
             {"latency_ms": 80, "tests_passed": 10},
         )
 
+        self.assertEqual(report["owner"], "platform-team")
         self.assertEqual(report["decision"], "review-required")
         self.assertFalse(report["auto_promote"])
         self.assertEqual(report["evaluation"]["status"], "changed")

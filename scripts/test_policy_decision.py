@@ -11,6 +11,7 @@ from scripts.policy_decision import record_decision
 def proposal() -> dict[str, object]:
     return {
         "id": "reviewable-example",
+        "owner": "platform-team",
         "problem": "A repeated workflow needs review.",
         "evidence": ["session-a", "session-b"],
         "recurrence": 2,
@@ -47,6 +48,7 @@ class PolicyDecisionTests(unittest.TestCase):
 
         self.assertEqual(stored, entry)
         self.assertEqual(entry["decision"], "reject")
+        self.assertEqual(entry["owner"], "platform-team")
         self.assertNotIn("evidence", entry)
         self.assertRegex(entry["proposal_sha256"], r"^[0-9a-f]{64}$")
 
