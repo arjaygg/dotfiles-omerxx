@@ -101,6 +101,14 @@ Claude, Codex, Cursor, Gemini, and support-script shell trees. The current inven
 syntax coverage only and does not claim ShellCheck, shfmt, runtime portability, or hook
 behavioral coverage.
 
+## Read-only setup modes
+
+`setup.sh --dry-run` now emits the six-client proposal bundle and returns before any
+directory, package, Stow, or symlink operation. `setup.sh --check` delegates to the
+read-only doctor and preserves its nonzero result when findings exist. Both modes are
+covered by subprocess tests; the default `setup.sh` install path is unchanged and remains
+review-gated.
+
 ## Tests not yet run
 
 - Full behavior coverage for every registered hook event and matcher.

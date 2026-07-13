@@ -25,6 +25,17 @@ The current `.claude/settings.json` distribution path remains unchanged until a
 separate review approves runtime wiring. This keeps the migration reversible while
 the generated proposal is validated.
 
+The top-level installer also exposes read-only migration checkpoints:
+
+```sh
+./setup.sh --dry-run  # emit all client proposals; no directories or links are changed
+./setup.sh --check    # emit the read-only doctor report; exit 1 means findings exist
+```
+
+Both modes return before GNU Stow, package installation, directory creation, or
+symlink mutation. Running `./setup.sh` without either flag retains the existing install
+path and remains a separate, review-gated operation.
+
 Example:
 
 ```sh
