@@ -6,6 +6,14 @@ This report records validation for the approved Phase 0 source branch,
 `chore/phase0-config-boundary`. It does not authorize live runtime application,
 instruction-hierarchy, or live-runtime changes.
 
+## Live-apply precondition
+
+The live `~/.claude/settings.json` still resolves to the main checkout, and its
+installed `settings-symlink-guard.sh` differs from the Phase 0 branch guard. Applying
+the proposal before the branch guard is active would leave the old copy-back behavior
+in place and could re-adopt the proposal into the main checkout. No live apply was
+performed; branch installation/merge must precede runtime application.
+
 ## Commands and results
 
 | Command | Result |

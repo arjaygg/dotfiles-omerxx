@@ -13,6 +13,9 @@ focus: approved Phase 0 source implementation; proposal validation before live m
   hygiene scanner reports 369 findings, and the doctor reports 59 residual findings.
 - A preflight live-settings backup and SHA-256 manifest are stored outside Git under
   `~/.config/dotfiles-ai/backups/2026-07-13-pre-phase0/`.
+- Live apply is held: the runtime symlink still targets the main checkout and its
+  installed symlink guard differs from this branch, so applying now could reactivate
+  copy-back behavior.
 - Live runtime configuration, broad permission allows, canonical instruction hierarchy,
   and ordering-sensitive Phase 1 hooks remain unchanged pending separate review.
 
