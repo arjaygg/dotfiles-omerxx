@@ -1,0 +1,42 @@
+[
+  {
+    "event": "UserPromptSubmit",
+    "rule": "ignored-matcher",
+    "message": "matcher is ignored for this event"
+  },
+  {
+    "event": "Stop",
+    "rule": "ignored-matcher",
+    "message": "matcher is ignored for this event"
+  },
+  {
+    "event": "TaskCreated",
+    "rule": "ignored-matcher",
+    "message": "matcher is ignored for this event"
+  },
+  {
+    "event": "TaskCompleted",
+    "rule": "ignored-matcher",
+    "message": "matcher is ignored for this event"
+  },
+  {
+    "event": "WorktreeCreate",
+    "rule": "ignored-matcher",
+    "message": "matcher is ignored for this event"
+  },
+  {
+    "event": "WorktreeCreate",
+    "rule": "parallel-handlers",
+    "message": "matching handlers execute in parallel; ordering is not guaranteed"
+  },
+  {
+    "event": "WorktreeRemove",
+    "rule": "ignored-matcher",
+    "message": "matcher is ignored for this event"
+  },
+  {
+    "event": "WorktreeRemove",
+    "rule": "parallel-handlers",
+    "message": "matching handlers execute in parallel; ordering is not guaranteed"
+  }
+]

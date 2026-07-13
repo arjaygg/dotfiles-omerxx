@@ -76,6 +76,37 @@ class Issue:
     message: str
 
 
+def load_baseline(path: Path) -> list[Issue]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, list):
+        raise ValueError("hook baseline must be an array")
+
+    issues: list[Issue] = []
+    for index, entry in enumerate(value):
+        if not isinstance(entry, dict) or not all(
+            isinstance(entry.get(field), str) for field in ("event", "rule", "message")
+        ):
+            raise ValueError(f"baseline entry {index} requires event, rule, and message strings")
+        issues.append(Issue(entry["event"], entry["rule"], entry["message"]))
+    return issues
+
+
+def compare_baseline(actual: list[Issue], expected: list[Issue]) -> list[Issue]:
+    actual_by_key = {(issue.event, issue.rule, issue.message): issue for issue in actual}
+    expected_by_key = {(issue.event, issue.rule, issue.message): issue for issue in expected}
+    findings: list[Issue] = []
+
+    for key in sorted(expected_by_key.keys() - actual_by_key.keys()):
+        issue = expected_by_key[key]
+        findings.append(
+            Issue(issue.event, "baseline-missing", f"expected baseline finding disappeared: {issue.rule}: {issue.message}")
+        )
+    for key in sorted(actual_by_key.keys() - expected_by_key.keys()):
+        issue = actual_by_key[key]
+        findings.append(Issue(issue.event, "baseline-new", f"new hook configuration finding: {issue.rule}: {issue.message}"))
+    return findings
+
+
 def check_hooks(settings: dict[str, object]) -> list[Issue]:
     hooks = settings.get("hooks")
     if not isinstance(hooks, dict):
@@ -125,6 +156,7 @@ def check_hooks(settings: dict[str, object]) -> list[Issue]:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("settings", type=Path)
+    parser.add_argument("--baseline", type=Path)
     parser.add_argument("--json", action="store_true", dest="as_json")
     args = parser.parse_args(argv)
     try:
@@ -133,6 +165,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"invalid settings: {error}", file=sys.stderr)
         return 2
     issues = check_hooks(settings)
+    if args.baseline:
+        try:
+            issues = compare_baseline(issues, load_baseline(args.baseline))
+        except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as error:
+            print(f"invalid hook baseline: {error}", file=sys.stderr)
+            return 2
     if args.as_json:
         print(json.dumps([asdict(issue) for issue in issues], indent=2))
     else:
