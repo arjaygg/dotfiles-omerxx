@@ -1,5 +1,17 @@
 # Active Context
 
+## Current (2026-07-14) — agentic-loop optimization goal resumed
+
+- Active goal file: `goals/2026-07-14-01-agentic-loop-optimization.md`.
+- Session-init baseline is loaded: `Serena.initialInstructions()` succeeded; `mcp__pctx__list_functions`
+  returned Serena/Qmd/LeanCtx/Repomix/Graphify; `Serena.checkOnboardingPerformed()` errored; and
+  `Serena.readMemory({ memory_name: "START_HERE" })` failed because no such memory exists.
+- Repo state is still the dotfiles control plane described in `AGENTS.md`/`CLAUDE.md`; current work
+  should stay on the audit/report path before any live runtime change.
+- Baseline report written: `plans/2026-07-14-agentic-loop-optimization.md`.
+- Next concrete step: draft the remediation plan for machine-local anchors and generated overlays,
+  starting with Codex.
+
 plan: plans/2026-07-13-execution-plan.md
 step: Phase 0 of 5
 focus: pctx/Codex startup regression fixed; Phase 0 live migration remains held

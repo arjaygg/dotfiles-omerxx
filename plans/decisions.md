@@ -1,5 +1,15 @@
 # Active Decisions Log
 
+## 2026-07-14 — Agentic-loop optimization work stays in audit mode until the baseline report lands
+**Decision:** Treat the new `goals/2026-07-14-01-agentic-loop-optimization.md` objective as an audit/reporting task first:
+finish the current harness map and verified findings summary before touching live runtime behavior.
+**Why:** The repository guidance explicitly separates project policy, active plans, and live enforcement;
+the current evidence already shows the session-init surface, goal-file presence, and active architecture
+frame, but not yet a current parity matrix or report that another agent can safely continue from.
+**Alternatives rejected:** Jumping straight into edits on `.claude/`, `.codex/`, `.gemini/`, `.cursor/`, or
+`.windsurf/` without the report — rejected because the goal prompt requires a verified baseline and
+explicit before/after evidence first.
+
 ## 2026-07-14 — Keep Codex and pctx on native JSONL stdio
 **Decision:** Codex launches `pctx mcp start --stdio` directly. The repository does not insert a
 Content-Length framing adapter, and regression tests pin both tracked and portable Codex configs

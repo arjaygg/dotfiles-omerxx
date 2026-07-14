@@ -1,5 +1,18 @@
 # Progress — 2026-06-12
 
+## Active — 2026-07-14 agentic-loop optimization baseline
+
+Goal: `goals/2026-07-14-01-agentic-loop-optimization.md`.
+
+- [x] Load the current session baseline with pctx/Serena/LeanCtx and confirm the available MCP surface.
+- [x] Verify the active repo guidance files and current architecture framing (`AGENTS.md`, `CLAUDE.md`,
+  `docs/agent-configuration-architecture.md`, `ai/rules/tool-priority.md`).
+- [x] Audit the current client entrypoints, hooks, and configuration layers into a concise verified report.
+- [x] Expand the report into a cross-client parity matrix.
+- [x] Expand the report into a file-level harness map and concrete recommendation set.
+- [x] Update the plan/decision artifacts so another agent can continue the goal without re-discovering the baseline.
+- [ ] Draft the remediation plan for machine-local anchors and generated overlays, starting with Codex.
+
 ## Done — 2026-07-14 pctx/Codex startup regression
 
 Branch `fix/pctx-codex-startup`, worktree `.trees/pctx-codex-startup`.
