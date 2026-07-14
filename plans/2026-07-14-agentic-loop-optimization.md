@@ -81,6 +81,75 @@ Shared across clients:
 4. Treat `goals/2026-07-14-01-agentic-loop-optimization.md` as an untracked coordination artifact until
    the goal convention is finalized; do not let it become an alternate policy source.
 
+## Codex-first remediation plan
+
+### Verified Codex state
+
+- `ai/config/codex/config.base.toml` exists and is referenced by `ai/config/manifest.json` as the
+  Codex base template.
+- `ai/config/manifest.json` maps Codex to:
+  - base: `ai/config/codex/config.base.toml`
+  - runtime: `~/.codex/config.toml`
+  - overlay: `~/.config/dotfiles-ai/codex.overlay.toml`
+- Existing tests already validate the manifest and Codex base template:
+  - `python3 -m unittest scripts.test_config_manifest scripts.test_portable_config_templates scripts.test_config_generate`
+  - Result: 13 tests passed.
+- Parsed Codex base contains only the portable core keys:
+  - `features`
+  - `mcp_servers`
+  - `model`
+  - `model_instructions_file`
+  - `model_reasoning_effort`
+  - `personality`
+  - `project_doc_fallback_filenames`
+  - `status_line`
+- Parsed tracked `.codex/config.toml` contains additional machine-local overlay material:
+  - `projects` with 17 entries
+  - `skills`
+  - `marketplaces`
+  - `notice`
+  - `tui`
+  - `mcp_servers.lean-ctx`
+- The tracked `.codex/config.toml` still embeds absolute paths including:
+  - `/Users/axos-agallentes/.config/pctx/pctx.json`
+  - `/Users/axos-agallentes/.cargo/bin/lean-ctx`
+  - multiple project and skill paths under `/Users/axos-agallentes/...`
+
+### Proposed implementation sequence
+
+Do not apply this sequence until the user approves the remediation plan.
+
+1. Add TOML overlay support to the generator.
+   - **Files:** `scripts/config_generate.py`, `scripts/test_config_generate.py`
+   - **Accepts:** JSON templates continue to work; TOML base + TOML overlay can render a proposal
+     without reading environment variables or mutating inputs.
+2. Add a portable Codex runtime proposal path.
+   - **Files:** `ai/config/codex/config.base.toml`, `ai/config/manifest.json`,
+     `scripts/test_portable_config_templates.py`, `scripts/test_config_manifest.py`
+   - **Accepts:** Codex base stays portable; manifest still validates; placeholder expansion is
+     explicit and secret-safe.
+3. Move machine-local Codex material into the ignored overlay convention.
+   - **Files:** `.gitignore`, docs or comments under `ai/config/README.md`,
+     `~/.config/dotfiles-ai/codex.overlay.toml` as a local-only runtime artifact.
+   - **Accepts:** tracked `.codex/config.toml` no longer contains absolute home paths, project allow
+     lists, local skill paths, local marketplace cache paths, or local binary paths.
+4. Add deterministic comparison checks.
+   - **Files:** `scripts/config_generate.py`, tests under `scripts/test_*.py`
+   - **Accepts:** proposal comparison reports changed paths and hashes without printing secrets or
+     raw local overlay content; repeated runs are idempotent.
+5. Stop for separate live-runtime approval.
+   - **Files:** none unless approved.
+   - **Accepts:** no `~/.codex/config.toml` write happens automatically; the user sees a proposal
+     diff/summary and explicitly approves any runtime update.
+
+### Verification gates
+
+- `python3 -m unittest scripts.test_config_manifest scripts.test_portable_config_templates scripts.test_config_generate`
+- `python3 scripts/public_hygiene_check.py`
+- `python3 scripts/config_doctor.py`
+- A rendered Codex proposal generated twice with unchanged inputs produces identical output/hash.
+- `git diff` remains clean after repeated proposal generation when no tracked source changes.
+
 ## Files in scope
 
 - `AGENTS.md`

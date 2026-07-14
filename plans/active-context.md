@@ -9,8 +9,9 @@
 - Repo state is still the dotfiles control plane described in `AGENTS.md`/`CLAUDE.md`; current work
   should stay on the audit/report path before any live runtime change.
 - Baseline report written: `plans/2026-07-14-agentic-loop-optimization.md`.
-- Next concrete step: draft the remediation plan for machine-local anchors and generated overlays,
-  starting with Codex.
+- Codex-first remediation plan is drafted in the baseline report.
+- Next concrete step: get user approval before implementing generator/TOML overlay changes or touching
+  tracked Codex runtime config.
 
 plan: plans/2026-07-13-execution-plan.md
 step: Phase 0 of 5
