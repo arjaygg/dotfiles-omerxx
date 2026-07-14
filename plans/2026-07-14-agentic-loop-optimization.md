@@ -81,6 +81,71 @@ Shared across clients:
 4. Treat `goals/2026-07-14-01-agentic-loop-optimization.md` as an untracked coordination artifact until
    the goal convention is finalized; do not let it become an alternate policy source.
 
+
+## Approval-ready implementation checklist
+
+This section is the exact bounded scope to approve. It remains a plan until the user explicitly
+approves implementation.
+
+### Step 1 — Add TOML overlay rendering
+
+**Files:** `scripts/config_generate.py`, `scripts/test_config_generate.py`
+
+**Accepts:** JSON behavior remains unchanged; TOML base + TOML overlay can render a proposal without
+reading process environment variables, mutating inputs, or printing local overlay contents.
+
+- [ ] Teach the generator to parse and emit TOML when the base template is TOML.
+- [ ] Add TOML overlay merge coverage.
+- [ ] Keep explicit `--set NAME=VALUE` placeholder expansion as the only variable source.
+
+### Step 2 — Make Codex proposal generation complete
+
+**Files:** `ai/config/codex/config.base.toml`, `ai/config/manifest.json`,
+`scripts/test_portable_config_templates.py`, `scripts/test_config_manifest.py`
+
+**Accepts:** the tracked Codex base remains portable; the manifest references the Codex base/runtime
+and ignored overlay; tests prove the Codex proposal can be generated from portable source plus
+explicit local values.
+
+- [ ] Verify the current Codex base contains only shared portable defaults.
+- [ ] Add or adjust tests so Codex generation is covered as TOML, not treated like JSON.
+- [ ] Keep local project allowlists, local skill paths, marketplace cache paths, and local binary
+  paths out of tracked base config.
+
+### Step 3 — Define the local-only Codex overlay convention
+
+**Files:** `.gitignore`, `ai/config/README.md`, optionally an example overlay under
+`ai/config/codex/`
+
+**Accepts:** local Codex-only paths have a documented ignored overlay location, and any tracked
+example uses placeholders or fake portable paths only.
+
+- [ ] Document `~/.config/dotfiles-ai/codex.overlay.toml`.
+- [ ] Ensure the overlay path is ignored.
+- [ ] Provide a non-sensitive example if useful.
+
+### Step 4 — Add deterministic proposal comparison evidence
+
+**Files:** `scripts/config_generate.py`, `scripts/test_config_generate.py`
+
+**Accepts:** comparison reports changed paths and hashes without exposing raw local values; repeated
+generation with unchanged inputs is idempotent.
+
+- [ ] Extend comparison support to TOML proposal outputs.
+- [ ] Add an idempotency assertion for repeated Codex proposal generation.
+- [ ] Ensure failures reject absolute home paths and secret-like values before proposal output.
+
+### Step 5 — Stop before live runtime apply
+
+**Files:** none unless separately approved.
+
+**Accepts:** no write to `~/.codex/config.toml` or other live runtime config occurs automatically.
+The user receives proposal evidence and explicitly approves any runtime update.
+
+- [ ] Run the verification gates.
+- [ ] Summarize proposal deltas without printing sensitive overlay values.
+- [ ] Ask for separate live-runtime approval.
+
 ## Files in scope
 
 - `AGENTS.md`

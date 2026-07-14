@@ -8,8 +8,8 @@
   `Serena.readMemory({ memory_name: "START_HERE" })` failed because no such memory exists.
 - Repo state is still the dotfiles control plane described in `AGENTS.md`/`CLAUDE.md`; current work
   should stay on the audit/report path before any live runtime change.
-- Baseline report written: `plans/2026-07-14-agentic-loop-optimization.md`.
-- Codex-first remediation plan is drafted in the baseline report.
+- Baseline report and approval-ready Codex remediation checklist written:
+  `plans/2026-07-14-agentic-loop-optimization.md`.
 - Proposed durable decision drafted: `decisions/0011-agentic-loop-optimization.md`.
 - Next concrete step: get user approval before implementing generator/TOML overlay changes or touching
   tracked Codex runtime config.

@@ -13,6 +13,7 @@ Goal: `goals/2026-07-14-01-agentic-loop-optimization.md`.
 - [x] Update the plan/decision artifacts so another agent can continue the goal without re-discovering the baseline.
 - [x] Draft the remediation plan for machine-local anchors and generated overlays, starting with Codex.
 - [x] Draft proposed durable decision record `decisions/0011-agentic-loop-optimization.md`.
+- [x] Add approval-ready implementation checklist with files and acceptance criteria.
 - [ ] Obtain user approval before implementing the Codex remediation sequence.
 
 ## Done — 2026-07-14 pctx/Codex startup regression
