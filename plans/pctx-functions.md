@@ -1,11 +1,19 @@
-# pctx Functions — 2026-07-13 (refreshed; no drift vs 2026-07-12 snapshot)
+# pctx Functions — 2026-07-14 (refreshed; no drift vs 2026-07-13 snapshot)
 
 Namespaces: Serena, Qmd, LeanCtx, Repomix, Graphify
 
-Refresh method (M11, constitution-hooks audit): full function list re-confirmed via
-`mcp__pctx__list_functions`; every parameter shape quoted below was confirmed this session via
+Refresh method (session baseline for the agentic-loop optimization goal): full function list
+re-confirmed via `mcp__pctx__list_functions`; every parameter shape quoted below was confirmed via
 `mcp__pctx__get_function_details` against the live SDK — not copied from the prior snapshot or from
 `ai/rules/tool-priority.md`.
+
+Session-init notes:
+- `Serena.initialInstructions()` succeeded and confirms the current project is activated.
+- `Serena.checkOnboardingPerformed()` errored in this session, so onboarding evidence is not fresh
+  from that call.
+- `Serena.readMemory({ memory_name: "START_HERE" })` failed because that memory does not exist.
+- The available memory list is still `cicd-acted-runs`, `project_overview`, `style_and_conventions`,
+  and `suggested_commands`.
 
 ## Serena (unchanged)
 listDir, findFile, searchForPattern, getSymbolsOverview, findSymbol, findReferencingSymbols,
