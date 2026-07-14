@@ -60,7 +60,7 @@ def pctx_to_client(child):
 
 def stderr_to_stderr(child):
     while True:
-        chunk = child.stderr.buffer.read(8192)
+        chunk = child.stderr.read(8192)
         if not chunk:
             break
         sys.stderr.buffer.write(chunk)
