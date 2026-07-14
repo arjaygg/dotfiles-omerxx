@@ -160,6 +160,8 @@ for _style in ~/.dotfiles/ai/output-styles/*.md; do
 done
 
 # Gemini: covered via ~/.gemini/skills/ai -> ~/.dotfiles/ai/skills (stow-managed)
+mkdir -p "$HOME/.gemini/antigravity-cli"
+ln -sfn "$HOME/.dotfiles/.gemini/settings.json" "$HOME/.gemini/antigravity-cli/settings.json"
 
 # Gemini extension: link dotfiles-guards extension (hooks, policies, commands).
 # stow handles ~/.gemini/extension/ → .dotfiles/.gemini/extension/ automatically,

@@ -26,5 +26,15 @@
   },
   "experimental": {
     "enableAgents": true
-  }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ Cache: %cache_hit% ▸ %time% ▸ %project%%git_status%%task_list_id%'"
+  },
+  "model": "Gemini 3.1 Pro (High)",
+  "trustedWorkspaces": [
+    "/Users/axos-agallentes/git/auc-conversion",
+    "/Users/axos-agallentes/git/auc-dbprofiling",
+    "/Users/axos-agallentes/.dotfiles"
+  ]
 }
