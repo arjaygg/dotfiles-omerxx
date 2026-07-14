@@ -1,3 +1,19 @@
+---
+name: k8s-security-audit
+description: >
+  Scans Kubernetes manifest YAML files for security misconfigurations including
+  containers that may run as root, missing resource limits, and privileged
+  containers. Use when asked to audit, scan, or review Kubernetes YAML/manifests
+  for security issues or common misconfigurations.
+version: 1.0.0
+triggers:
+  - audit k8s manifests
+  - scan kubernetes yaml
+  - check kubernetes security
+  - find misconfigurations
+  - k8s security audit
+---
+
 # Skill: k8s-security-audit
 
 ## Trigger
