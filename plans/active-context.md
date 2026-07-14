@@ -2,7 +2,21 @@
 
 plan: plans/2026-07-13-execution-plan.md
 step: Phase 0 of 5
-focus: approved Phase 0 source implementation; proposal validation before live migration
+focus: pctx/Codex startup regression fixed; Phase 0 live migration remains held
+
+## Current (2026-07-14) — pctx/Codex startup regression fixed
+
+- Branch/worktree: `fix/pctx-codex-startup` at `.trees/pctx-codex-startup`.
+- Root cause: Codex 0.144.1 sends newline-delimited JSON, while the tracked
+  `pctx-mcp-stdio-shim.py` waited for `Content-Length` framing and never forwarded
+  Codex's initialize request.
+- The tracked and portable Codex configs now invoke `pctx` directly, and the incompatible
+  shim is retired. Runtime generation/link migration remains in its existing plan phase.
+- Validation: 47 Python tests pass; direct initialize/tools/list/list_functions probes
+  complete in 4.831s and 3.355s; fresh Codex starts complete in 15.567s and 17.446s
+  with pctx initialized and three tools listed.
+- Existing regular `~/.codex/config.toml` was not replaced. It already invokes direct
+  pctx; the currently running pre-fix Codex process still needs a restart to reload MCP config.
 
 ## Current (2026-07-13) — Phase 0/1 audit checkpoint
 

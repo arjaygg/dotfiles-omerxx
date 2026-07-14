@@ -1,5 +1,19 @@
 # Progress — 2026-06-12
 
+## Done — 2026-07-14 pctx/Codex startup regression
+
+Branch `fix/pctx-codex-startup`, worktree `.trees/pctx-codex-startup`.
+
+- [x] Reproduced the repository-scoped Codex startup timeout twice and captured the
+  exact JSONL wire format plus the 90-second handshake timeout.
+- [x] Proved the Content-Length shim was incompatible and disproved backend slowness,
+  protocol negotiation, resource contention, and duplicate LeanCtx as primary causes.
+- [x] Restored direct pctx in tracked/portable Codex configs and retired the shim without
+  changing live-runtime installation or migration semantics.
+- [x] Added regression coverage and passed all 47 Python tests plus Bash/TOML syntax checks.
+- [x] Verified direct list_functions twice and fresh Codex startup twice with pctx initialized,
+  three tools listed, no handshake timeout, and 15.567s/17.446s total startup runs.
+
 ## Active — 2026-07-13 portable governed AI configuration audit
 
 Plan: `plans/2026-07-13-execution-plan.md`; branch
