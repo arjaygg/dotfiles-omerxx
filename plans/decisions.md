@@ -1,5 +1,19 @@
 # Active Decisions Log
 
+## 2026-07-14 — Keep Codex and pctx on native JSONL stdio
+**Decision:** Codex launches `pctx mcp start --stdio` directly. The repository does not insert a
+Content-Length framing adapter, and regression tests pin both tracked and portable Codex configs
+to the direct command.
+**Why:** Raw wire captures show Codex 0.144.1 and pctx 0.6.0 both use newline-delimited JSON. The
+adapter consumed Codex's initialize line as a header and blocked until the configured 90-second
+timeout. Direct pctx completed initialize, tools/list, and list_functions in 3-5 seconds.
+**Alternatives rejected:** Increasing the timeout only prolongs a deterministic deadlock. Keeping a
+dual-framing shim adds unnecessary protocol translation and preserves the faulty path. Automatically
+replacing the current regular `~/.codex/config.toml` was rejected because it contains local runtime
+state and the active migration plan requires explicit review.
+**Assumptions:** Existing regular runtime configs remain user-managed until the already-planned
+portable Codex generation/link migration is reviewed separately.
+
 ## 2026-07-09 — Checkpoint and restart session for Phase 4 (injection-antipatterns)
 **Decision:** Stopped mid-Phase-4 (only N6b applied, uncommitted) to write a full checkpoint to
 `plans/active-context.md`/`progress.md` and tell the user to resume in a fresh session, instead of

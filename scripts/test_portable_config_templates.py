@@ -33,7 +33,7 @@ class PortableConfigTemplateTests(unittest.TestCase):
         text = CODEX_TEMPLATE.read_text(encoding="utf-8")
         self.assertEqual(scan_text(CODEX_TEMPLATE.as_posix(), text), [])
         config = tomllib.loads(text)
-        self.assertEqual(config["mcp_servers"]["pctx"]["cmd"], "pctx")
+        self.assertEqual(config["mcp_servers"]["pctx"]["command"], "pctx")
         self.assertEqual(config["project_doc_fallback_filenames"], ["AGENTS.md"])
 
     def test_all_client_templates_generate_without_mutating_inputs(self):

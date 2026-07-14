@@ -6,7 +6,7 @@ project_doc_fallback_filenames = ["AGENTS.md"]
 
 [mcp_servers.pctx]
 type = "stdio"
-command = "${DOTFILES}/ai/bin/pctx-mcp-stdio-shim.py"
+command = "pctx"
 args = ["mcp", "start", "--stdio", "-c", "${PCTX_CONFIG}"]
 startup_timeout_sec = 90
 
