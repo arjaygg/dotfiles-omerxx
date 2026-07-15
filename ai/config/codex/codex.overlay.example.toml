@@ -1,0 +1,18 @@
+# Example Codex non-secret local configuration overlay
+# Use this ignored file for machine-local preferences and paths only.
+# Credentials, access tokens, private keys, and other secrets are forbidden.
+#
+# Copy this example to an ignored local overlay path before use.
+# Do not commit your actual overlay file.
+
+[projects."${PROJECT_ROOT}"]
+trust_level = "trusted"
+
+[[skills.config]]
+path = "${PROJECT_ROOT}/.agents/skills/example-skill"
+enabled = true
+
+[mcp_servers.marketplace]
+type = "stdio"
+command = "mcp-marketplace"
+args = ["start", "--cache-dir", "${MARKETPLACE_CACHE}"]
