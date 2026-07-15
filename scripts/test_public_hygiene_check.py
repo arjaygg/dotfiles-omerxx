@@ -10,7 +10,8 @@ class PublicHygieneCheckTests(unittest.TestCase):
     def test_clean_portable_text_has_no_findings(self):
         findings = scan_text(
             "template.json",
-            '{"home": "$HOME/.dotfiles", "user_home": "/Users/${user}"}\n',
+            '{"home": "$HOME/.dotfiles", "user_home": "/Users/${user}", '
+            '"windows_home": "C:\\Users\\${user}\\config"}\n',
         )
 
         self.assertEqual(findings, [])
@@ -30,6 +31,16 @@ class PublicHygieneCheckTests(unittest.TestCase):
         self.assertEqual([finding.line for finding in findings], [1, 2, 3])
         self.assertTrue(all(finding.path == "runtime.md" for finding in findings))
 
+    def test_detects_json_secret_assignments(self):
+        secret_value = "a" * 16
+        findings = scan_text(
+            "target.json",
+            '{"token": "' + secret_value + '"}\n',
+        )
+
+        self.assertEqual([finding.rule for finding in findings], ["secret-assignment"])
+        self.assertEqual([finding.line for finding in findings], [1])
+
     def test_redacted_and_placeholder_values_are_not_secrets(self):
         findings = scan_text(
             "docs.md",
@@ -40,13 +51,42 @@ class PublicHygieneCheckTests(unittest.TestCase):
 
         self.assertEqual(findings, [])
 
-    def test_detects_private_key_material(self):
-        findings = scan_text(
-            "key.txt",
-            "-----BEGIN " + "RSA PRIVATE KEY-----\nmaterial\n",
+    def test_detects_windows_drive_and_unc_local_paths(self):
+        separator = "\\"
+        drive_path = separator.join(
+            ("C:", "users", "Alice Smith", "config")
+        )
+        unc_path = separator * 2 + separator.join(
+            ("work station", "team share", "config")
         )
 
-        self.assertEqual([finding.rule for finding in findings], ["private-key"])
+        findings = scan_text(
+            "runtime.txt",
+            f"drive={drive_path}\nunc={unc_path}\n"
+            "asset=//cdn.example.com/assets/\n",
+        )
+
+        self.assertEqual(
+            [finding.rule for finding in findings],
+            ["absolute-home-path", "absolute-home-path"],
+        )
+        self.assertEqual([finding.line for finding in findings], [1, 2])
+
+    def test_detects_generic_and_prefixed_private_key_material(self):
+        marker_end = "PRIVATE " + "KEY-----"
+        prefixes = ("", "RSA ", "EC ", "OPENSSH ")
+        markers = [
+            "-----BEGIN " + prefix + marker_end for prefix in prefixes
+        ]
+        markers.append("-----BEGIN " + "PGP PRIVATE " + "KEY BLOCK-----")
+
+        findings = scan_text("key.txt", "\n".join(markers))
+
+        self.assertEqual(
+            [finding.rule for finding in findings],
+            ["private-key"] * len(markers),
+        )
+        self.assertEqual([finding.line for finding in findings], [1, 2, 3, 4, 5])
 
     def test_repo_scan_only_reports_tracked_utf8_files(self):
         with tempfile.TemporaryDirectory() as directory:
