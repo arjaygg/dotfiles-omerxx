@@ -24,7 +24,14 @@ class Finding:
 _RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "absolute-home-path",
-        re.compile(r"(?<![A-Za-z0-9_])/(?:Users|home)/[A-Za-z0-9._-]+(?:/|$)"),
+        re.compile(
+            r"(?<![A-Za-z0-9_])(?:"
+            r"/(?:Users|home)/[A-Za-z0-9._-]+(?:/|$)"
+            r"|[A-Za-z]:[\\/]+Users[\\/]+[A-Za-z0-9._ -]+(?:[\\/]|$)"
+            r"|\\{2,}[A-Za-z0-9._ -]+\\+[A-Za-z0-9$._ -]+(?:\\|$)"
+            r")",
+            re.I,
+        ),
     ),
     (
         "private-org-url",
@@ -42,14 +49,17 @@ _RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
         "secret-assignment",
         re.compile(
             r"\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|password|secret|token)\b"
-            r"\s*[:=]\s*(?:[\"']?)(?!\[REDACTED(?:[^\]]*)?\]|<[^>]+>|"
+            r"[\"']?\s*[:=]\s*(?:[\"']?)(?!\[REDACTED(?:[^\]]*)?\]|<[^>]+>|"
             r"YOUR_[A-Z0-9_]+|CHANGE_ME|REPLACE_ME)[A-Za-z0-9_./+=:-]{16,}",
             re.I,
         ),
     ),
     (
         "private-key",
-        re.compile(r"-----BEGIN [A-Z0-9 ]+ PRIVATE KEY-----"),
+        re.compile(
+            r"-----BEGIN (?:(?:[A-Z0-9]+(?: [A-Z0-9]+)* )?PRIVATE KEY"
+            r"|PGP PRIVATE KEY BLOCK)-----"
+        ),
     ),
 )
 
