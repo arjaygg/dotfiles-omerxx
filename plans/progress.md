@@ -1,8 +1,9 @@
 # Progress — 2026-06-12
 
-## Active — 2026-07-14 agentic-loop optimization baseline
+## Done — 2026-07-15 agentic-loop optimization (bounded Codex slice)
 
 Goal: `goals/2026-07-14-01-agentic-loop-optimization.md`.
+Branch: `feature/codex-config-proposals`.
 
 - [x] Load the current session baseline with pctx/Serena/LeanCtx and confirm the available MCP surface.
 - [x] Verify the active repo guidance files and current architecture framing (`AGENTS.md`, `CLAUDE.md`,
@@ -14,7 +15,20 @@ Goal: `goals/2026-07-14-01-agentic-loop-optimization.md`.
 - [x] Draft the remediation plan for machine-local anchors and generated overlays, starting with Codex.
 - [x] Draft proposed durable decision record `decisions/0011-agentic-loop-optimization.md`.
 - [x] Add approval-ready implementation checklist with files and acceptance criteria.
-- [ ] Obtain user approval before implementing the Codex remediation sequence.
+- [x] Obtain user approval and implement the bounded Codex proposal-generator slice and local-overlay
+  convention.
+- [x] Complete proposal-diff and content-safe validation without exposing local values or applying
+  live runtime changes.
+- [x] Gate 1 — corrected the portable base to official `[tui]` `status_line`, created the minimal
+  ignored `~/.config/dotfiles-ai/codex.overlay.toml` with mode `0600`, and completed the content-safe
+  base-plus-overlay versus live comparison with zero changed paths. No prior overlay existed; the
+  live config SHA-256 remained unchanged and no live write occurred.
+- [x] Gate 2 backup and rollback preflight — created the private mode-`0700` backup directory with
+  four mode-`0600` evidence files; validated the unchanged candidate through TOML and isolated
+  `CODEX_HOME` Codex parsing; proved sandbox rollback to the exact original-live hash; and confirmed
+  live bytes, hash, and metadata remained unchanged.
+- [x] Final Gate 2 decision — skipped the no-op canonical rewrite because semantic comparison
+  reported zero changed paths; no live runtime write occurred.
 
 ## Done — 2026-07-14 pctx/Codex startup regression
 

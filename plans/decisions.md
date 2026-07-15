@@ -1,5 +1,29 @@
 # Active Decisions Log
 
+## 2026-07-15 — Skip the no-op Codex live rewrite after Gate 2 preflight
+**Decision:** Skip the live rewrite and close the bounded Codex slice because semantic comparison
+reports zero changed paths.
+**Why:** The backup hash equals current live while only the candidate byte hash differs. Candidate
+TOML and isolated `CODEX_HOME` Codex parsing passed without changing the candidate, and a sandbox
+rollback dry-run restored the exact original-live hash.
+**Evidence:** Private backup directory
+`~/.config/dotfiles-ai/backups/20260715T002308Z-pre-codex-gate2` is mode `0700`; its exact live
+backup, candidate, manifest, and rollback instructions are each mode `0600`. Live bytes, hash, and
+metadata remained unchanged; no runtime apply occurred.
+**Alternatives rejected:** Applying canonical bytes after a zero-path comparison — rejected because
+it would mutate live runtime formatting without changing behavior.
+
+## 2026-07-15 — Use the official Codex TUI schema and require a zero-path pre-apply comparison
+**Decision:** The portable base uses official `[tui]` `status_line`; the ignored
+`~/.config/dotfiles-ai/codex.overlay.toml` owns machine-local state; and a zero-changed-path
+base-plus-overlay comparison against live config is required before any apply decision. Printable
+proposals remain strict, and compare-only output remains redacted.
+**Why:** The official config reference and `codex features list` confirm the current schema and live
+parse. Gate 1 created the minimal overlay with mode `0600` where none existed and produced the
+required zero-path comparison without changing the live config SHA-256.
+**Alternatives rejected:** Keeping obsolete top-level `[status_line]`, tracking machine-local state,
+printing raw overlay values, or applying while any changed path remains.
+
 ## 2026-07-14 — Agentic-loop optimization work stays in audit mode until the baseline report lands
 **Decision:** Treat the new `goals/2026-07-14-01-agentic-loop-optimization.md` objective as an audit/reporting task first:
 finish the current harness map and verified findings summary before touching live runtime behavior.
