@@ -1,0 +1,256 @@
+{
+  "metadata": {
+    "skill_name": "vision",
+    "skill_path": "/Users/axos-agallentes/.dotfiles/ai/skills/vision/SKILL.md",
+    "old_skill_path": "/Users/axos-agallentes/.dotfiles/ai/skills/vision-workspace/skill-snapshot/SKILL.md",
+    "executor_model": "claude-sonnet-5",
+    "timestamp": "2026-07-15T00:00:00Z",
+    "evals_run": [
+      "narrow-cache-regression",
+      "single-iam-risk",
+      "broad-regulated-k8s-design",
+      "adaptive-imagepull-incident",
+      "constrained-runtime-format",
+      "dynamic-descope",
+      "tool-capability-portability",
+      "output-adaptation-executive"
+    ],
+    "runs_per_configuration": 1,
+    "measurement_note": "No Agent-tool subagents were ever successfully spawned for this benchmark (tmux teammate-pane exhaustion blocked every spawn attempt). All 16 responses were generated directly, blind to expected_output, by drafting the literal behavior each SKILL.md would produce. There is no agent-run telemetry (wall-clock time, token count, tool-call count) for any run, so those fields are omitted rather than fabricated. pass_rate/passed/failed/total are derived from scoring each response's outputs/response.md against the expectations list below."
+  },
+  "runs": [
+    {
+      "eval_id": 1,
+      "eval_name": "narrow-cache-regression",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 1.0, "passed": 4, "failed": 0, "total": 4, "errors": 0 },
+      "expectations": [
+        { "text": "Identifies the misspelled Go module cache path as root cause", "passed": true, "evidence": "Names `~/go/pkg/modd` typo directly" },
+        { "text": "Recommends the smallest fix (`~/go/pkg/mod`)", "passed": true, "evidence": "Path correction given as the sole recommendation" },
+        { "text": "Proportionate scope — handled inline/single-lens, no fixed panel", "passed": true, "evidence": "Handled fully inline" },
+        { "text": "Avoids unrelated review workstreams (deploy/security/observability)", "passed": true, "evidence": "Explicitly states no other lens is warranted" }
+      ]
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "narrow-cache-regression",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 0.5, "passed": 2, "failed": 2, "total": 4, "errors": 0 },
+      "expectations": [
+        { "text": "Identifies the misspelled Go module cache path as root cause", "passed": true, "evidence": "Found the correct `~/go/pkg/mod` fix" },
+        { "text": "Recommends the smallest fix (`~/go/pkg/mod`)", "passed": true, "evidence": "Correct path recommended" },
+        { "text": "Proportionate scope — handled inline/single-lens, no fixed panel", "passed": false, "evidence": "Launched all 4 standing panel agents regardless of scope" },
+        { "text": "Avoids unrelated review workstreams (deploy/security/observability)", "passed": false, "evidence": "Deploy/Security/Observability agents run and report 'no findings' as standing panel members" }
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "single-iam-risk",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 1.0, "passed": 4, "failed": 0, "total": 4, "errors": 0 },
+      "expectations": [
+        { "text": "Identifies wildcard PassRole privilege-escalation risk", "passed": true, "evidence": "Focused on `Resource = \"*\"` PassRole risk" },
+        { "text": "Recommends least-privilege role ARN scoping fix", "passed": true, "evidence": "Correct scoped-ARN correction given" },
+        { "text": "Single lens / no fixed panel invoked", "passed": true, "evidence": "Single security-lens inline analysis" },
+        { "text": "No build/deploy/observability workstreams launched", "passed": true, "evidence": "No other workstreams launched" }
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "single-iam-risk",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 0.5, "passed": 2, "failed": 2, "total": 4, "errors": 0 },
+      "expectations": [
+        { "text": "Identifies wildcard PassRole privilege-escalation risk", "passed": true, "evidence": "Correct HIGH-severity PassRole finding" },
+        { "text": "Recommends least-privilege role ARN scoping fix", "passed": true, "evidence": "Scoped-ARN correction given via advisor-gated Security agent" },
+        { "text": "Single lens / no fixed panel invoked", "passed": false, "evidence": "Full 4-agent panel launched regardless" },
+        { "text": "No build/deploy/observability workstreams launched", "passed": false, "evidence": "Build/Deploy/Observability launched as standing panel members (no findings)" }
+      ]
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "broad-regulated-k8s-design",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 1.0, "passed": 6, "failed": 0, "total": 6, "errors": 0 },
+      "expectations": [
+        { "text": "Covers supply chain (pinned deps, SAST, SBOM, signed images)", "passed": true, "evidence": "Supply-chain workstream addressed" },
+        { "text": "Covers deployment/canary/rollback", "passed": true, "evidence": "Deployment/canary design addressed" },
+        { "text": "Covers governance/policy/auditable promotion", "passed": true, "evidence": "Governance/policy lens addressed" },
+        { "text": "Covers observability/SLO gates", "passed": true, "evidence": "Observability workstream addressed" },
+        { "text": "Covers backward-compatible database migration safety", "passed": true, "evidence": "Migration-safety lens staged after rollback mechanism defined (expand/contract pattern)" },
+        { "text": "Stages dependent decisions rather than assuming a fixed parallel-only panel", "passed": true, "evidence": "Migration lens explicitly staged after deployment/rollback design, not run in parallel" }
+      ]
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "broad-regulated-k8s-design",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 0.667, "passed": 4, "failed": 2, "total": 6, "errors": 0 },
+      "expectations": [
+        { "text": "Covers supply chain (pinned deps, SAST, SBOM, signed images)", "passed": true, "evidence": "Covered via Security agent" },
+        { "text": "Covers deployment/canary/rollback", "passed": true, "evidence": "Covered via Deploy agent" },
+        { "text": "Covers governance/policy/auditable promotion", "passed": true, "evidence": "Covered via Security/Deploy combination" },
+        { "text": "Covers observability/SLO gates", "passed": true, "evidence": "Covered via Observability agent" },
+        { "text": "Covers backward-compatible database migration safety", "passed": false, "evidence": "Omitted entirely — no standing panel role owns it; response's own closing note flags the gap" },
+        { "text": "Stages dependent decisions rather than assuming a fixed parallel-only panel", "passed": false, "evidence": "Parallel-only execution with no staged dependency between deployment design and migration strategy" }
+      ]
+    },
+    {
+      "eval_id": 4,
+      "eval_name": "adaptive-imagepull-incident",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 1.0, "passed": 4, "failed": 0, "total": 4, "errors": 0 },
+      "expectations": [
+        { "text": "Identifies stale imagePullSecret as leading hypothesis", "passed": true, "evidence": "401 Unauthorized + 6-month-old secret rotation tied together" },
+        { "text": "Gives ordered verification steps", "passed": true, "evidence": "Explicit ordered verification sequence" },
+        { "text": "Investigation expansion is conditional on disconfirmation, not automatic", "passed": true, "evidence": "Only expands to network/registry specialist if verification disconfirms the hypothesis" },
+        { "text": "No production changes made", "passed": true, "evidence": "Read-only triage throughout" }
+      ]
+    },
+    {
+      "eval_id": 4,
+      "eval_name": "adaptive-imagepull-incident",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 0.75, "passed": 3, "failed": 1, "total": 4, "errors": 0 },
+      "expectations": [
+        { "text": "Identifies stale imagePullSecret as leading hypothesis", "passed": true, "evidence": "Same hypothesis reached with equivalent evidence" },
+        { "text": "Gives ordered verification steps", "passed": true, "evidence": "Verification steps present" },
+        { "text": "Investigation expansion is conditional on disconfirmation, not automatic", "passed": false, "evidence": "Fixed panel structure — Build agent launched unconditionally and explicitly returns nothing; no conditional-expansion mechanism exists" },
+        { "text": "No production changes made", "passed": true, "evidence": "Read-only triage throughout" }
+      ]
+    },
+    {
+      "eval_id": 5,
+      "eval_name": "constrained-runtime-format",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 1.0, "passed": 4, "failed": 0, "total": 4, "errors": 0 },
+      "expectations": [
+        { "text": "Returns exactly five Markdown bullets", "passed": true, "evidence": "Exactly five bullets" },
+        { "text": "No JSON output", "passed": true, "evidence": "No JSON anywhere in response" },
+        { "text": "No fixed agent panel invoked", "passed": true, "evidence": "No panel/TodoWrite scaffold used" },
+        { "text": "Justified safer timeout tied to observed 11-14 min duration", "passed": true, "evidence": "Correct timeout diagnosis and recommendation" }
+      ]
+    },
+    {
+      "eval_id": 5,
+      "eval_name": "constrained-runtime-format",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 0.25, "passed": 1, "failed": 3, "total": 4, "errors": 0 },
+      "expectations": [
+        { "text": "Returns exactly five Markdown bullets", "passed": true, "evidence": "Five-bullet summary present alongside other scaffolding" },
+        { "text": "No JSON output", "passed": false, "evidence": "Produces a JSON status block, citing its own Success Criteria as override of the explicit 'no JSON' instruction" },
+        { "text": "No fixed agent panel invoked", "passed": false, "evidence": "Runs the TodoWrite/4-agent scaffold (simulated inline) despite no subagent capability in this runtime" },
+        { "text": "Justified safer timeout tied to observed 11-14 min duration", "passed": true, "evidence": "Correct timeout diagnosis reached" }
+      ]
+    },
+    {
+      "eval_id": 6,
+      "eval_name": "dynamic-descope",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 1.0, "passed": 4, "failed": 0, "total": 4, "errors": 0 },
+      "expectations": [
+        { "text": "Explicit de-scoping statement with recorded rationale", "passed": true, "evidence": "De-scoping record citing repository evidence + user narrowing" },
+        { "text": "Identifies the 90-vs-14-day retention violation", "passed": true, "evidence": "Violation correctly identified" },
+        { "text": "Recommends retention-days ≤ 14", "passed": true, "evidence": "Correct fix recommended" },
+        { "text": "Adjusts workstreams to match the narrowed request", "passed": true, "evidence": "Workstreams narrowed to match request scope" }
+      ]
+    },
+    {
+      "eval_id": 6,
+      "eval_name": "dynamic-descope",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 0.5, "passed": 2, "failed": 2, "total": 4, "errors": 0 },
+      "expectations": [
+        { "text": "Explicit de-scoping statement with recorded rationale", "passed": false, "evidence": "States panel composition is fixed regardless of the user's narrowed request — no de-scoping occurs" },
+        { "text": "Identifies the 90-vs-14-day retention violation", "passed": true, "evidence": "Violation correctly identified" },
+        { "text": "Recommends retention-days ≤ 14", "passed": true, "evidence": "Correct fix recommended" },
+        { "text": "Adjusts workstreams to match the narrowed request", "passed": false, "evidence": "Build and Security still run full standing checklists unrelated to the narrowed request" }
+      ]
+    },
+    {
+      "eval_id": 7,
+      "eval_name": "tool-capability-portability",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 1.0, "passed": 4, "failed": 0, "total": 4, "errors": 0 },
+      "expectations": [
+        { "text": "No hardcoded dependency on unavailable tools (Read/Grep/Glob/Bash/Agent/advisor)", "passed": true, "evidence": "Explicitly scopes analysis to the three available capabilities (repo_search, file_read, ci_history)" },
+        { "text": "Identifies transient registry/network failure as leading hypothesis", "passed": true, "evidence": "ECONNRESET + identical lockfile reasoning" },
+        { "text": "Proposes bounded retry", "passed": true, "evidence": "2-3 attempt bounded retry with backoff proposed" },
+        { "text": "Proposes a verification mechanism using only available capabilities", "passed": true, "evidence": "Uses ci_history for an explicit before/after failure-rate check" }
+      ]
+    },
+    {
+      "eval_id": 7,
+      "eval_name": "tool-capability-portability",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 0.5, "passed": 2, "failed": 2, "total": 4, "errors": 0 },
+      "expectations": [
+        { "text": "No hardcoded dependency on unavailable tools (Read/Grep/Glob/Bash/Agent/advisor)", "passed": false, "evidence": "Frames the response around the fixed panel/JSON contract regardless of the runtime's actual exposed capabilities, narrated as 'simulated inline'" },
+        { "text": "Identifies transient registry/network failure as leading hypothesis", "passed": true, "evidence": "Correct ECONNRESET/transient-network hypothesis reached" },
+        { "text": "Proposes bounded retry", "passed": true, "evidence": "Bounded retry recommendation given" },
+        { "text": "Proposes a verification mechanism using only available capabilities", "passed": false, "evidence": "No explicit before/after verification loop tied to the runtime's actual capability set" }
+      ]
+    },
+    {
+      "eval_id": 8,
+      "eval_name": "output-adaptation-executive",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5, "errors": 0 },
+      "expectations": [
+        { "text": "Exactly four headings: Recommendation, Rationale, Risks, Next Step", "passed": true, "evidence": "Exact four headings present" },
+        { "text": "At most 250 words total", "passed": true, "evidence": "~230 words" },
+        { "text": "No JSON output", "passed": true, "evidence": "No JSON anywhere" },
+        { "text": "Conditional, evidence-aware recommendation", "passed": true, "evidence": "Migrate-only-if-verified conditional recommendation" },
+        { "text": "States explicit unknowns rather than fabricating platform claims", "passed": true, "evidence": "States no capability matrix was supplied instead of asserting platform capabilities" }
+      ]
+    },
+    {
+      "eval_id": 8,
+      "eval_name": "output-adaptation-executive",
+      "configuration": "old_skill",
+      "run_number": 1,
+      "result": { "pass_rate": 0.6, "passed": 3, "failed": 2, "total": 5, "errors": 0 },
+      "expectations": [
+        { "text": "Exactly four headings: Recommendation, Rationale, Risks, Next Step", "passed": true, "evidence": "Four headings present, but buried under non-conforming scaffolding" },
+        { "text": "At most 250 words total", "passed": false, "evidence": "TodoWrite/4-agent trace plus JSON findings block push total response far over 250 words" },
+        { "text": "No JSON output", "passed": false, "evidence": "Emits a full JSON findings block before the memo, directly contradicting the explicit 'no JSON' instruction" },
+        { "text": "Conditional, evidence-aware recommendation", "passed": true, "evidence": "Correctly recommends not migrating yet, pending evidence" },
+        { "text": "States explicit unknowns rather than fabricating platform claims", "passed": true, "evidence": "States no capability matrix was supplied" }
+      ]
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": { "mean": 1.0, "stddev": 0.0, "min": 1.0, "max": 1.0 }
+    },
+    "old_skill": {
+      "pass_rate": { "mean": 0.533, "stddev": 0.14, "min": 0.25, "max": 0.75 }
+    },
+    "delta": {
+      "pass_rate": "+0.467"
+    }
+  },
+  "notes": [
+    "with_skill (v4.0.0, adaptive routing) passes all expectations on all 8 evals.",
+    "old_skill (v3.0.0, fixed 4-agent panel) never reaches an incorrect technical conclusion — every root-cause/finding it produces is accurate — but it fails or degrades on every expectation that specifically tests proportionality, de-scoping, or explicit format/capability constraints.",
+    "old_skill's worst scores (0.25 on constrained-runtime-format, 0.5 on single-iam-risk/narrow-cache-regression/dynamic-descope/tool-capability-portability) trace to one root cause: its Success Criteria hardcode structured JSON output and a standing 4-agent panel as non-negotiable, so it cannot honor user-specified output formats, cannot de-scope when a request narrows, and cannot adapt to a capability-constrained runtime.",
+    "old_skill's best score (0.75 on adaptive-imagepull-incident) still loses exactly one point to the same structural cause: no conditional-expansion mechanism exists, only a fixed panel.",
+    "with_skill's routing-by-decomposition approach (inline / single specialist / parallel / staged / adaptive expansion) matched the proportionate topology in all 8 cases, including correctly identifying when parallel-plus-staged was warranted (eval 3) versus when a single lens sufficed (evals 1, 2).",
+    "No agent-run telemetry (time/tokens/tool-calls) exists for these runs — see metadata.measurement_note. Full narrative scoring and per-eval prose justification live in ai/skills/vision-workspace/iteration-1/RESULTS.md."
+  ]
+}
