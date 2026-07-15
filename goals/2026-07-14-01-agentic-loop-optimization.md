@@ -17,6 +17,41 @@ The repository is the source of truth for user-scoped AI client configuration, s
 - Current branch observed while authoring this goal: `main...origin/main [ahead 1]`; do not commit directly to `main`.
 - No project-local `goals/README.md` existed when this goal was created, so the repository fallback goal convention was used.
 
+## Execution status (2026-07-15)
+
+- Status: completed for the bounded Codex slice on `feature/codex-config-proposals`.
+- The baseline/report, ADR, proposal generator, security hardening, Gate 1 overlay/comparison, and
+  Gate 2 backup/rollback preflight are complete and verified.
+- The portable Codex base was corrected from the obsolete top-level `[status_line]` table to the
+  official `[tui]` `status_line` setting. The official config reference and `codex features list`
+  confirm the current schema and live parse.
+- Gate 1 created the minimal ignored `~/.config/dotfiles-ai/codex.overlay.toml` with mode `0600`;
+  no prior overlay existed.
+- The final base-plus-overlay comparison against the live config reported zero changed paths. Both
+  hashes were valid, while the proposal and target byte hashes differed because the proposal uses
+  deterministic canonical rendering.
+- The live `~/.codex/config.toml` SHA-256 remained unchanged, and the live config was not written.
+- The deterministic printable proposal remains valid and repeatable at SHA-256
+  `bf13bdf914a7b28504e262183fd1a65182d560243e524efb44c94dbbdf7db280`.
+- The plan-focused suite remains 49 of 49. Full discovery remains 85 with one unrelated failure
+  caused by the absent ignored `.claude/settings.local.json`; public hygiene remains 390 findings,
+  and config doctor remains 65 issues.
+- The earlier five-path comparison remains historical synthetic evidence and is superseded by the
+  actual Gate 1 zero-path comparison.
+- Independent review remains clean for the bounded code scope.
+- Gate 2 preflight created private backup directory
+  `~/.config/dotfiles-ai/backups/20260715T002308Z-pre-codex-gate2` with mode `0700`. Its exact live
+  backup, generated candidate, manifest, and rollback instructions each have mode `0600`.
+- The backup hash equals the current live hash. The candidate byte hash differs, but the semantic
+  changed-path count is zero.
+- The candidate TOML parsed, an isolated `CODEX_HOME` Codex parse passed, and the candidate remained
+  unchanged.
+- A sandbox rollback dry-run restored the candidate to the exact original-live hash.
+- Live bytes, hash, and metadata remained unchanged; no runtime apply occurred.
+- Final Gate 2 decision: skip the semantically no-op live rewrite and close the bounded Codex slice.
+  The zero-path semantic comparison did not justify a canonical-format-only runtime mutation, so no
+  live runtime write occurred.
+
 ## Non-goals
 
 - Do not implement live runtime, permission, hook, symlink, or machine-wide config changes before the user aligns on the plan.
