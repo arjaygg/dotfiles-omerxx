@@ -1,22 +1,49 @@
 # Active Context
 
-## Current (2026-07-14) — agentic-loop optimization goal resumed
+## Current (2026-07-15) — bounded Codex slice complete; live rewrite skipped
 
-- Active goal file: `goals/2026-07-14-01-agentic-loop-optimization.md`.
+- Active tracked goal: `goals/2026-07-14-01-agentic-loop-optimization.md`.
+- Current branch: `feature/codex-config-proposals`.
 - Session-init baseline is loaded: `Serena.initialInstructions()` succeeded; `mcp__pctx__list_functions`
   returned Serena/Qmd/LeanCtx/Repomix/Graphify; `Serena.checkOnboardingPerformed()` errored; and
   `Serena.readMemory({ memory_name: "START_HERE" })` failed because no such memory exists.
-- Repo state is still the dotfiles control plane described in `AGENTS.md`/`CLAUDE.md`; current work
-  should stay on the audit/report path before any live runtime change.
-- Baseline report and approval-ready Codex remediation checklist written:
+- Baseline report and completed Codex proposal-generator checklist:
   `plans/2026-07-14-agentic-loop-optimization.md`.
-- Proposed durable decision drafted: `decisions/0011-agentic-loop-optimization.md`.
-- Next concrete step: get user approval before implementing generator/TOML overlay changes or touching
-  tracked Codex runtime config.
+- ADR `decisions/0011-agentic-loop-optimization.md` is complete for the bounded Codex slice.
+- The portable Codex base now uses the official `[tui]` `status_line` setting instead of the
+  obsolete top-level `[status_line]` table. The official config reference and `codex features list`
+  confirm the current schema and live parse.
+- Gate 1 created the minimal ignored `~/.config/dotfiles-ai/codex.overlay.toml` with mode `0600`;
+  no prior overlay existed.
+- The final base-plus-overlay comparison against the live config reported zero changed paths. Both
+  hashes were valid, while the proposal and target byte hashes differed because the proposal uses
+  deterministic canonical rendering.
+- The live `~/.codex/config.toml` SHA-256 remained unchanged, and the live config was not written.
+- The plan-focused suite remains 49 of 49. Full discovery remains 85 with exactly one unrelated
+  failure caused by the absent ignored `.claude/settings.local.json`.
+- Read-only summaries: public hygiene 390 findings (142 absolute-home-path, 197 private-org-name,
+  51 private-org-url); config doctor 65 issues (6 errors, 59 warnings; rule split in the plan/ADR).
+- The deterministic printable proposal is valid TOML and identical across runs; SHA-256 remains
+  `bf13bdf914a7b28504e262183fd1a65182d560243e524efb44c94dbbdf7db280`.
+- The earlier pre-Gate-1 five-path comparison remains historical synthetic evidence and is
+  superseded by the actual Gate 1 zero-path comparison.
+- Independent final review found no remaining correctness- or security-significant code issue in the
+  bounded scope.
+- Gate 2 preflight created private backup directory
+  `~/.config/dotfiles-ai/backups/20260715T002308Z-pre-codex-gate2` with mode `0700`. The exact live
+  backup, generated candidate, manifest, and rollback instructions each have mode `0600`.
+- The backup hash equals current live. The candidate byte hash differs, but semantic comparison
+  reports zero changed paths.
+- The candidate TOML parsed, an isolated `CODEX_HOME` Codex parse passed, and the candidate remained
+  unchanged.
+- The sandbox rollback dry-run restored the candidate to the exact original-live hash.
+- Live bytes, hash, and metadata remained unchanged; no runtime apply occurred.
+- Final Gate 2 decision: skip the no-op canonical rewrite and close the bounded Codex slice. The
+  semantic delta was zero, so no live runtime write occurred.
 
-plan: plans/2026-07-13-execution-plan.md
-step: Phase 0 of 5
-focus: pctx/Codex startup regression fixed; Phase 0 live migration remains held
+plan: plans/2026-07-14-agentic-loop-optimization.md
+step: Complete
+focus: human diff review only; no live apply
 
 ## Current (2026-07-14) — pctx/Codex startup regression fixed
 
