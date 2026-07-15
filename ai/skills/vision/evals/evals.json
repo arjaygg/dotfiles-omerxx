@@ -1,0 +1,61 @@
+{
+  "skill_name": "vision",
+  "evals": [
+    {
+      "id": 1,
+      "name": "narrow-cache-regression",
+      "prompt": "Use Vision to diagnose this single GitHub Actions cache failure. The Go job uses actions/cache@v4 with path `~/go/pkg/modd`. The log says: `Path Validation Error: Path(s) specified in the action for caching do(es) not exist.` Identify the cause and recommend the smallest read-only fix. Keep the answer concise and decide whether any specialist delegation is actually useful.",
+      "expected_output": "A concise inline or single-build-lens diagnosis that identifies the misspelled Go module cache path, recommends `~/go/pkg/mod`, and avoids unrelated review workstreams.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "single-iam-risk",
+      "prompt": "Use Vision to review only the privilege-escalation risk in this Terraform IAM statement: `Action = [\"iam:PassRole\"]`, `Resource = \"*\"`, with `iam:PassedToService = \"ecs-tasks.amazonaws.com\"`. Do not broaden into a general CI/CD audit. Explain the material risk and the smallest defensible policy correction. Stay read-only.",
+      "expected_output": "Inline analysis or one IAM/security specialist, focused on wildcard PassRole and least-privilege role ARN scoping, without build, deploy, or observability workstreams.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "broad-regulated-k8s-design",
+      "prompt": "Use Vision to design, but not implement, a production delivery pipeline for a regulated bank. The stack is GitHub Actions, EKS, Helm, and PostgreSQL. Requirements: pinned dependencies, SAST, SBOM, signed images, policy enforcement, manual production approval, auditable promotion, canary rollout, automatic rollback, SLO gates, and backward-compatible database migrations. Explain which specialist workstreams are useful, which can run in parallel, and which decisions must be staged.",
+      "expected_output": "A proportionate multi-domain architecture using relevant parallel workstreams and staged synthesis, including supply chain, deployment, platform, observability, governance, and migration safety without assuming a fixed panel.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "adaptive-imagepull-incident",
+      "prompt": "Use Vision to diagnose an intermittent deployment failure from this evidence: image push succeeds; `helm upgrade --install --wait` times out; pod events show `ImagePullBackOff`; container runtime reports `failed to authorize: 401 Unauthorized`; the namespace service account references an imagePullSecret last rotated six months ago. Do not make production changes. Give the most likely cause, ordered verification steps, and explain whether the investigation should expand beyond its initial workstream.",
+      "expected_output": "Evidence-led incident triage targeting registry identity and deployment configuration, with adaptive expansion only if checks disconfirm the stale-secret hypothesis.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "constrained-runtime-format",
+      "prompt": "Use Vision in a constrained runtime: no subagents, advisor, MCP, or shell are available; only the supplied Azure Pipelines snippet may be analyzed. The step is `AzureCLI@2`, runs `az deployment group create`, has `timeoutInMinutes: 5`, and historical successful runs take 11-14 minutes. Review only the timeout failure. Return exactly five Markdown bullets and no JSON.",
+      "expected_output": "A five-bullet inline analysis that honors the unavailable-capability constraint, relates the timeout to observed duration, and recommends a justified safer timeout without invoking a fixed agent panel.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "dynamic-descope",
+      "prompt": "Use Vision for an initially broad delivery review, then adapt to this evidence and narrowed request: the repository contains one CI workflow and no deployment or infrastructure manifests; the user now wants only artifact-retention compliance checked. The workflow uses `actions/upload-artifact@v4` with `retention-days: 90`; policy permits at most 14 days. Report how you adjust or de-scope workstreams, then give the smallest correction.",
+      "expected_output": "Explicitly de-scopes irrelevant workstreams, records why, identifies the 90-versus-14-day violation, and recommends changing retention-days to 14 or less.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "name": "tool-capability-portability",
+      "prompt": "Use Vision in a simulated runtime that exposes only capabilities named `repo_search`, `file_read`, and `ci_history`; tools named Read, Grep, Glob, Bash, Agent, and advisor do not exist. CI history contains 30 runs: all six failures occurred during `npm ci` with `ECONNRESET`; no retry is configured; successful runs use the same lockfile. Analyze the flakiness and recommend proportionate next steps without requiring unavailable tools.",
+      "expected_output": "Capability-based, evidence-calibrated analysis that avoids hardcoded tool dependencies, identifies transient registry/network failure as the leading hypothesis, and proposes bounded retry and verification.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "name": "output-adaptation-executive",
+      "prompt": "Use Vision to advise whether an existing GitHub-hosted application team should keep GitHub Actions or migrate delivery to Azure DevOps for AKS. The organization requires enterprise approval gates and audit evidence, but no platform capability matrix has been supplied. Return a decision memo of at most 250 words with exactly these headings: `Recommendation`, `Rationale`, `Risks`, `Next Step`. Do not return JSON.",
+      "expected_output": "A concise decision memo in the exact requested format, with a conditional evidence-aware recommendation, relevant lenses only, and explicit unknowns rather than fabricated platform claims.",
+      "files": []
+    }
+  ]
+}
