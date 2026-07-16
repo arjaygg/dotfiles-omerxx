@@ -1,0 +1,42 @@
+{
+  "eval_name": "add-goal-to-existing-index",
+  "variant": "with_skill",
+  "expectations": [
+    {
+      "text": "New goal file uses the next sequence number after the existing goal.",
+      "passed": true,
+      "evidence": "Existing goal is seq 01; new file is goals/2026-07-16-02-rate-limit-public-api.md, using seq 02."
+    },
+    {
+      "text": "The pre-existing goal file is left untouched (byte-identical).",
+      "passed": true,
+      "evidence": "Confirmed byte-identical to the original starting goal 01 content — no modification."
+    },
+    {
+      "text": "goals/00-index.md has a new row for the added goal, marked active.",
+      "passed": true,
+      "evidence": "New row added: | 02 | active | `2026-07-16-02-rate-limit-public-api.md` | In progress — per-client rate limiting for public API. |"
+    },
+    {
+      "text": "At most one goal is marked active in the index.",
+      "passed": true,
+      "evidence": "Goal 01 left as 'pending' (agent's own choice, matching baseline), goal 02 is the only 'active' row."
+    },
+    {
+      "text": "plans/active-context.md is updated to point at the new active goal.",
+      "passed": true,
+      "evidence": "active-context.md contains 'goal: goals/2026-07-16-02-rate-limit-public-api.md', status: active, and a specific focus line naming Step 1."
+    },
+    {
+      "text": "Running python3 scripts/validate_goals.py in the project exits with code 0.",
+      "passed": true,
+      "evidence": "Directly re-executed in this session against the copied outputs project (not just inferred from REPORT.md): validator passes with exit code 0, resolving the run's own reconstructed-evidence caveat."
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  }
+}

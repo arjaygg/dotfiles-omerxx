@@ -1,5 +1,33 @@
 # Progress — 2026-06-12
 
+## In Progress — goal-authoring skill (branch `feature/goal-authoring-skill`)
+
+- [x] Write skill draft in `ai/skills/goal-authoring/` (skill-creator process)
+- [x] Draft 3 evals + assertions in `evals/evals.json` (bootstrap-new-project,
+  add-goal-to-existing-index, fix-malformed-goal)
+- [x] Spawn all 6 iteration-1 runs (with_skill + without_skill per eval)
+- [x] Capture all 6 final reports as `REPORT.md` (1 reconstructed via filesystem inspection —
+  `eval-addgoal-with-skill` never sent a report message)
+- [x] Capture `timing.json` per run — confirmed **not obtainable** for this batch (0/6); logged
+  explicitly as a known gap in `benchmark.json` notes rather than silently omitted
+- [x] Grade each run against assertions → `grading.json` (fields: text/passed/evidence, plus a
+  `summary: {passed, failed, total, pass_rate}` block, nested under `run-1/` per eval/config —
+  the aggregation script requires both, undocumented until the source was read)
+- [x] `python -m scripts.aggregate_benchmark <workspace>/iteration-1 --skill-name goal-authoring`
+  → with_skill 93.3%, without_skill 66.7%, delta +0.27 (matches hand-tally 14/15 vs 10/15)
+- [x] Analyst pass over benchmark data — 5 notes added to `benchmark.json`/`benchmark.md`
+  (bootstrap-eval is the only discriminating eval; without_skill's stddev is a bimodal artifact,
+  not real variance; with_skill's one failure is a real skill gap — active-context pointer not
+  filled in after goal creation; add-goal validator caveat resolved via direct re-execution;
+  `runs_per_configuration` metadata corrected 3→1)
+- [x] Launch `eval-viewer/generate_review.py --static` → written to
+  `ai/skills/goal-authoring-workspace/iteration-1/review.html` (headless environment)
+- [ ] Read `feedback.json` once user reviews `review.html`, iterate on skill (known candidate fix:
+  add an explicit reminder to populate the active-context pointer block right after creating a
+  new active goal)
+- [ ] Commit + open PR via `stack-pr` skill (Conventional Commits title) — no commit made yet at
+  any point in this task
+
 ## Done — 2026-07-16 cross-client config portability (Goal 02, bounded slice)
 
 Goal: `goals/2026-07-15-02-cross-client-config-portability.md`. Plan:

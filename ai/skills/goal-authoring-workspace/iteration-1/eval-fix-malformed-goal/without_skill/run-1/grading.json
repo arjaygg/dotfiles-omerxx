@@ -1,0 +1,42 @@
+{
+  "eval_name": "fix-malformed-goal",
+  "variant": "without_skill",
+  "expectations": [
+    {
+      "text": "The old malformed filename (goal-02-old-migration variant, unpadded sequence) is removed.",
+      "passed": true,
+      "evidence": "2026-05-01-2-old-migration.md is no longer present in goals/ — confirmed via directory listing."
+    },
+    {
+      "text": "The new filename matches the required YYYY-MM-DD-NN-slug.md convention.",
+      "passed": true,
+      "evidence": "goals/2026-05-01-02-old-migration.md matches the pattern (zero-padded NN=02)."
+    },
+    {
+      "text": "Previously-missing required headings are added.",
+      "passed": true,
+      "evidence": "Both ## Non-goals and ## Evidence to update are present in the fixed goal file, which were absent in the malformed original."
+    },
+    {
+      "text": "All required headings appear in the correct order.",
+      "passed": true,
+      "evidence": "Confirmed sequence: Objective -> Why -> Current state -> Non-goals -> Steps -> Acceptance criteria -> Evidence to update -> Stop and ask if, matching SKILL.md order."
+    },
+    {
+      "text": "References to the goal (index, active-context) are updated to the new filename.",
+      "passed": true,
+      "evidence": "goals/00-index.md and plans/active-context.md both reference 2026-05-01-02-old-migration.md; no remaining reference to the old unpadded filename."
+    },
+    {
+      "text": "Running python3 scripts/validate_goals.py after the fix exits with code 0.",
+      "passed": true,
+      "evidence": "Directly executed in this session: PASS output, exit code 0."
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "eval_name": "bootstrap-new-project",
+  "variant": "with_skill",
+  "expectations": [
+    {
+      "text": "goals/README.md and goals/00-index.md both exist.",
+      "passed": true,
+      "evidence": "Both goals/README.md and goals/00-index.md are present in the output project."
+    },
+    {
+      "text": "Exactly one file under goals/ matches ^\\d{4}-\\d{2}-\\d{2}-\\d{2}-[a-z0-9-]+\\.md$.",
+      "passed": true,
+      "evidence": "goals/2026-07-16-01-email-notify-cron-to-webhook.md matches the required pattern exactly."
+    },
+    {
+      "text": "The new goal file contains all 9 required headings in order.",
+      "passed": true,
+      "evidence": "Verified # Goal 01 -> ## Objective -> ## Why -> ## Current state -> ## Non-goals -> ## Steps -> ## Acceptance criteria -> ## Evidence to update -> ## Stop and ask if, in exact order, matching SKILL.md's required convention."
+    },
+    {
+      "text": "plans/active-context.md references the new goal file's path.",
+      "passed": false,
+      "evidence": "plans/active-context.md exists but only contains the unfilled skeleton template (# Active Context + an HTML comment placeholder) — no goal:/status:/focus: pointer block was written."
+    },
+    {
+      "text": "Running python3 scripts/validate_goals.py in the project exits with code 0.",
+      "passed": true,
+      "evidence": "Directly executed in this session: 'PASS: 1 goal file(s) validated', exit code 0."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 1,
+    "total": 5,
+    "pass_rate": 0.8
+  }
+}

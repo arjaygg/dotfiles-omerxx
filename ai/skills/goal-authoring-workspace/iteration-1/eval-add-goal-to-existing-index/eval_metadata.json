@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "eval_name": "add-goal-to-existing-index",
+  "prompt": "Add a new goal for adding rate-limiting to the public API. File it as the next sequence number in goals/00-index.md, mark it active, and update plans/active-context.md to point at it. Validate when done.",
+  "assertions": [
+    {"name": "new_goal_uses_next_sequence", "description": "The new goal file's NN segment is 02."},
+    {"name": "existing_goal_untouched", "description": "goals/2026-06-01-01-add-request-logging.md is byte-identical to its original content."},
+    {"name": "index_has_new_active_row", "description": "goals/00-index.md contains a row for the new goal file with status 'active'."},
+    {"name": "at_most_one_active_goal", "description": "goals/00-index.md has no more than one row with status 'active'."},
+    {"name": "active_context_updated", "description": "plans/active-context.md references the new goal's file path."},
+    {"name": "validator_exits_zero", "description": "Running python3 scripts/validate_goals.py in the project exits with code 0."}
+  ]
+}
