@@ -738,6 +738,314 @@ were not modified.
   hash.
 - Sandbox rollback dry-run → restored the candidate to the exact original-live hash.
 - Final live-state verification → live bytes, hash, and metadata unchanged; no runtime apply.
+- `python3 -m unittest scripts.test_skill_drift -v` → 7 tests pass.
+- `python3 -m unittest discover -s scripts -p 'test_*.py'` → 54 tests pass.
+- `bash -n scripts/check-skill-drift.sh` → pass.
+- `bash scripts/check-skill-drift.sh .claude/skills .gemini/skills .cursor/skills` → pass.
+- `.github/workflows/claude-auto-gates.yml` parsed with PyYAML → pass.
+- `.claude/settings.json` parsed as JSON → pass.
+- Main checkout `/Users/axos-agallentes/.dotfiles` `git status --short` → clean.
+- `gh pr list --repo arjaygg/dotfiles-omerxx --state open --json number,title,headRefName,baseRefName,isDraft,url --limit 50`
+  showed open draft PRs #297-#315.
+- `gh pr view <297..315> --repo arjaygg/dotfiles-omerxx --json files --jq '.files[].path'`
+  was used to identify overlap with current dirty files.
+- Official Claude Code hooks reference was checked for current matcher/decision/output behavior.
+- Read-only Python inspection of `.claude/settings.json` reported ignored matcher fields on
+  `UserPromptSubmit`, `Stop`, `TaskCreated`, `TaskCompleted`, `WorktreeCreate`, and `WorktreeRemove`,
+  no configured `mcp__.*` PreToolUse matcher, and `rtk-rewrite.sh` as the only active `updatedInput`
+  emitter.
+- Read-only inspection of self-modification mechanisms found `settings-symlink-guard.sh` is now
+  proposal-only, but `sessionstart.sh` still backgrounds `hook-graduate.sh`, which can mutate tracked
+  hook policy/state.
+- `python3 scripts/public_hygiene_check.py --json` returned 396 findings: 200 private-org-name,
+  145 absolute-home-path, and 51 private-org-url.
+- Latest validation rerun:
+  - `python3 -m unittest scripts.test_skill_drift -v` → 7 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 54 passed.
+  - `bash scripts/check-skill-drift.sh .claude/skills .gemini/skills .cursor/skills` → pass.
+  - `.github/workflows/claude-auto-gates.yml` YAML parse and `.claude/settings.json` JSON parse → pass.
+  - Public hygiene check still returns 396 findings, as documented.
+  - Main checkout remains clean.
+- Proposal-format update validation rerun produced the same results: 7 focused skill-drift tests
+  passed, 54 script tests passed, tracked skill-dir drift check passed, YAML/JSON parses passed,
+  public hygiene still reports 396 findings, and main checkout remains clean.
+- Durable-ADR refresh validation rerun produced the same results: 7 focused skill-drift tests passed,
+  54 script tests passed, tracked skill-dir drift check passed, YAML/JSON parses passed, public hygiene
+  still reports 396 findings, and main checkout remains clean.
+- Execution-boundary refresh validation rerun produced the same results: 7 focused skill-drift tests
+  passed, 54 script tests passed, tracked skill-dir drift check passed, YAML/JSON parses passed,
+  public hygiene still reports 396 findings, and main checkout remains clean.
+- Static hook-validator refresh added `missing-mcp-tool-matcher` coverage for `pre-tool-gate-v2.sh`
+  groups whose `PreToolUse` matcher excludes MCP tools:
+  - `python3 -m unittest scripts.test_hook_config_check -v` → 6 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 56 passed.
+  - `python3 scripts/hook_config_check.py .claude/settings.json --json` → 9 expected static findings
+    across `ignored-matcher`, `missing-mcp-tool-matcher`, and `parallel-handlers`.
+  - `sh scripts/check-skill-drift.sh .claude/skills .gemini/skills .cursor/skills` → pass.
+  - `.github/workflows/claude-auto-gates.yml` parsed with PyYAML → pass.
+- Skill-link installer-pruning refresh added `--prune-stale-links` to `scripts/check-skill-drift.sh`
+  and wired `setup.sh` to call it for `$HOME/.claude/skills`, `$HOME/.codex/skills`,
+  `$HOME/.gemini/skills`, and `$HOME/.cursor/skills`:
+  - `python3 -m unittest scripts.test_skill_drift -v` → 10 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 59 passed.
+  - `sh -n scripts/check-skill-drift.sh` and `sh -n setup.sh` → pass.
+  - `sh scripts/check-skill-drift.sh .claude/skills .gemini/skills .cursor/skills` → pass.
+  - `python3 scripts/hook_config_check.py .claude/settings.json --json` → 9 expected static findings
+    across `ignored-matcher`, `missing-mcp-tool-matcher`, and `parallel-handlers`.
+  - `.github/workflows/claude-auto-gates.yml` parsed with PyYAML → pass.
+- Public-hygiene summary refresh added `python3 scripts/public_hygiene_check.py --summary`, which
+  groups counts by rule and path without printing matched private excerpts:
+  - `python3 -m unittest scripts.test_public_hygiene_check -v` → 6 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 60 passed.
+  - Latest `python3 scripts/public_hygiene_check.py --summary` → 397 current findings:
+    200 `private-org-name`, 146 `absolute-home-path`, and 51 `private-org-url`.
+  - Top file groups by count: `.codex/config.toml` (45), `.claude/agents/claude-code-review-agent.md`
+    (22), `ai/agents/claude-code-review-agent.md` (22), `.claude-global/CLAUDE.md` (19),
+    this active plan (17), `ai/skills/azure-devops-cli/SKILL.md` (13),
+    `.gemini/config/mcp_config.json` (12), `.config/pctx/pctx.json` (10),
+    `ai/skills/ado-workitem/SKILL.md` (10), and `plans/quirky-spinning-bengio.md` (10).
+- Config-inventory refresh added `python3 scripts/config_inventory.py --summary`, which reads
+  `ai/config/manifest.json` only and does not read live runtime files:
+  - `python3 -m unittest scripts.test_config_inventory -v` → 2 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 62 passed.
+  - `python3 scripts/config_inventory.py --summary` → 6 clients; 6 tracked base files present;
+    6 `user-runtime` paths; 6 `ignored-local-overlay` paths.
+- Config-doctor coverage refresh added tracked `.config/pctx/pctx.json`,
+  `.gemini/config/mcp_config.json`, and `.cursor/mcp.json` to the read-only doctor and fixed direct
+  CLI execution:
+  - `python3 -m unittest scripts.test_config_doctor -v` → 9 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 64 passed.
+  - `python3 scripts/config_doctor.py --json` → exit 1 with 89 expected read-only findings across
+    `absolute-home-path`, `blanket-permission-allow`, and `private-org-name`.
+- Config-doctor summary refresh added `python3 scripts/config_doctor.py --summary`, which reports
+  counts without issue messages or matched excerpts:
+  - `python3 -m unittest scripts.test_config_doctor -v` → 10 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 65 passed.
+  - `python3 scripts/config_doctor.py --summary` → 89 findings: 41 `absolute-home-path`,
+    42 `private-org-name`, and 6 `blanket-permission-allow`.
+- PR audit-summary workflow refresh added `claude-auto-config-audit-summary` and locked it with
+  `scripts/test_claude_auto_gates_workflow.py`:
+  - `python3 -m unittest scripts.test_claude_auto_gates_workflow` → 1 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 67 passed.
+  - `.github/workflows/claude-auto-gates.yml` parsed with PyYAML → pass.
+  - `python3 scripts/config_inventory.py --summary` → 6 clients; 6 tracked base files present;
+    6 `user-runtime` paths; 6 `ignored-local-overlay` paths.
+  - `python3 scripts/public_hygiene_check.py --summary || true` → 392 findings:
+    142 `absolute-home-path`, 200 `private-org-name`, and 50 `private-org-url`.
+  - `python3 scripts/config_doctor.py --summary || true` → 89 findings:
+    41 `absolute-home-path`, 42 `private-org-name`, and 6 `blanket-permission-allow`.
+  - `python3 scripts/hook_config_check.py .claude/settings.json --summary || true` → 9 expected static
+    findings across `ignored-matcher`, `missing-mcp-tool-matcher`, and `parallel-handlers`.
+- Hook-summary refresh added `python3 scripts/hook_config_check.py .claude/settings.json --summary`,
+  which reports count-only hook findings by rule/event:
+  - `python3 -m unittest scripts.test_hook_config_check scripts.test_claude_auto_gates_workflow` → 8 passed.
+  - `python3 scripts/hook_config_check.py .claude/settings.json --summary || true` → 9 findings:
+    6 `ignored-matcher`, 1 `missing-mcp-tool-matcher`, and 2 `parallel-handlers`.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 68 passed.
+  - `.github/workflows/claude-auto-gates.yml` parsed with PyYAML → pass.
+- Hook rewrite-risk refresh added static detection for multiple PreToolUse command hooks in the same
+  group that may emit `updatedInput`/rewrite tool input:
+  - `python3 -m unittest scripts.test_hook_config_check -v` → 8 passed.
+  - `python3 scripts/hook_config_check.py .claude/settings.json --summary || true` → still 9 findings;
+    no `multiple-input-rewriters` finding in the current config because only `rtk-rewrite.sh` is
+    rewrite-capable.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 74 passed.
+  - `env bash setup.sh --check`, `.github/workflows/claude-auto-gates.yml` parse, and
+    `git diff --check` → pass.
+- Dead skill-reference refresh added `scripts/skill_reference_check.py` and wired its summary into the
+  non-blocking PR audit job:
+  - `python3 -m unittest scripts.test_skill_reference_check scripts.test_claude_auto_gates_workflow -v`
+    → 2 passed.
+  - `python3 scripts/skill_reference_check.py --summary || true` → 46 current findings:
+    21 `skill-path` and 25 `slash-ref`, with repeated stale names including
+    `migration-watchdog`, `watchdog-cron-setup`, `sync-base`, and `watchdog-remediate`.
+  - Built-in/path slash references such as `/model`, `/plan`, `/compact`, `/tmp`, and `/workflows`
+    are allowlisted to keep the summary focused on likely repo-controlled references.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 75 passed.
+  - `env bash setup.sh --check`, `.github/workflows/claude-auto-gates.yml` parse, and
+    `git diff --check` → pass.
+- Dead-reference source-scope refresh added `by_scope` to the summary so active guidance can be
+  separated from archived/historical plan debt:
+  - `python3 -m unittest scripts.test_skill_reference_check -v` → 1 passed.
+  - `python3 scripts/skill_reference_check.py --summary || true` → 46 findings:
+    9 `ai-primitives`, 5 `durable-docs`, 6 `active-plans`, and 26 `historical-plans`.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 75 passed.
+  - `env bash setup.sh --check`, `.github/workflows/claude-auto-gates.yml` parse, and
+    `git diff --check` → pass.
+- Config-inventory boundary refresh expanded manifest checks from presence/scope counts to
+  source-boundary and format-boundary counts:
+  - `python3 -m unittest scripts.test_config_inventory -v` → 3 passed.
+  - `python3 scripts/config_inventory.py --summary` → 6 clients; 6 `tracked-portable-base`;
+    6 tracked bases present; 6 `format-ok`; 6 `user-runtime`; 6 `ignored-local-overlay`.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 69 passed.
+  - `.github/workflows/claude-auto-gates.yml` parsed with PyYAML → pass.
+- Setup-check refresh added non-mutating `setup.sh --check` and `setup.sh --dry-run` entrypoints
+  before any `mkdir`, `stow`, symlink, install, prune, extension-link, or cleanup commands:
+  - `python3 -m unittest scripts.test_setup_check -v` → 2 passed.
+  - `env bash setup.sh --check` → pass; validates shell syntax, config inventory, tracked skill
+    drift, and hook summary without writing runtime files.
+  - `env bash setup.sh --dry-run` → pass; runs the same checks and reports that no mutating setup
+    commands were run.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 71 passed.
+  - `.github/workflows/claude-auto-gates.yml` parsed with PyYAML → pass.
+- Instruction-budget refresh added `scripts/instruction_budget_check.py` and wired its summary into
+  `claude-auto-config-audit-summary`:
+  - Current measured sizes before enforcement: `CLAUDE.md` 454 bytes, `AGENTS.md` 5966 bytes,
+    `ai/rules/agent-user-global.md` 11228 bytes, and `ai/rules/tool-priority.md` 9596 bytes.
+  - Budgets: 1500, 8000, 13000, and 11000 bytes respectively.
+  - `python3 -m unittest scripts.test_instruction_budget_check scripts.test_claude_auto_gates_workflow -v`
+    → 3 passed.
+  - `python3 scripts/instruction_budget_check.py --summary` → 4 ok, 0 over budget.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 73 passed.
+  - `env bash setup.sh --check`, `.github/workflows/claude-auto-gates.yml` parse, and
+    `git diff --check` → pass.
+- Setup-check/budget integration refresh wired `scripts/instruction_budget_check.py --summary` into
+  `setup.sh --check`, so local non-mutating setup checks and PR audit summaries share the same
+  guidance-size invariant:
+  - `python3 -m unittest scripts.test_setup_check -v` → 2 passed.
+  - `env bash setup.sh --check` → pass and prints 4 instruction-budget checks ok.
+  - `env bash -n setup.sh` → pass.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 73 passed.
+  - `.github/workflows/claude-auto-gates.yml` parse and `git diff --check` → pass.
+- Setup-check audit parity refresh wired the remaining PR audit summaries into local
+  `setup.sh --check` as non-blocking output: public hygiene, config doctor, hook config, and dead
+  skill references now run beside config inventory, instruction budgets, and tracked skill drift.
+  Known baseline findings still do not fail setup checks:
+  - `python3 -m unittest scripts.test_setup_check -v` → 2 passed.
+  - `env bash setup.sh --check` → pass; prints config inventory, hygiene, doctor, instruction-budget,
+    hook, skill-drift, and dead-reference summaries without mutating runtime files.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 75 passed.
+  - `.github/workflows/claude-auto-gates.yml` parse and `git diff --check` → pass.
+- Setup fake-HOME non-mutation refresh added a regression proving `setup.sh --check` and
+  `setup.sh --dry-run` do not create runtime directories or files when `HOME` points at a fresh
+  temporary directory:
+  - `python3 -m unittest scripts.test_setup_check -v` → 3 passed.
+  - `env bash setup.sh --check` and `env bash setup.sh --dry-run` → pass.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 76 passed.
+  - `.github/workflows/claude-auto-gates.yml` parse and `git diff --check` → pass.
+- Local/CI audit parity regression added `scripts.test_claude_auto_gates_workflow` coverage to assert
+  the shared summary commands stay present in both `setup.sh --check` and
+  `claude-auto-config-audit-summary`:
+  - `python3 -m unittest scripts.test_claude_auto_gates_workflow -v` → 2 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 77 passed.
+  - `env bash setup.sh --check`, `.github/workflows/claude-auto-gates.yml` parse, and
+    `git diff --check` → pass.
+- Syntax-parse validation refresh added `scripts/syntax_check.py` and wired its summary into both
+  `setup.sh --check` and `claude-auto-config-audit-summary`:
+  - Current syntax summary parses 9 candidates: 7 JSON, 1 TOML, and 1 YAML; all 9 are `ok`.
+  - Candidates include `.claude/settings.json`, `.github/workflows/claude-auto-gates.yml`,
+    `ai/config/manifest.json`, and all manifest-declared base templates.
+  - YAML parsing uses PyYAML when available and otherwise reports parser-unavailable without marking
+    the file invalid.
+  - `python3 -m unittest scripts.test_syntax_check scripts.test_claude_auto_gates_workflow scripts.test_setup_check -v`
+    → 7 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 79 passed.
+  - `env bash setup.sh --check`, `.github/workflows/claude-auto-gates.yml` parse, and
+    `git diff --check` → pass.
+- Shell-syntax validation refresh added `scripts/shell_syntax_check.py` and wired its summary into
+  both `setup.sh --check` and `claude-auto-config-audit-summary`:
+  - Current summary checks 164 tracked `*.sh` files with `bash -n`; all 164 are `ok`.
+  - `python3 -m unittest scripts.test_shell_syntax_check scripts.test_claude_auto_gates_workflow scripts.test_setup_check -v`
+    → 7 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 81 passed.
+  - `env bash setup.sh --check`, `.github/workflows/claude-auto-gates.yml` parse, and
+    `git diff --check` → pass.
+- Guidance-adapter validation refresh added `scripts/guidance_adapter_check.py` and wired its
+  summary into both `setup.sh --check` and `claude-auto-config-audit-summary`:
+  - Current summary checks 23 source-of-truth adapter invariants; all 23 are `ok`.
+  - Covered invariants include root `CLAUDE.md` importing `AGENTS.md`, Claude/Gemini/Cursor
+    adapters importing neutral `ai/rules`, Codex loading `agent-user-global.md`, Codex discovering
+    `AGENTS.md`, and Gemini `context.fileName` including `AGENTS.md`.
+  - `python3 -m unittest scripts.test_guidance_adapter_check scripts.test_claude_auto_gates_workflow scripts.test_setup_check -v`
+    → 8 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 84 passed.
+  - `env bash setup.sh --check`, `.github/workflows/claude-auto-gates.yml` parse, and
+    `git diff --check` → pass.
+- Hook-fixture summary refresh extended `scripts/hook_fixture_runner.py` with `--summary` and wired
+  `.claude/hooks/pre-tool-gate-v2.sh` fixtures into both `setup.sh --check` and
+  `claude-auto-config-audit-summary`:
+  - Current fixture summary checks 7 pre-tool cases: 7 passed, 0 failed.
+  - Fixture validation rejects stdout contamination before structured deny JSON.
+  - `python3 -m unittest scripts.test_hook_fixture_runner scripts.test_claude_auto_gates_workflow scripts.test_setup_check -v`
+    → 9 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 85 passed.
+  - `env bash setup.sh --check`, `.github/workflows/claude-auto-gates.yml` parse, and
+    `git diff --check` → pass.
+- Hook fixture schema refresh extended `scripts/hook_fixture_runner.py` beyond allow/deny fixtures:
+  - `ask` fixtures now require `permissionDecision=ask` and a reason.
+  - `rewrite` fixtures now require `permissionDecision=allow`, a reason, object `updatedInput`,
+    preservation of original `tool_input` keys, and optional expected updated fields.
+  - `context` fixtures now require non-empty `additionalContext`.
+  - `python3 -m unittest scripts.test_hook_fixture_runner -v` → 7 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 88 passed.
+  - `env bash setup.sh --check` and `git diff --check` → pass.
+- Static hook-output schema refresh added `scripts/hook_output_schema_check.py` and wired its summary
+  into both `setup.sh --check` and `claude-auto-config-audit-summary` as non-blocking output:
+  - Current summary reports 1 finding: `task-gate.sh` has
+    `permission-decision-missing-hook-event-name`.
+  - Dispatcher code that parses sub-hook `hookSpecificOutput` is ignored to avoid false positives.
+  - `python3 -m unittest scripts.test_hook_output_schema_check scripts.test_claude_auto_gates_workflow scripts.test_setup_check -v`
+    → 9 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 92 passed.
+  - `env bash setup.sh --check` → pass and surfaces the 1 hook-output finding.
+- Hook-target validation refresh added `scripts/hook_target_check.py` and wired its summary into both
+  `setup.sh --check` and `claude-auto-config-audit-summary`:
+  - Current summary reports 0 hook target findings from `.claude/settings.json`.
+  - The check resolves `$HOME/.dotfiles/...` command targets against the repo root, verifies targets
+    exist as files, and requires executable bits for directly executed dotfiles targets.
+  - `python3 -m unittest scripts.test_hook_target_check scripts.test_claude_auto_gates_workflow scripts.test_setup_check -v`
+    → 9 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 96 passed.
+  - `env bash setup.sh --check` → pass and includes 0 hook target findings.
+- Self-modification validation refresh added `scripts/self_modification_check.py` and wired its
+  summary into both `setup.sh --check` and `claude-auto-config-audit-summary` as non-blocking output:
+  - Current summary reports 2 findings, both in `.claude/hooks/hook-graduate.sh`:
+    `hook-config.yaml` and `hook-graduation-state.json`.
+  - The scanner ignores detect/report-only `settings-symlink-guard.sh` and read-only hook-config
+    lookups, so the remaining findings map to tracked policy/state writes.
+  - `python3 -m unittest scripts.test_self_modification_check scripts.test_claude_auto_gates_workflow scripts.test_setup_check -v`
+    → 8 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 99 passed.
+  - `env bash setup.sh --check` → pass and includes the 2 self-modification findings.
+- Config-base hygiene refresh added `scripts/config_base_hygiene_check.py` and wired its summary into
+  both `setup.sh --check` and `claude-auto-config-audit-summary`:
+  - It scans only manifest-declared tracked base templates with the public-hygiene rules, so runtime
+    files and unrelated docs are not made blocking.
+  - Current summary reports 0 base-template hygiene findings.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 101 passed.
+  - `env bash setup.sh --check`, workflow YAML parse, and `git diff --check` → pass.
+- Autonomous-skill contract refresh added `scripts/autonomous_skill_check.py` and wired its summary
+  into both `setup.sh --check` and `claude-auto-config-audit-summary`:
+  - The check covers the goal's named autonomous primitives: `cap`, `stark`, `fury`, `ironman`,
+    `hawk`, and `strange`.
+  - It proves skill files, names, descriptions, triggers, model metadata, and role-specific contract
+    terms are present; for `cap`, it also proves the `stark`/`fury`/`ironman`/`hawk` orchestration
+    chain plus portable/Workflow routing terms.
+  - Current summary reports 57 ok checks across 6 skills.
+- Post-slice validation refresh:
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 104 passed.
+  - `env bash setup.sh --check` → pass and includes the 57 autonomous-skill checks.
+  - Workflow YAML parse and `git diff --check` → pass.
+- MCP-gateway topology refresh added `scripts/mcp_gateway_check.py` and wired its summary into both
+  `setup.sh --check` and `claude-auto-config-audit-summary`:
+  - It validates tracked client gateway shape without reading live runtime files.
+  - Claude (`.mcp.json`), Cursor, and Gemini are checked for `pctx` routing only; Windsurf and Codex
+    allow direct `lean-ctx` plus `pctx` because that is the current tracked token-efficient runtime
+    exception.
+  - `.config/pctx/pctx.json` is checked for the expected backend catalog: Serena, Qmd, LeanCtx,
+    Repomix, and Graphify.
+  - Current summary reports 28 ok checks across 6 config files.
+- Post-MCP-gateway validation refresh:
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 108 passed.
+  - `env bash setup.sh --check` → pass and includes the 28 MCP-gateway checks.
+  - Workflow YAML parse and `git diff --check` → pass.
+- Script-hygiene refresh sanitized test fixtures that previously embedded scanner examples directly
+  and added `test_scripts_tree_has_no_hygiene_findings`:
+  - `python3 -m unittest scripts.test_public_hygiene_check scripts.test_config_generate -v` → 16 passed.
+  - `python3 -m unittest discover -s scripts -p 'test_*.py'` → 66 passed.
+  - `python3 scripts/public_hygiene_check.py --summary` → 392 current findings:
+    200 `private-org-name`, 142 `absolute-home-path`, and 50 `private-org-url`.
+  - Direct script scan reports 0 hygiene findings under `scripts/*.py`.
 
 ## Results
 
@@ -748,6 +1056,64 @@ were not modified.
 - `setup.sh` is clean of the tested home-path and bypass markers.
 - The bounded Codex proposal-generator slice, Gate 1, Gate 2 preflight, and final Gate 2 skip
   decision are complete and verified; live runtime remains untouched.
+- Tracked repo skill dirs now pass the strengthened drift check across Claude, Gemini, and Cursor.
+- Full maintained script tests pass locally with 108 tests.
+- Open PR overlap is now explicit: #315 overlaps stale Claude skill-link deletion and
+  `plans/active-context.md`; #311 overlaps `setup.sh`; #306 overlaps `scripts/test_phase0_boundary.py`.
+- Static hook-schema audit found Phase 1 risks: ignored matchers, unreachable MCP-specific pre-tool
+  gate branches, Stop blocking schema uncertainty, and WorktreeCreate multi-handler stdout risk.
+- Copy-back risk is reduced for Claude settings because the symlink guard is detect-only, but the
+  self-improvement loop still has an automatic tracked mutation path via hook graduation.
+- Public-repository hygiene is not yet satisfied; scanner output proves tracked org/local exposure.
+- Durable ADR `decisions/0011-agentic-loop-optimization.md` now matches the current evidence and can
+  serve as the review anchor for future implementation slices.
+- Future work has explicit PR boundaries; the next agent should not combine generator/runtime,
+  hook-behavior, live cleanup, and hygiene changes in one branch.
+- Hook schema validation now catches the documented MCP matcher gap statically, but no hook behavior
+  or live runtime policy was changed.
+- Setup now has a future-run cleanup path for stale generated user skill symlinks. It removes only
+  invalid symlinks and leaves real directories/non-quarantined local skills visible for review; no live
+  setup run or live user-dir cleanup was performed.
+- Public-hygiene cleanup can now be planned from grouped counts without copying private excerpts into
+  handoff docs.
+- Config source/runtime/overlay boundaries can now be summarized deterministically from the manifest
+  without touching live runtime files.
+- Config doctor now covers the tracked PCTX/Cursor/Gemini config files that the hygiene summary
+  identifies as high-count cleanup groups.
+- Validation tooling now has a guardrail preventing script/test files from adding new public-hygiene
+  findings while still allowing tests to synthesize private-looking values at runtime.
+
+## Objective completion audit
+
+| Requirement from goal prompt | Current evidence | Status | Remaining work |
+|---|---|---|---|
+| Read and follow repo guidance | `AGENTS.md`, `CLAUDE.md`, `docs/agent-configuration-architecture.md`, and `ai/rules/tool-priority.md` were checked and summarized in this report. | Proven for audit scope | Re-check before implementation after further branch changes. |
+| Do not edit/commit directly on `main` | Current work is on `chore/agentic-loop-source-validation` in `.trees/agentic-loop-source-validation`; main checkout is clean. | Proven for current worktree | Keep implementation on a stack branch/worktree. |
+| Produce verified findings summary before implementation | This report includes verified current state, checked/not-yet-checked, parity matrix, bottlenecks, and recommendations. | Proven for baseline | Expand evidence after each implementation slice. |
+| Inspect current open pull requests that may overlap | `## Open PR overlap snapshot` records open draft PRs #297-#315 and file-level overlap with this branch. | Proven for current GitHub state on 2026-07-14 | Re-check before publishing because PR state can change. |
+| Distinguish tracked source, runtime config, local state, org context, secrets, guidance, enforcement, telemetry, self-improvement | Current report distinguishes source/runtime/client entrypoints and notes missing overlay/runtime checks. | Partial | Add a deeper source-vs-overlay inventory during Codex implementation. |
+| Cross-client parity matrix for Claude, Codex, Gemini/Antigravity, Cursor, Windsurf | Present in `## Cross-client parity matrix`. | Proven for entrypoint/config layer | Extend to command/skill reachability after approval. |
+| Bottlenecks grouped by drift, context bloat/leaks, handoff friction, tool inefficiency | Present in `## Grouped bottlenecks`. | Proven | Update after implementation evidence. |
+| Concrete file-level recommendations | Present in `## Recommendations` and `## Approval-ready implementation checklist`. | Proven | Convert to implementation tasks only after approval. |
+| Validate whether symlinked shared primitives remain the right source-of-truth strategy | `## Source-of-truth and symlink validation` records official-doc evidence and live-path checks. | Proven for skills/static primitive strategy | Runtime hook compatibility still needs client-specific execution tests before claiming hook portability. |
+| Draft durable decision before implementation | `decisions/0011-agentic-loop-optimization.md` is drafted/proposed and refreshed with current symlink, hook-graduation, and hygiene evidence. | Proven if file remains tracked in branch | Commit/link with the plan branch before PR. |
+| No implementation before approval | No generator/config/runtime implementation files have been changed in this audit-only pass. | Proven by current dirty set | Wait for explicit approval. |
+| Verification beyond exit status | Current evidence includes parsed config structure, marker checks, and test command results from prior baseline. | Partial | Implementation needs rendered proposal hashes, idempotency checks, hygiene scanner, config doctor, and runtime-apply hold proof. |
+| Stop before live runtime apply | Approval checklist Step 5 requires no writes to `~/.codex/config.toml` without separate approval. | Planned, not yet executed | Re-verify during implementation. |
+| Add validation that prevents stale skill symlink drift | `scripts/test_skill_drift.py` covers dangling symlink, symlink-to-non-skill target, valid symlink, non-quarantined real directory, repo `.claude`/`.gemini`/`.cursor` skill dirs, multi-directory checks, `--prune-stale-links`, and `setup.sh` user-dir wiring; `scripts/check-skill-drift.sh` now reports or prunes invalid symlinks while preserving real dirs. | Proven for tracked repo skill dirs, read-only live user-dir detection, and future setup-run pruning behavior | Live user-level stale symlinks are still not removed until setup is run or explicit live cleanup is approved. |
+| Wire maintained tests and audit summaries into PR validation | `.github/workflows/claude-auto-gates.yml` now has `claude-auto-script-tests` plus non-blocking `claude-auto-config-audit-summary`; local `python3 -m unittest discover -s scripts -p 'test_*.py'` passes with 108 tests and workflow YAML parses. | Proven for GitHub Actions config syntax, local test command, redacted audit-summary commands, shell syntax summary, syntax summary, guidance-adapter summary, autonomous-skill contract summary, MCP-gateway topology summary, pre-tool hook fixture summary, hook-target summary, hook-output schema summary, self-modification summary, config-base hygiene summary, instruction-budget summary, and dead skill-reference summary | Remote GitHub Actions run not yet observed for this branch. |
+| Audit core autonomous primitives and skills | `scripts/autonomous_skill_check.py --summary` reports 57 ok checks across `cap`, `stark`, `fury`, `ironman`, `hawk`, and `strange`; unit tests cover valid contracts, missing Cap review-phase detection, and current repo state. | Proven for static skill contract presence and role separation | Does not execute the skills end-to-end; live Cap Workflow/portable runtime behavior remains future verification. |
+| Evaluate context gateways and tool routing | `scripts/mcp_gateway_check.py --summary` reports 28 ok checks across `.mcp.json`, `.cursor/mcp.json`, `.gemini/mcp.json`, `.windsurf/mcp_config.json`, `.codex/config.toml`, and `.config/pctx/pctx.json`; unit tests catch direct stale client servers and missing PCTX backends. | Proven for tracked MCP gateway topology and expected backend catalog | Does not prove live MCP process startup or per-client runtime reload behavior. |
+| Validate current Claude hook schema and matcher behavior | `## Claude hook schema and matcher audit snapshot` records current-doc comparison for no-matcher events, MCP matchers, decision output, and WorktreeCreate output contract; `scripts/hook_config_check.py` now statically catches ignored matchers, parallel Worktree handlers, `pre-tool-gate-v2.sh` without an MCP-capable matcher, and multiple PreToolUse input rewriters in one group. `scripts/hook_fixture_runner.py --summary` executes 7 `pre-tool-gate-v2.sh` allow/deny fixtures, rejects stdout contamination before deny JSON, and has unit coverage for ask, rewrite/`updatedInput`, and `additionalContext` schemas. `scripts/hook_output_schema_check.py --summary` reports 1 current static output finding in `task-gate.sh`. `scripts/hook_target_check.py --summary` reports 0 missing/non-executable dotfiles hook targets from settings. | Partial | Stop schema, real rewrite hook execution, MCP runtime reachability, and Worktree stdout behavior remain unproven at runtime. |
+| Confirm public-repository exposure risks | `scripts/public_hygiene_check.py --summary` reports 392 current findings across private org names, absolute home paths, and private org URLs, grouped without excerpts. | Proven risk | Plan scoped scrub/migration by file group; do not broad-edit in this overlap-heavy branch. |
+| Distinguish tracked source vs runtime vs ignored overlays | `scripts/config_inventory.py --summary` reports all 6 manifest bases as `tracked-portable-base`, present, and `format-ok`, plus all 6 runtime paths user-scoped and all 6 overlays under ignored local overlay convention without reading runtime files. | Proven for manifest-declared config boundary | Generator/runtime apply remains incomplete; Codex TOML overlay rendering still needs approval. |
+| Provide non-mutating setup checks | `setup.sh --check` and `setup.sh --dry-run` now exit before mutating setup commands and run tracked validation checks plus the same non-blocking summaries as the PR audit job; regression coverage proves both modes leave a fresh fake HOME empty and that local/CI summary commands stay in parity. | Proven locally with `env bash setup.sh --check`, `env bash setup.sh --dry-run`, fake-HOME/parity regressions, and 108 script tests | Full `ai-config generate/diff/doctor` command family and runtime apply/backup remain incomplete. |
+| Enforce always-loaded instruction-size budgets | `scripts/instruction_budget_check.py` covers `CLAUDE.md`, `AGENTS.md`, `ai/rules/agent-user-global.md`, and `ai/rules/tool-priority.md`; the full test suite enforces current files stay under budget. | Proven locally with 73 script tests and `instruction_budget_check.py --summary` | Budgets are byte-based, not tokenized per-client rendered prompts; extend later if exact client loaders become scriptable. |
+| Validate thin adapter source-of-truth chain | `scripts/guidance_adapter_check.py --summary` reports 23 ok checks for required guidance/config files, root `CLAUDE.md` → `AGENTS.md`, Claude/Gemini/Cursor neutral-rule imports, Codex `model_instructions_file`, Codex `AGENTS.md` fallback, and Gemini `context.fileName`. | Proven locally with 84 script tests and setup/PR audit-summary parity | This validates tracked adapter wiring, not live client prompt rendering. |
+| Detect dead skill/command references | `scripts/skill_reference_check.py --summary` scans high-signal guidance/docs/skill entrypoints and reports 46 current stale references without printing matched text; `by_scope` separates 9 ai-primitives, 5 durable-docs, 6 active-plans, and 26 historical-plans. | Proven as non-blocking evidence with 75 script tests | Findings are not remediated yet; broad historical plan docs may need separate archive/ignore policy before this becomes blocking. |
+| Expand read-only doctor coverage for tracked config files | `scripts/config_doctor.py --summary` now directly runs and reports 89 issues across tracked Claude/Codex/Gemini/Cursor/Windsurf/PCTX config surfaces, including `.config/pctx/pctx.json`, `.gemini/config/mcp_config.json`, and `.cursor/mcp.json`, without messages/excerpts. | Proven risk inventory | Remediate in scoped generator/template slices; do not broad-edit tracked configs in this overlap-heavy branch. |
+| Confirm self-modification mechanisms that mutate tracked files | `sessionstart.sh` backgrounds `hook-graduate.sh`; `hook-graduate.sh` can edit `hook-config.yaml` and `hook-graduation-state.json`. `scripts/self_modification_check.py --summary` now reports those 2 tracked mutation targets as the current non-blocking baseline. | Proven risk | Make graduation proposal-only in a reviewed Phase 3 slice. |
+| Use required proposal format for policy/self-improvement changes | `## Policy proposal — make hook graduation proposal-only` includes the requested YAML fields (`id`, `problem`, `evidence`, `recurrence`, destination, risks, conflicts, evaluation, review_after). | Proven for this finding | Add similar proposals for future learning-loop changes before implementation. |
 
 ## Residual risks
 
@@ -756,6 +1122,15 @@ were not modified.
 - The canonical-byte rewrite was deliberately not adopted because it would change formatting only,
   not semantics; live bytes and hash remain unchanged.
 - `START_HERE` memory is absent, so future sessions cannot rely on it for project bootstrap.
+- User-level skill directories still have stale symlinks outside this repo branch; live runtime cleanup
+  remains intentionally untouched.
+- Some user-level skill entries point at existing directories that are not valid skill directories
+  (`SKILL.md`/`skill.md` missing), including aggregate Gemini links; these require a separate live
+  cleanup/installer-pruning decision.
+- The live user-level skill drift check also reports non-quarantined real directories that may be
+  tool-managed or intentionally local; classify before deleting or converting them.
+- Remote CI evidence for this branch is not available until the branch is pushed and a PR/check run
+  exists.
 
 ## Next recommended step
 
