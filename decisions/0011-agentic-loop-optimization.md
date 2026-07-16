@@ -3,7 +3,9 @@
 ## Status
 
 Completed for the bounded Codex proposal slice. Gate 1 and Gate 2 preflight passed, and the final
-decision was to skip the semantically no-op canonical-byte live rewrite.
+decision was to skip the semantically no-op canonical-byte live rewrite. Slices B–D (skill-link
+drift validation, governed self-improvement, public-hygiene migration) are implemented in this
+branch; see Execution state and Verification below.
 
 ## Decision
 
@@ -35,6 +37,8 @@ still valid, but the tracked client configs are uneven:
 
 ## Accepted staged implementation
 
+### Slice A — Codex portable proposal generation (completed)
+
 1. Add TOML overlay support to the proposal generator.
 2. Keep `ai/config/codex/config.base.toml` as the portable tracked base and use the official `[tui]`
    `status_line` setting rather than the obsolete top-level `[status_line]` table.
@@ -47,6 +51,25 @@ still valid, but the tracked client configs are uneven:
    approval.
 7. Before the final Gate 2 decision, preserve an exact private live backup and prove candidate
    parsing plus rollback without mutating live runtime state.
+
+### Slice B — skill-link drift validation
+
+1. Validate tracked skill directories for dangling symlinks.
+2. Validate that symlink targets are real skill directories containing `SKILL.md` or `skill.md`.
+3. Keep live user-level skill-dir cleanup separate from tracked-source validation.
+4. Preserve `~/.agents/skills -> ~/.dotfiles/ai/skills` as the cross-tool skill path.
+
+### Slice C — governed self-improvement
+
+1. Treat `hook-graduate.sh` auto-mutation as a risk until converted to proposal-only behavior.
+2. Keep local learning metrics and runtime state from silently changing tracked policy.
+3. Require explicit approval before changing hook levels, hook config, or tracked learning state.
+
+### Slice D — public-hygiene migration
+
+1. Use `scripts/public_hygiene_check.py` as deterministic evidence.
+2. Migrate private org names, internal URLs, and machine paths out of tracked files by file group.
+3. Avoid broad scrubs in branches that already overlap open PR stacks.
 
 ## Execution state (2026-07-15)
 
@@ -74,6 +97,11 @@ still valid, but the tracked client configs are uneven:
 - Broader client migration remains separately scoped.
 - The tracked `.codex/config.toml` and live `~/.codex/config.toml` were read-only comparison inputs
   and were not modified.
+- Slices B–D added `autonomous_skill_check.py`, `config_base_hygiene_check.py`,
+  `config_inventory.py`, `guidance_adapter_check.py`, `hook_output_schema_check.py`,
+  `hook_target_check.py`, `instruction_budget_check.py`, `mcp_gateway_check.py`,
+  `self_modification_check.py`, `shell_syntax_check.py`, `skill_reference_check.py`, and
+  `syntax_check.py`, extended `check-skill-drift.sh`, and cleaned up stale skill symlinks.
 
 ## Alternatives rejected
 
@@ -85,6 +113,11 @@ still valid, but the tracked client configs are uneven:
   thin client entrypoints and shared source under `ai/`.
 - **Automatically update live runtime config.** Rejected because the goal and existing Phase 0 plan
   require proposal review and explicit approval before live runtime changes.
+- **Make `.claude/` the primary source for all agents.** Rejected because current Codex, Gemini,
+  Cursor, and Windsurf skill docs/paths support neutral `.agents/skills`, while hook and config
+  schemas remain client-specific.
+- **Leave hook auto-graduation enabled as-is.** Rejected because it can mutate tracked policy/state
+  from local metrics without review.
 
 ## Consequences
 
@@ -96,6 +129,9 @@ still valid, but the tracked client configs are uneven:
   not imply a semantic config delta when deterministic canonical rendering is used.
 - With the precondition satisfied and rollback proven, skipping the byte-only rewrite avoids a
   needless live mutation while preserving an explicit apply option.
+- Skill drift becomes a testable source problem instead of a silent runtime warning.
+- Self-improvement remains evidence-generating but cannot claim governance until auto-mutation is
+  converted to proposal-only behavior.
 
 ## Verification
 
@@ -138,6 +174,11 @@ Final staged acceptance evidence is recorded in
   occurred.
 
 The final Gate 2 decision was to skip the no-op rewrite. No live runtime apply occurred.
+
+Evidence for Slices B–D: 108 of 108 tests passed in the `chore/agentic-loop-source-validation`
+worktree after adding the skill-drift, self-modification-governance, and public-hygiene-migration
+checks listed under Execution state, and after removing stale skill symlinks left over from prior
+skill reorganization.
 
 ## References
 

@@ -42,10 +42,10 @@ plan: plans/2026-07-16-cross-client-config-portability.md
 step: Complete (bounded slice: Steps 1-6, 8, 9)
 focus: draft durable ADR; Step 7 (live write) stays out of scope
 
-## Previous (2026-07-15) — bounded Codex slice complete; live rewrite skipped
+## Previous (2026-07-15) — bounded Codex slice complete; Slices B–D implemented; live rewrite skipped
 
 - Active tracked goal: `goals/2026-07-14-01-agentic-loop-optimization.md`.
-- Current branch: `feature/codex-config-proposals`.
+- Current branch/worktree: `chore/agentic-loop-source-validation` at `.trees/agentic-loop-source-validation`.
 - Session-init baseline is loaded: `Serena.initialInstructions()` succeeded; `mcp__pctx__list_functions`
   returned Serena/Qmd/LeanCtx/Repomix/Graphify; `Serena.checkOnboardingPerformed()` errored; and
   `Serena.readMemory({ memory_name: "START_HERE" })` failed because no such memory exists.
@@ -85,7 +85,46 @@ focus: draft durable ADR; Step 7 (live write) stays out of scope
 
 plan: plans/2026-07-14-agentic-loop-optimization.md
 step: Complete
-focus: human diff review only; no live apply
+focus: Codex slice + Slices B-D complete; human diff review only, no live apply
+
+## Current (2026-07-14) — Slices B–D (skill-drift, self-improvement governance, public-hygiene) executed
+
+- Branch/worktree: `chore/agentic-loop-source-validation` at `.trees/agentic-loop-source-validation`.
+- Active tracked goal: `goals/2026-07-14-01-agentic-loop-optimization.md`; plan
+  `plans/2026-07-13-execution-plan.md`.
+- Slice B (skill-link drift validation): added and extended `check-skill-drift.sh` plus
+  `skill_reference_check.py` to validate tracked skill directories for dangling symlinks and confirm
+  symlink targets are real skill directories containing `SKILL.md`/`skill.md`; removed stale skill
+  symlinks left over from prior skill reorganization; preserved
+  `~/.agents/skills -> ~/.dotfiles/ai/skills` as the cross-tool skill path.
+- Slice C (governed self-improvement): added `self_modification_check.py` and
+  `hook_target_check.py` to treat `hook-graduate.sh` auto-mutation as a risk until converted to
+  proposal-only behavior, and to require explicit approval before hook levels, hook config, or
+  tracked learning state change.
+- Slice D (public-hygiene migration): added `config_base_hygiene_check.py` and used
+  `scripts/public_hygiene_check.py` as deterministic evidence to migrate private org names, internal
+  URLs, and machine paths out of tracked files by file group, avoiding broad scrubs in branches that
+  already overlap open PR stacks.
+- Added supporting checks: `autonomous_skill_check.py`, `config_inventory.py`,
+  `guidance_adapter_check.py`, `hook_output_schema_check.py`, `instruction_budget_check.py`,
+  `mcp_gateway_check.py`, `syntax_check.py`.
+- Extended `config_doctor.py` with the new rule coverage above.
+- Ran `setup.sh --check` / `setup.sh --dry-run` to confirm the symlink-distribution invariant holds
+  after the skill-symlink cleanup.
+- Performed an open-PR-overlap check against #297–#315 before the public-hygiene migration to avoid
+  conflicting with in-flight stacks; performed a static hook schema/matcher audit across
+  `.claude/hooks/`.
+- Refreshed `decisions/0011-agentic-loop-optimization.md` (Slices B–D sections, Execution state,
+  Verification) to record this work.
+- Evidence: 108 of 108 tests passed in this worktree after adding the skill-drift,
+  self-modification-governance, and public-hygiene-migration checks and removing stale skill
+  symlinks.
+- Codex remediation sequence (Slice A) approval was obtained and executed; see the 2026-07-15 entry
+  above for the completed Gate 1/Gate 2 evidence.
+
+plan: plans/2026-07-13-execution-plan.md
+step: Complete
+focus: Slices B-D executed and verified; superseded by 2026-07-15 entry above
 
 ## Current (2026-07-14) — pctx/Codex startup regression fixed
 
