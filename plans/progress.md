@@ -67,6 +67,119 @@ Branch: `feature/codex-config-proposals`.
 - [x] Final Gate 2 decision — skipped the no-op canonical rewrite because semantic comparison
   reported zero changed paths; no live runtime write occurred.
 
+## Done — 2026-07-14 agentic-loop optimization Slices B-D baseline
+
+Goal: `goals/2026-07-14-01-agentic-loop-optimization.md`.
+
+Branch/worktree: `chore/agentic-loop-source-validation` at
+`.trees/agentic-loop-source-validation`.
+
+- [x] Load the current session baseline with pctx/Serena/LeanCtx and confirm the available MCP surface.
+- [x] Verify the active repo guidance files and current architecture framing (`AGENTS.md`, `CLAUDE.md`,
+  `docs/agent-configuration-architecture.md`, `ai/rules/tool-priority.md`).
+- [x] Audit the current client entrypoints, hooks, and configuration layers into a concise verified report.
+- [x] Expand the report into a cross-client parity matrix.
+- [x] Expand the report into a file-level harness map and concrete recommendation set.
+- [x] Update the plan/decision artifacts so another agent can continue the goal without re-discovering the baseline.
+- [x] Draft the remediation plan for machine-local anchors and generated overlays, starting with Codex.
+- [x] Draft proposed durable decision record `decisions/0011-agentic-loop-optimization.md`.
+- [x] Add approval-ready implementation checklist with files and acceptance criteria.
+- [x] Add checked/not-yet-checked evidence and grouped bottlenecks to the baseline report.
+- [x] Add objective completion audit matrix showing proven, partial, and remaining requirements.
+- [x] Add exact approval decision block defining what Codex remediation approval does and does not authorize.
+- [x] Add command/skill reachability snapshot, including broken `.claude/skills/` symlink evidence.
+- [x] Classify the 14 broken `.claude/skills/` symlinks by stale/orphaned/moved/contradictory evidence.
+- [x] Validate source-of-truth/symlink strategy against current official docs and live user-level paths.
+- [x] Move audit continuation edits off `main` into a dedicated stack worktree and confirm main is clean.
+- [x] Add regression coverage and validation for dangling `.claude/skills` symlinks.
+- [x] Remove 14 dangling repo `.claude/skills` symlinks and verify the repo drift check passes.
+- [x] Add `claude-auto-script-tests` PR gate and verify local `unittest discover` passes.
+- [x] Extend skill drift validator to multi-directory read-only checks and capture live user-dir drift.
+- [x] Strengthen skill drift validation to reject symlinks whose targets lack `SKILL.md`/`skill.md`.
+- [x] Remove tracked stale `.gemini/skills/daily-standup-insights` symlink and validate tracked
+  `.claude`, `.gemini`, and `.cursor` skill dirs together.
+- [x] Classify live user-level skill-dir drift without modifying live runtime directories.
+- [x] Re-run validation: 7 focused skill-drift tests, 54 total script tests, shell syntax,
+  tracked skill-dir drift check, workflow YAML parse, and clean main checkout.
+- [x] Inspect open draft PR stack #297-#315 and document file-level overlap before publishing.
+- [x] Compare tracked Claude hook settings/scripts against current hook docs and document static
+  matcher/schema risks without changing hook semantics.
+- [x] Verify self-modification/copy-back mechanisms: Claude settings guard is proposal-only, but
+  hook graduation still mutates tracked policy/state.
+- [x] Run public hygiene scanner and record current exposure counts without broad cleanup.
+- [x] Convert the hook-graduation self-modification risk into the goal's required policy proposal
+  format and active decision log entry.
+- [x] Refresh durable ADR `decisions/0011-agentic-loop-optimization.md` so it matches the latest
+  source-of-truth, skill-drift, hook-graduation, and hygiene findings.
+- [x] Add explicit execution/PR boundaries so future work stays in separate reviewable slices.
+- [x] Extend static hook config validation to detect `pre-tool-gate-v2.sh` MCP logic when the
+  configured `PreToolUse` matcher omits `mcp__*`; verify full script tests now pass with 56 tests.
+- [x] Add `--prune-stale-links` to the skill-drift validator and wire `setup.sh` to prune invalid
+  generated user-skill symlinks without deleting real directories; verify full script tests now pass
+  with 59 tests.
+- [x] Add non-sensitive public-hygiene summary output so future cleanup can group by rule/path without
+  printing private excerpts; verify full script tests now pass with 60 tests.
+- [x] Add read-only config inventory for `ai/config/manifest.json` so source/runtime/overlay
+  boundaries are summarized without reading live runtime files; verify full script tests now pass with
+  62 tests.
+- [x] Extend read-only config doctor coverage to tracked PCTX/Cursor/Gemini config paths and add a
+  direct-CLI regression test; verify full script tests now pass with 64 tests.
+- [x] Add redacted `config_doctor --summary` counts and sanitize new test literals so the hygiene
+  scanner does not gain extra findings; verify full script tests now pass with 65 tests.
+- [x] Sanitize script/test hygiene fixtures and add a regression that `scripts/*.py` contains no
+  public-hygiene findings; verify full script tests now pass with 66 tests.
+- [x] Add non-blocking `claude-auto-config-audit-summary` PR job for redacted config/hygiene/hook
+  summaries and a workflow regression test; verify full script tests now pass with 67 tests.
+- [x] Add `scripts/hook_config_check.py --summary` and switch the PR audit job to count-only hook
+  output; verify full script tests now pass with 68 tests.
+- [x] Expand `scripts/config_inventory.py --summary` to verify tracked portable base scope and
+  format-boundary status; verify full script tests now pass with 69 tests.
+- [x] Add non-mutating `setup.sh --check` and `setup.sh --dry-run` paths plus regression tests;
+  verify full script tests now pass with 71 tests.
+- [x] Add instruction-size budget enforcement for always-loaded guidance and wire its summary into
+  the PR audit job; verify full script tests now pass with 73 tests.
+- [x] Wire instruction-size budget enforcement into non-mutating `setup.sh --check`; verify focused
+  setup tests and full script tests still pass.
+- [x] Extend static hook validation to reject multiple PreToolUse input rewriters in one group;
+  verify full script tests now pass with 74 tests.
+- [x] Add non-blocking dead skill/command reference summary to the PR audit job; verify full script
+  tests now pass with 75 tests.
+- [x] Add source-scope grouping to the dead-reference summary so active guidance debt is separated
+  from historical plan debt.
+- [x] Align non-mutating `setup.sh --check` with the PR audit-summary job by surfacing config,
+  hygiene, doctor, hook, instruction-budget, skill-drift, and dead-reference summaries locally.
+- [x] Add fake-HOME regression coverage proving `setup.sh --check` and `setup.sh --dry-run` do not
+  create runtime directories/files; verify full script tests now pass with 76 tests.
+- [x] Add regression coverage that local `setup.sh --check` and the PR audit-summary job keep the
+  same shared summary commands; verify full script tests now pass with 77 tests.
+- [x] Add syntax-parse summary for tracked settings, workflow, manifest, and config bases to both
+  local `setup.sh --check` and PR audit-summary; verify full script tests now pass with 79 tests.
+- [x] Add tracked shell-script syntax summary to both local `setup.sh --check` and PR audit-summary;
+  verify full script tests now pass with 81 tests.
+- [x] Add neutral-guidance adapter validation to both local `setup.sh --check` and PR audit-summary;
+  verify full script tests now pass with 84 tests.
+- [x] Add pre-tool hook fixture summary to both local `setup.sh --check` and PR audit-summary;
+  verify full script tests now pass with 85 tests.
+- [x] Extend hook fixture schema validation to cover ask, rewrite/`updatedInput`, and
+  `additionalContext`; verify full script tests now pass with 88 tests.
+- [x] Add non-blocking static hook-output schema summary to local `setup.sh --check` and PR audit;
+  verify full script tests now pass with 92 tests.
+- [x] Add hook target existence/executability validation to local `setup.sh --check` and PR audit;
+  verify full script tests now pass with 96 tests.
+- [x] Add non-blocking self-modification summary for tracked hook policy/state mutation paths;
+  verify full script tests now pass with 99 tests.
+- [x] Add manifest-base hygiene validation so tracked portable base templates stay free of local/private
+  markers; verify full script tests now pass with 101 tests and `setup.sh --check` surfaces 0 findings.
+- [x] Add core autonomous-skill contract validation for `cap`, `stark`, `fury`, `ironman`, `hawk`, and
+  `strange`; wire the summary into local/PR audit parity and verify full script tests now pass with
+  104 tests.
+- [x] Add MCP gateway topology validation for Claude/Cursor/Gemini/Windsurf/Codex clients and the
+  PCTX backend catalog; wire the summary into local/PR audit parity and verify full script tests now
+  pass with 108 tests.
+- [x] Obtain user approval before implementing the Codex remediation sequence. Approval was obtained
+  and the Codex remediation sequence was implemented and verified; see
+  "Done — 2026-07-15 agentic-loop optimization (bounded Codex slice)" above.
+
 ## Done — 2026-07-14 pctx/Codex startup regression
 
 Branch `fix/pctx-codex-startup`, worktree `.trees/pctx-codex-startup`.
