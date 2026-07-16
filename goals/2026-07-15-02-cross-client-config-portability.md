@@ -1,131 +1,119 @@
-# Goal 02 — Cross-client config portability (post-Codex clients)
+# Goal 02 — Cross-client config portability and residual-gap cleanup
 
 ## Objective
 
-Extend the overlay-based, proposal-only config generation workflow proven for Codex in
-[Goal 01](2026-07-14-01-agentic-loop-optimization.md) to the remaining tracked clients — Claude,
-Gemini, Cursor, Windsurf, and `pctx` — so machine-local runtime values are moved out of tracked
-config into ignored per-client overlays across the whole harness, not just Codex.
+Extend the overlay-based portable config generator pattern proven for Codex
+(`goals/2026-07-14-01-agentic-loop-optimization.md`) to the remaining clients that still embed
+machine-local absolute paths, and close the small residual gaps that slice explicitly left open.
 
 ## Why
 
-`decisions/0011-agentic-loop-optimization.md` explicitly scoped its accepted implementation to
-Codex only ("Codex has enough distinct TOML/generator work to deserve a focused, reviewable
-slice") and recorded as an open item: "Broader client migration remains separately scoped." The
-baseline evidence behind that decision found Claude settings already clean of tested
-bypass/local-path anchors, while Codex, Gemini, Cursor, and Windsurf still contained machine-local
-absolute paths. This goal closes that gap using the same deterministic, review-before-apply
-approach rather than ad hoc per-client edits.
+Goal 01 closed a bounded Codex-only slice: `scripts/config_generate.py` now supports TOML base +
+ignored local overlay, verified against the live `~/.codex/config.toml` with zero semantic drift
+(Gate 1/2, PR #324, merged 2026-07-15). Its own "Residual risks" and the parent goal's "Non-goals"
+explicitly deferred three things instead of folding them in:
+
+- Gemini (`.gemini/settings.json`, `.gemini/mcp.json`), Cursor (`.cursor/mcp.json`), and Windsurf
+  (`.windsurf/mcp_config.json`) still hardcode `/Users/axos-agallentes/...` and `pctx.json`/
+  `.lean-ctx` paths — the same class of problem the Codex generator solved, just not yet applied
+  to these clients.
+- The full `scripts/` test suite has exactly one failure (85 run), caused only by the absent
+  ignored `.claude/settings.local.json` — a fixture/environment gap, not a code defect.
+- The Serena `START_HERE` memory does not exist, so `Serena.readMemory({ memory_name: "START_HERE" })`
+  fails every session — flagged twice in Goal 01 evidence as a bootstrap gap for future sessions.
+
+Goal 01 is marked "Completed (bounded Codex slice)" in `goals/00-index.md`; this is a new,
+separately scoped goal rather than reopening that closed entry.
 
 ## Current state
 
-- Repo root: `/Users/axos-agallentes/.dotfiles`.
-- `ai/config/manifest.json` already declares base/runtime/overlay paths for all six clients:
-  `claude`, `codex`, `gemini`, `cursor`, `windsurf`, `pctx`.
-- Portable base templates already exist on disk for every client:
-  - `ai/config/claude/settings.base.json` (+ `settings.overlay.example.json`)
-  - `ai/config/codex/config.base.toml` (+ `codex.overlay.example.toml`)
-  - `ai/config/gemini/mcp.base.json`
-  - `ai/config/cursor/mcp.base.json`
-  - `ai/config/windsurf/mcp_config.base.json`
-  - `ai/config/pctx/pctx.base.json`
-- `scripts/config_generate.py` is format-agnostic (JSON and TOML) and already exposes
-  `build_proposal` / `compare_proposal` / `main` (`base`, `--overlay`, `--compare-against`,
-  `--set NAME=VALUE`) independent of any one client.
-- Only Codex has been taken through the full Gate 1 (portable base correction + zero-changed-path
-  comparison) and Gate 2 (private backup, candidate parse, isolated-runtime parse, rollback
-  dry-run) verification cycle. `scripts/test_portable_config_templates.py` currently only defines
-  `CODEX_TEMPLATE` / `CODEX_OVERLAY` constants — no equivalent deep test coverage exists yet for
-  Claude, Gemini, Cursor, Windsurf, or `pctx`.
-- `scripts/test_config_manifest.py` validates the manifest shape but has not been confirmed (in
-  this goal's research) to assert per-client base-file parseability for the non-Codex entries.
-- Public hygiene (390 findings) and config doctor (65 issues) baselines from Goal 01 still include
-  absolute-home-path and private-org-name findings attributable to non-Codex clients; those counts
-  are expected to drop as this goal proceeds, and should be re-measured rather than assumed.
-- No live runtime file has been modified for any client as part of Goal 01; this goal inherits that
-  same constraint.
+- `scripts/config_generate.py` supports TOML base + TOML overlay merge, `--set NAME=VALUE`
+  placeholder expansion, and a compare-only mode that redacts sensitive paths/keys while reporting
+  changed-path counts and hashes. This exists today only for the Codex shape.
+- `ai/config/codex/config.base.toml` + `ai/config/codex/codex.overlay.example.toml` are the
+  reference pair for the pattern to replicate.
+- `.gemini/settings.json`, `.gemini/mcp.json`, `.cursor/mcp.json`, and `.windsurf/mcp_config.json`
+  are tracked as regular (non-symlinked) files and each embeds `/Users/axos-agallentes/.config/pctx/pctx.json`
+  (Windsurf additionally embeds `/Users/axos-agallentes/.lean-ctx`).
+- No `ai/config/manifest.json` entries exist yet for Gemini/Cursor/Windsurf (only Codex was added
+  in Goal 01, per its Step 2 file list).
+- `.claude/settings.local.json` is gitignored and intentionally absent from the tracked repo; the
+  one failing test assumes its presence.
+- `Serena.listMemories()` returns `cicd-acted-runs`, `project_overview`, `style_and_conventions`,
+  `suggested_commands` — no `START_HERE`.
 
 ## Non-goals
 
-- Do not write to any live runtime config (`~/.claude/settings.json`, `~/.gemini/*`,
-  `~/.cursor/mcp.json`, `~/.windsurf/mcp_config.json`, `~/.config/pctx/pctx.json`) without a
-  separate, explicit user-approved apply step per client, mirroring Codex Gate 2.
-  Note: `~/.codex/config.toml` is only referenced here as the Goal 01 comparison baseline —
-  Codex is functionally complete and out of scope for new work in this goal.
-- Do not weaken existing hard-denies, hook enforcement, branch protections, or credential hygiene
-  in any client's tracked settings.
-- Do not duplicate shared policy from `ai/rules/` or `ai/skills/` into client-local overlays —
-  overlays carry only machine-local values (paths, local toggles), not policy.
-- Do not change `scripts/config_generate.py`'s public CLI surface or output format in
-  backward-incompatible ways without updating all existing Codex-focused tests and docs that
-  depend on it.
+- Do not touch `.codex/config.toml` or re-open the Gate 1/2 decision already closed in Goal 01 —
+  the live Codex config stays hand-edited unless separately approved.
+- Do not perform the broader primitive/skill audit from Goal 01 Steps 4-12 (`cap`, `stark`,
+  `ironman`, `fury`, `hawk`, `strange`, full loop-inefficiency review) — that remains a distinct,
+  larger future goal, not folded into this one.
+- Do not weaken any existing hard-deny, permission default, or symlink target while adding new
+  overlay/manifest plumbing.
+- Do not write to any live runtime config (`~/.gemini/...`, `~/.cursor/...`, `~/.codeium/windsurf/...`)
+  without an explicit approval gate mirroring Goal 01's Gate 1 (overlay creation) and Gate 2
+  (backup + rollback-verified compare, skip-on-zero-delta) pattern.
 
 ## Steps
 
-1. Re-confirm session context and re-verify the manifest and base templates listed above are still
-   current (files can drift between goal authoring and execution).
-2. For each remaining client (Claude, Gemini, Cursor, Windsurf, `pctx`), diff the tracked base
-   template against the live runtime file to enumerate machine-local values that need to move to
-   an overlay (absolute paths, machine-specific local toggles, local marketplace/cache paths).
-3. Extend or add per-client `*.overlay.example.json` templates (mirroring
-   `ai/config/codex/codex.overlay.example.toml` and
-   `ai/config/claude/settings.overlay.example.json`) documenting the expected overlay shape for
-   Gemini, Cursor, Windsurf, and `pctx`.
-4. Extend `scripts/test_portable_config_templates.py` with per-client constants and test cases
-   equivalent to the existing `CODEX_TEMPLATE`/`CODEX_OVERLAY` coverage (base parses, overlay
-   merges deterministically, `deep_merge`/`expand_placeholders` behave correctly per format).
-5. Run Gate 1 per client: generate the deterministic proposal from base + minimal ignored overlay,
-   compare against the live runtime file with `compare_proposal`, and require a zero-changed-path
-   result (or an explicit, reviewed list of intended path changes) before proceeding.
-6. Run Gate 2 per client: create a private mode-`0700` backup directory under
-   `~/.config/dotfiles-ai/backups/`, back up the exact live file (mode `0600`), generate the
-   candidate, parse-validate the candidate in the client's native format, and prove a rollback
-   dry-run restores the original hash exactly.
-7. Re-run the full `scripts/` test discovery, `public_hygiene_check.py`, and `config_doctor.py`
-   after each client's slice and record the before/after finding counts (do not assume improvement
-   without re-measuring).
-8. Update `decisions/0011-agentic-loop-optimization.md` or draft a new
-   `decisions/NNNN-cross-client-config-portability.md` capturing per-client Gate 1/Gate 2 evidence,
-   or amend it incrementally as each client's slice completes.
-9. Present a per-client apply decision (apply vs. skip-as-no-op, following the Codex precedent of
-   skipping a purely canonical-format rewrite when the semantic delta is zero) and stop for
-   explicit user approval before any live write.
+1. For each of Gemini, Cursor, and Windsurf: confirm the live runtime config path, capture its
+   current SHA-256, and identify every machine-local value (absolute home path, `pctx.json` path,
+   `.lean-ctx` path) that must move to an ignored overlay.
+2. Extract a portable base template per client (`ai/config/<client>/config.base.json` or
+   equivalent) containing only shared, non-machine-specific defaults — mirroring
+   `ai/config/codex/config.base.toml`.
+3. Extend `ai/config/manifest.json` with entries for each new client base/runtime/overlay path,
+   following the existing Codex entry shape.
+4. Extend `scripts/config_generate.py` / add client-specific test coverage so each new base+overlay
+   pair round-trips correctly (JSON for Gemini/Cursor/Windsurf, unlike Codex's TOML), without
+   touching the working Codex TOML path.
+5. Document the ignored overlay convention for each client in `ai/config/README.md`, with a
+   non-sensitive example overlay per client (mirroring `codex.overlay.example.toml`).
+6. Run a Gate-1-equivalent comparison (generated base+overlay proposal vs. live runtime config) for
+   each client and report changed-path counts and hashes without exposing local values.
+7. Stop for explicit approval before any live runtime write (mirrors Goal 01 Step 5) — this goal
+   produces proposals and verification evidence only unless separately authorized.
+8. Investigate and fix the one residual full-suite test failure (missing ignored
+   `.claude/settings.local.json`) — likely a test fixture/skip-condition fix, not new production
+   code.
+9. Create the missing Serena `START_HERE` memory summarizing project layout, the goals/plans/
+   decisions convention, and pointers to `ai/rules/tool-priority.md` and `AGENTS.md`, so future
+   sessions can bootstrap via `Serena.readMemory({ memory_name: "START_HERE" })` instead of failing.
 
 ## Acceptance criteria
 
-- Every client in `ai/config/manifest.json` (Claude, Gemini, Cursor, Windsurf, `pctx` — Codex
-  already done) has an overlay example template and passing deterministic base+overlay generation.
-- `scripts/test_portable_config_templates.py` has explicit test coverage for each client's base
-  template and overlay merge behavior, not just Codex.
-- Each client has a recorded Gate 1 zero-changed-path (or explicitly reviewed non-zero) comparison
-  against its live runtime file.
-- Each client has a recorded Gate 2 backup + candidate-parse + rollback-dry-run result before any
-  live apply is considered.
-- No live runtime client config is modified without a separate, explicit per-client user approval
-  step, consistent with the Codex precedent in Goal 01.
-- Public hygiene and config doctor findings are re-measured (not assumed) after each client's
-  slice, with counts recorded in `plans/` evidence.
-- Work proceeds on a branch/worktree per `AGENTS.md`, never directly on `main`.
+- A portable base template and documented ignored-overlay convention exist for Gemini, Cursor, and
+  Windsurf, each verified against its live runtime config with a zero (or fully explained)
+  changed-path delta, evidence captured the same way Goal 01 captured Gate 1/2 evidence.
+- `ai/config/manifest.json` lists all four clients (Codex plus the three new ones) consistently.
+- No live runtime file is modified without a separate explicit approval step, logged the same way
+  Goal 01 logged its Gate 1/2 decisions.
+- The previously-failing full-suite test either passes or has a documented, justified skip
+  condition; the plan-focused suite stays green throughout.
+- `Serena.readMemory({ memory_name: "START_HERE" })` succeeds in a fresh session.
+- `plans/active-context.md`, `plans/progress.md`, and `plans/decisions.md` are updated as this goal
+  moves from proposed to active to whatever bounded subset is actually approved for execution.
 
 ## Evidence to update
 
-- `plans/active-context.md`, `plans/progress.md`, `plans/decisions.md`
-- A dated report under `plans/` (e.g. `plans/2026-07-15-cross-client-config-portability.md`)
-  tracking per-client Gate 1/Gate 2 status
-- `decisions/0011-agentic-loop-optimization.md` (amend) or a new
-  `decisions/NNNN-cross-client-config-portability.md`
-- `goals/00-index.md` (row for this goal, updated status)
-- Any new/changed files under `ai/config/<client>/` and `scripts/test_portable_config_templates.py`
-- Verification outputs: base/overlay parse checks, comparison JSON, backup manifests, rollback
-  dry-run results, and re-measured public-hygiene / config-doctor counts per client
+- `plans/active-context.md`
+- `plans/progress.md`
+- `plans/decisions.md`
+- `plans/<date>-cross-client-config-portability.md` (new dated plan, once execution starts)
+- `decisions/NNNN-cross-client-config-portability.md` (durable ADR, once a bounded subset is
+  approved)
+- `goals/00-index.md` (status transitions: Proposed → In progress → Completed, per bounded slice)
+- Any new `ai/config/<client>/*` base/overlay/manifest files
+- Verification outputs: per-client changed-path/hash comparison, test suite results,
+  `Serena.readMemory({ memory_name: "START_HERE" })` success confirmation
 
 ## Stop and ask if
 
-- Any proposed change would write to a live runtime config file for any client.
-- Any task requires touching secrets, credentials, tokens, private keys, or machine-local sensitive
-  files beyond reading them for comparison.
-- A client's live runtime file has structural differences from its tracked base large enough that
-  a zero-changed-path Gate 1 comparison looks unreachable without a policy decision (e.g. the live
-  file carries settings not represented in the base template at all).
-- The next step would commit, push, create a PR, merge, or modify `main` directly.
-- Any client requires duplicating shared policy instead of delegating to `ai/rules/`/`ai/skills/`.
+- Any proposed change would write to a live runtime config, permission default, hard-deny, or
+  symlink target.
+- The bounded subset to execute first is unclear (three clients is likely too much for one
+  approval — expect to pick one, same as Goal 01 picked Codex first).
+- Scope creeps toward the broader primitive/skill audit explicitly excluded above.
+- Fixing the residual test failure would require adding `.claude/settings.local.json` handling
+  that changes real permission behavior rather than just satisfying the test fixture.

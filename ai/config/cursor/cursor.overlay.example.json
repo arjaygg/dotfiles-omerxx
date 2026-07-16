@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "pctx": {
+      "command": "/tmp/example-bin/pctx"
+    },
+    "notebooklm": {
+      "command": "/tmp/example-bin/notebooklm-mcp"
+    },
+    "chrome-devtools": {
+      "command": "/tmp/example-bin/chrome-devtools-mcp-wrapper.sh"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json.schemastore.org/gemini-cli-settings.json",
+  "selectedAuthType": "oauth-personal",
+  "mcpServers": {
+    "pctx": {
+      "command": "pctx",
+      "args": [
+        "mcp",
+        "start",
+        "-q",
+        "--stdio",
+        "-c",
+        "${PCTX_CONFIG}"
+      ]
+    }
+  },
+  "security": {
+    "auth": {
+      "selectedType": "oauth-personal"
+    }
+  },
+  "context": {
+    "fileName": [
+      "AGENTS.md",
+      "GEMINI.md"
+    ]
+  },
+  "experimental": {
+    "enableAgents": true
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ Cache: %cache_hit% ▸ %time% ▸ %project%%git_status%%task_list_id%'"
+  }
+}

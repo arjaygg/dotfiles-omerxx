@@ -28,6 +28,17 @@ mode.
   skill, and marketplace configuration using explicit path placeholders.
 - `gemini/mcp.base.json`, `cursor/mcp.base.json`, and
   `windsurf/mcp_config.base.json` contain portable PCTX client definitions.
+- `gemini/settings.base.json` is the portable proposal for `~/.gemini/settings.json`
+  (auth type, MCP servers, context file names, status line). Personal preferences
+  such as `model` and `trustedWorkspaces` are intentionally left out of the base and
+  belong in a local overlay — see `gemini/gemini-settings.overlay.example.json`.
+- `cursor/mcp.base.json` also models the `notebooklm` and `chrome-devtools` MCP
+  servers using bare, `PATH`-resolved command names; an overlay may replace these
+  with absolute paths on machines where the binaries aren't on `PATH` (see
+  `cursor/cursor.overlay.example.json`).
+- `windsurf/mcp_config.base.json` also models the `lean-ctx` MCP server. Its
+  `LEAN_CTX_DATA_DIR` env var is a `${LEAN_CTX_DATA_DIR}` placeholder supplied via
+  `--set` or a local overlay (see `windsurf/windsurf.overlay.example.json`).
 - `pctx/pctx.base.json` uses executable names resolved by the local `PATH`, rather
   than machine-specific installation paths.
 

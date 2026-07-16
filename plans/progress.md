@@ -1,5 +1,42 @@
 # Progress — 2026-06-12
 
+## Done — 2026-07-16 cross-client config portability (Goal 02, bounded slice)
+
+Goal: `goals/2026-07-15-02-cross-client-config-portability.md`. Plan:
+`plans/2026-07-16-cross-client-config-portability.md`. User approved scope: "all 3 clients,
+read-only first" (Steps 1-6 for Gemini/Cursor/Windsurf + independent Steps 8-9; Step 7 live-write
+stays blocked regardless).
+
+- [x] Step 9 — created `.serena/memories/START_HERE.md`; `Serena.readMemory` now succeeds.
+- [x] Step 8 — found and fixed a real security regression (not the fixture gap the goal doc
+  assumed): removed `"skipDangerousModePermissionPrompt": true` from `.claude/settings.json`
+  (user-approved). Full suite green: `pytest scripts/ -q` → 85 passed, 39 subtests passed.
+- [x] Step 1 — read-only inventory for Gemini/Cursor/Windsurf: live SHA-256 captured, existing
+  base/manifest/overlay scaffolding read, concrete per-client gaps identified (see dated plan).
+- [x] Step 2 — wrote `ai/config/gemini/settings.base.json` (new); extended
+  `ai/config/cursor/mcp.base.json` (added `notebooklm`, `chrome-devtools`); extended
+  `ai/config/windsurf/mcp_config.base.json` (added `lean-ctx`).
+- [x] Step 3 — added manifest entries in `ai/config/manifest.json` (7 clients total: `claude`,
+  `codex`, `gemini`, `gemini-settings`, `cursor`, `windsurf`, `pctx` — gemini has a second entry
+  for `settings.json` distinct from the existing `mcp.json` entry).
+- [x] Step 4 — added gemini/gemini-settings/cursor/windsurf-specific tests to
+  `scripts/test_portable_config_templates.py` and `scripts/test_config_manifest.py`, mirroring the
+  Codex-pattern tests. Full suite green: `pytest scripts/ -q` → 91 passed, 42 subtests passed.
+- [x] Step 5 — wrote overlay fixtures and updated `ai/config/README.md`.
+- [x] Step 6 — ran `--compare-against` for each client's proposal vs. live runtime config using
+  real mode-`0600` overlay files under `~/.config/dotfiles-ai/` (Gate-1 pattern from the Codex
+  slice). All four remaining targets (gemini `mcp.json`, gemini `settings.json`, cursor
+  `mcp.json`, windsurf `mcp_config.json`) came back clean or explainable: three showed only a
+  cosmetic `$schema`-presence diff (base declares it, live runtime doesn't); windsurf additionally
+  showed the four `mcpServers.pctx.args[2..5]` index-shifted entries from a pre-existing (not
+  this-session) drift — `ai/config/windsurf/mcp_config.base.json`'s `pctx` args are missing the
+  `-q` flag that live `~/.windsurf/mcp_config.json` has. Flagged as an out-of-scope finding, not
+  fixed (this slice's task was "add lean-ctx only").
+- [ ] Step 7 — hard stop, do not execute without separate explicit approval. **Intentionally not
+  done** — permanent non-goal for this slice regardless of Steps 1-6 completion.
+
+Bounded slice (Steps 1-6, 8, 9) substantively complete. Step 7 remains an unconditional non-goal.
+
 ## Done — 2026-07-15 agentic-loop optimization (bounded Codex slice)
 
 Goal: `goals/2026-07-14-01-agentic-loop-optimization.md`.
