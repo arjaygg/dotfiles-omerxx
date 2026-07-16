@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Sequence
@@ -60,6 +61,7 @@ MATCHER_UNSUPPORTED = frozenset(
     }
 )
 HANDLER_TYPES = frozenset({"command", "http", "mcp_tool", "prompt", "agent"})
+MCP_MATCH_ALL = frozenset({"", "*", ".*"})
 
 
 @dataclass(frozen=True)
@@ -99,6 +101,22 @@ def check_hooks(settings: dict[str, object]) -> list[Issue]:
                         "matching handlers execute in parallel; ordering is not guaranteed",
                     )
                 )
+            rewrite_handlers = [
+                handler
+                for handler in handlers
+                if isinstance(handler, dict)
+                and handler.get("type") == "command"
+                and isinstance(handler.get("command"), str)
+                and _command_may_rewrite_input(handler["command"])
+            ]
+            if event == "PreToolUse" and len(rewrite_handlers) > 1:
+                issues.append(
+                    Issue(
+                        event,
+                        "multiple-input-rewriters",
+                        "multiple PreToolUse command hooks may rewrite tool input",
+                    )
+                )
             for handler in handlers:
                 if not isinstance(handler, dict):
                     issues.append(Issue(event, "invalid-handler", "handler must be an object"))
@@ -112,13 +130,48 @@ def check_hooks(settings: dict[str, object]) -> list[Issue]:
                         issues.append(Issue(event, "missing-command", "command handler requires command"))
                     elif not isinstance(handler["command"], str):
                         issues.append(Issue(event, "invalid-command", "command must be a string"))
+                    elif (
+                        event == "PreToolUse"
+                        and "pre-tool-gate-v2.sh" in handler["command"]
+                        and not _matcher_covers_mcp_tools(group.get("matcher"))
+                    ):
+                        issues.append(
+                            Issue(
+                                event,
+                                "missing-mcp-tool-matcher",
+                                "pre-tool-gate-v2.sh contains MCP tool logic but this matcher excludes mcp__* tools",
+                            )
+                        )
     return issues
+
+
+def _matcher_covers_mcp_tools(matcher: object) -> bool:
+    if matcher is None:
+        return True
+    if not isinstance(matcher, str):
+        return False
+    return matcher.strip() in MCP_MATCH_ALL or "mcp__" in matcher
+
+
+def _command_may_rewrite_input(command: str) -> bool:
+    lowered = command.lower()
+    return "rewrite" in lowered or "updatedinput" in lowered
+
+
+def summarize_issues(issues: Sequence[Issue]) -> dict[str, object]:
+    return {
+        "total": len(issues),
+        "by_rule": dict(sorted(Counter(issue.rule for issue in issues).items())),
+        "by_event": dict(sorted(Counter(issue.event for issue in issues).items())),
+    }
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("settings", type=Path)
-    parser.add_argument("--json", action="store_true", dest="as_json")
+    output_group = parser.add_mutually_exclusive_group()
+    output_group.add_argument("--json", action="store_true", dest="as_json")
+    output_group.add_argument("--summary", action="store_true")
     args = parser.parse_args(argv)
     try:
         settings = json.loads(args.settings.read_text(encoding="utf-8"))
@@ -128,6 +181,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     issues = check_hooks(settings)
     if args.as_json:
         print(json.dumps([asdict(issue) for issue in issues], indent=2))
+    elif args.summary:
+        print(json.dumps(summarize_issues(issues), indent=2))
     else:
         for issue in issues:
             print(f"{issue.event}: {issue.rule}: {issue.message}")
