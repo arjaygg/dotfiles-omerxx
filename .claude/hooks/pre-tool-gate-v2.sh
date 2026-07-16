@@ -813,55 +813,59 @@ fi
 # ============================================================
 # SECTION 6: Grep/Glob — Serena/LeanCtx tool priority
 # ============================================================
-if [[ -f "${HOME}/.config/pctx/pctx.json" ]]; then
-    # Read enforcement level from hook-config.yaml
-    _HOOK_CFG="${HOME}/.dotfiles/.claude/hooks/hook-config.yaml"
-    _SERENA_LEVEL="block"
-    if [[ -f "$_HOOK_CFG" ]]; then
-        _SERENA_LEVEL=$(grep '^serena-tool-priority:' "$_HOOK_CFG" 2>/dev/null | awk '{print $2}' | tr -d '[:space:]')
-        [[ -z "$_SERENA_LEVEL" ]] && _SERENA_LEVEL="block"
+# NOTE: intentionally NOT gated behind `-f "${HOME}/.config/pctx/pctx.json"`.
+# Whether Grep/Glob should be denied in favor of Serena/LeanCtx is a fact
+# about session tool availability, not about whether this machine happens to
+# have a personal pctx install. Gating deny on pctx.json made this section's
+# fixture cases pass/fail based on incidental host state (present on dev
+# machines, absent in CI runners) rather than deterministic hook logic.
+# Read enforcement level from hook-config.yaml
+_HOOK_CFG="${HOME}/.dotfiles/.claude/hooks/hook-config.yaml"
+_SERENA_LEVEL="block"
+if [[ -f "$_HOOK_CFG" ]]; then
+    _SERENA_LEVEL=$(grep '^serena-tool-priority:' "$_HOOK_CFG" 2>/dev/null | awk '{print $2}' | tr -d '[:space:]')
+    [[ -z "$_SERENA_LEVEL" ]] && _SERENA_LEVEL="block"
+fi
+# 6a. Grep — prefer LeanCtx.ctxSearch or Serena.
+# Post-init unlock: once LeanCtx.ctxIntent has run this session (ctx flag
+# exists), Grep is the sanctioned native fallback — downgrade to hint.
+# Without this, Section 2a says "use the Grep tool" while this section
+# denies it, and the model ping-pongs between Bash grep and Grep forever.
+if [[ "$TOOL_NAME" == "Grep" && -n "$PATTERN" ]]; then
+    if [[ -f "/tmp/.claude-ctx-loaded-$(id -u)-${EFFECTIVE_SESSION_ID}" ]]; then
+        _SERENA_LEVEL="warn"
     fi
-    # 6a. Grep — prefer LeanCtx.ctxSearch or Serena.
-    # Post-init unlock: once LeanCtx.ctxIntent has run this session (ctx flag
-    # exists), Grep is the sanctioned native fallback — downgrade to hint.
-    # Without this, Section 2a says "use the Grep tool" while this section
-    # denies it, and the model ping-pongs between Bash grep and Grep forever.
-    if [[ "$TOOL_NAME" == "Grep" && -n "$PATTERN" ]]; then
-        if [[ -f "/tmp/.claude-ctx-loaded-$(id -u)-${EFFECTIVE_SESSION_ID}" ]]; then
-            _SERENA_LEVEL="warn"
-        fi
-        _SERENA_PREFIX="HINT"
-        [[ "$_SERENA_LEVEL" == "block" ]] && _SERENA_PREFIX="BLOCKED"
+    _SERENA_PREFIX="HINT"
+    [[ "$_SERENA_LEVEL" == "block" ]] && _SERENA_PREFIX="BLOCKED"
 
-        if [[ "$PATTERN" =~ ^(func|class|type|struct|interface|def|fn)[[:space:]] ]]; then
-            _MSG="$_SERENA_PREFIX: For symbol lookups, use Serena.findSymbol (structural) or LeanCtx.ctxSearch (token-efficient) instead of Grep.
+    if [[ "$PATTERN" =~ ^(func|class|type|struct|interface|def|fn)[[:space:]] ]]; then
+        _MSG="$_SERENA_PREFIX: For symbol lookups, use Serena.findSymbol (structural) or LeanCtx.ctxSearch (token-efficient) instead of Grep.
   Call via: mcp__pctx__execute_typescript with: await Serena.findSymbol({ name: '<symbol>' })"
-            [[ "$_SERENA_LEVEL" == "block" ]] && _deny "$_MSG"
-            echo "$_MSG" >&2
-            exit 0
-        fi
-        if [[ "$PATTERN" =~ ^[A-Z][a-zA-Z0-9]+$ ]]; then
-            _MSG="$_SERENA_PREFIX: '$PATTERN' looks like a symbol name. Use Serena.findSymbol('$PATTERN') for structural results, or LeanCtx.ctxSearch for pattern matching.
-  Call via: mcp__pctx__execute_typescript with: await Serena.findSymbol({ name: '${PATTERN}' })"
-            [[ "$_SERENA_LEVEL" == "block" ]] && _deny "$_MSG"
-            echo "$_MSG" >&2
-            exit 0
-        fi
-        # General pattern — LeanCtx.ctxSearch is a direct drop-in
-        _MSG="$_SERENA_PREFIX: Use LeanCtx.ctxSearch instead of Grep — it's gitignore-aware, session-cached, and token-efficient.
-  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ query: '${PATTERN}' })"
         [[ "$_SERENA_LEVEL" == "block" ]] && _deny "$_MSG"
         echo "$_MSG" >&2
         exit 0
     fi
+    if [[ "$PATTERN" =~ ^[A-Z][a-zA-Z0-9]+$ ]]; then
+        _MSG="$_SERENA_PREFIX: '$PATTERN' looks like a symbol name. Use Serena.findSymbol('$PATTERN') for structural results, or LeanCtx.ctxSearch for pattern matching.
+  Call via: mcp__pctx__execute_typescript with: await Serena.findSymbol({ name: '${PATTERN}' })"
+        [[ "$_SERENA_LEVEL" == "block" ]] && _deny "$_MSG"
+        echo "$_MSG" >&2
+        exit 0
+    fi
+    # General pattern — LeanCtx.ctxSearch is a direct drop-in
+    _MSG="$_SERENA_PREFIX: Use LeanCtx.ctxSearch instead of Grep — it's gitignore-aware, session-cached, and token-efficient.
+  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ query: '${PATTERN}' })"
+    [[ "$_SERENA_LEVEL" == "block" ]] && _deny "$_MSG"
+    echo "$_MSG" >&2
+    exit 0
+fi
 
-    # 6b. Glob: specific filename → suggest Serena.findFile
-    if [[ "$TOOL_NAME" == "Glob" && -n "$PATTERN" ]]; then
-        if [[ "$PATTERN" =~ /[a-zA-Z0-9_-]+\.[a-zA-Z]+$ && ! "$PATTERN" =~ \*\.[a-zA-Z]+$ ]]; then
-            FILENAME="${PATTERN##*/}"
-            echo "HINT: For finding '$FILENAME', use Serena.findFile('$FILENAME') or LeanCtx.ctxTree for directory listings." >&2
-            exit 0
-        fi
+# 6b. Glob: specific filename → suggest Serena.findFile
+if [[ "$TOOL_NAME" == "Glob" && -n "$PATTERN" ]]; then
+    if [[ "$PATTERN" =~ /[a-zA-Z0-9_-]+\.[a-zA-Z]+$ && ! "$PATTERN" =~ \*\.[a-zA-Z]+$ ]]; then
+        FILENAME="${PATTERN##*/}"
+        echo "HINT: For finding '$FILENAME', use Serena.findFile('$FILENAME') or LeanCtx.ctxTree for directory listings." >&2
+        exit 0
     fi
 fi
 
