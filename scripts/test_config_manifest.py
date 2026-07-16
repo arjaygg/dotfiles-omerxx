@@ -20,7 +20,7 @@ class ConfigManifestTests(unittest.TestCase):
         clients = manifest["clients"]
         self.assertEqual(
             {client["name"] for client in clients},
-            {"claude", "codex", "gemini", "cursor", "windsurf", "pctx"},
+            {"claude", "codex", "gemini", "gemini-settings", "cursor", "windsurf", "pctx"},
         )
 
         for client in clients:
