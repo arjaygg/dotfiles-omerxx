@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "lean-ctx": {
+      "env": {
+        "LEAN_CTX_DATA_DIR": "/tmp/example-lean-ctx"
+      }
+    }
+  }
+}

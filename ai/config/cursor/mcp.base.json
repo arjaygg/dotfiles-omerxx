@@ -10,6 +10,14 @@
         "-c",
         "${PCTX_CONFIG}"
       ]
+    },
+    "notebooklm": {
+      "command": "notebooklm-mcp",
+      "args": []
+    },
+    "chrome-devtools": {
+      "command": "chrome-devtools-mcp-wrapper.sh",
+      "args": []
     }
   }
 }

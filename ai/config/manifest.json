@@ -23,6 +23,13 @@
       "overlay": "~/.config/dotfiles-ai/gemini.overlay.json"
     },
     {
+      "name": "gemini-settings",
+      "format": "json",
+      "base": "ai/config/gemini/settings.base.json",
+      "runtime": "~/.gemini/settings.json",
+      "overlay": "~/.config/dotfiles-ai/gemini-settings.overlay.json"
+    },
+    {
       "name": "cursor",
       "format": "json",
       "base": "ai/config/cursor/mcp.base.json",
