@@ -432,7 +432,7 @@
   "worktree": {},
   "statusLine": {
     "type": "command",
-    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ Cache: %cache_hit% ▸ %time% ▸ %project%%git_status%%task_list_id%'"
+    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ Cache: %cache_hit% ▸ %time% ▸ %project%%git_status%%task_list_id% ▸ %cost%'"
   },
   "enabledPlugins": {
     "autoresearch@autoresearch": false,
