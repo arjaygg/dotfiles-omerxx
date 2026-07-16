@@ -5,8 +5,7 @@
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_FORK_SUBAGENT": "1",
-    "USE_BUILTIN_RIPGREP": "0",
-    "SUPERMEMORY_API_URL": "http://localhost:6767"
+    "USE_BUILTIN_RIPGREP": "0"
   },
   "permissions": {
     "allow": [
@@ -39,7 +38,6 @@
       "TaskUpdate(*)",
       "mcp__pctx__*",
       "mcp__graphify__*",
-      "mcp__supermemory__*",
       "mcp__notebooklm__*",
       "mcp__exa__*",
       "mcp__qmd__*",
@@ -440,8 +438,7 @@
     "autoresearch@autoresearch": false,
     "bash-language-server@claude-code-lsps": false,
     "gopls-lsp@claude-plugins-official": false,
-    "skill-creator@claude-plugins-official": true,
-    "supermemory@supermemory-plugins": true
+    "skill-creator@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "autoresearch": {
@@ -449,13 +446,6 @@
         "source": "git",
         "url": "https://github.com/uditgoenka/autoresearch.git"
       }
-    },
-    "supermemory-plugins": {
-      "source": {
-        "source": "github",
-        "repo": "supermemoryai/claude-supermemory"
-      },
-      "autoUpdate": true
     }
   },
   "alwaysThinkingEnabled": true,
