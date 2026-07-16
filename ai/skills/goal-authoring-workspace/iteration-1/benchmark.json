@@ -1,0 +1,349 @@
+{
+  "metadata": {
+    "skill_name": "goal-authoring",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-07-16T14:38:46Z",
+    "evals_run": [
+      0,
+      1,
+      2
+    ],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "New goal file uses the next sequence number after the existing goal.",
+          "passed": true,
+          "evidence": "Existing goal is seq 01; new file is goals/2026-07-16-02-rate-limit-public-api.md, using seq 02."
+        },
+        {
+          "text": "The pre-existing goal file is left untouched (byte-identical).",
+          "passed": true,
+          "evidence": "Confirmed byte-identical to the original starting goal 01 content \u2014 no modification."
+        },
+        {
+          "text": "goals/00-index.md has a new row for the added goal, marked active.",
+          "passed": true,
+          "evidence": "New row added: | 02 | active | `2026-07-16-02-rate-limit-public-api.md` | In progress \u2014 per-client rate limiting for public API. |"
+        },
+        {
+          "text": "At most one goal is marked active in the index.",
+          "passed": true,
+          "evidence": "Goal 01 left as 'pending' (agent's own choice, matching baseline), goal 02 is the only 'active' row."
+        },
+        {
+          "text": "plans/active-context.md is updated to point at the new active goal.",
+          "passed": true,
+          "evidence": "active-context.md contains 'goal: goals/2026-07-16-02-rate-limit-public-api.md', status: active, and a specific focus line naming Step 1."
+        },
+        {
+          "text": "Running python3 scripts/validate_goals.py in the project exits with code 0.",
+          "passed": true,
+          "evidence": "Directly re-executed in this session against the copied outputs project (not just inferred from REPORT.md): validator passes with exit code 0, resolving the run's own reconstructed-evidence caveat."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "goals/README.md and goals/00-index.md both exist.",
+          "passed": true,
+          "evidence": "Both goals/README.md and goals/00-index.md are present in the output project."
+        },
+        {
+          "text": "Exactly one file under goals/ matches ^\\d{4}-\\d{2}-\\d{2}-\\d{2}-[a-z0-9-]+\\.md$.",
+          "passed": true,
+          "evidence": "goals/2026-07-16-01-email-notify-cron-to-webhook.md matches the required pattern exactly."
+        },
+        {
+          "text": "The new goal file contains all 9 required headings in order.",
+          "passed": true,
+          "evidence": "Verified # Goal 01 -> ## Objective -> ## Why -> ## Current state -> ## Non-goals -> ## Steps -> ## Acceptance criteria -> ## Evidence to update -> ## Stop and ask if, in exact order, matching SKILL.md's required convention."
+        },
+        {
+          "text": "plans/active-context.md references the new goal file's path.",
+          "passed": false,
+          "evidence": "plans/active-context.md exists but only contains the unfilled skeleton template (# Active Context + an HTML comment placeholder) \u2014 no goal:/status:/focus: pointer block was written."
+        },
+        {
+          "text": "Running python3 scripts/validate_goals.py in the project exits with code 0.",
+          "passed": true,
+          "evidence": "Directly executed in this session: 'PASS: 1 goal file(s) validated', exit code 0."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "The old malformed filename (goal-02-old-migration variant, unpadded sequence) is removed.",
+          "passed": true,
+          "evidence": "Agent's own report confirms DELETED goals/2026-05-01-2-old-migration.md as part of the rename (not a git repo, so implemented as Write new path + rm old path)."
+        },
+        {
+          "text": "The new filename matches the required YYYY-MM-DD-NN-slug.md convention.",
+          "passed": true,
+          "evidence": "goals/2026-05-01-02-old-migration.md matches the pattern (zero-padded NN=02)."
+        },
+        {
+          "text": "Previously-missing required headings are added.",
+          "passed": true,
+          "evidence": "Agent added ## Non-goals and ## Evidence to update, per its own before/after heading diff in REPORT.md."
+        },
+        {
+          "text": "All required headings appear in the correct order.",
+          "passed": true,
+          "evidence": "Reported after-order: Objective -> Why -> Current state -> Non-goals -> Steps -> Acceptance criteria -> Evidence to update -> Stop and ask if, matching SKILL.md's required order exactly."
+        },
+        {
+          "text": "References to the goal (index, active-context) are updated to the new filename.",
+          "passed": true,
+          "evidence": "goals/00-index.md seq-02 filename reference corrected; plans/active-context.md goal: pointer updated to the corrected filename."
+        },
+        {
+          "text": "Running python3 scripts/validate_goals.py after the fix exits with code 0.",
+          "passed": true,
+          "evidence": "Agent captured and reported before (FAIL: 2 errors, exit 1) and after (PASS: 1 goal file(s) validated, exit 0) validator output; confirmed in both the working project and the copied outputs project. Note: the validator only flagged the filename issue, but the agent also proactively fixed heading order/missing sections per the skill's convention rather than just patching to pass the narrower check."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "New goal file uses the next sequence number after the existing goal.",
+          "passed": true,
+          "evidence": "Existing goal is seq 01; new goal file uses seq 02 (goal-02-add-rate-limiting.md pattern, per this run's own naming)."
+        },
+        {
+          "text": "The pre-existing goal file is left untouched (byte-identical).",
+          "passed": true,
+          "evidence": "Confirmed byte-identical against the original/with_skill copy of the same starting goal file \u2014 no modification to goal 01's content."
+        },
+        {
+          "text": "goals/00-index.md has a new row for the added goal, marked active.",
+          "passed": true,
+          "evidence": "Index table contains a new row for seq 02 with status 'active' and a description of the rate-limiting work."
+        },
+        {
+          "text": "At most one goal is marked active in the index.",
+          "passed": true,
+          "evidence": "Goal 01 is 'pending', goal 02 is the only 'active' row \u2014 exactly one active goal."
+        },
+        {
+          "text": "plans/active-context.md is updated to point at the new active goal.",
+          "passed": true,
+          "evidence": "active-context.md contains 'goal: goals/2026-07-16-02-add-rate-limiting.md' pointing at the new goal file."
+        },
+        {
+          "text": "Running python3 scripts/validate_goals.py in the project exits with code 0.",
+          "passed": true,
+          "evidence": "Directly executed in this session: PASS output, exit code 0."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.0,
+        "passed": 0,
+        "failed": 5,
+        "total": 5,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "goals/README.md and goals/00-index.md both exist.",
+          "passed": false,
+          "evidence": "goals/ contains only README.md, goal-01-webhook-migration.md, and validate.sh \u2014 no 00-index.md was created."
+        },
+        {
+          "text": "Exactly one file under goals/ matches ^\\d{4}-\\d{2}-\\d{2}-\\d{2}-[a-z0-9-]+\\.md$.",
+          "passed": false,
+          "evidence": "The goal file is named goal-01-webhook-migration.md, which does not match the required YYYY-MM-DD-NN-slug.md pattern (no date, no zero-padded sequence)."
+        },
+        {
+          "text": "The new goal file contains all 9 required headings in order.",
+          "passed": false,
+          "evidence": "File uses a YAML front-matter block (id/title/status/owner/created/updated) followed by heading order # Goal 01 -> ## Context -> ## Objective -> ... \u2014 'Context' is not one of the 9 required headings and 'Objective' is not first; Non-goals/Evidence to update/Stop and ask if headings are absent entirely."
+        },
+        {
+          "text": "plans/active-context.md references the new goal file's path.",
+          "passed": false,
+          "evidence": "No plans/ directory exists anywhere in this project (top-level listing is only goals/ and README.md)."
+        },
+        {
+          "text": "Running python3 scripts/validate_goals.py in the project exits with code 0.",
+          "passed": false,
+          "evidence": "scripts/validate_goals.py does not exist in this project (the agent wrote its own goals/validate.sh instead) \u2014 running the required command fails with 'No such file or directory'."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 0.0,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "The old malformed filename (goal-02-old-migration variant, unpadded sequence) is removed.",
+          "passed": true,
+          "evidence": "2026-05-01-2-old-migration.md is no longer present in goals/ \u2014 confirmed via directory listing."
+        },
+        {
+          "text": "The new filename matches the required YYYY-MM-DD-NN-slug.md convention.",
+          "passed": true,
+          "evidence": "goals/2026-05-01-02-old-migration.md matches the pattern (zero-padded NN=02)."
+        },
+        {
+          "text": "Previously-missing required headings are added.",
+          "passed": true,
+          "evidence": "Both ## Non-goals and ## Evidence to update are present in the fixed goal file, which were absent in the malformed original."
+        },
+        {
+          "text": "All required headings appear in the correct order.",
+          "passed": true,
+          "evidence": "Confirmed sequence: Objective -> Why -> Current state -> Non-goals -> Steps -> Acceptance criteria -> Evidence to update -> Stop and ask if, matching SKILL.md order."
+        },
+        {
+          "text": "References to the goal (index, active-context) are updated to the new filename.",
+          "passed": true,
+          "evidence": "goals/00-index.md and plans/active-context.md both reference 2026-05-01-02-old-migration.md; no remaining reference to the old unpadded filename."
+        },
+        {
+          "text": "Running python3 scripts/validate_goals.py after the fix exits with code 0.",
+          "passed": true,
+          "evidence": "Directly executed in this session: PASS output, exit code 0."
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.9333,
+        "stddev": 0.1155,
+        "min": 0.8,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.6667,
+        "stddev": 0.5774,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0.0,
+        "max": 0.0
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.27",
+      "time_seconds": "+0.0",
+      "tokens": "+0"
+    }
+  },
+  "notes": [
+    "eval-bootstrap-new-project is the only eval where the two configurations diverge sharply (with_skill 0.8 vs without_skill 0.0). Without the skill, the agent invented its own conventions entirely: YAML front-matter instead of the required heading list, a 'Context' heading not in the spec, no goals/00-index.md, no plans/ directory at all, and a self-authored goals/validate.sh instead of scripts/validate_goals.py. This is the eval that most directly demonstrates the skill's value — the other two evals (add-goal-to-existing-index, fix-malformed-goal) both scored 1.0 in both configurations, meaning they don't discriminate between with/without skill for this run and mainly validate that the skill doesn't regress already-good behavior.",
+    "The without_skill pass_rate stddev (0.5774) looks like high variance but is actually a bimodal artifact of only 3 evals: two runs scored 1.0 and one scored 0.0. It should not be read as 'inconsistent performance' in the statistical sense — it reflects one categorically different eval (bootstrap-new-project), not noisy grading.",
+    "with_skill's only failure this iteration was eval-bootstrap-new-project's active_context_points_at_goal expectation: plans/active-context.md was created from the skeleton template but the goal:/status:/focus: pointer block was never filled in. This is a real gap worth addressing in the skill (e.g. an explicit reminder to populate the pointer block immediately after creating a new active goal), not a grading artifact.",
+    "eval-add-goal-to-existing-index's with_skill validator expectation was initially graded from the agent's own reconstructed report rather than direct re-execution; this was resolved during this grading pass by directly re-running scripts/validate_goals.py against the copied output project and confirming exit 0. Both add-goal and fix-malformed-goal validator expectations across both configurations are now backed by direct re-execution, not just self-reported transcript evidence.",
+    "runs_per_configuration in metadata was corrected from the aggregation script's default value of 3 to the actual value of 1 — only a single run was executed per (eval, configuration) pair in this iteration. Timing and token metrics (time_seconds, tokens, tool_calls) are all 0 for every run because no timing.json was captured: the with/without-skill subagents communicated their results via teammate chat rather than a tracked spawned-task mechanism, so no total_tokens/duration_ms notification was ever received. This is a known gap, not a silent omission — a future iteration should capture timing via a task-tracked spawn mechanism if time/token comparisons are wanted."
+  ]
+}

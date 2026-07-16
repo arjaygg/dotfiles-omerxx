@@ -1,0 +1,12 @@
+{
+  "eval_id": 0,
+  "eval_name": "bootstrap-new-project",
+  "prompt": "This repo doesn't have a goals/ directory yet. Set one up and create Goal 01 for migrating our email-notification service from cron-based polling to a webhook-driven trigger. Validate it when you're done.",
+  "assertions": [
+    {"name": "goals_dir_scaffolded", "description": "goals/README.md and goals/00-index.md both exist."},
+    {"name": "goal_filename_matches_convention", "description": "Exactly one file under goals/ matches ^\\d{4}-\\d{2}-\\d{2}-\\d{2}-[a-z0-9-]+\\.md$."},
+    {"name": "goal_file_has_required_headings_in_order", "description": "The new goal file contains all 9 required headings in order."},
+    {"name": "active_context_points_at_goal", "description": "plans/active-context.md references the new goal file's path."},
+    {"name": "validator_exits_zero", "description": "Running python3 scripts/validate_goals.py in the project exits with code 0."}
+  ]
+}

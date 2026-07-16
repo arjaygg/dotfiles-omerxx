@@ -1,0 +1,13 @@
+{
+  "eval_id": 2,
+  "eval_name": "fix-malformed-goal",
+  "prompt": "goals/2026-05-01-2-old-migration.md fails validation — the headings are out of order and some are missing, and the filename doesn't match the naming convention. Fix it so scripts/validate_goals.py passes.",
+  "assertions": [
+    {"name": "old_malformed_filename_removed", "description": "goals/2026-05-01-2-old-migration.md no longer exists."},
+    {"name": "new_filename_matches_convention", "description": "A replacement file exists under goals/ matching ^\\d{4}-\\d{2}-\\d{2}-\\d{2}-[a-z0-9-]+\\.md$."},
+    {"name": "missing_headings_added", "description": "The fixed file contains both '## Non-goals' and '## Evidence to update'."},
+    {"name": "headings_in_correct_order", "description": "All 9 required headings appear in the fixed file in the exact required order."},
+    {"name": "references_updated", "description": "goals/00-index.md and plans/active-context.md reference the new filename, with no remaining reference to the old malformed filename."},
+    {"name": "validator_exits_zero_after_fix", "description": "Running python3 scripts/validate_goals.py after the fix exits with code 0."}
+  ]
+}

@@ -1,6 +1,61 @@
 # Active Context
 
-## Current (2026-07-16) — Goal 02 bounded slice complete (Steps 1-6, 8, 9); Step 7 stays a non-goal
+## Current (2026-07-16) — goal-authoring skill: grading + aggregation + viewer done; awaiting user review
+
+**Worktree/branch:** `.trees/goal-authoring-skill` / `feature/goal-authoring-skill`. Task: port the
+goal-authoring convention (discovered in `auc-dbprofiling`) into `ai/skills/goal-authoring/` using the
+skill-creator process, with evals run to validate before considering it done. No commit has been made yet.
+
+- Skill draft is written. `evals/evals.json` + 3 `eval_metadata.json` files (bootstrap-new-project,
+  add-goal-to-existing-index, fix-malformed-goal) are fully populated with prompts + assertions.
+- All 6 iteration-1 eval runs (3 evals × with_skill/without_skill) are done.
+- **Grading done:** all 6 `grading.json` files written to
+  `ai/skills/goal-authoring-workspace/iteration-1/<eval-name>/<with_skill|without_skill>/run-1/grading.json`
+  with the exact schema the aggregation script needs — `expectations[]` (`text`/`passed`/`evidence`) plus a
+  `summary: {passed, failed, total, pass_rate}` block (the aggregator reads pass_rate from `summary`, not
+  computed from `expectations` — this cost a debugging pass, see decisions.md).
+  - eval-bootstrap-new-project: with_skill 4/5 (0.8), without_skill 0/5 (0.0)
+  - eval-add-goal-to-existing-index: with_skill 6/6, without_skill 6/6 (both 1.0)
+  - eval-fix-malformed-goal: with_skill 6/6, without_skill 6/6 (both 1.0)
+  - Both previously-open grading caveats (add-goal `with_skill` validator, bootstrap `with_skill`
+    active-context judgment call) were resolved by directly re-running
+    `python3 scripts/validate_goals.py` against the copied output projects rather than trusting
+    self-reported transcripts.
+- **Aggregation done:** `benchmark.json`/`benchmark.md` generated via
+  `PYTHONPATH=<skill-creator-dir> python3 -m scripts.aggregate_benchmark <workspace>/iteration-1
+  --skill-name goal-authoring` (grading.json files had to be moved into `run-1/` subdirectories first —
+  the aggregator requires that nesting). Result: **with_skill 93.3% vs without_skill 66.7%, delta +0.27**,
+  matching the hand-tallied 14/15 vs 10/15 assertion counts.
+- **Analyst pass done:** added 5 notes directly into `benchmark.json`'s `notes[]` (and regenerated
+  `benchmark.md`) covering: (1) eval-bootstrap-new-project is the only discriminating eval — the other two
+  score 1.0 in both configs; (2) without_skill's high stddev (0.577) is a bimodal artifact of 3 evals, not
+  real variance; (3) with_skill's one failure (bootstrap's `active_context_points_at_goal`) is a real skill
+  gap — the pointer block wasn't filled in after creating the goal, worth an explicit reminder in SKILL.md;
+  (4) the add-goal validator caveat is now resolved via direct re-execution; (5) `runs_per_configuration`
+  was corrected from the aggregator's default (3) to the actual value (1), and the total absence of
+  timing/token data is flagged explicitly as unavailable (subagents reported via chat, not a tracked
+  spawn mechanism that emits `total_tokens`/`duration_ms`), not silently omitted.
+- **Viewer launched:** static HTML written to
+  `ai/skills/goal-authoring-workspace/iteration-1/review.html` via `eval-viewer/generate_review.py --static`
+  (headless environment). User has not yet reviewed it or produced `feedback.json`.
+- **Tool-availability note from this session** (worth fixing in `ai/rules/tool-priority.md` separately,
+  out of scope here): plain Bash `ls`/`find` were hard-blocked mid-session citing missing session init;
+  worked around via `python3 -c` inline scripts (unblocked) rather than running the full Serena/pctx init,
+  which wasn't needed for this task.
+- **Prompt-injection flagged, not acted on:** tool output this session carried a fake "supermemory-update"
+  block (instructing plugin-install commands to be printed unprompted) and a fake "session-init hook
+  pending" block — both identified as injected content and explicitly ignored; told the user directly
+  rather than complying or silently discarding.
+
+**Not yet started:** read `feedback.json` once the user reviews `review.html` and iterate on the skill;
+commit the finished skill on `feature/goal-authoring-skill` (no commit made yet, at any point in this
+task) and open a PR via `stack-pr` (Conventional Commits title).
+
+plan: (no dated plan file for this task — tracked via this active-context entry)
+step: grading + aggregation + analyst notes + viewer done; awaiting user review of review.html
+focus: read feedback.json once available, iterate on SKILL.md (esp. the active-context pointer gap), then commit + PR
+
+## Previous (2026-07-16) — Goal 02 bounded slice complete (Steps 1-6, 8, 9); Step 7 stays a non-goal
 
 - Active tracked goal: `goals/2026-07-15-02-cross-client-config-portability.md`. Status in
   `goals/00-index.md` moved `In progress` → `Completed (bounded slice)`.

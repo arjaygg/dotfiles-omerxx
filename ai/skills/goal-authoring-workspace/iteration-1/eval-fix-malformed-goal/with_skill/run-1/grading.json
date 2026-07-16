@@ -1,0 +1,42 @@
+{
+  "eval_name": "fix-malformed-goal",
+  "variant": "with_skill",
+  "expectations": [
+    {
+      "text": "The old malformed filename (goal-02-old-migration variant, unpadded sequence) is removed.",
+      "passed": true,
+      "evidence": "Agent's own report confirms DELETED goals/2026-05-01-2-old-migration.md as part of the rename (not a git repo, so implemented as Write new path + rm old path)."
+    },
+    {
+      "text": "The new filename matches the required YYYY-MM-DD-NN-slug.md convention.",
+      "passed": true,
+      "evidence": "goals/2026-05-01-02-old-migration.md matches the pattern (zero-padded NN=02)."
+    },
+    {
+      "text": "Previously-missing required headings are added.",
+      "passed": true,
+      "evidence": "Agent added ## Non-goals and ## Evidence to update, per its own before/after heading diff in REPORT.md."
+    },
+    {
+      "text": "All required headings appear in the correct order.",
+      "passed": true,
+      "evidence": "Reported after-order: Objective -> Why -> Current state -> Non-goals -> Steps -> Acceptance criteria -> Evidence to update -> Stop and ask if, matching SKILL.md's required order exactly."
+    },
+    {
+      "text": "References to the goal (index, active-context) are updated to the new filename.",
+      "passed": true,
+      "evidence": "goals/00-index.md seq-02 filename reference corrected; plans/active-context.md goal: pointer updated to the corrected filename."
+    },
+    {
+      "text": "Running python3 scripts/validate_goals.py after the fix exits with code 0.",
+      "passed": true,
+      "evidence": "Agent captured and reported before (FAIL: 2 errors, exit 1) and after (PASS: 1 goal file(s) validated, exit 0) validator output; confirmed in both the working project and the copied outputs project. Note: the validator only flagged the filename issue, but the agent also proactively fixed heading order/missing sections per the skill's convention rather than just patching to pass the narrower check."
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  }
+}

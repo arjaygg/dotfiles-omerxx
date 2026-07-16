@@ -1,0 +1,37 @@
+{
+  "eval_name": "bootstrap-new-project",
+  "variant": "without_skill",
+  "expectations": [
+    {
+      "text": "goals/README.md and goals/00-index.md both exist.",
+      "passed": false,
+      "evidence": "goals/ contains only README.md, goal-01-webhook-migration.md, and validate.sh — no 00-index.md was created."
+    },
+    {
+      "text": "Exactly one file under goals/ matches ^\\d{4}-\\d{2}-\\d{2}-\\d{2}-[a-z0-9-]+\\.md$.",
+      "passed": false,
+      "evidence": "The goal file is named goal-01-webhook-migration.md, which does not match the required YYYY-MM-DD-NN-slug.md pattern (no date, no zero-padded sequence)."
+    },
+    {
+      "text": "The new goal file contains all 9 required headings in order.",
+      "passed": false,
+      "evidence": "File uses a YAML front-matter block (id/title/status/owner/created/updated) followed by heading order # Goal 01 -> ## Context -> ## Objective -> ... — 'Context' is not one of the 9 required headings and 'Objective' is not first; Non-goals/Evidence to update/Stop and ask if headings are absent entirely."
+    },
+    {
+      "text": "plans/active-context.md references the new goal file's path.",
+      "passed": false,
+      "evidence": "No plans/ directory exists anywhere in this project (top-level listing is only goals/ and README.md)."
+    },
+    {
+      "text": "Running python3 scripts/validate_goals.py in the project exits with code 0.",
+      "passed": false,
+      "evidence": "scripts/validate_goals.py does not exist in this project (the agent wrote its own goals/validate.sh instead) — running the required command fails with 'No such file or directory'."
+    }
+  ],
+  "summary": {
+    "passed": 0,
+    "failed": 5,
+    "total": 5,
+    "pass_rate": 0.0
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "eval_name": "add-goal-to-existing-index",
+  "variant": "without_skill",
+  "expectations": [
+    {
+      "text": "New goal file uses the next sequence number after the existing goal.",
+      "passed": true,
+      "evidence": "Existing goal is seq 01; new goal file uses seq 02 (goal-02-add-rate-limiting.md pattern, per this run's own naming)."
+    },
+    {
+      "text": "The pre-existing goal file is left untouched (byte-identical).",
+      "passed": true,
+      "evidence": "Confirmed byte-identical against the original/with_skill copy of the same starting goal file — no modification to goal 01's content."
+    },
+    {
+      "text": "goals/00-index.md has a new row for the added goal, marked active.",
+      "passed": true,
+      "evidence": "Index table contains a new row for seq 02 with status 'active' and a description of the rate-limiting work."
+    },
+    {
+      "text": "At most one goal is marked active in the index.",
+      "passed": true,
+      "evidence": "Goal 01 is 'pending', goal 02 is the only 'active' row — exactly one active goal."
+    },
+    {
+      "text": "plans/active-context.md is updated to point at the new active goal.",
+      "passed": true,
+      "evidence": "active-context.md contains 'goal: goals/2026-07-16-02-add-rate-limiting.md' pointing at the new goal file."
+    },
+    {
+      "text": "Running python3 scripts/validate_goals.py in the project exits with code 0.",
+      "passed": true,
+      "evidence": "Directly executed in this session: PASS output, exit code 0."
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  }
+}
