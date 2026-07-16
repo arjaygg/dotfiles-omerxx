@@ -106,10 +106,26 @@ def scan_repo(root: Path) -> list[Finding]:
     return findings
 
 
+def summarize_findings(findings: Sequence[Finding]) -> dict[str, object]:
+    """Return counts only, without excerpts or matched private values."""
+
+    by_rule: dict[str, int] = {}
+    by_path: dict[str, int] = {}
+    for finding in findings:
+        by_rule[finding.rule] = by_rule.get(finding.rule, 0) + 1
+        by_path[finding.path] = by_path.get(finding.path, 0) + 1
+    return {
+        "total": len(findings),
+        "by_rule": dict(sorted(by_rule.items())),
+        "by_path": dict(sorted(by_path.items())),
+    }
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", nargs="?", type=Path, default=Path.cwd())
     parser.add_argument("--json", action="store_true", dest="as_json")
+    parser.add_argument("--summary", action="store_true")
     return parser
 
 
@@ -117,7 +133,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     root = args.root.resolve()
     findings = scan_repo(root)
-    if args.as_json:
+    if args.summary:
+        print(json.dumps(summarize_findings(findings), indent=2))
+    elif args.as_json:
         print(json.dumps([asdict(finding) for finding in findings], indent=2))
     else:
         for finding in findings:

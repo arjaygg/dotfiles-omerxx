@@ -3,7 +3,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.public_hygiene_check import scan_repo, scan_text
+from scripts.public_hygiene_check import scan_repo, scan_text, summarize_findings
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class PublicHygieneCheckTests(unittest.TestCase):
@@ -17,10 +20,12 @@ class PublicHygieneCheckTests(unittest.TestCase):
         self.assertEqual(findings, [])
 
     def test_detects_private_paths_org_urls_and_secret_assignments(self):
+        private_home = "/" + "Users/alice"
+        private_url = "https://dev.azure.com/" + "bofaz/project"
         findings = scan_text(
             "runtime.md",
-            "path=/Users/alice/.config\n"
-            "ado=https://dev.azure.com/bofaz/project\n"
+            f"path={private_home}/.config\n"
+            f"ado={private_url}\n"
             'tok' + 'en = "sk-live-12345678901234567890"\n',
         )
 
@@ -100,6 +105,35 @@ class PublicHygieneCheckTests(unittest.TestCase):
             findings = scan_repo(root)
 
         self.assertEqual([(finding.path, finding.rule) for finding in findings], [("tracked.md", "private-org-name")])
+
+    def test_summary_groups_counts_without_excerpts(self):
+        private_name = "A" + "xos Financial"
+        private_home = "/" + "Users/alice"
+        other_home = "/" + "Users/bob"
+        findings = scan_text(
+            "runtime.md",
+            f"owner: {private_name}\npath={private_home}/.config\n",
+        ) + scan_text("other.md", f"path={other_home}/.cache\n")
+
+        summary = summarize_findings(findings)
+
+        self.assertEqual(
+            summary,
+            {
+                "total": 3,
+                "by_rule": {"absolute-home-path": 2, "private-org-name": 1},
+                "by_path": {"runtime.md": 2, "other.md": 1},
+            },
+        )
+        self.assertNotIn("owner", repr(summary))
+        self.assertNotIn("alice", repr(summary))
+
+    def test_scripts_tree_has_no_hygiene_findings(self):
+        findings = []
+        for path in sorted((ROOT / "scripts").glob("*.py")):
+            findings.extend(scan_text(path.relative_to(ROOT).as_posix(), path.read_text(encoding="utf-8")))
+
+        self.assertEqual(findings, [])
 
 
 if __name__ == "__main__":

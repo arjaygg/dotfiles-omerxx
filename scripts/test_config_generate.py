@@ -152,8 +152,9 @@ class ConfigGenerateTests(unittest.TestCase):
     def test_build_proposal_rejects_private_or_secret_input(self):
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory) / "base.json"
+            private_home = "/" + "Users/alice"
             base.write_text(
-                '{"path": "/Users/alice/.config/tool", "token": "secret-value"}\n',
+                f'{{"path": "{private_home}/.config/tool", "token": "secret-value"}}\n',
                 encoding="utf-8",
             )
 

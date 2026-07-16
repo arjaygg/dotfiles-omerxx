@@ -42,16 +42,23 @@ class Phase0BoundaryTests(unittest.TestCase):
         self.assertNotIn('ln -sf "$SRC" "$LIVE"', source)
 
     def test_machine_local_settings_overlay_is_not_tracked(self):
-        result = subprocess.run(
+        tracked = subprocess.run(
             ["git", "ls-files", "--error-unmatch", ".claude/settings.local.json"],
             cwd=ROOT,
             capture_output=True,
             text=True,
             check=False,
         )
+        ignored = subprocess.run(
+            ["git", "check-ignore", ".claude/settings.local.json"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
-        self.assertNotEqual(result.returncode, 0)
-        self.assertTrue((ROOT / ".claude/settings.local.json").exists())
+        self.assertNotEqual(tracked.returncode, 0)
+        self.assertEqual(ignored.returncode, 0)
 
     def test_severed_valid_runtime_file_is_reported_without_mutation(self):
         with tempfile.TemporaryDirectory() as directory:
