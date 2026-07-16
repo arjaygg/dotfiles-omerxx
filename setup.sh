@@ -4,6 +4,58 @@
 # point back to the Unified AI Hub (ai/skills/).
 # GNU Stow mirrors this structure into your Home directory automatically.
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+run_setup_check() {
+    echo "setup check: validating tracked config boundaries without writing runtime files"
+    (
+        set -e
+        cd "$ROOT"
+        bash -n setup.sh
+        bash -n scripts/check-skill-drift.sh
+        python3 scripts/shell_syntax_check.py --summary
+        python3 scripts/syntax_check.py --summary
+        python3 scripts/guidance_adapter_check.py --summary
+        python3 scripts/autonomous_skill_check.py --summary
+        python3 scripts/mcp_gateway_check.py --summary
+        python3 scripts/hook_fixture_runner.py .claude/hooks/pre-tool-gate-v2.sh scripts/fixtures/pretool-gate-v2.json --summary
+        python3 scripts/hook_target_check.py .claude/settings.json --summary
+        python3 scripts/hook_output_schema_check.py .claude/hooks --summary || true
+        python3 scripts/self_modification_check.py --summary || true
+        python3 scripts/config_inventory.py --summary
+        python3 scripts/config_base_hygiene_check.py --summary
+        python3 scripts/public_hygiene_check.py --summary || true
+        python3 scripts/config_doctor.py --summary || true
+        python3 scripts/instruction_budget_check.py --summary
+        bash scripts/check-skill-drift.sh .claude/skills .gemini/skills .cursor/skills
+        python3 scripts/hook_config_check.py .claude/settings.json --summary || true
+        python3 scripts/skill_reference_check.py --summary || true
+    )
+}
+
+case "${1:-}" in
+    --check)
+        run_setup_check
+        ;;
+    --dry-run)
+        run_setup_check
+        echo "setup dry-run: no stow, symlink, install, prune, extension, or cleanup commands were run"
+        ;;
+    --help|-h)
+        echo "usage: $0 [--check|--dry-run]"
+        ;;
+    "")
+        ;;
+    *)
+        echo "usage: $0 [--check|--dry-run]" >&2
+        exit 2
+        ;;
+esac
+
+if [ "${1:-}" = "--check" ] || [ "${1:-}" = "--dry-run" ] || [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+    exit 0
+fi
+
 # Ensure directories exist for stow to link into if they aren't already managed
 mkdir -p ~/.config/pctx
 mkdir -p ~/.cursor
@@ -159,7 +211,16 @@ for _style in ~/.dotfiles/ai/output-styles/*.md; do
     [ -f "$_style" ] && ln -sf "$_style" ~/.cursor/output-styles/"$(basename "$_style")"
 done
 
-# Gemini: covered via ~/.gemini/skills/ai -> ~/.dotfiles/ai/skills (stow-managed)
+# Gemini/Codex modern skill discovery is covered by ~/.agents/skills.
+# Do not place aggregate symlinks inside ~/.gemini/skills; entries there must be real skills.
+# check-skill-drift.sh --prune-stale-links removes stale generated skill symlinks only.
+if [ -f "$HOME/.dotfiles/scripts/check-skill-drift.sh" ]; then
+    bash "$HOME/.dotfiles/scripts/check-skill-drift.sh" --prune-stale-links \
+        "$HOME/.claude/skills" \
+        "$HOME/.codex/skills" \
+        "$HOME/.gemini/skills" \
+        "$HOME/.cursor/skills" || true
+fi
 mkdir -p "$HOME/.gemini/antigravity-cli"
 ln -sfn "$HOME/.dotfiles/.gemini/settings.json" "$HOME/.gemini/antigravity-cli/settings.json"
 
