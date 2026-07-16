@@ -73,3 +73,9 @@ ai/skills/coach/coach-persona.ts
 graphify-out/
 tokentelemetry/
 .claude/hooks/.logs/
+
+# TDD-Guard local test-run state (machine-local, regenerated per pytest run)
+.claude/tdd-guard/
+
+# pre-compact.sh generated resume snapshot (regenerated every compaction)
+plans/session-snapshot.md
