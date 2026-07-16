@@ -1,0 +1,5 @@
+- Root cause: the step's `timeoutInMinutes: 5` is well under the 11–14 minute duration this same `az deployment group create` step has taken on every historically successful run, so the timeout — not the deployment logic — is the most likely cause of failure.
+- This is a narrow, single-signal timeout misconfiguration with no ambiguity about cause, so it's handled inline with no delegation, consistent with the unavailable subagent/advisor/MCP/shell capabilities in this runtime.
+- Recommended fix: raise `timeoutInMinutes` to roughly 20, giving headroom above the observed 11–14 minute range rather than trimming it to the minimum observed duration.
+- This is a read-only recommendation — no pipeline change was applied, and no build, security, or observability workstream is implicated by a single timeout value.
+- Assumption: the 11–14 minute figures reflect steady-state deployment time, not an already-degraded baseline; if recent runs have been trending longer, revisit the chosen timeout after the next few runs.
