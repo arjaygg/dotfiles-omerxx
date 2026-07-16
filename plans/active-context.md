@@ -1,6 +1,48 @@
 # Active Context
 
-## Current (2026-07-15) — bounded Codex slice complete; live rewrite skipped
+## Current (2026-07-16) — Goal 02 bounded slice complete (Steps 1-6, 8, 9); Step 7 stays a non-goal
+
+- Active tracked goal: `goals/2026-07-15-02-cross-client-config-portability.md`. Status in
+  `goals/00-index.md` moved `In progress` → `Completed (bounded slice)`.
+- Full detail: `plans/2026-07-16-cross-client-config-portability.md`.
+- **User decisions obtained this session (via `AskUserQuestion`, already applied):**
+  1. Scope: "All 3 clients, read-only first" — Steps 1-6 (inventory, base templates, manifest,
+     tests, README, Gate-1 compare) for Gemini, Cursor, and Windsurf together, plus independent
+     Steps 8-9. Stop before any live write (Step 7) regardless — done, intentionally.
+  2. Security regression: "Fix it now" — removed `skipDangerousModePermissionPrompt: true` from
+     `.claude/settings.json` since it un-weakens (not weakens) a permission default — done.
+- **Done, all of it:**
+  - Step 9: `.serena/memories/START_HERE.md` created — `Serena.readMemory` succeeds.
+  - Step 8: fixed the real committed security regression in `.claude/settings.json` (see decision
+    above).
+  - Step 1: read-only inventory for all three clients (SHA-256 + gap list) — see dated plan.
+  - Step 2: wrote `ai/config/gemini/settings.base.json`; extended `cursor/mcp.base.json`
+    (`notebooklm`, `chrome-devtools`); extended `windsurf/mcp_config.base.json` (`lean-ctx`).
+  - Step 3: added manifest entries — `ai/config/manifest.json` now has 7 clients (`claude`,
+    `codex`, `gemini`, `gemini-settings`, `cursor`, `windsurf`, `pctx`).
+  - Step 4: added client-specific tests to `test_portable_config_templates.py` and
+    `test_config_manifest.py`. Full suite: `pytest scripts/ -q` → **91 passed, 42 subtests
+    passed**, zero failures (re-confirmed green again this segment).
+  - Step 5: overlay-example fixtures + `ai/config/README.md` updated.
+  - Step 6 (Gate-1 pattern): created real gitignored overlay files (mode `0600`) under
+    `~/.config/dotfiles-ai/` for gemini mcp, gemini-settings, cursor, windsurf; ran
+    `--compare-against` for all four. Three clean aside from a cosmetic `$schema` diff; windsurf
+    additionally shows the four `mcpServers.pctx.args[2..5]` entries from the pre-existing
+    (not-this-session) missing `-q` flag in `ai/config/windsurf/mcp_config.base.json` — flagged as
+    an out-of-scope finding, not fixed.
+- **Step 7 remains untouched** — unconditional non-goal for this slice, per user decision.
+- **Resolved this segment:** `.claude/tdd-guard/` (TDD-Guard pytest run history) and
+  `plans/session-snapshot.md` (pre-compact.sh regenerated snapshot) were both untracked
+  hook-generated scratch state, not user work — added both to `.gitignore` (see
+  `plans/decisions.md` 2026-07-16 entry). Neither had any git history.
+- **Remaining bookkeeping (not started):** draft `decisions/NNNN-cross-client-config-portability.md`
+  durable ADR summarizing Goal 02's bounded slice.
+
+plan: plans/2026-07-16-cross-client-config-portability.md
+step: Complete (bounded slice: Steps 1-6, 8, 9)
+focus: draft durable ADR; Step 7 (live write) stays out of scope
+
+## Previous (2026-07-15) — bounded Codex slice complete; live rewrite skipped
 
 - Active tracked goal: `goals/2026-07-14-01-agentic-loop-optimization.md`.
 - Current branch: `feature/codex-config-proposals`.

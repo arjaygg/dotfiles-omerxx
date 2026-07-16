@@ -1,5 +1,10 @@
 # pctx Functions — 2026-07-15 (refreshed; no drift vs 2026-07-14 snapshot)
 
+**2026-07-16 session note:** `mcp__pctx__list_functions` re-run for the
+cross-client-config-portability goal; namespace/function set matches this snapshot exactly
+(Serena/Qmd/LeanCtx/Repomix, same names). `Serena.readMemory({ memory_name: "START_HERE" })` again
+failed — memory still does not exist (goal step 9 will create it). No further drift to record.
+
 Namespaces: Serena, Qmd, LeanCtx, Repomix, Graphify
 
 Refresh method (session baseline for the agentic-loop optimization goal): full function list
