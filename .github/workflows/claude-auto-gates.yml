@@ -1,5 +1,7 @@
 # Required-status checks for the claude-auto pipeline.
-# Add both job names as required checks in branch protection:
+# Add these job names as required checks in branch protection:
+#   - claude-auto-script-tests
+#   - claude-auto-config-audit-summary
 #   - claude-auto-coverage-gate
 #   - claude-auto-diff-size-gate
 #
@@ -13,7 +15,71 @@ on:
     branches: [main]
 
 jobs:
+  # Runs the maintained repository validation suite for scripts and policy checks.
+  claude-auto-script-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Python script tests
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
   # ── Coverage gate ──────────────────────────────────────────────────────────
+  # Emits redacted/read-only config and hygiene summaries for PR review.
+  # Known baseline findings remain non-blocking until remediated in scoped PRs.
+  claude-auto-config-audit-summary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Summarize shell syntax baseline
+        run: python3 scripts/shell_syntax_check.py --summary
+
+      - name: Summarize syntax parse baseline
+        run: python3 scripts/syntax_check.py --summary
+
+      - name: Summarize guidance adapter baseline
+        run: python3 scripts/guidance_adapter_check.py --summary
+
+      - name: Summarize autonomous skill contracts
+        run: python3 scripts/autonomous_skill_check.py --summary
+
+      - name: Summarize MCP gateway topology
+        run: python3 scripts/mcp_gateway_check.py --summary
+
+      - name: Run pre-tool hook fixture baseline
+        run: python3 scripts/hook_fixture_runner.py .claude/hooks/pre-tool-gate-v2.sh scripts/fixtures/pretool-gate-v2.json --summary
+
+      - name: Summarize hook target baseline
+        run: python3 scripts/hook_target_check.py .claude/settings.json --summary
+
+      - name: Summarize hook output schema findings
+        run: python3 scripts/hook_output_schema_check.py .claude/hooks --summary || true
+
+      - name: Summarize self-modification findings
+        run: python3 scripts/self_modification_check.py --summary || true
+
+      - name: Summarize config inventory
+        run: python3 scripts/config_inventory.py --summary
+
+      - name: Check portable config base hygiene
+        run: python3 scripts/config_base_hygiene_check.py --summary
+
+      - name: Summarize public hygiene baseline
+        run: python3 scripts/public_hygiene_check.py --summary || true
+
+      - name: Summarize config doctor baseline
+        run: python3 scripts/config_doctor.py --summary || true
+
+      - name: Summarize Claude hook config findings
+        run: python3 scripts/hook_config_check.py .claude/settings.json --summary || true
+
+      - name: Summarize instruction budget baseline
+        run: python3 scripts/instruction_budget_check.py --summary
+
+      - name: Summarize dead skill references
+        run: python3 scripts/skill_reference_check.py --summary || true
+
   # Fails if test coverage drops vs the base branch.
   # Requires the project to produce a coverage report; configure COVERAGE_CMD
   # and COVERAGE_FILE for the target repo's test runner.
