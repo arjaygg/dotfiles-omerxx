@@ -12,15 +12,20 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Sequence
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from scripts.public_hygiene_check import Finding, scan_text
 
 
 CONFIG_SPECS: tuple[tuple[str, str], ...] = (
     (".claude/settings.json", "json"),
     (".codex/config.toml", "toml"),
+    (".config/pctx/pctx.json", "json"),
     (".gemini/settings.json", "json"),
     (".gemini/mcp.json", "json"),
+    (".gemini/config/mcp_config.json", "json"),
     (".cursor/cli-config.json", "json"),
+    (".cursor/mcp.json", "json"),
     (".windsurf/mcp_config.json", "json"),
     ("mcp.json", "json"),
 )
@@ -178,11 +183,30 @@ def run_doctor(root: Path) -> list[Issue]:
     return issues
 
 
+def summarize_issues(issues: Sequence[Issue]) -> dict[str, object]:
+    """Return counts only, without issue messages or matched private values."""
+
+    def counts(attr: str) -> dict[str, int]:
+        result: dict[str, int] = {}
+        for issue in issues:
+            value = str(getattr(issue, attr))
+            result[value] = result.get(value, 0) + 1
+        return dict(sorted(result.items()))
+
+    return {
+        "total": len(issues),
+        "by_rule": counts("rule"),
+        "by_severity": counts("severity"),
+        "by_path": counts("path"),
+    }
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", nargs="?", type=Path, default=Path.cwd())
     parser.add_argument("--live-settings", type=Path)
     parser.add_argument("--json", action="store_true", dest="as_json")
+    parser.add_argument("--summary", action="store_true")
     return parser
 
 
@@ -192,7 +216,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     issues = run_doctor(root)
     if args.live_settings:
         issues.extend(compare_runtime_file(root / ".claude/settings.json", args.live_settings))
-    if args.as_json:
+    if args.summary:
+        print(json.dumps(summarize_issues(issues), indent=2))
+    elif args.as_json:
         print(json.dumps([asdict(issue) for issue in issues], indent=2))
     else:
         for issue in issues:
