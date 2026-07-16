@@ -51,6 +51,7 @@ while [[ $# -gt 0 ]]; do
             echo "  %cache%      - Cache performance (read/created tokens)"
             echo "  %tokens%     - Token breakdown (input/output)"
             echo "  %version%    - Claude Code version"
+            echo "  %cost%       - Estimated session cost (USD)"
             echo ""
             echo "Examples:"
             echo "  $0 --compact"
@@ -357,6 +358,28 @@ if echo "$input" | jq -e . >/dev/null 2>&1 && [[ "$input" != "{}" ]]; then
         tokens_info="0/0"
     fi
 
+    # Extract session cost metadata (present in recent Claude Code versions)
+    total_cost_usd=$(echo "$input" | jq -r '.cost.total_cost_usd // empty')
+    total_lines_added=$(echo "$input" | jq -r '.cost.total_lines_added // 0')
+    total_lines_removed=$(echo "$input" | jq -r '.cost.total_lines_removed // 0')
+
+    if [[ -n "$total_cost_usd" ]]; then
+        cost_display=$(printf "\$%.2f" "$total_cost_usd")
+        # Color: green under $1, yellow under $5, red above
+        cost_cents=$(printf "%.0f" "$(echo "$total_cost_usd * 100" | bc -l 2>/dev/null || echo 0)")
+        if [[ $cost_cents -lt 100 ]]; then
+            cost_color="32"
+        elif [[ $cost_cents -lt 500 ]]; then
+            cost_color="33"
+        else
+            cost_color="31"
+        fi
+        cost_info=$(printf "\033[%sm%s\033[0m" "$cost_color" "$cost_display")
+    else
+        cost_display=""
+        cost_info=""
+    fi
+
     # Extract session metadata
     claude_version=$(echo "$input" | jq -r '.version // "unknown"')
 
@@ -377,6 +400,8 @@ else
     session_id=""
     model_name="Claude"
     transcript_path=""
+    cost_display=""
+    cost_info=""
     # Use Claude Code's project directory if available, otherwise fall back to pwd
     current_dir="${CLAUDE_PROJECT_DIR:-$(pwd)}"
     output_style="default"
@@ -1239,6 +1264,7 @@ case "$STATUSLINE_MODE" in
         output="${output//\%version\%/$claude_version}"
         output="${output//\%git_status\%/$git_status_indicator}"
         output="${output//\%git_dirty\%/$git_status_indicator}"
+        output="${output//\%cost\%/$cost_info}"
         echo "$output"
         ;;
 
