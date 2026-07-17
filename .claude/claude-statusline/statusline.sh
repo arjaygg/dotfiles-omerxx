@@ -160,10 +160,30 @@ get_warning_threshold() {
     esac
 }
 
+# Detect usable terminal width, reserving space for the rest of the line
+# (model/percent/cache/time/cost segments plus a buffer for git_status/task_list_id
+# appended after the path). Falls back to a conservative default if detection fails.
+terminal_project_path_budget() {
+    local cols
+    cols=$(tput cols 2>/dev/null)
+    if [[ -z "$cols" || "$cols" -le 0 ]]; then
+        cols="${COLUMNS:-80}"
+    fi
+    local reserved=45  # other fixed-ish segments
+    local budget=$((cols - reserved))
+    # Clamp to a sane range so very narrow/huge terminals still behave
+    if [[ $budget -lt 15 ]]; then
+        budget=15
+    elif [[ $budget -gt 60 ]]; then
+        budget=60
+    fi
+    echo "$budget"
+}
+
 # Format project directory for display (home-relative path)
 format_project_path() {
     local project_path="$1"
-    local max_length="${2:-40}"
+    local max_length="${2:-$(terminal_project_path_budget)}"
 
     # Replace home directory with ~
     local display_path="${project_path/#$HOME/~}"
@@ -172,7 +192,7 @@ format_project_path() {
     if [[ ${#display_path} -gt $max_length ]]; then
         # Extract last 2-3 path components
         local depth=2
-        local short_path=$(echo "$display_path" | awk -F'/' '{for(i=NF-'$depth'+1;i<=NF;i++)printf "%s%s",$i,i<NF?"/":" "}')
+        local short_path=$(echo "$display_path" | awk -F'/' '{for(i=NF-'$depth'+1;i<=NF;i++)printf "%s%s",$i,(i<NF?"/":" ")}')
         echo "$short_path"
     else
         echo "$display_path"
@@ -984,7 +1004,7 @@ fi
 
 # Project context (home-relative path with smart shortening)
 if [[ -n "$current_dir" ]]; then
-    project_path_display=$(format_project_path "$current_dir" 40)
+    project_path_display=$(format_project_path "$current_dir" "$(terminal_project_path_budget)")
     project_name="$project_path_display"
 else
     project_name=$(basename "$current_dir" 2>/dev/null || echo "unknown")
