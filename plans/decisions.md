@@ -1,5 +1,17 @@
 # Active Decisions Log
 
+## 2026-07-17 — PR #334 CI fix: sync settings.base.json, then merge main and re-sync
+
+**Decision:** Merged PR #334 (`chore/chrome-mcp-rules-cleanup`) into `main` via `gh pr merge --admin` after independently confirming the true CI conclusion was `success` (run `29547965083`, headSha `65fe7ba`), despite the `ci-watch` background poller reporting FAILED.
+
+**Why:** The poller's FAILED verdict was a false signal — it derives status from `gh run list --limit 3` and flags the branch FAILED if *any* of the last 3 runs failed, rather than filtering to the run matching the actually-pushed commit. Two stale pre-fix runs (headSha `3c83ffe`, `54ff32f`) kept tripping this check even after the real latest run went green. The user explicitly said "never mind the ci for now, just continue with admin merge, and then fix the problem later," so the merge proceeded on the independently-verified real signal, deferring the poller bug fix to a follow-up.
+
+**Alternatives rejected:** Waiting on the poller to self-correct — rejected because the bug is structural (no headSha filtering), not transient; it would never resolve on its own.
+
+**Assumptions:** The `gh run list` output reflects reality (i.e., no GitHub Actions API lag); confirmed via a second independent check (`gh run list --limit 5 --json ...headSha,createdAt`) showing the newest run by `createdAt` was the successful one.
+
+**Follow-ups:** (a) fix the `ci-watch` skill/poller to filter by `headSha` instead of scanning the last N runs — in progress on `fix/ci-watch-headsha-verdict`. (b) audit other open branches for `ai/config/claude/settings.base.json` drift against `main`'s new tip (`d896233`) — not yet started.
+
 ## 2026-07-17 — Chrome MCP context-efficiency: hook + rule hybrid, and M8 orphan-rule dispositions
 
 **Decision:** For "how do we make Chrome MCP context-efficiency best practices apply automatically,
