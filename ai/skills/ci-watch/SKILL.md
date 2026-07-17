@@ -20,9 +20,13 @@ consumed while CI is running (Monitor fires only on change).
 BRANCH=$(git branch --show-current)
 PR_NUMBER=$(gh pr view --json number --jq '.number' 2>/dev/null || echo "")
 REPO=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null || echo "")
+HEAD_SHA=$(git rev-parse HEAD)
 ```
 
 If no PR found, tell the user and stop.
+
+`HEAD_SHA` is the commit the poller must track — CI runs are filtered to this SHA in Step 3 so
+a stale run from an earlier push on the same branch can never produce the verdict.
 
 ### Step 2 — Write initial status
 
@@ -46,6 +50,7 @@ while silent; writes to `plans/ci-status.md` only on state change).
 PR_NUM="<set from Step 1>"
 REPO_SLUG="<set from Step 1>"
 BRANCH_NAME="<set from Step 1>"
+HEAD_SHA="<set from Step 1>"
 STATUS_FILE="$(pwd)/plans/ci-status.md"
 LOG_FILE="/tmp/ci-watch-${PR_NUM}.log"
 MAX_POLLS=30   # 30 × 30s = 15 min
@@ -58,18 +63,28 @@ while [ "$POLL" -lt "$MAX_POLLS" ]; do
   POLL=$(( POLL + 1 ))
   TS=$(date '+%Y-%m-%d %H:%M:%S')
 
+  # NOTE: --json includes headSha and results are filtered to HEAD_SHA below —
+  # this is load-bearing. Without the filter, a stale run from an earlier push
+  # on the same branch can outrank the real run and produce a false verdict.
   NOW=$(gh run list \
     --repo "${REPO_SLUG}" \
     --branch "${BRANCH_NAME}" \
-    --limit 3 \
-    --json databaseId,status,conclusion,url \
-    --jq '.[] | "\(.databaseId)|\(.status)|\(.conclusion)|\(.url)"' \
+    --limit 5 \
+    --json databaseId,status,conclusion,url,headSha \
+    --jq --arg sha "${HEAD_SHA}" \
+      '.[] | select(.headSha == $sha) | "\(.databaseId)|\(.status)|\(.conclusion)|\(.url)"' \
     2>/dev/null || echo "")
 
-  if [ "$NOW" != "$LAST" ] && [ -n "$NOW" ]; then
+  if [ -z "$NOW" ]; then
+    # No run yet for this exact commit (queued/not-started) — keep polling, don't verdict on stale runs.
+    sleep 30
+    continue
+  fi
+
+  if [ "$NOW" != "$LAST" ]; then
     LAST="$NOW"
 
-    # Parse first run's conclusion
+    # Parse this commit's run (only one run should match HEAD_SHA per workflow)
     FIRST=$(echo "$NOW" | head -1)
     RUN_STATUS=$(echo "$FIRST" | cut -d'|' -f2)
     RUN_CONCLUSION=$(echo "$FIRST" | cut -d'|' -f3)
@@ -80,6 +95,7 @@ while [ "$POLL" -lt "$MAX_POLLS" ]; do
 
 **PR:** #${PR_NUM} — ${BRANCH_NAME}
 **Repo:** ${REPO_SLUG}
+**Commit:** ${HEAD_SHA}
 **Last checked:** ${TS} (poll ${POLL}/${MAX_POLLS})
 **Run status:** ${RUN_STATUS} | ${RUN_CONCLUSION}
 **URL:** ${RUN_URL}
