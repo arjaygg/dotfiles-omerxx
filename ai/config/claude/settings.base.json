@@ -441,7 +441,7 @@
   "worktree": {},
   "statusLine": {
     "type": "command",
-    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ Cache: %cache_hit% ▸ %time% ▸ %project%%git_status%%task_list_id% ▸ %cost%'"
+    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ %cost% ▸ Cache: %cache_hit% ▸ %time% ▸ %project%%git_status%%task_list_id%'"
   },
   "enabledPlugins": {
     "autoresearch@autoresearch": false,
