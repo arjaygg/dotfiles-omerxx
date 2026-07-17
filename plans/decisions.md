@@ -1,5 +1,59 @@
 # Active Decisions Log
 
+## 2026-07-17 — Chrome MCP context-efficiency: hook + rule hybrid, and M8 orphan-rule dispositions
+
+**Decision:** For "how do we make Chrome MCP context-efficiency best practices apply automatically,
+not just as documentation," use a two-part delivery: (1) a new always-loaded rule file
+`ai/rules/chrome-mcp-efficiency.md`, `@`-imported into `.claude/CLAUDE.md`, carrying the full
+decision tree/required-patterns/anti-patterns policy; (2) a new `PreToolUse` hook
+`.claude/hooks/chrome-mcp-guard.sh`, registered in `.claude/settings.json` on matcher
+`mcp__claude-in-chrome__.*`, that injects a condensed stderr reminder the first time any
+`mcp__claude-in-chrome__*` tool is called in a session (deduped via a per-session state file under
+`.claude/hooks/.state/`), then no-ops on subsequent calls. The hook never blocks (`exit 0` always).
+
+Separately, resolved the pre-existing M8 audit finding (`plans/2026-07-08-constitution-hooks-audit.md`)
+that 6 of 9 `ai/rules/*.md` files were orphans (not symlinked, not `@`-imported anywhere):
+- **Retire-and-fold** (deleted; no unique content, or content merged into an always-loaded file):
+  `qmd-usage.md` (pointer facts folded into `agent-user-global.md`/`tool-priority.md`),
+  `monitor-patterns.md` (same), `pctx-session-init.md` (merged into `tool-priority.md` §6).
+- **Wire-in** (kept, added as new `@`-imports in `.claude/CLAUDE.md`): `hyper-atomic-commits.md`,
+  `context-window-discipline.md` — both are always-relevant baseline policy, not situational.
+- **Convert-to-skill** (situational/invoked-on-demand, not baseline policy):
+  `kubectl-efficiency.md` → `ai/skills/kubectl-efficiency/SKILL.md` (old rule file deleted).
+- Fixed `docs/agent-configuration-architecture.md`'s stale import-list claim to match reality.
+
+**Why:** The user explicitly confirmed a hook should be the delivery mechanism (not a skill alone,
+since skills are model-invoked/on-demand and won't fire automatically on every Chrome tool call),
+and separately approved "Also fix the other 5 orphans (Recommended)" — i.e. resolve all 6 M8 orphans
+in the same pass, not just add the new Chrome rule. A hook-only approach would have no durable
+always-loaded policy text (nothing to point to from other docs); a rule-only approach would rely on
+the model remembering to apply it every time rather than a point-of-use nudge — the hybrid gets both
+JIT reinforcement and a durable baseline. For the M8 dispositions, per-file content depth decided the
+bucket: thin pointers with a home elsewhere got folded and deleted (avoids orphaned-but-harmless
+cruft accumulating); files with real, always-applicable policy got wired in; situational content
+(kubectl command construction, only relevant when actually writing kubectl) got converted to a skill
+so it loads on-demand via `disable-model-invocation`/triggers rather than bloating every session's
+always-loaded context.
+
+**Alternatives rejected:**
+- Rule-only (no hook): rejected because there's no point-of-use reinforcement — an always-loaded rule
+  can be present in context but not top-of-mind at the exact moment a Chrome tool call is composed.
+- Skill-only (no hook, no rule): rejected because Skill invocation is model-discretion (or explicit
+  `/skill` call) — nothing guarantees it fires on every Chrome MCP session, which was the user's
+  original complaint ("not just documented as advice").
+- Leave all 6 orphans as-is: rejected per explicit user approval to fix them now rather than let the
+  M8 finding stay open indefinitely.
+- Fold `kubectl-efficiency.md` into an always-loaded rule instead of a skill: rejected because it
+  would add non-baseline, situational content to every session's context for no benefit — its
+  precedent (`hyper-commit-setup/SKILL.md`) already shows the skill pattern fits this shape.
+
+**Assumptions:** `mcp__claude-in-chrome__*` is a stable tool-name prefix the hook's matcher can rely
+on. The hook's session-state dedup (keyed on `.session_id` from the PreToolUse JSON payload) assumes
+Claude Code supplies a stable `session_id` per session in that payload — not yet independently
+verified in this pass (see `progress.md` "hook verification" open item). `disable-model-invocation:
+true` on the new `kubectl-efficiency` skill assumes the same frontmatter contract already used by
+`hyper-commit-setup/SKILL.md`.
+
 ## 2026-07-16 — Gitignore the two untracked hook-generated scratch files found during Goal 02 checkpointing
 **Decision:** Add `.claude/tdd-guard/` and `plans/session-snapshot.md` to `.gitignore`. Left both
 files on disk untouched (no deletion) — only stopped `git status` from tracking them as untracked
