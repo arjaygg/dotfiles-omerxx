@@ -5,6 +5,8 @@ This file is the user-global Claude entrypoint for this machine.
 @../ai/rules/agent-user-global.md
 @../ai/rules/tool-priority.md
 @../ai/rules/context-and-compaction.md
+@../ai/rules/hyper-atomic-commits.md
+@../ai/rules/context-window-discipline.md
 
 ## Claude-Specific Notes
 

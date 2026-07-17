@@ -125,6 +125,27 @@ Run `mcp__pctx__list_functions` before the first project access in a session. Wr
 
 **Enforcement:** `pre-tool-gate-v2.sh` Section 0 will **block** any Grep call until this sequence completes. Skipping this step means Grep calls will be blocked mid-task — complete the init sequence first to avoid interruption.
 
+**Full init sequence** (applies only when a project has both a `.serena/` config dir and `~/.config/pctx/pctx.json`):
+1. Call `mcp__pctx__list_functions` — unlocks the session init gate.
+2. Run this batch via `mcp__pctx__execute_typescript`:
+   ```typescript
+   async function run() {
+     await Promise.all([
+       Serena.initialInstructions(),
+       LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "<describe your task here>" } })
+     ]);
+   }
+   ```
+3. Write `plans/pctx-functions.md` with today's date (via the Write tool).
+
+**Why each step matters:**
+- `list_functions` → sets the session init temp flag
+- `Serena.initialInstructions()` → loads project-specific Serena memories and config
+- `LeanCtx.ctxCall({ name: "ctx_intent" })` → indexes live project context; required to unlock Grep
+- `plans/pctx-functions.md` → file-based gate that survives compaction restarts
+
+Skip the full sequence only if `plans/pctx-functions.md` already exists and was written today.
+
 ---
 
 ## 7. Extended Tool Ecosystem Routing

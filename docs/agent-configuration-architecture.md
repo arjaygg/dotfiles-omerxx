@@ -92,7 +92,11 @@ See `decisions/0006-agents-skills-standard-path.md` for rationale.
 
 ### Claude Code
 
-- User-global layer: `.claude/CLAUDE.md` — imports `agent-user-global.md`, `tool-priority.md`, `context-and-compaction.md`, `qmd-usage.md`, `monitor-patterns.md`
+- User-global layer: `.claude/CLAUDE.md` — imports `agent-user-global.md`, `tool-priority.md`, `context-and-compaction.md`, `hyper-atomic-commits.md`, `context-window-discipline.md`
+- `qmd-usage.md` and `monitor-patterns.md` were retired (2026-07): both were thin pointers to skills (`qmd-routing`, `monitor-patterns`) with no unique content — their pointer facts were folded into `agent-user-global.md` and `tool-priority.md` directly, and the rule files were deleted rather than wired in.
+- `pctx-session-init.md` was retired the same pass: its "why each step matters" content was merged into `tool-priority.md` §6 (Session Start), which already carried the enforcement note.
+- `kubectl-efficiency.md` was converted to a skill (`ai/skills/kubectl-efficiency/SKILL.md`) since it's invoked situationally (writing kubectl commands), not always-relevant baseline policy.
+- `chrome-mcp-efficiency.md` (new, 2026-07) was authored as a skill from the start (`ai/skills/chrome-mcp-efficiency/SKILL.md`), not wired into `.claude/CLAUDE.md`, for the same reason as `kubectl-efficiency.md` — browser automation is situational, not every session's baseline policy. Enforcement (the PreToolUse guard) is independent of this and always active regardless of whether the skill doc is loaded.
 - Project layer: `CLAUDE.md`
 - Neutral project guide: `AGENTS.md`
 - Enforcement: `.claude/settings.json` and `.claude/hooks/`
