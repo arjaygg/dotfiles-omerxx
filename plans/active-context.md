@@ -1,6 +1,54 @@
 # Active Context
 
-## Current (2026-07-16) — goal-authoring skill: grading + aggregation + viewer done; awaiting user review
+## Current (2026-07-17) — Chrome MCP efficiency hook + M8 orphan cleanup: commit 1 of 3 landed; session has hit 8 compactions, restart recommended
+
+**COMPACTION BRAKE — read this first:** this session has compacted 8 times. Per
+`ai/rules/context-and-compaction.md` ("Use `/compact` at most 1-2 times per session — prefer
+checkpointing and starting fresh"), the user has been told to start a **fresh session** to finish
+the remaining steps below. This entry is the resume point for that fresh session.
+
+**Worktree/branch:** `.trees/chrome-mcp-rules-cleanup` / `chore/chrome-mcp-rules-cleanup`.
+
+**Governing task (from `/smart-commit` invocation, args: "and admin merge, sync to local, cleanup"):**
+group changes into atomic commits + push, then an "admin merge" step (ambiguous, not yet clarified
+with the user — likely `gh pr merge` w/ admin bypass, but the global rule says merges must go
+through a stack skill like `/stack-ship`, not hand-rolled `gh pr merge`), then sync local/main, then
+worktree/branch cleanup via the `stack-create` skill convention.
+
+**Decision made this session:** `chrome-mcp-efficiency` was authored as a **skill**
+(`ai/skills/chrome-mcp-efficiency/SKILL.md`), NOT wired into `.claude/CLAUDE.md` as an always-loaded
+rule — reversing the original plan. Reasoning: user asked for a best-practice recommendation rather
+than picking between the two offered options; browser automation is situational (like kubectl),
+not every-session baseline policy; verified the skill's content isn't redundant with Claude Code's
+built-in Chrome MCP system-prompt guidance before converting. See `plans/decisions.md` for the full
+entry.
+
+**Commit 1 of 3 — DONE** (`f834533`, `chore(rules): resolve M8 orphaned-rule audit findings`):
+staged/committed 9 files — `.claude/CLAUDE.md`, `ai/rules/agent-user-global.md` (M),
+`ai/rules/monitor-patterns.md`/`pctx-session-init.md`/`qmd-usage.md` (deleted, folded elsewhere),
+`ai/rules/tool-priority.md` (M), `ai/rules/kubectl-efficiency.md` → `ai/skills/kubectl-efficiency/SKILL.md`
+(renamed), `docs/agent-configuration-architecture.md` (M), `plans/2026-07-08-constitution-hooks-audit.md`
+(M, corrected stale "wired in" claim about the Chrome skill).
+
+**Commit 2 of 3 — NOT STARTED.** Stage + commit: `.claude/hooks/chrome-mcp-guard.sh` (new, untracked),
+`ai/skills/chrome-mcp-efficiency/SKILL.md` (new, untracked), `.claude/settings.json` (M — registers the
+new PreToolUse hook on `mcp__claude-in-chrome__.*`). Suggested type: `feat(hooks)`.
+
+**Commit 3 of 3 — NOT STARTED.** `docs(plans)` checkpoint commit: `plans/active-context.md`,
+`plans/decisions.md`, `plans/progress.md` (all M, currently unstaged).
+
+**Not yet done at all:**
+- Hook verification — never simulated a real `mcp__claude-in-chrome__*` PreToolUse payload against
+  `chrome-mcp-guard.sh` to confirm the advisory fires once and dedupes correctly.
+- Push to origin, PR creation (`gh pr list` earlier confirmed none exists), "admin merge" (unclarified
+  with user), sync-to-local, worktree/branch cleanup.
+- gh CLI ops in this repo must use the `arjaygg` personal account, not an EMU account (standing memory).
+
+plan: plans/2026-07-08-constitution-hooks-audit.md (M8 item)
+step: commit 1/3 done; commits 2-3, push, PR, merge clarification, sync, cleanup remain
+focus: (in a fresh session) stage+commit 2, stage+commit 3, push, then clarify "admin merge" before using a stack-merge skill
+
+## Previous (2026-07-16) — goal-authoring skill: grading + aggregation + viewer done; awaiting user review
 
 **Worktree/branch:** `.trees/goal-authoring-skill` / `feature/goal-authoring-skill`. Task: port the
 goal-authoring convention (discovered in `auc-dbprofiling`) into `ai/skills/goal-authoring/` using the

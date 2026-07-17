@@ -1,5 +1,27 @@
 # Progress — 2026-06-12
 
+## In Progress — Chrome MCP efficiency hook + M8 orphan cleanup (branch `chore/chrome-mcp-rules-cleanup`)
+
+- [x] Write `ai/rules/chrome-mcp-efficiency.md` (decision tree, required patterns, anti-patterns, exceptions)
+- [x] Write `.claude/hooks/chrome-mcp-guard.sh` (PreToolUse advisory hook, fires once per session, `chmod +x`)
+- [x] Register the hook in `.claude/settings.json` (`PreToolUse` matcher `mcp__claude-in-chrome__.*`)
+- [x] Wire `chrome-mcp-efficiency.md` into `.claude/CLAUDE.md` `@`-imports
+- [x] M8: delete `ai/rules/qmd-usage.md` (folded into `agent-user-global.md`/`tool-priority.md`)
+- [x] M8: delete `ai/rules/monitor-patterns.md` (folded into `agent-user-global.md`)
+- [x] M8: delete `ai/rules/pctx-session-init.md` (merged into `tool-priority.md` §6)
+- [x] M8: wire `ai/rules/hyper-atomic-commits.md` into `.claude/CLAUDE.md` `@`-imports
+- [x] M8: wire `ai/rules/context-window-discipline.md` into `.claude/CLAUDE.md` `@`-imports
+- [x] M8: convert `ai/rules/kubectl-efficiency.md` → `ai/skills/kubectl-efficiency/SKILL.md` (delete old rule file)
+- [x] Fix stale import-list claim in `docs/agent-configuration-architecture.md`
+- [x] Check off M8 in `plans/2026-07-08-constitution-hooks-audit.md` with full disposition summary
+- [x] Append ADL entry to `plans/decisions.md` (hook+rule architecture + M8 dispositions)
+- [ ] Verify the hook actually fires: simulate a `mcp__claude-in-chrome__*` PreToolUse payload and
+      confirm `chrome-mcp-guard.sh` emits its stderr advisory once, dedupes via the state file on a
+      second call, and correctly parses `.tool_name`/`.session_id` from stdin JSON
+- [ ] Run `git status`/`git diff` in the worktree to review the full changeset before staging
+- [ ] Ask the user whether to open a draft PR (per `stack-create` skill step 5) — not yet asked
+- [ ] Commit on `chore/chrome-mcp-rules-cleanup` — no commit made yet
+
 ## In Progress — goal-authoring skill (branch `feature/goal-authoring-skill`)
 
 - [x] Write skill draft in `ai/skills/goal-authoring/` (skill-creator process)
