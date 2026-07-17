@@ -278,6 +278,15 @@
             "command": "bash \"$HOME/.dotfiles/.claude/hooks/scratchpad-reread-guard.sh\""
           }
         ]
+      },
+      {
+        "matcher": "mcp__claude-in-chrome__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/chrome-mcp-guard.sh\""
+          }
+        ]
       }
     ],
     "PostToolUse": [
