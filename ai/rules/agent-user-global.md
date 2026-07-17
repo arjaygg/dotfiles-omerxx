@@ -131,7 +131,7 @@ Quick digest: default is `opusplan` (Opus in plan mode, Sonnet in execution); es
 
 ## Background Monitoring and Event Watching
 
-Match the primitive to whether the task is event-driven or time-driven: `Monitor` for "notify me when X happens" (zero token cost while silent); `Bash(run_in_background: true)` for one-shot "run this, tell me when done"; `/loop` or `CronCreate` for recurring work that needs LLM reasoning each tick; `CronCreate` → `RemoteTrigger` for cross-session scheduled watching. Full patterns and recipes: `/monitor-patterns` skill (`ai/skills/monitor-patterns/SKILL.md`).
+Match the primitive to whether the task is event-driven or time-driven: `Monitor` for "notify me when X happens" (zero token cost while silent); `Bash(run_in_background: true)` for one-shot "run this, tell me when done"; `/loop` or `CronCreate` for recurring work that needs LLM reasoning each tick; `CronCreate` → `RemoteTrigger` for cross-session scheduled watching. Full patterns and recipes: `/monitor-patterns` skill (`ai/skills/monitor-patterns/SKILL.md`) — note this skill is currently disabled via `skillOverrides` in `.claude/settings.json`, so read `ai/skills/monitor-patterns/SKILL.md` directly rather than expecting `/monitor-patterns` to auto-invoke.
 
 ---
 

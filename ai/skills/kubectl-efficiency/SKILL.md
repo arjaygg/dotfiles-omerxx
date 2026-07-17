@@ -1,4 +1,15 @@
-# kubectl Efficiency Rules
+---
+name: kubectl-efficiency
+description: Minimal-token kubectl command patterns — field extraction, log bounding, field-selector filtering, watch over polling. Use when writing or reviewing kubectl commands.
+version: 1.0.0
+disable-model-invocation: true
+triggers:
+  - kubectl-efficiency
+  - efficient kubectl
+  - minimize kubectl output
+---
+
+# Skill: kubectl-efficiency
 
 These rules apply whenever an agent primitive (skill, command, rule) writes or recommends kubectl commands.
 The goal is minimal token output — return only the data needed, nothing more.
