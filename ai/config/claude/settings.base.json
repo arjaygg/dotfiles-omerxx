@@ -106,7 +106,7 @@
   "enableAllProjectMcpServers": true,
   "skillOverrides": {
     "ado-workitem": "off",
-    "analytics-api-analyst": "off",
+    "ai-usage-analyst": "off",
     "aside": "off",
     "auc-dev-a": "off",
     "auc-dev-b": "off",

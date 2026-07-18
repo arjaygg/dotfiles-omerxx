@@ -4,7 +4,7 @@ description: >
   Generic data analyst framework using a T1→T4 tier escalation pattern.
   Use this whenever you need to structure a data investigation — from quick
   snapshot to deep root-cause to visual report to ongoing monitoring.
-  Domain-specific skills (quarantine-analyst, analytics-api-analyst) inherit
+  Domain-specific skills (quarantine-analyst, ai-usage-analyst) inherit
   this pattern. Invoke as /data-analyst.
 version: 1.0.0
 triggers:
@@ -155,4 +155,4 @@ Raw API/files  → ctx_execute reads fs/fetch — never Bash for >20 lines
 ## Related Skills
 
 - `quarantine-analyst` — T1–T4 for SQL Server `config.DataQuarantine`
-- `analytics-api-analyst` — T1–T4 for Anthropic Analytics API
+- `ai-usage-analyst` — T1–T4 for Claude Code + Cursor usage analytics
