@@ -31,8 +31,8 @@ karabiner/automatic_backups/
 # stack-ship tool state (audit log, machine-local)
 .stack-ship/
 
-# Claude Code hook runtime state (advisor-escalate failure-streak tracking)
-.claude/hooks/.state/advisor-escalate/
+# Claude Code hook runtime state (advisor-escalate failure-streak tracking, chrome-mcp-guard markers)
+.claude/hooks/.state/
 
 # AI Engineering Coach — upstream content (synced via ai/skills/coach/sync.sh)
 ai/skills/coach/rules/
