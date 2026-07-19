@@ -39,7 +39,7 @@ gui_log_window: false
 # You can then open the dashboard by asking your agent to do so (e.g., by saying "open the dashboard"), Serena provides
 # a tool for this.
 # Further information: https://oraios.github.io/serena/02-usage/060_dashboard.html
-web_dashboard: false
+web_dashboard: true
 
 # the address the web dashboard will listen on (bind address).
 web_dashboard_listen_address: 127.0.0.1

@@ -1,2 +1,8 @@
 /cache
+cache/
+logs/
+language_servers/
+news*.json
+news*.txt
+news_read.pkl
 .serena/
