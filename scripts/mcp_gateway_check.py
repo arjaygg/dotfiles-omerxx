@@ -18,6 +18,8 @@ CLIENT_JSON_CONFIGS = {
     ".mcp.json": {"pctx"},
     ".cursor/mcp.json": {"pctx"},
     ".gemini/mcp.json": {"pctx"},
+    ".gemini/settings.json": {"pctx"},
+    ".gemini/config/mcp_config.json": {"pctx", "notebooklm", "chrome-devtools"},
     ".windsurf/mcp_config.json": {"pctx", "lean-ctx"},
 }
 
@@ -52,18 +54,41 @@ def _client_servers(config: object) -> set[str]:
     return set(servers) if isinstance(servers, dict) else set()
 
 
-def _has_pctx_stdio(config: object) -> bool:
+def _pctx_entry(config: object) -> dict[str, Any]:
     if not isinstance(config, dict):
-        return False
+        return {}
     servers = config.get("mcpServers", {})
     if not isinstance(servers, dict):
-        return False
+        return {}
     pctx = servers.get("pctx", {})
-    if not isinstance(pctx, dict):
-        return False
+    return pctx if isinstance(pctx, dict) else {}
+
+
+def _uses_agy_legacy_shim(config: object) -> bool:
+    pctx = _pctx_entry(config)
     command = str(pctx.get("command", ""))
     args = pctx.get("args", [])
-    return command.endswith("pctx") and isinstance(args, list) and "mcp" in args and "start" in args
+    if not (command.endswith("agy-mcp-legacy-shim.py") and isinstance(args, list)):
+        return False
+    try:
+        backend = args[args.index("--") + 1 :]
+    except ValueError:
+        return False
+    return (
+        bool(backend)
+        and Path(str(backend[0])).name == "pctx"
+        and "mcp" in backend
+        and "start" in backend
+    )
+
+
+def _has_pctx_stdio(config: object) -> bool:
+    pctx = _pctx_entry(config)
+    command = str(pctx.get("command", ""))
+    args = pctx.get("args", [])
+    return (
+        command.endswith("pctx") and isinstance(args, list) and "mcp" in args and "start" in args
+    ) or _uses_agy_legacy_shim(config)
 
 
 def _check_json_client(root: Path, relative: str, allowed: set[str]) -> list[GatewayResult]:
@@ -87,6 +112,13 @@ def _check_json_client(root: Path, relative: str, allowed: set[str]) -> list[Gat
         if _has_pctx_stdio(config)
         else _fail("client-pctx-stdio", relative, "pctx does not invoke `pctx mcp start`")
     )
+    if _uses_agy_legacy_shim(config):
+        shim = root / ".local/bin/agy-mcp-legacy-shim.py"
+        results.append(
+            _ok("client-legacy-shim-present", relative)
+            if shim.is_file()
+            else _fail("client-legacy-shim-present", relative, "AGY legacy MCP shim is missing")
+        )
     for server in sorted(servers - allowed):
         results.append(_fail("client-unapproved-server", relative, f"unapproved direct server {server!r}"))
     for server in sorted(servers & allowed):
