@@ -49,6 +49,29 @@ _deny() {
     exit 0
 }
 
+# Per-session, per-routing-class violation counter (R-tool-routing, 2026-07-25).
+# A 2nd+ violation of the SAME class within a session appends an escalation
+# directive so the model stops retrying ad-hoc and loads the tool-routing
+# skill's full decision tables instead of guessing again.
+_track_routing_violation() {
+    local class="$1"
+    local counter_file="/tmp/.claude-routing-violation-$(id -u)-${EFFECTIVE_SESSION_ID:-default}-${class}"
+    local count=0
+    [[ -f "$counter_file" ]] && count=$(cat "$counter_file" 2>/dev/null || echo 0)
+    count=$((count + 1))
+    printf '%s' "$count" > "$counter_file" 2>/dev/null || true
+    printf '%s' "$count"
+}
+
+_deny_routing() {
+    local class="$1" reason="$2" count
+    count=$(_track_routing_violation "$class")
+    if [[ "$count" -ge 2 ]]; then
+        reason+=$'\n'"[ESCALATE] Invoke Skill(tool-routing) before your next tool call."
+    fi
+    _deny "$reason"
+}
+
 # RC7 fix (R8b, 2026-07-09): every _deny() call and every clean pass-through
 # runs through here via EXIT trap (installed after hook-metrics.sh is
 # sourced below) so hook_events/learning_events actually get populated —
@@ -569,9 +592,9 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
         fi
     fi
 
-    # 2a. grep (but not git grep) — no Grep tool exists in this session; use LeanCtx.ctxSearch
-    if [[ ( "$CMD" == grep\ * || "$CMD" == grep\ -* ) && "$CMD" != *"git grep"* ]]; then
-        _deny "BLOCKED: Use LeanCtx.ctxSearch instead of 'grep' (no Grep tool exists in this session).
+    # 2a. grep/rg (but not git grep) — no Grep tool exists in this session; use LeanCtx.ctxSearch
+    if [[ ( "$CMD" == grep\ * || "$CMD" == rg\ * ) && "$CMD" != *"git grep"* ]]; then
+        _deny_routing "search" "BLOCKED: Use LeanCtx.ctxSearch instead of 'grep'/'rg' (no Grep tool exists in this session).
   Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ query: '<pattern>' })
   Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
     fi
@@ -590,7 +613,7 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
             echo "WARN: 'find' permitted for a dot-directory target — Serena.findFile fails silently inside .serena/.claude/.cursor/.mcp.json (issue #853, see ai/rules/tool-priority.md §6). Output capped to 100 lines via '| head -100'." >&2
             exit 0
         fi
-        _deny "BLOCKED: Use Serena.findFile instead of 'find' (no Glob tool exists in this session).
+        _deny_routing "find" "BLOCKED: Use Serena.findFile instead of 'find' (no Glob tool exists in this session).
   Call via: mcp__pctx__execute_typescript with: await Serena.findFile('<filename>')
   Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
     fi
@@ -602,7 +625,7 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
             echo "WARN: 'ls' permitted for a dot-directory target — Serena.listDir/findFile fail silently inside .serena/.claude/.cursor/.mcp.json (issue #853, see ai/rules/tool-priority.md §6). Output capped to 100 lines via '| head -100'." >&2
             exit 0
         fi
-        _deny "BLOCKED: Use Serena.listDir instead of 'ls' (no Glob tool exists in this session).
+        _deny_routing "list" "BLOCKED: Use Serena.listDir instead of 'ls' (no Glob tool exists in this session).
   Call via: mcp__pctx__execute_typescript with: await Serena.listDir('<path>')
   Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
     fi
