@@ -26,7 +26,12 @@ Design-complete. `plans/2026-07-25-agentic-git-pipeline.md` (this worktree, bran
 breakdown — treat it as the durable design reference this goal summarizes, not something to
 duplicate line-by-line. Step 0 (Stop-hook contract spike) is complete: findings folded into the
 plan's Step 0 section (2026-07-25); the spike script was throwaway and has been deleted per its own
-spec, nothing from it is committed. Awaiting explicit user go-ahead before starting Step 1.
+spec, nothing from it is committed. Step 1 (read-only pipeline status aggregator) is complete and
+committed: `scripts/ai/pipeline-status.sh` (new) + `scripts/test_pipeline_status.py` (15 fixture
+tests, all passing — all 7 signals, the D4 worktree-topology case, and both D1b stale-`ci-status.md`
+variants) landed as `dd5d248`; the `plans/active-context.md` checkpoint landed as `6f2bcc6`.
+Verified: `bash -n` syntax check, live dogfood run, ~0.197–0.201s warm-repo timing (well under the
+200ms budget), zero network calls. Awaiting explicit user go-ahead before starting Step 2.
 
 `scripts/validate_goals.py` (the validator the `goal-authoring` convention calls for) does not
 exist in this repo, so this goal file has not been machine-validated for heading order or index
@@ -55,10 +60,11 @@ consistency — only manually checked against the convention.
    empirically that a Stop hook returning `{"decision":"block","reason":"..."}` keeps the turn
    alive and sets `stop_hook_active` on re-invocation; prototype the 2-deny-then-degrade anti-loop
    counter.
-2. **Read-only pipeline status aggregator** — new `scripts/ai/pipeline-status.sh`. Zero network
-   calls, <200ms on a warm repo, classifies all 7 signals (`split_needed`/`commit_due`/`pr_due`/
-   `ci_pending`/`merge_due`/`sync_due`/`cleanup_due`) against fixtures including a multi-worktree
-   topology and a stale/mismatched `ci-status.md`.
+2. **Read-only pipeline status aggregator** — **done** (`dd5d248`). `scripts/ai/pipeline-status.sh`.
+   Zero network calls, <200ms on a warm repo (measured ~0.197–0.201s), classifies all 7 signals
+   (`split_needed`/`commit_due`/`pr_due`/`ci_pending`/`merge_due`/`sync_due`/`cleanup_due`) against
+   15 fixtures including a multi-worktree topology and a stale/mismatched `ci-status.md`
+   (`scripts/test_pipeline_status.py`, 15/15 passing).
 3. **Validation selection** — new `scripts/ai/validate-changeset.sh`, plus a stubbed empty
    `pipeline: {}` sibling block in `.claude-atomic.yaml` to unblock Step 4. Routes docs/config/
    source/unknown subsystems (`.claude/hooks/*.sh` must classify as `source`); never blocks on
