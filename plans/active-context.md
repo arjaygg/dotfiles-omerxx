@@ -1,5 +1,26 @@
 # Active Context
 
+## Current (2026-07-25) — Agentic git pipeline plan: revised with 2 advisor review rounds folded in; awaiting user go-ahead
+
+**Worktree/branch:** `.trees/docsrevise-agentic-git-pipeline-plan` / `docs/revise-agentic-git-pipeline-plan`, isolated per explicit user instruction ("fold to a plan, but create a new stack branch to isolate the changes").
+
+Plan originally authored by a Fable plan agent, then reviewed by two independent fresh Fable
+advisor passes: round 1 (`advisor-review-git-pipeline-plan` — hook mechanics: Stop-hook JSON
+contract, autonomy-tier carve-outs, validation coverage, step sequencing) and round 2
+(`advisor-review-governance-gaps` — audit trail, kill switch, rollback runbook, self-escalation,
+concurrent sessions, identity assertion). All findings from both rounds folded into
+`plans/2026-07-25-agentic-git-pipeline.md` in this worktree: corrected D1's false claim about
+reusing `task-gate.sh`'s deny pattern (wrong Stop-hook JSON shape), added D1a/D1b (state-file
+split, `ci-status.md` staleness fix), D3a (gh identity assertion), D4a (CI-wait Monitor bridge),
+D6 (new governance section: audit trail, kill-switch scope, rollback runbook, concurrent-session
+handling), a new Step 0 spike, and several always-confirm carve-outs.
+
+**Nothing implemented yet** — planning only. Plan has not yet been shown to the user this turn.
+
+plan: plans/2026-07-25-agentic-git-pipeline.md
+step: 0 of 7 (revised plan written, no step started)
+focus: get user sign-off on the revised plan, then Step 0 (Stop-hook contract spike)
+
 ## Current (2026-07-17) — Chrome MCP efficiency hook + M8 orphan cleanup: commit 1 of 3 landed; session has hit 8 compactions, restart recommended
 
 **COMPACTION BRAKE — read this first:** this session has compacted 8 times. Per
