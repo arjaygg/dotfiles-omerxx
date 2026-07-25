@@ -163,6 +163,35 @@ User: "Create a branch for the next story" (while already inside `.trees/some-fe
 Action: `$HOME/.dotfiles/.claude/scripts/stack create feature/next-story [base]`
 Result: New worktree at `<main-repo>/.trees/next-story/` (sibling of `some-feature`, not nested under it)
 
+## Working Directory Rules (worktree-safe paths)
+
+Never `cd`, and never assume a "canonical" project location. `cd` breaks git worktrees
+(`.trees/<branch>/` are separate working directories) and bakes in assumptions about project
+layout. Commands and scripts must work from wherever they are invoked — main repo or worktree.
+
+1. Never use `cd` unless the user explicitly requests it.
+2. Use relative paths from the current working directory (e.g. `./scripts/...`).
+3. Use absolute paths when referring to a specific location.
+4. Don't assume canonical locations — work with what's provided.
+5. Scripts must be location-agnostic.
+
+```bash
+# WRONG - using cd
+cd /path/to/repo && ./scripts/run-tests.sh
+
+# CORRECT - use absolute path
+/path/to/repo/scripts/run-tests.sh
+
+# CORRECT - use relative path from current directory
+./scripts/run-tests.sh
+
+# WRONG - assuming location
+cd /Users/name/git/project && pytest tests
+
+# CORRECT - work from current directory
+pytest ./tests
+```
+
 ## Related Skills
 
 - **stack-navigate**: Move between branches (worktree-aware) via tmux

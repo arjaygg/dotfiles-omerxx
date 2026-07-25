@@ -54,6 +54,13 @@ A branch request ALWAYS means creating/switching the actual git branch — a wor
 
 ## Plan Documents
 
+**Naming and location.** Plan files are named `YYYY-MM-DD-<context>.md`, where `<context>` is a
+3-5 word kebab-case summary of the task (e.g. `2026-03-02-refactor-auth-flow.md`). Use the
+current date as the prefix; multiple plans on the same day each get their own context. Session-state
+plans default to `plans/` (the `plansDirectory` in `~/.claude/settings.json`; create it if missing)
+— a project's own docs may route reviewable/tracked plans elsewhere (e.g. `docs/plans/`), and that
+routing wins.
+
 When working from a dated plan file (`plans/YYYY-MM-DD-<context>.md`):
 
 1. Add `plan: plans/YYYY-MM-DD-<context>.md` to `plans/active-context.md` at session start.
@@ -112,7 +119,10 @@ When spawning a subagent for research or codebase exploration, **prefer a fork**
 
 Model/effort/fast-mode selection (Sonnet/Opus/Haiku/Fable tiers, `opusplan` default, advisor auto-escalation, effort levels, fast mode, subagent model routing) is fully documented in the **`model-routing` skill** (`ai/skills/model-routing/SKILL.md`) — mirrors `.cursor/rules/model-routing.mdc` for the Cursor equivalent. Invoke it before a manual `/model`/`/effort` switch, before authoring a `.claude/agents/*.md` frontmatter `model:` field, or when deciding whether a task warrants Fable-tier escalation.
 
-Quick digest: default `opusplan`; escalate to Fable only for beyond-frontier/stalled work; `/effort low`/`max` for mechanical vs. architecture work; `/plan` for multi-file architectural changes.
+Quick digest: default `opusplan` (Sonnet for execution, Opus auto-selected in plan mode); escalate to Fable only for beyond-frontier/stalled work; `/effort low`/`max` for mechanical vs. architecture work; `/plan` for multi-file architectural changes. Override the default manually when task signals warrant it.
+
+`primitive-hint.sh` fires on every prompt and suggests the right primitive when the task type
+differs from the default — **advisory only**, follow or ignore.
 
 ---
 
