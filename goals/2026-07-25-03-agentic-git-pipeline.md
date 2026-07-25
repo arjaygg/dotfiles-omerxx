@@ -21,10 +21,12 @@ a user-directed D7 cross-agent-portability decision, all folded into
 
 ## Current state
 
-Design-complete, zero implementation. `plans/2026-07-25-agentic-git-pipeline.md` (this worktree,
-branch `docs/revise-agentic-git-pipeline-plan`) holds the full D1–D7 decision record and Step 0–7
+Design-complete. `plans/2026-07-25-agentic-git-pipeline.md` (this worktree, branch
+`docs/revise-agentic-git-pipeline-plan`) holds the full D1–D7 decision record and Step 0–7
 breakdown — treat it as the durable design reference this goal summarizes, not something to
-duplicate line-by-line. No user go-ahead yet to start Step 0.
+duplicate line-by-line. Step 0 (Stop-hook contract spike) is complete: findings folded into the
+plan's Step 0 section (2026-07-25); the spike script was throwaway and has been deleted per its own
+spec, nothing from it is committed. Awaiting explicit user go-ahead before starting Step 1.
 
 `scripts/validate_goals.py` (the validator the `goal-authoring` convention calls for) does not
 exist in this repo, so this goal file has not been machine-validated for heading order or index

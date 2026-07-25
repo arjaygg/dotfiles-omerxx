@@ -227,6 +227,30 @@ degrade) to validate the anti-loop counter design in D1 before Step 3 is built o
 assumptions. If flipping `task-gate.sh`'s level to `block` temporarily (in a scratch/local config
 only, reverted after) is used to observe real deny behavior, do so only in this isolated worktree.
 
+**Findings (empirical, confirmed 2026-07-25, spike script deleted per "none committed"):**
+1. A Stop hook returning `{"decision":"block","reason":"..."}` does keep the turn alive in this
+   Claude Code version — confirmed live, not just from docs/task-gate.sh reading.
+2. `stop_hook_active` is **not scoped to the hook that caused the block** — it reflects "this Stop
+   event followed a prior hook block," globally across all registered Stop hooks in the dispatch.
+   Observed: on the spike script's very first-ever invocation, `stop_hook_active` was already
+   `true`, because an unrelated, already-active `/goal` session Stop hook had been blocking earlier
+   in the same session. **Design implication for D1's anti-loop counter:** per-stage/per-script deny
+   counters must be tracked in the hook's own state file (as designed), not inferred from
+   `stop_hook_active` — that flag alone cannot distinguish "my own prior deny" from "some other
+   hook's prior deny."
+3. The two-stage deny-then-degrade prototype (stage A denies once, stage B denies once on the next
+   Stop, third invocation degrades to allow-stop) worked exactly as designed, and did so
+   independently of the unrelated `/goal` hook's own concurrent blocking — confirming multiple Stop
+   hooks registered in the same dispatch (one via session `/goal`, one via `settings.local.json`)
+   compose independently; one hook's allow-stop does not override another's block. `git-pipeline-gate.sh`
+   (Step 3) must therefore treat its own degrade-to-warn purely as "stop asking," not "force the
+   session to end" — another concurrently active Stop hook can still legitimately keep blocking.
+4. Reconfirmed via live source read (not just design-doc assumption): `task-gate.sh`'s current
+   block branch emits the PreToolUse `hookSpecificOutput.permissionDecision` JSON shape, not the
+   Stop-hook `{"decision":"block","reason":...}` shape — this is a real, pre-existing bug in the
+   live script, independent of this pipeline work, and should be filed/fixed separately from D1's
+   corrected design (which already specifies the right shape for new hooks).
+
 ### Step 1 — Read-only pipeline status aggregator
 **Files:** `scripts/ai/pipeline-status.sh` (new)
 **Accepts:** Zero network calls; completes in <200ms on a warm repo; correctly classifies all 7
