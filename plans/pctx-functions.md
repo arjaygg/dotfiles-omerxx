@@ -1,3 +1,13 @@
+# pctx Functions — 2026-07-25 (refreshed; no drift vs 2026-07-15 snapshot)
+
+**2026-07-25 session note:** `mcp__pctx__list_functions` re-run for the tool-routing enforcement
+architecture implementation (pre-tool-gate-v2.sh escalation counter, primitive-hint.sh keyword
+classes, tool-priority.md trim, tool-routing SKILL.md description rewrite, setup.sh symlink
+assertion). Namespace/function set matches the 2026-07-15 snapshot exactly. `Serena.initialInstructions()`
+and `LeanCtx.ctxCall({name:"ctx_intent"})` both succeeded this session.
+
+---
+
 # pctx Functions — 2026-07-15 (refreshed; no drift vs 2026-07-14 snapshot)
 
 **2026-07-16 session note:** `mcp__pctx__list_functions` re-run for the
