@@ -179,3 +179,24 @@ Run `mcp__pctx__list_functions` before the first project access in a session. Wr
 | Multiple `Read` calls in sequence | `LeanCtx.ctxCall({name: "ctx_multi_read", ...})` |
 
 If you find yourself reaching for Grep, ask: **"Is this a symbol lookup or a pattern search?"** Symbol lookup (known name) → `Serena.findSymbol`. Structural pattern → `LeanCtx.ctxSearch`. Text pattern, non-code → `Grep tool` is acceptable. Finding a file → `Glob`.
+
+## Task Tracking Discipline (Multi-Agent)
+
+When spawning subagents for multi-step work:
+1. Create the task list first: `TaskCreate` with all subtasks.
+2. Export `CLAUDE_CODE_TASK_LIST_ID=<id>` in each subagent's environment.
+3. Each subagent uses `TaskUpdate` (not a new `TaskCreate`) to report progress.
+4. The orchestrator polls `TaskGet` before aggregating results.
+
+Never abandon a `TaskCreate` list — orphaned lists accumulate across sessions. Mark cancelled
+tasks with status `cancelled`. This is a shared task-list system for coordinating *multiple*
+agents — single-agent step tracking uses `TodoWrite` instead (see `agent-user-global.md` §
+TodoWrite Mandate).
+
+## Serena Memory Session-Init Workflow
+
+If `.serena/memories/` exists, call `Serena.listMemories()` at session start and read
+`START_HERE` before touching source files.
+
+Memory naming: `architecture/<topic>`, `story_<N>_<sprint>/<topic>`, `workflows/<process>`.
+Don't duplicate to markdown what's already in `.serena/memories/`.
