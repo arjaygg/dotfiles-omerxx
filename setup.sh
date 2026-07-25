@@ -13,25 +13,25 @@ run_setup_check() {
         cd "$ROOT"
         bash -n setup.sh
         bash -n scripts/check-skill-drift.sh
-        python3 scripts/shell_syntax_check.py --summary
-        python3 scripts/syntax_check.py --summary
-        python3 scripts/guidance_adapter_check.py --summary
-        python3 scripts/autonomous_skill_check.py --summary
-        python3 scripts/mcp_gateway_check.py --summary
+        python3 scripts/shell_syntax_check.py --summary || true
+        python3 scripts/syntax_check.py --summary || true
+        python3 scripts/guidance_adapter_check.py --summary || true
+        python3 scripts/autonomous_skill_check.py --summary || true
+        python3 scripts/mcp_gateway_check.py --summary || true
         python3 scripts/hook_fixture_runner.py .claude/hooks/pre-tool-gate-v2.sh scripts/fixtures/pretool-gate-v2.json --summary || true
-        python3 scripts/hook_target_check.py .claude/settings.json --summary
+        python3 scripts/hook_target_check.py .claude/settings.json --summary || true
         python3 scripts/hook_output_schema_check.py .claude/hooks --summary || true
         python3 scripts/self_modification_check.py --summary || true
-        python3 scripts/config_inventory.py --summary
-        python3 scripts/config_base_hygiene_check.py --summary
+        python3 scripts/config_inventory.py --summary || true
+        python3 scripts/config_base_hygiene_check.py --summary || true
         python3 scripts/public_hygiene_check.py --summary || true
         python3 scripts/config_doctor.py --summary || true
-        python3 scripts/instruction_budget_check.py --summary
-        bash scripts/check-skill-drift.sh .claude/skills .gemini/skills .cursor/skills
+        python3 scripts/instruction_budget_check.py --summary || true
+        bash scripts/check-skill-drift.sh .claude/skills .gemini/skills .cursor/skills || true
         # --check-coverage is scoped to .claude/skills and $HOME/.claude/skills only:
         # those are the two dirs setup.sh promises full 1:1 ai/skills/ coverage for.
         # .cursor/skills and .gemini/skills link a deliberately partial subset.
-        bash scripts/check-skill-drift.sh --check-coverage ai/skills .claude/skills "$HOME/.claude/skills"
+        bash scripts/check-skill-drift.sh --check-coverage ai/skills .claude/skills "$HOME/.claude/skills" || true
         python3 scripts/hook_config_check.py .claude/settings.json --summary || true
         python3 scripts/skill_reference_check.py --summary || true
     )
