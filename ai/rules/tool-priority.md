@@ -37,10 +37,10 @@ Always use tools in this order. Stop at the first that satisfies your need. **Ne
 
 | Task | 1st Priority | 2nd Priority | Avoid |
 |---|---|---|---|
-| **Directory Listing** | `Serena.listDir` | `Glob` | `ls`, `find` |
+| **Directory Listing** | `Glob` | — | `ls`, `find`, `Serena.listDir` (excluded in claude-code context) |
 | **Explore file structure** | `Serena.getSymbolsOverview` | `Read (limit/offset)` | `cat`, `head`, `tail` |
 | **Find symbol by name** | `Serena.findSymbol` | `Serena.searchForPattern` | `grep`, `rg` |
-| **Pattern/regex search** | `Serena.searchForPattern` (+ `restrict_search_to_code_files: true`) | `Grep tool` | `grep`, `rg` |
+| **Pattern/regex search** | `Serena.searchForPattern` (+ `restrict_search_to_code_files: true`) | `LeanCtx.ctxSearch` | `grep`, `rg`, `Grep tool` (hard-blocked) |
 | **Finding Files** | `Serena.findFile` | `Glob` | `find` |
 | **Project knowledge** | `Serena.readMemory` | Read `.serena/memories/*.md` | re-deriving from source |
 | **Pre-edit impact analysis** | `Serena.findReferencingSymbols` | `searchForPattern` with type name | skipping impact check |
