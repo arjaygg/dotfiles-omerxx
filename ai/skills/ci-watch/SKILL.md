@@ -140,3 +140,27 @@ Return immediately.
 - `/ci-monitor` — cicd-monitor agent with webhook support (for complex pipelines)
 - Monitor patterns: `ai/skills/monitor-patterns/SKILL.md` (read directly — the `/monitor-patterns`
   skill is currently disabled via `skillOverrides`)
+
+
+## Polling Budget & Escalation
+
+**Rule:** never poll CI synchronously from the main session. Polling belongs in a background
+watcher (this skill's poller, or `Monitor`), never in a foreground `sleep`/`gh run list` loop —
+each foreground check costs ~200 tokens and blocks the session.
+
+| Context | Cadence |
+|---|---|
+| Background poller (this skill) | 30s (default `POLL_INTERVAL`) — cheap, no LLM turn per tick |
+| Manual/foreground check, if unavoidable | at most once per 60s |
+| Manual checks with no state change | stop after 3 consecutive unchanged polls and report status — there is no new information to gain |
+
+These are not in conflict: the 30s cadence is the background shell loop, the 60s floor and the
+3-strike stop apply only to checks that consume an LLM turn.
+
+**Retry/escalation:**
+1. Transient failures (runner lost, network) → the poller retries within `MAX_POLLS`.
+2. Real failure → notify once with the failing job name; do not re-run automatically unless asked.
+3. `MAX_POLLS` exhausted → report "still running, watcher timed out", do not silently drop it.
+
+**Workflow rule:** after pushing a branch, invoke `/ci-watch <PR_NUMBER>` and immediately continue
+to the next task. Do not enter a polling loop; do not call `gh run list` in a sleep loop.
