@@ -1,2 +1,2 @@
 #!/bin/sh
-exec lean-ctx hook rewrite
+exec "/Users/axos-agallentes/.cargo/bin/lean-ctx" hook rewrite
