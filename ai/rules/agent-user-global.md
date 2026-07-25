@@ -63,20 +63,7 @@ When working from a dated plan file (`plans/YYYY-MM-DD-<context>.md`):
 5. Check off `progress.md` checkboxes when each `TodoWrite` item is completed.
 6. Do not begin Step N+1 until Step N's `**Accepts:**` criteria are met.
 
-**Structured step format:**
-```markdown
-## Step N — <title>
-**Files:** `path/to/file.ts`
-**Accepts:** <done criteria — human-readable completion signal>
-- [ ] checkbox item
-```
-
-**active-context.md pointer fields:**
-```markdown
-plan: plans/2026-03-30-my-feature.md
-step: 2 of 5
-focus: write migration
-```
+**Format:** each `## Step N` declares `**Files:**` and `**Accepts:**` fields plus checkbox items; `plans/active-context.md` carries `plan:`, `step: N of M`, `focus:` pointer fields.
 
 Hooks resolve the active plan at runtime via `grep "^plan:" plans/active-context.md`. This grep-based lookup is the only mechanism for cross-session plan continuity — there is no `@plans/active-context.md` include in any `CLAUDE.md` in the chain.
 
@@ -125,7 +112,7 @@ When spawning a subagent for research or codebase exploration, **prefer a fork**
 
 Model/effort/fast-mode selection (Sonnet/Opus/Haiku/Fable tiers, `opusplan` default, advisor auto-escalation, effort levels, fast mode, subagent model routing) is fully documented in the **`model-routing` skill** (`ai/skills/model-routing/SKILL.md`) — mirrors `.cursor/rules/model-routing.mdc` for the Cursor equivalent. Invoke it before a manual `/model`/`/effort` switch, before authoring a `.claude/agents/*.md` frontmatter `model:` field, or when deciding whether a task warrants Fable-tier escalation.
 
-Quick digest: default is `opusplan` (Opus in plan mode, Sonnet in execution); escalate to Fable only for beyond-frontier/stalled work; `/effort low` for mechanical tasks, `/effort max` for architecture/hard-debugging; enter `/plan` mode for multi-file architectural changes.
+Quick digest: default `opusplan`; escalate to Fable only for beyond-frontier/stalled work; `/effort low`/`max` for mechanical vs. architecture work; `/plan` for multi-file architectural changes.
 
 ---
 
@@ -170,6 +157,3 @@ For any request containing 2+ distinct actions joined by AND/THEN/ALSO/PLUS, bef
 
 Before editing >3 files: list the files and why each is in scope. Stop if any are not obviously connected to the request.
 
-## Unified AI Hub Structure
-
-See "AI Agent Primitives Configuration" above — same `~/.dotfiles/ai/` hub (skills/commands/styles/rules), symlinked into every agent's config directory.

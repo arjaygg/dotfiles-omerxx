@@ -1,2 +1,2 @@
 #!/bin/sh
-exec lean-ctx hook redirect
+exec "/Users/axos-agallentes/.cargo/bin/lean-ctx" hook redirect

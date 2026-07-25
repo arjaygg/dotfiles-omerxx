@@ -1,8 +1,10 @@
 {
   "mcpServers": {
     "pctx": {
-      "command": "pctx",
+      "command": "/Users/axos-agallentes/.local/bin/agy-mcp-legacy-shim.py",
       "args": [
+        "--",
+        "/Users/axos-agallentes/homebrew/bin/pctx",
         "mcp",
         "start",
         "-q",

@@ -55,7 +55,7 @@ Always use tools in this order. Stop at the first that satisfies your need. **Ne
 
 ## 2. Multi-File Context Selection
 
-For **5+ files** across multiple packages, or when full-repo/multi-package context is needed, use the **`repomix` skill** (`ai/skills/repomix/SKILL.md`) rather than sequential Reads — it covers scope selection (full repo vs. focused package `--include`), token-budget targets, and the MCP `@repomix` path. For **<5 files**, plain `Read` + `Serena.findSymbol` (sequential) is faster than packing.
+**5+ files** across packages → `repomix` skill (`ai/skills/repomix/SKILL.md`). **<5 files** → plain `Read` + `Serena.findSymbol`.
 
 ---
 
@@ -100,15 +100,9 @@ If an `execute_typescript` batch mixes successful results with `.catch(() => ({e
 
 ---
 
-## 4. Serena API Convention
-All Serena methods use **camelCase**.
-- `Serena.listDir` (NOT `list_dir`)
-- `Serena.findSymbol` (NOT `find_symbol`)
-- `Serena.searchForPattern` (NOT `search_for_pattern`)
+## 4. Serena Quirks and Mandatory Rules
 
----
-
-## 5. Serena Quirks and Mandatory Rules
+All Serena methods use **camelCase** (`findSymbol`, not `find_symbol`; `searchForPattern`, not `search_for_pattern`).
 
 `Serena.initialInstructions()` does not cover any of this — these are project-specific quirks, not part of Serena's own manual.
 
@@ -120,7 +114,7 @@ All Serena methods use **camelCase**.
 
 ---
 
-## 6. Session Start (Required)
+## 5. Session Start (Required)
 Run `mcp__pctx__list_functions` before the first project access in a session. Write results to `plans/pctx-functions.md` and check its timestamp (TTL: 1 day).
 
 **Enforcement:** `pre-tool-gate-v2.sh` Section 0 will **block** any Grep call until this sequence completes. Skipping this step means Grep calls will be blocked mid-task — complete the init sequence first to avoid interruption.
@@ -148,16 +142,9 @@ Skip the full sequence only if `plans/pctx-functions.md` already exists and was 
 
 ---
 
-## 7. Extended Tool Ecosystem Routing
+## 6. Extended Tool Ecosystem Routing
 
-Beyond §0/§1 above: the full Qmd-vs-LeanCtx-vs-Serena-vs-Grep decision tables, the Graphify pctx/CLI two-interface breakdown, the Qmd/LeanCtx API-consolidation notes, session-continuity tooling, and the complete list of common tool-selection violations all live in the **`tool-routing` skill** (`ai/skills/tool-routing/SKILL.md`). Invoke it when unsure which tool fits a docs search, large-file read, shell command, web fetch, or graph query — or after a hook block you don't understand.
-
-Quick digest:
-- **Docs/knowledge lookup:** by concept → `Qmd.query` (`hyde`/`vec` sub-query); by keyword → `Qmd.query` (`lex`). Never Grep/`LeanCtx.ctxSearch` on `docs/**/*.md`.
-- **Code navigation** ("where is X", "what calls Y", "what's in this package") → Serena, never LeanCtx (it has no symbol index).
-- **Shell output >20 lines** → `LeanCtx.ctxShell`; simple git/mkdir/rm → plain `Bash`.
-- **`WebFetch`** always needs a focused `prompt` param; `WebSearch` is preferred for discovery.
-- **Code health** → `/code-health` skill. **PR/graph queries** → `Graphify` (pctx namespace) or the `graphify` CLI.
+Full Qmd-vs-LeanCtx-vs-Serena-vs-Grep decision tables, Graphify pctx/CLI breakdown, session-continuity tooling, and tool-selection violations → **`tool-routing` skill** (`ai/skills/tool-routing/SKILL.md`). Invoke when unsure which tool fits a docs search, large-file read, shell command, web fetch, or graph query — or after an unexplained hook block.
 
 ---
 *Maintained at: `/Users/axos-agallentes/.dotfiles/ai/rules/tool-priority.md`*
