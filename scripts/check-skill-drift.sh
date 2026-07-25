@@ -16,6 +16,48 @@ set -euo pipefail
 DEFAULT_SKILLS_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.claude/skills"
 PRUNE_STALE_LINKS=0
 
+if [[ "${1:-}" == "--check-coverage" ]]; then
+    # Fails loudly if any ai/skills/*/ with a SKILL.md/skill.md lacks a live
+    # symlink in one or more target dirs — the inverse of the drift check
+    # below, which only validates entries that already exist.
+    shift
+    SOURCE_SKILLS_DIR="${1:?--check-coverage requires a source skills dir (e.g. ai/skills)}"
+    shift
+    TARGET_DIRS=("$@")
+    if [[ ${#TARGET_DIRS[@]} -eq 0 ]]; then
+        echo "usage: $0 --check-coverage SOURCE_SKILLS_DIR TARGET_DIR [TARGET_DIR ...]" >&2
+        exit 2
+    fi
+
+    shopt -s nullglob
+    MISSING_COVERAGE=()
+    for skill_dir in "$SOURCE_SKILLS_DIR"/*/; do
+        [[ -d "$skill_dir" ]] || continue
+        { [[ -f "${skill_dir}SKILL.md" ]] || [[ -f "${skill_dir}skill.md" ]]; } || continue
+        name="$(basename "${skill_dir%/}")"
+        for target_dir in "${TARGET_DIRS[@]}"; do
+            entry="$target_dir/$name"
+            if [[ -L "$entry" ]] && [[ -e "$entry" ]]; then
+                continue
+            fi
+            MISSING_COVERAGE+=("$target_dir/$name (source: $skill_dir)")
+        done
+    done
+
+    if [[ ${#MISSING_COVERAGE[@]} -eq 0 ]]; then
+        echo "✅ skill coverage — every $SOURCE_SKILLS_DIR skill has a live symlink in: ${TARGET_DIRS[*]}"
+        exit 0
+    fi
+
+    echo "❌ Skills missing a live symlink target:" >&2
+    for v in "${MISSING_COVERAGE[@]}"; do
+        echo "  - $v" >&2
+    done
+    echo "" >&2
+    echo "Fix: re-run setup.sh, or manually: ln -sfn '<canonical-skill-dir>' '<target-skill-dir>/<name>'" >&2
+    exit 1
+fi
+
 if [[ "${1:-}" == "--prune-stale-links" ]]; then
     PRUNE_STALE_LINKS=1
     shift

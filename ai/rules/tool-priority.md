@@ -53,98 +53,26 @@ Always use tools in this order. Stop at the first that satisfies your need. **Ne
 
 ---
 
-## 2. Multi-File Context Selection
+## 2. Batching
 
-**5+ files** across packages → `repomix` skill (`ai/skills/repomix/SKILL.md`). **<5 files** → plain `Read` + `Serena.findSymbol`.
-
----
-
-## 3. Batching & Code Mode
-
-Use `mcp__pctx__execute_typescript` when 2+ operations are planned, or when output needs filtering before it hits context — never make sequential Serena/LeanCtx/Repomix/Qmd calls when one batch would work.
-
-### Batching Decision Rule
-> Before any tool call, ask: **"What else will I need in the next 3 steps?"**
-> - 2+ Serena/pctx operations planned → one `execute_typescript` call.
-> - 2+ Read/Grep/Glob ops independent → fire in **parallel**.
-
-### lean-ctx: native MCP vs pctx
-
-lean-ctx is registered **both** as a native MCP server (`mcp__lean-ctx__*`) and as a pctx sub-server (`LeanCtx.*`). Serena, Repomix, and Qmd are **pctx-only**.
-
-| Situation | Use |
-|---|---|
-| Single lean-ctx call, no output filtering needed | `mcp__lean-ctx__ctx_read` / `ctx_search` / `ctx_shell` directly |
-| 2+ calls (any mix of LeanCtx / Serena / Repomix / Qmd) | `mcp__pctx__execute_typescript` with `Promise.all()` |
-| Need to filter/reduce output before it hits context | `execute_typescript` (filter in TypeScript) |
-
-**Code Mode rules:** MUST define a `run()` function; parallelize with `Promise.all()`; filter/map data inside the script and return only what's needed; do NOT call `JSON.parse()` on results (already objects).
+Use `mcp__pctx__execute_typescript` when 2+ Serena/LeanCtx/Repomix/Qmd operations are planned, or when output needs filtering before it hits context. Fire independent Read/Grep/Glob calls in parallel instead of sequentially. Full schema guardrails and Code Mode rules → `tool-routing` skill.
 
 ---
 
+## 3. Serena Quirks and Mandatory Rules
 
-### pctx execute_typescript Schema Guardrails
-
-Common failures seen in session logs are schema-name drift, not pctx runtime instability. Use these exact names unless `get_function_details` says otherwise:
-
-| Function | Correct pctx SDK call | Common failing call |
-|---|---|---|
-| `get_function_details` tool | `{"functions":["Serena.findSymbol"]}` | `{"function_name":"Serena.findSymbol"}` |
-| `Serena.readMemory` | `{ memory_name: "START_HERE" }` | `{ name: "START_HERE" }` |
-| `Serena.findSymbol` | `{ name_path_pattern: "Symbol", depth: 0 }` | `{ name_path: "Symbol" }` |
-| `Serena.searchForPattern` | `{ substring_pattern: "regex" }` | `{ pattern: "regex" }` |
-| `LeanCtx.ctxSearch` | `{ pattern: "regex", path: "/abs/path" }` | `{ query: "regex" }` |
-| `LeanCtx.ctxRead/ctxTree/ctxCall` | camelCase SDK methods | `ctx_read` / `ctx_tree` / `ctx_call` |
-
-If an `execute_typescript` batch mixes successful results with `.catch(() => ({error}))`, normalize/cast before reading fields; the sandbox type-checks unions strictly.
-
----
-
-## 4. Serena Quirks and Mandatory Rules
-
-All Serena methods use **camelCase** (`findSymbol`, not `find_symbol`; `searchForPattern`, not `search_for_pattern`).
-
-`Serena.initialInstructions()` does not cover any of this — these are project-specific quirks, not part of Serena's own manual.
+All Serena methods use **camelCase** (`findSymbol`, not `find_symbol`; `searchForPattern`, not `search_for_pattern`). `Serena.initialInstructions()` does not cover any of this — these are project-specific quirks, not part of Serena's own manual.
 
 - Always pass `restrict_search_to_code_files: true` to `searchForPattern` — otherwise lock files (`go.sum`, `package-lock.json`) and generated files flood results.
 - `findSymbol` **fails silently** on files inside dot-directories (`.serena/`, `.claude/`, `.cursor/`, `.mcp.json`). Use `Serena.readMemory()` for Serena memories, `Read` for other dot-directory files.
 - If `.serena/memories/` exists, call `Serena.listMemories()` at session start and read `START_HERE` before touching source files.
 - Memory naming: `architecture/<topic>`, `story_<N>_<sprint>/<topic>`, `workflows/<process>`. Don't duplicate to markdown what's already in `.serena/memories/`.
-- gopls LSP timeout (SolidLSP issue #634): call `Serena.restartLanguageServer()` — do not retry the failed call, the server needs to reinitialize first.
 
 ---
 
-## 5. Session Start (Required)
-Run `mcp__pctx__list_functions` before the first project access in a session. Write results to `plans/pctx-functions.md` and check its timestamp (TTL: 1 day).
+## 4. Everything Else → `tool-routing` Skill
 
-**Enforcement:** `pre-tool-gate-v2.sh` Section 0 will **block** any Grep call until this sequence completes. Skipping this step means Grep calls will be blocked mid-task — complete the init sequence first to avoid interruption.
-
-**Full init sequence** (applies only when a project has both a `.serena/` config dir and `~/.config/pctx/pctx.json`):
-1. Call `mcp__pctx__list_functions` — unlocks the session init gate.
-2. Run this batch via `mcp__pctx__execute_typescript`:
-   ```typescript
-   async function run() {
-     await Promise.all([
-       Serena.initialInstructions(),
-       LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "<describe your task here>" } })
-     ]);
-   }
-   ```
-3. Write `plans/pctx-functions.md` with today's date (via the Write tool).
-
-**Why each step matters:**
-- `list_functions` → sets the session init temp flag
-- `Serena.initialInstructions()` → loads project-specific Serena memories and config
-- `LeanCtx.ctxCall({ name: "ctx_intent" })` → indexes live project context; required to unlock Grep
-- `plans/pctx-functions.md` → file-based gate that survives compaction restarts
-
-Skip the full sequence only if `plans/pctx-functions.md` already exists and was written today.
-
----
-
-## 6. Extended Tool Ecosystem Routing
-
-Full Qmd-vs-LeanCtx-vs-Serena-vs-Grep decision tables, Graphify pctx/CLI breakdown, session-continuity tooling, and tool-selection violations → **`tool-routing` skill** (`ai/skills/tool-routing/SKILL.md`). Invoke when unsure which tool fits a docs search, large-file read, shell command, web fetch, or graph query — or after an unexplained hook block.
+Multi-file context selection (5+ files → repomix), the full pctx `execute_typescript` schema-guardrails table, the required session-init walkthrough, Qmd-vs-LeanCtx-vs-Serena-vs-Grep decision tables, Graphify's pctx/CLI breakdown, session-continuity tooling, and common tool-selection violations all live in **`ai/skills/tool-routing/SKILL.md`**. Invoke it when unsure which tool fits a docs search, large-file read, shell command, web fetch, or graph query — or after an unexplained hook block.
 
 ---
 *Maintained at: `/Users/axos-agallentes/.dotfiles/ai/rules/tool-priority.md`*

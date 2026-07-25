@@ -41,4 +41,38 @@ if echo "$prompt" | grep -qiE \
   exit 0
 fi
 
+# Ambiguous semantic routing across tool ecosystems (Qmd/Graphify/repomix/Serena).
+# Unlike the categories above, these don't exit early on their own — a prompt
+# can legitimately match more than one, and matching 2+ means the tool choice
+# is genuinely ambiguous, not obvious. Advisory only; never blocks (exit 0 always).
+_routing_classes=()
+
+if echo "$prompt" | grep -qiE \
+  'docs?|documentation|readme|changelog|release notes|knowledge base|runbook|wiki'; then
+  echo "📚 DOCS/KNOWLEDGE SEARCH: consider Qmd over ad-hoc grep — see tool-routing skill's Qmd table"
+  _routing_classes+=("qmd")
+fi
+
+if echo "$prompt" | grep -qiE \
+  'depend(s|ency|encies) (on|of|graph)|call graph|who calls|callers of|impact of changing|blast radius|reference graph'; then
+  echo "🕸️  DEPENDENCY/GRAPH QUESTION: consider Graphify — see tool-routing skill's Graphify breakdown"
+  _routing_classes+=("graphify")
+fi
+
+if echo "$prompt" | grep -qiE \
+  '[0-9]+\+? files|across (the )?(codebase|repo|project)|many files|multiple files'; then
+  echo "📦 MULTI-FILE CONTEXT: consider the repomix skill (5+ files) — see ai/skills/repomix/SKILL.md"
+  _routing_classes+=("repomix")
+fi
+
+if echo "$prompt" | grep -qiE \
+  'find (the )?symbol|rename (the )?(symbol|function|method|class)|where is .* defined|symbol lookup|find (all )?(usages|references) of'; then
+  echo "🔎 SYMBOL LOOKUP/RENAME: consider Serena.findSymbol / Serena.renameSymbol — see tool-priority.md §1"
+  _routing_classes+=("serena")
+fi
+
+if [[ "${#_routing_classes[@]}" -ge 2 ]]; then
+  echo "[ESCALATE] 2+ routing classes matched (${_routing_classes[*]}) — invoke Skill(tool-routing) before picking a tool."
+fi
+
 exit 0

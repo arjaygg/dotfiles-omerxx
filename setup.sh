@@ -28,6 +28,10 @@ run_setup_check() {
         python3 scripts/config_doctor.py --summary || true
         python3 scripts/instruction_budget_check.py --summary
         bash scripts/check-skill-drift.sh .claude/skills .gemini/skills .cursor/skills
+        # --check-coverage is scoped to .claude/skills and $HOME/.claude/skills only:
+        # those are the two dirs setup.sh promises full 1:1 ai/skills/ coverage for.
+        # .cursor/skills and .gemini/skills link a deliberately partial subset.
+        bash scripts/check-skill-drift.sh --check-coverage ai/skills .claude/skills "$HOME/.claude/skills"
         python3 scripts/hook_config_check.py .claude/settings.json --summary || true
         python3 scripts/skill_reference_check.py --summary || true
     )

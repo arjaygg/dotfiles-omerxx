@@ -1,12 +1,6 @@
 ---
 name: tool-routing
-description: Extended tool-routing reference — Qmd vs LeanCtx vs Serena vs Grep decision tables, the Qmd.query/LeanCtx API-consolidation notes, Graphify's two interfaces (pctx namespace vs standalone CLI), Serena memory-naming conventions, session-continuity tooling, and the full list of common tool-selection violations. Invoke when unsure which tool fits a docs search, large-file read, shell command, web fetch, or graph query — or after a hook block you don't understand.
-triggers:
-  - which tool should I use
-  - tool routing
-  - qmd vs leanctx
-  - graphify
-  - hook blocked my command
+description: Extended tool-routing reference — Qmd vs LeanCtx vs Serena vs Grep decision tables, Graphify's two interfaces, pctx execute_typescript batching + schema guardrails, the full session-init walkthrough, Serena memory-naming conventions, session-continuity tooling, and common tool-selection violations. Invoke on phrases like "which tool should I use", "tool routing", "qmd vs leanctx", "graphify", "hook blocked my command", "session init", "execute_typescript schema", "5+ files" / "many files" / "multiple files", "symbol lookup", "rename symbol", "find references", "docs search" / "documentation search", "dependency graph" / "call graph" / "who calls" — or after an unexplained hook block.
 ---
 
 # Extended Tool Ecosystem Routing
@@ -109,6 +103,60 @@ Both operate on the same project-local `graphify-out/graph.json`:
 | **Quick complexity check on a single file** | `/code-health <file>` (pass path as argument) |
 | **Code health as part of code review** | `/hawk` (Quality agent runs code health automatically) |
 | **CI code health gate** | `make code-health` or `make code-health-json` + scorer script |
+
+## Batching & Code Mode (execute_typescript)
+
+Use `mcp__pctx__execute_typescript` when 2+ operations are planned, or when output needs filtering before it hits context — never make sequential Serena/LeanCtx/Repomix/Qmd calls when one batch would work.
+
+**Batching decision rule:** before any tool call, ask "what else will I need in the next 3 steps?" 2+ Serena/pctx operations planned → one `execute_typescript` call. 2+ Read/Grep/Glob ops independent → fire in parallel instead.
+
+**lean-ctx: native MCP vs pctx.** lean-ctx is registered both as a native MCP server (`mcp__lean-ctx__*`) and as a pctx sub-server (`LeanCtx.*`). Serena, Repomix, and Qmd are pctx-only.
+
+| Situation | Use |
+|---|---|
+| Single lean-ctx call, no output filtering needed | `mcp__lean-ctx__ctx_read` / `ctx_search` / `ctx_shell` directly |
+| 2+ calls (any mix of LeanCtx / Serena / Repomix / Qmd) | `mcp__pctx__execute_typescript` with `Promise.all()` |
+| Need to filter/reduce output before it hits context | `execute_typescript` (filter in TypeScript) |
+
+**Code Mode rules:** MUST define a `run()` function; parallelize with `Promise.all()`; filter/map data inside the script and return only what's needed; do NOT call `JSON.parse()` on results (already objects).
+
+**Schema guardrails.** Common failures seen in session logs are schema-name drift, not pctx runtime instability. Use these exact names unless `get_function_details` says otherwise:
+
+| Function | Correct pctx SDK call | Common failing call |
+|---|---|---|
+| `get_function_details` tool | `{"functions":["Serena.findSymbol"]}` | `{"function_name":"Serena.findSymbol"}` |
+| `Serena.readMemory` | `{ memory_name: "START_HERE" }` | `{ name: "START_HERE" }` |
+| `Serena.findSymbol` | `{ name_path_pattern: "Symbol", depth: 0 }` | `{ name_path: "Symbol" }` |
+| `Serena.searchForPattern` | `{ substring_pattern: "regex" }` | `{ pattern: "regex" }` |
+| `LeanCtx.ctxSearch` | `{ pattern: "regex", path: "/abs/path" }` | `{ query: "regex" }` |
+| `LeanCtx.ctxRead/ctxTree/ctxCall` | camelCase SDK methods | `ctx_read` / `ctx_tree` / `ctx_call` |
+
+If an `execute_typescript` batch mixes successful results with `.catch(() => ({error}))`, normalize/cast before reading fields — the sandbox type-checks unions strictly.
+
+## Session Start (Required Init Sequence)
+
+Run `mcp__pctx__list_functions` before the first project access in a session. Write results to `plans/pctx-functions.md` and check its timestamp (TTL: 1 day). Skip the full sequence below only if `plans/pctx-functions.md` already exists and was written today.
+
+**Enforcement:** `pre-tool-gate-v2.sh` Section 0 blocks any Grep call until this sequence completes — skipping it means Grep calls get blocked mid-task, so complete init first to avoid interruption.
+
+**Full init sequence** (applies only when a project has both a `.serena/` config dir and `~/.config/pctx/pctx.json`):
+1. Call `mcp__pctx__list_functions` — unlocks the session init gate.
+2. Run this batch via `mcp__pctx__execute_typescript`:
+   ```typescript
+   async function run() {
+     await Promise.all([
+       Serena.initialInstructions(),
+       LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "<describe your task here>" } })
+     ]);
+   }
+   ```
+3. Write `plans/pctx-functions.md` with today's date (via the Write tool).
+
+**Why each step matters:**
+- `list_functions` → sets the session init temp flag
+- `Serena.initialInstructions()` → loads project-specific Serena memories and config
+- `LeanCtx.ctxCall({ name: "ctx_intent" })` → indexes live project context; required to unlock Grep
+- `plans/pctx-functions.md` → file-based gate that survives compaction restarts
 
 ## Common Violations
 
