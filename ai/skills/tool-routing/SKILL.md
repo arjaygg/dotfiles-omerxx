@@ -13,9 +13,9 @@ This is the detailed reference behind `ai/rules/tool-priority.md` §7's quick di
 
 | Task | 1st Priority | 2nd Priority | Avoid |
 |---|---|---|---|
-| **"Where is X defined?"** | `Serena.findSymbol` | `Serena.searchForPattern` | `LeanCtx.ctxSearch` |
-| **"What calls Y?"** | `Serena.findReferencingSymbols` | `Serena.searchForPattern` | `LeanCtx.ctxSearch` |
-| **"What's in this package?"** | `Serena.getSymbolsOverview` | `Serena.listDir` | `LeanCtx.ctxTree` |
+| **"Where is X defined?"** | `Serena.findSymbol` | `LeanCtx.ctxSearch` | — |
+| **"What calls Y?"** | `Serena.findReferencingSymbols` | `LeanCtx.ctxSearch` | — |
+| **"What's in this package?"** | `Serena.getSymbolsOverview` | `LeanCtx.ctxTree` | — |
 | **"Show me how X is used broadly"** | `Repomix --compress --include "pkg/X/**"` | `Serena.findReferencingSymbols` | `LeanCtx.ctxRead` on every file |
 | **Text pattern across non-code files** | `LeanCtx.ctxSearch` | `Grep tool` | — |
 
@@ -127,7 +127,6 @@ Use `mcp__pctx__execute_typescript` when 2+ operations are planned, or when outp
 | `get_function_details` tool | `{"functions":["Serena.findSymbol"]}` | `{"function_name":"Serena.findSymbol"}` |
 | `Serena.readMemory` | `{ memory_name: "START_HERE" }` | `{ name: "START_HERE" }` |
 | `Serena.findSymbol` | `{ name_path_pattern: "Symbol", depth: 0 }` | `{ name_path: "Symbol" }` |
-| `Serena.searchForPattern` | `{ substring_pattern: "regex" }` | `{ pattern: "regex" }` |
 | `LeanCtx.ctxSearch` | `{ pattern: "regex", path: "/abs/path" }` | `{ query: "regex" }` |
 | `LeanCtx.ctxRead/ctxTree/ctxCall` | camelCase SDK methods | `ctx_read` / `ctx_tree` / `ctx_call` |
 
@@ -163,11 +162,11 @@ Run `mcp__pctx__list_functions` before the first project access in a session. Wr
 | Violation | Correct replacement |
 |---|---|
 | `Grep(pattern: "WorkerPool")` — PascalCase lookup | `Serena.findSymbol("WorkerPool")` |
-| `Grep(pattern: "func New")` — symbol definition search | `Serena.findSymbol("New*")` or `Serena.searchForPattern` |
+| `Grep(pattern: "func New")` — symbol definition search | `Serena.findSymbol("New*")` |
 | `Read("pkg/worker/pool.go")` without limit — whole file read | `Serena.getSymbolsOverview("pkg/worker/pool.go")`, then Read with limit/offset |
 | Multiple sequential `Serena.*` calls (no batch) | `mcp__pctx__execute_typescript` with `Promise.all()` |
 | Starting session with Grep/Read before Serena init | Call `mcp__pctx__list_functions` → write `plans/pctx-functions.md` → `Serena.initialInstructions()` |
-| `Bash(grep ...)` or `Bash(rg ...)` | Blocked by `permissions.deny`; use `Grep` tool or `Serena.searchForPattern` |
+| `Bash(grep ...)` or `Bash(rg ...)` | Blocked by `permissions.deny`; use `Grep` tool or `LeanCtx.ctxSearch` |
 | `Bash(cat file)` / `head -N` / `tail -n +N` / `sed`/`awk` on limits | Blocked; use `Read` with `limit`/`offset`, or `Edit` |
 | `Bash(find . -name ...)` | Blocked; use `Glob` |
 | `Bash(ls dir/)` | Use `Glob("dir/*")` |
@@ -179,4 +178,4 @@ Run `mcp__pctx__list_functions` before the first project access in a session. Wr
 | `Read(large_file)` for analysis (no edit intent) | `LeanCtx.ctxCall({name: "ctx_smart_read", ...})` or `ctxRead(mode: "signatures")` |
 | Multiple `Read` calls in sequence | `LeanCtx.ctxCall({name: "ctx_multi_read", ...})` |
 
-If you find yourself reaching for Grep, ask: **"Is this a symbol lookup or a pattern search?"** Symbol lookup (known name) → `Serena.findSymbol`. Structural pattern → `Serena.searchForPattern`. Text pattern, non-code → `Grep tool` is acceptable. Finding a file → `Serena.findFile` or `Glob`.
+If you find yourself reaching for Grep, ask: **"Is this a symbol lookup or a pattern search?"** Symbol lookup (known name) → `Serena.findSymbol`. Structural pattern → `LeanCtx.ctxSearch`. Text pattern, non-code → `Grep tool` is acceptable. Finding a file → `Glob`.

@@ -220,7 +220,7 @@ fi
 
 # ============================================================
 # SECTION 0B: Context-loaded gate (ctxIntent requirement)
-# Blocks Grep unless LeanCtx.ctxIntent or ctxBatchExecute was called.
+# Blocks Grep unless LeanCtx.ctxCall({ name: "ctx_intent" }) was called.
 # These tools load live project context — always current, not manually curated.
 # ============================================================
 if [[ -n "$SESSION_ID" ]]; then
@@ -228,7 +228,7 @@ if [[ -n "$SESSION_ID" ]]; then
     if [[ "$TOOL_NAME" == "Grep" && ! -f "$_CTX_FLAG" ]]; then
         _deny "BLOCKED: Context not yet loaded in this session.
   Before using Grep, load project context with:
-    LeanCtx.ctxIntent({ query: '<your task description>' })
+    LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: '<your task description>' } })
   Batch it in: mcp__pctx__execute_typescript
   This indexes live project context — derived from current codebase, not manually curated."
     fi
@@ -268,14 +268,14 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
     # 1a-extra. Generated/bulk files by pattern — repomix outputs, go.sum, lock files
     _fname="${FILE_PATH##*/}"
     if [[ "$_fname" == *_repomix_* || "$FILE_PATH" == *.sum || "$FILE_PATH" == *-lock.* ]]; then
-        _deny "BLOCKED: ${_fname} is a generated/lock file — no direct-read value. Use ctxSmartRead or Grep to search specific entries."
+        _deny "BLOCKED: ${_fname} is a generated/lock file — no direct-read value. Use LeanCtx.ctxCall({ name: \"ctx_smart_read\" }) or LeanCtx.ctxSearch to search specific entries."
     fi
 
     # 1b. Large files without limit — tiered by size
     if [[ -f "$FILE_PATH" && -z "$LIMIT" ]]; then
         FILE_SIZE=$(stat -f%z "$FILE_PATH" 2>/dev/null || stat -c%s "$FILE_PATH" 2>/dev/null || echo 0)
         if [[ "$FILE_SIZE" -gt 512000 ]]; then
-            _deny "BLOCKED: $FILE_PATH is $(( FILE_SIZE / 1024 ))KB — use LeanCtx.ctxSmartRead(\"$FILE_PATH\") for analysis-only reads."
+            _deny "BLOCKED: $FILE_PATH is $(( FILE_SIZE / 1024 ))KB — use LeanCtx.ctxCall({ name: \"ctx_smart_read\", args: { path: \"$FILE_PATH\" } }) for analysis-only reads."
         elif [[ "$FILE_SIZE" -gt 102400 ]]; then
             _deny "BLOCKED: $FILE_PATH is $(( FILE_SIZE / 1024 ))KB. Use Read with limit/offset or Grep to read only the relevant section."
         fi
@@ -585,7 +585,7 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
         if [[ -f "$_REDIRECT_TARGET" ]]; then
             _REDIRECT_SIZE=$(stat -f%z "$_REDIRECT_TARGET" 2>/dev/null || stat -c%s "$_REDIRECT_TARGET" 2>/dev/null || echo 0)
             if [[ "$_REDIRECT_SIZE" -gt 512000 ]]; then
-                _deny "BLOCKED: '$_REDIRECT_TARGET' is $(( _REDIRECT_SIZE / 1024 ))KB — reading it via a Bash '<' redirect bypasses the Read tool's size guard. Use LeanCtx.ctxSmartRead(\"$_REDIRECT_TARGET\") for analysis-only reads."
+                _deny "BLOCKED: '$_REDIRECT_TARGET' is $(( _REDIRECT_SIZE / 1024 ))KB — reading it via a Bash '<' redirect bypasses the Read tool's size guard. Use LeanCtx.ctxCall({ name: \"ctx_smart_read\", args: { path: \"$_REDIRECT_TARGET\" } }) for analysis-only reads."
             elif [[ "$_REDIRECT_SIZE" -gt 102400 ]]; then
                 _deny "BLOCKED: '$_REDIRECT_TARGET' is $(( _REDIRECT_SIZE / 1024 ))KB. Use Read with limit/offset or Grep to read only the relevant section instead of a Bash '<' redirect."
             fi
@@ -599,35 +599,33 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
   Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
     fi
 
-    # N7: dot-directory carve-out for find/ls — Serena.findFile/listDir are documented to fail
-    # silently inside .serena/, .claude/, .cursor/, .mcp.json (tool-priority.md §6, issue #853).
-    # Hard-denying "use Serena instead" is a dead end for exactly these paths, so permit with a
-    # warning + output cap instead. Does not extend to grep: LeanCtx.ctxSearch has no such
+    # N7: dot-directory carve-out for find/ls — LeanCtx.ctxGlob/ctxTree's coverage of
+    # dot-directories (.serena/, .claude/, .cursor/, .mcp.json) is unverified, so permit
+    # with a warning + output cap instead of hard-blocking into a dead end.
+    # Does not extend to grep: LeanCtx.ctxSearch has no such
     # limitation, so grep's hard-deny (2a) remains a real, working alternative — policy unchanged.
     _DOTDIR_LIMITATION='\.(serena|claude|cursor)/|\.mcp\.json'
 
-    # 2b. find → no Glob tool exists in this session; use Serena.findFile
+    # 2b. find → no Glob tool exists in this session; use LeanCtx.ctxGlob
     if [[ "$CMD" == find\ * ]]; then
         if [[ "$CMD" =~ $_DOTDIR_LIMITATION ]]; then
             echo "$INPUT" | jq --arg cmd "$CMD | head -100" '.tool_input.command = $cmd'
-            echo "WARN: 'find' permitted for a dot-directory target — Serena.findFile fails silently inside .serena/.claude/.cursor/.mcp.json (issue #853, see ai/rules/tool-priority.md §6). Output capped to 100 lines via '| head -100'." >&2
+            echo "WARN: 'find' permitted for a dot-directory target — LeanCtx.ctxGlob's dot-directory coverage is unverified. Output capped to 100 lines via '| head -100'." >&2
             exit 0
         fi
-        _deny_routing "find" "BLOCKED: Use Serena.findFile instead of 'find' (no Glob tool exists in this session).
-  Call via: mcp__pctx__execute_typescript with: await Serena.findFile('<filename>')
-  Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
+        _deny_routing "find" "BLOCKED: Use LeanCtx.ctxGlob instead of 'find' (no Glob tool exists in this session).
+  Call via: mcp__lean-ctx__ctx_glob({ pattern: '<glob-pattern>' })"
     fi
 
-    # 2c. plain ls (not ls -l* for symlink inspection) — no Glob tool exists in this session; use Serena.listDir
+    # 2c. plain ls (not ls -l* for symlink inspection) — no Glob tool exists in this session; use LeanCtx.ctxTree
     if [[ ( "$CMD" == ls\ * || "$CMD" == "ls" ) && "$CMD" != ls\ -l* ]]; then
         if [[ "$CMD" =~ $_DOTDIR_LIMITATION ]]; then
             echo "$INPUT" | jq --arg cmd "$CMD | head -100" '.tool_input.command = $cmd'
-            echo "WARN: 'ls' permitted for a dot-directory target — Serena.listDir/findFile fail silently inside .serena/.claude/.cursor/.mcp.json (issue #853, see ai/rules/tool-priority.md §6). Output capped to 100 lines via '| head -100'." >&2
+            echo "WARN: 'ls' permitted for a dot-directory target — LeanCtx.ctxTree's dot-directory coverage is unverified. Output capped to 100 lines via '| head -100'." >&2
             exit 0
         fi
-        _deny_routing "list" "BLOCKED: Use Serena.listDir instead of 'ls' (no Glob tool exists in this session).
-  Call via: mcp__pctx__execute_typescript with: await Serena.listDir('<path>')
-  Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
+        _deny_routing "list" "BLOCKED: Use LeanCtx.ctxTree instead of 'ls' (no Glob tool exists in this session).
+  Call via: mcp__lean-ctx__ctx_tree({ path: '<path>' })"
     fi
 
     # 2d. git commit on main/master
@@ -850,7 +848,7 @@ if [[ -f "$_HOOK_CFG" ]]; then
     [[ -z "$_SERENA_LEVEL" ]] && _SERENA_LEVEL="block"
 fi
 # 6a. Grep — prefer LeanCtx.ctxSearch or Serena.
-# Post-init unlock: once LeanCtx.ctxIntent has run this session (ctx flag
+# Post-init unlock: once LeanCtx.ctxCall({ name: "ctx_intent" }) has run this session (ctx flag
 # exists), Grep is the sanctioned native fallback — downgrade to hint.
 # Without this, Section 2a says "use the Grep tool" while this section
 # denies it, and the model ping-pongs between Bash grep and Grep forever.
@@ -883,11 +881,11 @@ if [[ "$TOOL_NAME" == "Grep" && -n "$PATTERN" ]]; then
     exit 0
 fi
 
-# 6b. Glob: specific filename → suggest Serena.findFile
+# 6b. Glob: specific filename → suggest LeanCtx.ctxGlob
 if [[ "$TOOL_NAME" == "Glob" && -n "$PATTERN" ]]; then
     if [[ "$PATTERN" =~ /[a-zA-Z0-9_-]+\.[a-zA-Z]+$ && ! "$PATTERN" =~ \*\.[a-zA-Z]+$ ]]; then
         FILENAME="${PATTERN##*/}"
-        echo "HINT: For finding '$FILENAME', use Serena.findFile('$FILENAME') or LeanCtx.ctxTree for directory listings." >&2
+        echo "HINT: For finding '$FILENAME', use LeanCtx.ctxGlob('$FILENAME') or LeanCtx.ctxTree for directory listings." >&2
         exit 0
     fi
 fi
