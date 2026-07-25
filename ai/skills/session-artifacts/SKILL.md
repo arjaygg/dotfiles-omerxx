@@ -55,10 +55,29 @@ reviewable plans belong in a tracked location such as `docs/plans/`.
 - [ ] blocked task (reason)
 ```
 
-## `active-context.md` — plan pointer fields
+## Plan File Naming and Location
 
-When working from a dated plan file, carry these fields (see
-`ai/rules/agent-user-global.md` § Plan Documents):
+Plan files are named `YYYY-MM-DD-<context>.md`, where `<context>` is a 3-5 word kebab-case
+summary of the task (e.g. `2026-03-02-refactor-auth-flow.md`). Use the current date as the
+prefix; multiple plans on the same day each get their own context. Session-state plans default
+to `plans/` (the `plansDirectory` in `~/.claude/settings.json`; create it if missing) — a
+project's own docs may route reviewable/tracked plans elsewhere (e.g. `docs/plans/`), and that
+routing wins.
+
+## Working From a Dated Plan File
+
+When working from a dated plan file (`plans/YYYY-MM-DD-<context>.md`):
+
+1. Add `plan: plans/YYYY-MM-DD-<context>.md` to `active-context.md` at session start.
+2. Add `step: N of M` and `focus: <current step title>` to `active-context.md`.
+3. Each `## Step N` in the plan must declare `**Files:**` and `**Accepts:**` fields.
+4. Use `TodoWrite` to convert plan steps to an ordered checklist for single-agent execution
+   before executing. `TaskCreate` is a separate mechanism for multi-agent coordination, not a
+   substitute for this checklist.
+5. Check off `progress.md` checkboxes when each `TodoWrite` item is completed.
+6. Do not begin Step N+1 until Step N's `**Accepts:**` criteria are met.
+
+## `active-context.md` — plan pointer fields
 
 ```
 plan: plans/YYYY-MM-DD-<context>.md

@@ -42,6 +42,9 @@ Use this skill when the user wants to:
    - Allowed types: `feat|fix|perf|refactor|test|ci|chore|docs|style|revert`
    - If title is omitted, the stack script now generates a deterministic conventional title from the branch name.
    - If title is explicitly provided and invalid, creation is blocked.
+   - Note: `hyper-atomic-commits.md`'s *commit*-message type list additionally includes `build`
+     — that list governs individual commit messages, not PR titles. This skill's type list above
+     is canonical for PR titles specifically; the two lists are intentionally not reconciled.
 
 3. **Account detection** — determine which GH account to use:
    ```bash

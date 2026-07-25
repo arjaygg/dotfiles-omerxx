@@ -24,27 +24,14 @@ These rules are the user-global baseline for AI coding agents on this machine.
 
 ## Pull Request Title Policy
 
-- PR titles MUST use Conventional Commits format: `type(optional-scope): summary`
-- Allowed types: `feat`, `fix`, `perf`, `refactor`, `test`, `ci`, `chore`, `docs`, `style`, `revert`
-- When creating PRs, prefer stack tooling (`~/.dotfiles/.claude/scripts/stack pr` / `stack pr-all`) so validation is deterministic.
+PR titles use Conventional Commits (`type(scope): summary`); prefer stack tooling (`stack pr`/`stack pr-all`)
+so validation is deterministic. Full allowed-types list and validation flow: **`stack-pr` skill**.
 
 ## File And Tool Discipline
 
 - Prefer dedicated tools over shell fallbacks when the client provides them.
 - Keep edits minimal and targeted.
 - Do not duplicate the same policy across multiple agent-specific instruction files unless a tool requires a loader stub.
-
-## Dotfiles Repositories
-
-When working in a dotfiles repository:
-
-- Distinguish between shared project guidance and tool-specific installation files.
-- Treat files under `.claude/`, `.gemini/`, `.codex/`, and similar directories as configuration distribution artifacts unless the file is clearly a project guidance entrypoint.
-- Preserve symlink-based setup expectations.
-
-## AI Agent Primitives Configuration
-
-This machine uses a unified AI configuration strategy: common primitives (skills `ai/skills/`, commands `ai/commands/`, styles `ai/output-styles/`, rules `ai/rules/`) are managed centrally in `~/.dotfiles/ai/` and symlinked to each agent's configuration directory (Claude Code, Gemini CLI, Codex, Cursor, Windsurf). Make changes only in `~/.dotfiles/ai/` — they reflect automatically across all tools.
 
 ## Git Worktree Conventions
 
@@ -54,25 +41,11 @@ A branch request ALWAYS means creating/switching the actual git branch — a wor
 
 ## Plan Documents
 
-**Naming and location.** Plan files are named `YYYY-MM-DD-<context>.md`, where `<context>` is a
-3-5 word kebab-case summary of the task (e.g. `2026-03-02-refactor-auth-flow.md`). Use the
-current date as the prefix; multiple plans on the same day each get their own context. Session-state
-plans default to `plans/` (the `plansDirectory` in `~/.claude/settings.json`; create it if missing)
-— a project's own docs may route reviewable/tracked plans elsewhere (e.g. `docs/plans/`), and that
-routing wins.
-
-When working from a dated plan file (`plans/YYYY-MM-DD-<context>.md`):
-
-1. Add `plan: plans/YYYY-MM-DD-<context>.md` to `plans/active-context.md` at session start.
-2. Add `step: N of M` and `focus: <current step title>` to `plans/active-context.md`.
-3. Each `## Step N` in the plan must declare `**Files:**` and `**Accepts:**` fields.
-4. Use `TodoWrite` to convert plan steps to an ordered checklist for your own single-agent execution before executing. `TaskCreate` is a separate mechanism for multi-agent coordination (see "Task Tracking Discipline (Multi-Agent)" below), not a substitute for this checklist.
-5. Check off `progress.md` checkboxes when each `TodoWrite` item is completed.
-6. Do not begin Step N+1 until Step N's `**Accepts:**` criteria are met.
-
-**Format:** each `## Step N` declares `**Files:**` and `**Accepts:**` fields plus checkbox items; `plans/active-context.md` carries `plan:`, `step: N of M`, `focus:` pointer fields.
-
-Hooks resolve the active plan at runtime via `grep "^plan:" plans/active-context.md`. This grep-based lookup is the only mechanism for cross-session plan continuity — there is no `@plans/active-context.md` include in any `CLAUDE.md` in the chain.
+Name plan files `plans/YYYY-MM-DD-<context>.md`. Full naming/format rules, the per-step
+`**Files:**`/`**Accepts:**` ritual, and `active-context.md` pointer fields live in the
+**`session-artifacts` skill** (`ai/skills/session-artifacts/SKILL.md`) — invoke it when
+creating or updating a plan file. Core rule that stays in force everywhere: do not begin
+Step N+1 until Step N's `**Accepts:**` criteria are met.
 
 ## TodoWrite Mandate
 
@@ -93,13 +66,10 @@ Heuristics for "3+ step tasks":
 
 ## Task Tracking Discipline (Multi-Agent)
 
-When spawning subagents for multi-step work:
-1. Create the task list first: `TaskCreate` with all subtasks
-2. Export `CLAUDE_CODE_TASK_LIST_ID=<id>` in each subagent's environment
-3. Each subagent uses `TaskUpdate` (not a new `TaskCreate`) to report progress
-4. The orchestrator polls `TaskGet` before aggregating results
-
-Never abandon a `TaskCreate` list — orphaned lists accumulate across sessions. Mark cancelled tasks with status `cancelled`.
+When spawning subagents for multi-step work, use `TaskCreate`/`TaskUpdate`/`TaskGet` to
+share progress across agents (not `TodoWrite`, which is per-agent only). Full protocol —
+list creation, `CLAUDE_CODE_TASK_LIST_ID` export, polling, and orphaned-list hygiene — is
+in the **`tool-routing` skill** (`ai/skills/tool-routing/SKILL.md`).
 
 ## Agent Spawning — Fork vs Fresh
 
@@ -134,14 +104,9 @@ Match the primitive to whether the task is event-driven or time-driven: `Monitor
 
 ## Investigation Depth
 
-These rules apply to root-cause analyses, debugging sessions, and any request for a recommendation. They target the most common failure mode: concluding too early without enough evidence.
-
-- **Multi-source before conclusion:** For any RCA or investigation, check at least two independent log/signal sources (e.g., app logs AND K8s events AND DB logs) before concluding. A single source is not enough.
-- **Show your work:** Explicitly state what was checked and what was NOT yet checked. Do not declare a root cause without listing both. Format: "Checked: [X, Y]. Not yet checked: [Z]."
-- **Lead with the recommendation:** When asked for a recommendation, state the concrete recommendation first, then provide the supporting analysis. Never bury the answer in analysis.
-- **Never assume exit 0 = success:** For deployment and migration operations, always verify actual artifacts (indexes created, row counts match, pods healthy, API responding) even when the command exits 0.
-- **Diagnose vs fix:** When the request is diagnosis/investigation, deliver root-cause analysis ONLY and present proposed fixes as options. Do NOT apply any fix until explicitly approved. If unsure which mode the user wants, ask before changing anything.
-- **Write findings incrementally:** During long investigations, write findings to a file section-by-section (≤110 lines per write) instead of one large response or one monolithic Write — large single outputs hit token limits, lose transcript detail, and stall background workflow watchdogs.
+Root-cause analysis and debugging rigor — multi-source verification before concluding, a
+show-your-work checklist, diagnose-vs-fix mode separation, and incremental findings writes.
+Full rules: **`investigation-depth` skill** (`ai/skills/investigation-depth/SKILL.md`).
 
 ## Skill Tool Semantics
 
