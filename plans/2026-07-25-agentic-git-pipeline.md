@@ -186,6 +186,34 @@ under-specified, verified against actual repo precedent rather than invented fre
    second session on another machine either no-ops safely or gets a clear `gh`-reported conflict
    to surface as a confirm-first prompt, rather than racing.
 
+**D7 — Cross-agent portability (new section, user-directed 2026-07-25 follow-on to the two advisor
+rounds).** Steps 0–7 below build the Claude Code implementation only: `git-pipeline-gate.sh` is a
+Claude Code **Stop hook**, and the CI-wait bridge (D4a) relies on Claude Code's `Monitor`
+primitive. Neither exists in Codex, Cursor, or Gemini CLI today. Rather than rewrite the decision
+layer per tool, the chosen approach is a **thin adapter per agent** over one shared, agent-neutral
+engine:
+
+- **The engine is already agent-neutral and stays the only shared piece.** `pipeline-status.sh`
+  (signal detection) and `validate-changeset.sh` (validation routing) have zero Claude Code
+  dependency today — plain bash, callable by any tool or a human directly.
+- **Each coding agent gets its own adapter**, not a fork of the engine: the adapter invokes
+  `pipeline-status.sh` and translates the returned signal into whatever blocking/warning primitive
+  that agent natively exposes. `git-pipeline-gate.sh` (D1) *is* the reference adapter — the Claude
+  Code Stop-hook implementation of this pattern — not a special case to generalize away from.
+- **Lowest-common-denominator fallback.** For any agent with no turn-level hook mechanism at all,
+  its adapter degrades to a git-level trigger (`pre-push`/`post-commit` under `core.hooksPath`),
+  which fires for any tool's commits, Claude Code included. This is strictly weaker — it can only
+  stop/warn at the git-operation boundary, not steer an agent's own mid-turn decision — so it is
+  the floor for agents without something richer, not the target for all agents.
+- **Open question, deliberately not resolved here:** `.claude/pipeline-log.jsonl` (D6) is
+  namespaced under `.claude/`, which becomes misleading once a non-Claude adapter also writes to
+  it. Revisit the path (e.g. `.git/pipeline-log.jsonl`) if/when a second adapter actually ships —
+  not renamed preemptively, for the same "don't build for a hypothetical future" reasoning already
+  applied in D6 point 4.
+- **Scope.** Researching and building adapters for Codex, Cursor, or Gemini CLI is explicit
+  follow-up work (see below), triggered only once one of those tools is actually used to drive git
+  in this repo. Steps 0–7 ship the Claude Code adapter only.
+
 ## Steps
 
 ### Step 0 — Stop-hook contract spike (new, round 1 blocker)
@@ -279,6 +307,10 @@ session — the CI-wait leg is allowed to span a `Monitor`-driven resumption.
   `gh` remote state + idempotent legs instead).
 - The unrelated pre-existing stale line in `decisions/0004-lean-ctx-pctx-upstream.md` (tracked
   separately, not part of this pipeline work).
+- Cross-agent adapters for Codex, Cursor, or Gemini CLI (D7) — approach is decided (thin per-tool
+  adapter over the shared `pipeline-status.sh`/`validate-changeset.sh` engine, with a git-hook
+  fallback for agents lacking a turn-level hook mechanism), but deferred until one of those tools
+  is actually used to drive git in this repo.
 
 ## Critical Files
 
