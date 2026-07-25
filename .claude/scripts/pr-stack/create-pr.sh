@@ -53,7 +53,7 @@ if [ -z "$TARGET_BRANCH" ]; then
     fi
     TARGET_BRANCH="${TARGET_BRANCH:-$DEFAULT_BRANCH}"
 fi
-TITLE=$3
+TITLE="${3:-}"
 DRAFT=false
 
 # Check for --draft flag
