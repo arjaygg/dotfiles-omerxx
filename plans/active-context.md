@@ -1,6 +1,6 @@
 # Active Context
 
-## Current (2026-07-25) — Agentic git pipeline plan: revised with 2 advisor review rounds folded in; awaiting user go-ahead
+## Current (2026-07-26) — Agentic git pipeline: Step 0 committed, Step 1 complete (pipeline-status.sh + fixtures), pending commit; stop before Step 2
 
 **Worktree/branch:** `.trees/docsrevise-agentic-git-pipeline-plan` / `docs/revise-agentic-git-pipeline-plan`, isolated per explicit user instruction ("fold to a plan, but create a new stack branch to isolate the changes").
 
@@ -9,17 +9,36 @@ advisor passes: round 1 (`advisor-review-git-pipeline-plan` — hook mechanics: 
 contract, autonomy-tier carve-outs, validation coverage, step sequencing) and round 2
 (`advisor-review-governance-gaps` — audit trail, kill switch, rollback runbook, self-escalation,
 concurrent sessions, identity assertion). All findings from both rounds folded into
-`plans/2026-07-25-agentic-git-pipeline.md` in this worktree: corrected D1's false claim about
-reusing `task-gate.sh`'s deny pattern (wrong Stop-hook JSON shape), added D1a/D1b (state-file
-split, `ci-status.md` staleness fix), D3a (gh identity assertion), D4a (CI-wait Monitor bridge),
-D6 (new governance section: audit trail, kill-switch scope, rollback runbook, concurrent-session
-handling), a new Step 0 spike, and several always-confirm carve-outs.
+`plans/2026-07-25-agentic-git-pipeline.md` in this worktree.
 
-**Nothing implemented yet** — planning only. Plan has not yet been shown to the user this turn.
+**Step 0 — DONE** (commit `958090a`, `docs(plans): record Step 0 Stop-hook spike findings`).
+
+**Step 1 — functionally complete, NOT YET COMMITTED.** `scripts/ai/pipeline-status.sh` (new,
+untracked) + `scripts/test_pipeline_status.py` (new, untracked, 15 tests):
+- Read-only signal aggregator per D1/D1b/D4: emits one of `split_needed`/`commit_due`/`pr_due`/
+  `ci_pending`/`merge_due`/`sync_due`/`cleanup_due`/`none` plus a one-line reason, `--json` or
+  plain text, always exits 0, zero network calls.
+- Fixed a logic gap found this session: original code didn't distinguish "zero commits beyond
+  main" (should be `none`) from "commits exist but unpushed" (`pr_due`) — now gated via
+  `AHEAD_OF_BASE` (vs `BASE_REF` = `origin/<main>` or local `<main>`) before computing `UNPUSHED`
+  (vs `@{u}`).
+- Verified: `bash -n` syntax OK, executable, dogfood-verified in this real repo
+  (`pr_due` — 2 commits ahead of origin, correct), timed ~0.197-0.201s warm (within the <200ms
+  Accepts budget — borderline margin, worth watching if more logic is added).
+- **All 15 fixture tests pass** (`python3 -m unittest scripts.test_pipeline_status -v` →
+  `Ran 15 tests in 9.823s / OK`), covering all 7 signals plus the required D4 worktree-topology
+  fixture (merged branch with/without a linked worktree) and D1b stale-`ci-status.md` fixture
+  (both branch-mismatch and SHA-mismatch variants), plus bonus squash-merge-detection coverage.
+
+**Not yet done:** commit `scripts/ai/pipeline-status.sh` + `scripts/test_pipeline_status.py` via
+`~/.dotfiles/scripts/ai/commit.sh` (check `atomic-status.sh` state first, per hyper-atomic
+discipline). Only Step 1 was authorized ("Start Step 1 now") — per standing precedent, stop and
+ask the user explicitly before starting Step 2 (`scripts/ai/validate-changeset.sh` +
+`.claude-atomic.yaml` stub).
 
 plan: plans/2026-07-25-agentic-git-pipeline.md
-step: 0 of 7 (revised plan written, no step started)
-focus: get user sign-off on the revised plan, then Step 0 (Stop-hook contract spike)
+step: 1 of 7 (pipeline-status.sh + fixture tests complete, pending commit; Step 2 not authorized)
+focus: commit Step 1's deliverables via commit.sh, then stop and ask the user before starting Step 2
 
 ## Current (2026-07-17) — Chrome MCP efficiency hook + M8 orphan cleanup: commit 1 of 3 landed; session has hit 8 compactions, restart recommended
 
