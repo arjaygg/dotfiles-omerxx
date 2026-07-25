@@ -65,8 +65,7 @@ All Serena methods use **camelCase** (`findSymbol`, not `find_symbol`; `searchFo
 
 - `searchForPattern` is not exposed in this session's Serena claude-code context (nor are `findFile`/`listDir`) — use `LeanCtx.ctxSearch` for pattern/regex search instead. It has no `restrict_search_to_code_files` flag and handles lock/generated files fine without one.
 - `findSymbol` **fails silently** on files inside dot-directories (`.serena/`, `.claude/`, `.cursor/`, `.mcp.json`). Use `Serena.readMemory()` for Serena memories, `Read` for other dot-directory files.
-- If `.serena/memories/` exists, call `Serena.listMemories()` at session start and read `START_HERE` before touching source files.
-- Memory naming: `architecture/<topic>`, `story_<N>_<sprint>/<topic>`, `workflows/<process>`. Don't duplicate to markdown what's already in `.serena/memories/`.
+- Serena memory session-init workflow (`listMemories`/`START_HERE`) and memory-naming conventions: **`tool-routing` skill** (`ai/skills/tool-routing/SKILL.md`).
 
 ---
 
