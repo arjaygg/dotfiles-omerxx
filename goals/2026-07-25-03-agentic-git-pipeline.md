@@ -21,17 +21,23 @@ a user-directed D7 cross-agent-portability decision, all folded into
 
 ## Current state
 
-Design-complete. `plans/2026-07-25-agentic-git-pipeline.md` (this worktree, branch
-`docs/revise-agentic-git-pipeline-plan`) holds the full D1–D7 decision record and Step 0–7
-breakdown — treat it as the durable design reference this goal summarizes, not something to
-duplicate line-by-line. Step 0 (Stop-hook contract spike) is complete: findings folded into the
-plan's Step 0 section (2026-07-25); the spike script was throwaway and has been deleted per its own
-spec, nothing from it is committed. Step 1 (read-only pipeline status aggregator) is complete and
-committed: `scripts/ai/pipeline-status.sh` (new) + `scripts/test_pipeline_status.py` (15 fixture
-tests, all passing — all 7 signals, the D4 worktree-topology case, and both D1b stale-`ci-status.md`
-variants) landed as `dd5d248`; the `plans/active-context.md` checkpoint landed as `6f2bcc6`.
-Verified: `bash -n` syntax check, live dogfood run, ~0.197–0.201s warm-repo timing (well under the
-200ms budget), zero network calls. Awaiting explicit user go-ahead before starting Step 2.
+Design-complete; implementation in progress. `plans/2026-07-25-agentic-git-pipeline.md` (this
+worktree, branch `docs/revise-agentic-git-pipeline-plan`) holds the full D1–D7 decision record and
+the Step 0–7 breakdown — treat it as the durable design reference this goal summarizes, not
+something to duplicate line-by-line. **This goal file now uses the plan doc's Step 0–7 numbering
+exactly, so step references here and in the plan can never drift again; all references below are
+written as "plan Step N".**
+
+- **Plan Step 0** (Stop-hook contract spike): **done**. Throwaway spike script, nothing committed
+  per its own spec; the 4 empirical findings were folded into the plan's Step 0 section on
+  2026-07-25.
+- **Plan Step 1** (read-only pipeline status aggregator): **done**, committed as `dd5d248`
+  (`scripts/ai/pipeline-status.sh` + `scripts/test_pipeline_status.py`, 15 fixture tests, 15/15
+  passing — all 7 signals, the D4 multi-worktree-topology case, and both D1b stale/mismatched
+  `ci-status.md` variants). The `plans/active-context.md` checkpoint landed as `6f2bcc6`.
+  Verified: `bash -n` syntax check, live dogfood run, ~0.197–0.201s warm-repo timing (under the
+  200ms budget), zero network calls.
+- **Plan Steps 2–7**: **not started**. Awaiting explicit per-step user go-ahead.
 
 `scripts/validate_goals.py` (the validator the `goal-authoring` convention calls for) does not
 exist in this repo, so this goal file has not been machine-validated for heading order or index
@@ -56,59 +62,112 @@ consistency — only manually checked against the convention.
 
 ## Steps
 
-1. **Stop-hook contract spike** — throwaway scratch script, nothing committed. Confirm
-   empirically that a Stop hook returning `{"decision":"block","reason":"..."}` keeps the turn
-   alive and sets `stop_hook_active` on re-invocation; prototype the 2-deny-then-degrade anti-loop
-   counter.
-2. **Read-only pipeline status aggregator** — **done** (`dd5d248`). `scripts/ai/pipeline-status.sh`.
-   Zero network calls, <200ms on a warm repo (measured ~0.197–0.201s), classifies all 7 signals
-   (`split_needed`/`commit_due`/`pr_due`/`ci_pending`/`merge_due`/`sync_due`/`cleanup_due`) against
-   15 fixtures including a multi-worktree topology and a stale/mismatched `ci-status.md`
-   (`scripts/test_pipeline_status.py`, 15/15 passing).
-3. **Validation selection** — new `scripts/ai/validate-changeset.sh`, plus a stubbed empty
-   `pipeline: {}` sibling block in `.claude-atomic.yaml` to unblock Step 4. Routes docs/config/
-   source/unknown subsystems (`.claude/hooks/*.sh` must classify as `source`); never blocks on
-   unknown; unknown-subsystem warnings surface visibly (e.g. in the PR body).
-4. **Stop-hook gate** — new `.claude/hooks/git-pipeline-gate.sh`; edit `.claude/hooks/stop.sh`
-   (first-deny-wins arbitration with `task-gate.sh` — a rewrite of its single-emitter invariant,
-   not purely additive); new `git-pipeline-gate` level key in `hook-config.yaml`. No-op unless
-   `core.hooksPath` is the dotfiles path and a `pipeline:` block exists; denies with a reason plus
-   next-action hint; degrades to warn after 2 denies/stage/session (plus a global per-session cap)
-   with a loud stderr + `osascript` notification; writes every decision to the audit log.
-5. **Autonomy tier config** — fill in `.claude-atomic.yaml`'s `pipeline:` block: `auto_commit`/
-   `auto_push`/`auto_pr`/`auto_ship`/`auto_clean` flags. Block absent = full confirm-first.
-   Hard-coded always-confirm cases are never overridable by any flag combination (see Acceptance
-   criteria and Stop-and-ask-if below).
-6. **Orchestration skill** — new `ai/skills/auto-ship/SKILL.md`. Documents the full leg sequence
-   (`validate-changeset.sh` → `commit.sh` → `stack pr` → `ci-watch` background → `stack-ship` →
-   main sync → `stack-clean`), the D3a `gh auth status` identity assertion before any Tier-1/2
-   action, a required dry-run/explain-only first pass per repo, an independent check of
-   `hook-config.yaml`'s `git-pipeline-gate` level (no-ops if `off`, not solely reliant on the Stop
-   hook), and the rollback runbook.
-7. **Docs reconciliation** — edit `ai/rules/hyper-atomic-commits.md` (remove the dead
-   `post-task-fence.sh` fence-bridge claim, describe the live `task-gate.sh` +
-   `git-pipeline-gate.sh` chain instead) and `AGENTS.md` if it references the old bridge.
-8. **End-to-end shakedown** — no new files. A docs-only change on a scratch branch flows edit →
-   committed → PR'd → (background `Monitor` bridges the CI wait, potentially across a session
-   boundary) → merged → synced → cleaned up, driven entirely by gate prompts, zero manual
-   "now do X" instructions. Explicitly allowed to span multiple turns/sessions.
+Numbering matches `plans/2026-07-25-agentic-git-pipeline.md` `## Steps` exactly (Step 0–7). Each
+step's full rationale and D-note corrections live in the plan; this list is a tracking summary.
+
+- **Step 0 — Stop-hook contract spike** — **done** (nothing committed by design). Files: none —
+  throwaway scratch script; findings folded into the plan's Step 0 section. Empirically confirmed
+  the Stop-hook `{"decision":"block","reason":"..."}` contract, `stop_hook_active` semantics (global
+  across hooks, not per-script), and the 2-deny-then-degrade anti-loop prototype.
+- **Step 1 — Read-only pipeline status aggregator** — **done** (`dd5d248`). Files:
+  `scripts/ai/pipeline-status.sh` (new), `scripts/test_pipeline_status.py` (new). Zero-network,
+  <200ms signal detector classifying `split_needed`/`commit_due`/`pr_due`/`ci_pending`/`merge_due`/
+  `sync_due`/`cleanup_due` against 15 fixtures, including the D4 multi-worktree topology and both
+  D1b stale-`ci-status.md` variants.
+- **Step 2 — Validation selection** — **pending**. Files: `scripts/ai/validate-changeset.sh` (new),
+  `.claude-atomic.yaml` (edit — new `validation:` block plus a stubbed empty `pipeline: {}` sibling
+  block). Routes docs-only/config/source/unknown subsystems per D2 (`.claude/hooks/*.sh` classifies
+  as `source`); never blocks on unknown; unknown-subsystem warnings surface visibly for PR-body
+  injection; `commit.sh` stays unmodified.
+- **Step 3 — Stop-hook gate** — **pending**. Files: `.claude/hooks/git-pipeline-gate.sh` (new),
+  `.claude/hooks/stop.sh` (edit — first-deny-wins arbitration after `task-gate.sh`; a rewrite of its
+  single-emitter invariant, not purely additive), `hook-config.yaml` (edit — new
+  `git-pipeline-gate` level key). No-op unless `core.hooksPath` is the dotfiles path and a
+  `pipeline:` block exists; denies with reason + next-action hint; degrades loudly per D1; logs
+  every decision per D6.
+- **Step 4 — Autonomy tier config** — **pending**. Files: `.claude-atomic.yaml` (edit — fills in
+  the `pipeline:` block with `auto_commit`/`auto_push`/`auto_pr`/`auto_ship`/`auto_clean` flags).
+  Block absent = full confirm-first; hard-coded always-confirm carve-outs are never overridable by
+  any flag combination.
+- **Step 5 — Orchestration skill** — **pending**. Files: `ai/skills/auto-ship/SKILL.md` (new).
+  Documents the D4 leg sequence, D3 tier checks, D3a identity assertion, first-enable dry-run pass,
+  the independent `hook-config.yaml` kill-switch check (D6 point 2), and the rollback runbook.
+- **Step 6 — Docs reconciliation** — **pending**. Files: `ai/rules/hyper-atomic-commits.md` (edit
+  per D5), `AGENTS.md` (edit if it references the old fence bridge). Removes the dead
+  `post-task-fence.sh` bridge claim; describes the live `task-gate.sh` + `git-pipeline-gate.sh`
+  chain.
+- **Step 7 — End-to-end shakedown** — **pending**. Files: none (validation step only). A docs-only
+  change on a scratch branch flows edit → committed → PR'd → CI-wait (background `Monitor` per D4a)
+  → merged → synced → cleaned up, driven entirely by gate prompts; explicitly multi-turn/
+  multi-session.
+
+Ordering note (from the plan's Step 3/4 note): Step 2 must stub a minimal `pipeline: {}` in
+`.claude-atomic.yaml` so Step 3's opt-in no-op check has something concrete to test; Step 4 then
+fills in the real flag schema on the same key rather than introducing it fresh.
 
 ## Acceptance criteria
 
-- All 7 fixture states in Step 2 classify correctly; the worktree-topology and stale-`ci-status.md`
-  fixtures pass.
-- Step 4's gate never issues a 3rd consecutive deny for the same stage in one session; a real
-  degrade emits both the stderr message and an `osascript` notification.
-- Step 5's always-confirm carve-outs are all present and unconditional: force-push outside
-  `stack-sync`'s reviewed pattern, discarding work to resolve `blocked`/`overgrown`, `stack clean
-  --force` on a dirty worktree, `gh pr merge --admin` (never used at all), deleting a genuinely-
-  unmerged (non-squash) branch, `ci-watch`'s auto-deploy trigger, multi-branch `stack-ship`, and
-  any pipeline self-edit to `.claude-atomic.yaml`/`hook-config.yaml`/`.claude/hooks/*`.
-- Step 8's shakedown completes on a real scratch branch with zero manual "now do X" prompts from
+Each bullet is derived from the corresponding step's `**Accepts:**` line in
+`plans/2026-07-25-agentic-git-pipeline.md`. `[x]` = verified satisfied; `[ ]` = pending.
+
+Plan Step 0:
+- [x] Stop hook returning `{"decision":"block","reason":"..."}` empirically confirmed to keep the
+  turn alive; `stop_hook_active` semantics confirmed; the two-stage deny-then-degrade prototype
+  validated the D1 anti-loop counter design. Findings recorded in the plan's Step 0 section.
+
+Plan Step 1:
+- [x] `scripts/ai/pipeline-status.sh` classifies all 7 signals (`split_needed`, `commit_due`,
+  `pr_due`, `ci_pending`, `merge_due`, `sync_due`, `cleanup_due`) correctly against fixtures,
+  including the D4 multi-worktree-topology fixture and both D1b stale/mismatched `ci-status.md`
+  variants (`scripts/test_pipeline_status.py`, 15/15 passing at `dd5d248`).
+- [x] Zero network calls; <200ms on a warm repo (measured ~0.197–0.201s); emits one signal (or
+  none) plus a one-line reason.
+
+Plan Step 2:
+- [ ] `scripts/ai/validate-changeset.sh` routes docs-only/config/source/unknown staged changesets
+  per D2, with `.claude/hooks/*.sh` classified as `source`; never blocks on an unrecognized
+  subsystem; unknown-subsystem warnings are surfaced in a form plan Step 5's PR-creation leg can
+  inject into the PR body; `commit.sh` unmodified.
+- [ ] `.claude-atomic.yaml` gains the `validation:` block plus the stubbed empty `pipeline: {}`
+  sibling block that unblocks plan Step 3's opt-in check.
+
+Plan Step 3:
+- [ ] `.claude/hooks/git-pipeline-gate.sh` is built against the plan Step 0 spike's confirmed
+  Stop-hook contract; no-ops when `core.hooksPath` isn't the dotfiles path or no `pipeline:` block
+  exists; denies with a clear reason + next-action hint on a real due-signal.
+- [ ] Gate never issues a 3rd consecutive deny for the same stage in one session (2 denies/stage
+  plus the D1 global per-session cap); a real degrade emits both the stderr message and an
+  `osascript` notification.
+
+Plan Step 4:
+- [ ] `pipeline:` block absent = full confirm-first; each of `auto_commit`/`auto_push`/`auto_pr`/
+  `auto_ship`/`auto_clean` independently gates exactly the leg named in D3.
+- [ ] All always-confirm carve-outs are present and unconditional — not overridable by any flag
+  combination: force-push outside `stack-sync`'s reviewed pattern, discarding work to resolve
+  `blocked`/`overgrown`, `stack clean --force` on a dirty worktree, `gh pr merge --admin` (never
+  used at all), deleting a genuinely-unmerged (non-squash) branch, `ci-watch`'s auto-deploy
+  trigger, multi-branch `stack-ship`, and any pipeline self-edit to `.claude-atomic.yaml`/
+  `hook-config.yaml`/`.claude/hooks/*`.
+
+Plan Step 5:
+- [ ] `ai/skills/auto-ship/SKILL.md` documents the full D4 leg sequence, the D3 tier checks, and
+  the D3a `gh auth status` identity assertion before any Tier-1/2 action; requires a dry-run/
+  explain-only pass the first time a repo newly enables any Tier-1/2 flag; independently checks
+  `hook-config.yaml`'s `git-pipeline-gate` level and no-ops if `off` (not solely reliant on the
+  Stop hook); includes the D6 rollback runbook as a documented section.
+
+Plan Step 6:
+- [ ] No remaining tracked-doc reference to `post-task-fence.sh` as a live mechanism; the live
+  fence chain (`task-gate.sh` + `git-pipeline-gate.sh`) is accurately described in
+  `ai/rules/hyper-atomic-commits.md` (and `AGENTS.md` if applicable).
+
+Plan Step 7:
+- [ ] The shakedown completes on a real scratch branch with zero manual "now do X" prompts from
   the user, end to end (commit through cleanup), across however many turns/sessions the CI wait
-  actually takes.
-- No remaining tracked-doc reference to `post-task-fence.sh` as a live mechanism.
-- Every gate decision (deny/degrade/tier-gated auto-action) has a corresponding entry in
+  actually takes (the `Monitor`-bridged CI-wait leg may span a session boundary per D4a).
+
+Cross-cutting (spans plan Steps 3–7):
+- [ ] Every gate decision (deny/degrade/tier-gated auto-action) has a corresponding entry in
   `.claude/pipeline-log.jsonl`.
 
 ## Evidence to update
@@ -128,9 +187,10 @@ consistency — only manually checked against the convention.
 
 ## Stop and ask if
 
-- Before starting Step 0 at all — the plan's status is "Awaiting user go-ahead per step"; do not
-  begin without explicit go-ahead.
-- Before beginning Step N+1 when Step N's Accepts are not met.
+- Before starting each remaining step (plan Steps 2–7) — the plan's status is "Awaiting user
+  go-ahead per step"; do not begin any step without explicit go-ahead for that specific step.
+  Authorization for one step never extends to the next.
+- Before beginning plan Step N+1 when plan Step N's Accepts are not met.
 - Before flipping any `.claude-atomic.yaml` `pipeline:` flag beyond Tier 0, or any
   `hook-config.yaml` level change, without explicit user instruction.
 - Any of the hard-coded always-confirm cases fire (see Acceptance criteria) — these are never
