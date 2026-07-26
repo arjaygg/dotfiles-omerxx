@@ -69,7 +69,41 @@ validation:
     - "scripts/"
     - ".claude/hooks/"
 
-# Stubbed empty for now — present-but-empty signals opt-in with all autonomy
-# flags off. Plan Step 3 checks for this key's presence (no-op gate test); Step 4
-# fills in the real auto_commit/auto_push/auto_pr/auto_ship/auto_clean schema.
-pipeline: {}
+# Autonomy tiers (plan Step 4, D3; goal: goals/2026-07-25-03-agentic-git-pipeline.md).
+# All flags default false -- block-present-but-all-off is equivalent to the
+# Step 2 stub (opt-in to the git-pipeline-gate.sh nudge, zero auto-actions).
+# Each flag independently unlocks exactly one D4 lifecycle leg for the
+# not-yet-built ai/skills/auto-ship/SKILL.md (Step 5) to run without asking;
+# git-pipeline-gate.sh's own signal detection and warn/block nudging is
+# unaffected by these flags either way -- it always surfaces a due signal.
+#
+#   auto_commit -- Tier 0: commit.sh runs once validate-changeset.sh passes
+#                  on a non-main branch. Committing on `main` is always
+#                  refused outright (stack create first) -- never overridable.
+#   auto_push   -- Tier 1: push the branch once commit_due clears.
+#   auto_pr     -- Tier 1: open/update the PR via `stack pr` + background
+#                  ci-watch once pr_due fires.
+#   auto_ship   -- Tier 2: merge via `stack-ship` + fast-forward sync `main`
+#                  once merge_due fires (CI green, re-checked by stack-ship
+#                  itself). Fires an osascript notification on completion.
+#   auto_clean  -- Tier 2: `stack-clean` the merged branch once cleanup_due
+#                  fires. Fires an osascript notification on completion.
+#
+# Always-confirm regardless of any flag above -- never overridable by any
+# flag combination (D3):
+#   - force-push outside stack-sync's own --force-with-lease pattern
+#   - discarding staged/unstaged work to resolve a blocked/overgrown state
+#   - `stack clean --force` on a dirty worktree
+#   - `gh pr merge --admin` (this pipeline never uses --admin, period)
+#   - deleting a genuinely-unmerged (not squash-merged) branch
+#   - ci-watch's auto-deploy-on-green trigger (separate authorization, out of
+#     scope for this pipeline's flags)
+#   - stack-ship's multi-branch atomic merge (single-branch ship only)
+#   - any pipeline-driven edit to .claude-atomic.yaml, hook-config.yaml, or
+#     .claude/hooks/* (no self-escalation of its own tier or gate level)
+pipeline:
+  auto_commit: false
+  auto_push: false
+  auto_pr: false
+  auto_ship: false
+  auto_clean: false
