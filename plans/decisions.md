@@ -416,3 +416,50 @@ Durable record: `decisions/0005-autonomous-watchdog-loop.md`
 **Evidence:** `bash .claude/hooks/config-integrity.sh` → exit 0 (only pre-existing, unrelated live-symlink-not-installed warnings). `python3 -m pytest scripts/test_phase0_boundary.py -q` → 8 passed, including the base-template byte-equality test.
 
 **Alternatives rejected:** Leaving 0013's `opusplan`/`inherit` values in place — rejected, contradicts the user's explicit request. Overriding silently without a decision record — rejected, indistinguishable from unintentional drift.
+
+---
+
+## ADL-025 — Agentic git pipeline Steps 3-6: gate hook, autonomy flags, auto-ship skill, doc reconciliation
+
+**Decision:** 2026-07-26 — Implemented plan Steps 3-6 (`plans/2026-07-25-agentic-git-pipeline.md`,
+full D1-D7 design rationale there): `.claude/hooks/git-pipeline-gate.sh` + `stop.sh`'s
+`task-gate.sh` → `git-pipeline-gate.sh` first-deny-wins chain + `hook-config.yaml` level key
+(`32690de`); `.claude-atomic.yaml`'s `pipeline:` autonomy flags, all `false` by default
+(`219c0f8`); `ai/skills/auto-ship/SKILL.md` as the orchestration layer that actually runs a leg
+once opted in — the gate hook only detects and nudges (`909d0d2`); retired stale
+`post-task-fence.sh` "live mechanism" claims in `ai/rules/hyper-atomic-commits.md` and
+`ai/skills/hyper-atomic-commits-reference/SKILL.md`, both now describing the real
+`stop.sh` → `task-gate.sh` → `git-pipeline-gate.sh` chain (`21d510a`).
+**Why:** Tracked in the plan/goal docs already; recorded here per this repo's convention of a
+concise ADL entry for durable decisions, without duplicating the full D1-D7 rationale.
+
+---
+
+## ADL-026 — Agentic git pipeline Step 7: end-to-end shakedown, partial (documented gaps)
+
+**Decision:** 2026-07-26 — Ran the full commit→push→PR→merge→cleanup lifecycle on a real
+scratch branch (`chore/pipeline-shakedown`, worktree `.trees/pipeline-shakedown`) with zero
+manual "now do X" prompts beyond the standing goal-level authorization plus one explicit
+merge-target confirmation. PR #352 opened against the intermediate
+`docs/revise-agentic-git-pipeline-plan` base (not `main`, since this whole goal's work lives
+on that branch); merged via `gh pr merge --rebase --delete-branch` at `9513480`. Cleanup ran
+via `git worktree remove` / `git branch -d` / `git fetch --prune` (not `stack-clean`, to avoid
+exercising its own automation while verifying the pipeline that automation depends on).
+**Why:** PR #352's base had no CI configured (it isn't `main`), so the D4a CI-wait leg and
+the sync-against-main leg had nothing to exercise. Presented with this via `AskUserQuestion`,
+the user chose "Merge into the intermediate branch" ("go per your recommendation") and
+explicitly did not authorize a merge into `main` — that gate stays open, pending a fresh,
+separate confirmation whenever this feature branch itself is ready to land.
+**Record:** `goals/2026-07-25-03-agentic-git-pipeline.md` (Step 7 tracking), PR #352,
+`plans/progress.md`. Evidence: `.claude/pipeline-log.jsonl` on this branch has 3 real
+`pr_due`/`warn` entries confirming the gate hook fires correctly; the shakedown branch's own
+log entries were not preserved (lived in the now-removed linked worktree, gitignored, never
+committed) — accepted as a permanent, non-actionable gap. The CI-wait and sync-against-main
+legs remain unexercised until a `main`-based run happens; deferred, not silently dropped.
+
+**Update (2026-07-26, later):** user gave fresh explicit authorization to merge this branch
+(`docs/revise-agentic-git-pipeline-plan`) into `main` via PR #353 — see `plans/active-context.md`.
+`main` had advanced with Goal 03 work (ADL-020 through ADL-024 above) in the interim; reconciled
+via `git merge origin/main`, resolving conflicts in this file (renumbered this branch's ADL-020/
+ADL-021 to ADL-025/ADL-026 to avoid colliding with main's numbering), `plans/active-context.md`,
+and `goals/00-index.md` (this branch's goal renumbered 03→04) by keeping both sides' content.

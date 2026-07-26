@@ -41,9 +41,9 @@ Run `~/.dotfiles/scripts/ai/atomic-status.sh` to get the current state. There ar
 - **max_subsystems:** 3 distinct subsystem categories
 - **max_diff_lines:** 300 added+removed lines
 
-## Task Tracking Integration (TodoWrite → Fence)
+## Task Tracking Integration (Live Fence Chain)
 
-Marking a `TodoWrite` item `completed` fires `post-task-fence.sh` (via `TaskUpdate`); editing `plans/progress.md` directly does not — it silently bypasses the fence. Full mechanism and workflow: **`hyper-atomic-commits-reference` skill** (`ai/skills/hyper-atomic-commits-reference/SKILL.md`).
+`post-task-fence.sh` is retired — it lives only under `.claude/hooks/archive/` and is absent from `settings.json`'s hooks map, so it never fires today regardless of `TodoWrite`/`TaskUpdate` activity. The live commit-discipline fence on session Stop is `stop.sh`'s two-hook chain, in order (first-deny-wins): `task-gate.sh` (orphaned tasks/bg-work/crons) then `git-pipeline-gate.sh` (due commit/PR/CI/merge/sync/cleanup signals — plan: `plans/2026-07-25-agentic-git-pipeline.md`, goal: `goals/2026-07-25-03-agentic-git-pipeline.md`). Full mechanism and workflow: **`hyper-atomic-commits-reference` skill** (`ai/skills/hyper-atomic-commits-reference/SKILL.md`).
 
 ## When to Check State
 

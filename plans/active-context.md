@@ -1,5 +1,46 @@
 # Active Context
 
+## Current (2026-07-26) — Agentic git pipeline: Steps 0-7 complete and committed; only main-merge confirmation remains open
+
+**Worktree/branch:** `.trees/docsrevise-agentic-git-pipeline-plan` / `docs/revise-agentic-git-pipeline-plan`.
+Standing directive (set via `/goal`): `goals/2026-07-25-03-agentic-git-pipeline.md` — complete all
+remaining steps + acceptance criteria, don't stop mid-way. Full design: D1-D7 in
+`plans/2026-07-25-agentic-git-pipeline.md`.
+
+**Done and committed (all 8 steps):**
+- Step 0 (`958090a`) — Stop-hook spike findings.
+- Step 1 (`dd5d248`) — `scripts/ai/pipeline-status.sh` + 15/15 fixture tests.
+- Step 2 (`e083cfe`, `1912c3e`) — `scripts/ai/validate-changeset.sh` + `validation:`/`pipeline: {}`
+  stubs in `.claude-atomic.yaml`, 10/10 fixture tests.
+- Step 3 (`32690de`) — `.claude/hooks/git-pipeline-gate.sh` + `stop.sh` two-hook chain
+  (task-gate.sh → git-pipeline-gate.sh, first-deny-wins) + `hook-config.yaml` level key.
+- Step 4 (`219c0f8`) — `.claude-atomic.yaml` `pipeline:` autonomy flags, all `false` by default.
+- Step 5 (`909d0d2`) — `ai/skills/auto-ship/SKILL.md` orchestration skill.
+- Step 6 (`21d510a`) — retired stale `post-task-fence.sh` claims; docs now describe the live
+  `stop.sh` → `task-gate.sh` → `git-pipeline-gate.sh` chain.
+- Step 7 — end-to-end shakedown: `chore/pipeline-shakedown` branch, PR #352, merged (`9513480`)
+  into this intermediate branch per explicit user decision (PR base had no CI configured, so
+  full-`main` CI-wait/sync legs are documented, unvalidated gaps — ADL-021 in `plans/decisions.md`,
+  not failures).
+- Doc sync (`0479d87`) — goal doc, `plans/progress.md`, `plans/decisions.md` all reflect Step 7
+  completion and its gaps.
+
+**Only remaining open item:** merging this branch's content into `main` requires a fresh,
+separate user confirmation — explicitly withheld per prior user decision, not yet requested.
+Do not merge to `main` without new organic user authorization.
+
+**Update (2026-07-26, later):** user gave explicit fresh authorization — "create PR and merge to
+main, sync local, cleanup". PR #353 opened against `main`; `main` had advanced in the interim
+(commits `52ceab5`, `4f13e33` — Goal 03 model-routing enforcement work below). Reconciling via
+`git merge origin/main` on this branch; conflicts in this file, `goals/00-index.md` (numbering
+collision, this branch's goal renumbered 03→04), and `plans/decisions.md` resolved by keeping both
+sides' content. Remaining: complete merge commit, push, verify PR mergeable, ship via
+`stack-ship`, sync local `main`, cleanup.
+
+plan: plans/2026-07-25-agentic-git-pipeline.md
+step: Steps 0-7 complete and committed; executing user-authorized merge-to-main pipeline
+focus: finish `git merge origin/main` conflict resolution, then push -> ship -> sync -> cleanup
+
 ## Current (2026-07-26) — Goal 03: deterministic model-routing enforcement complete (Steps 1-8 done, warn-only)
 
 **Follow-up (2026-07-26):** User explicitly requested a fixed routing override on top of Goal 03 —
