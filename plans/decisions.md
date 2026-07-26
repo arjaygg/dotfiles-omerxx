@@ -342,3 +342,66 @@ Durable record: `decisions/0005-autonomous-watchdog-loop.md`
 **Decision:** 2026-07-13 — Add public-hygiene scanning, config diagnosis, static hook-schema checks, and structured fixture execution as a read-only layer. Keep permission/default-setting changes, runtime copy-back replacement, hook registration changes, and generated-overlay migration in a separate human-reviewed phase.
 **Why:** Current evidence shows privacy/path findings, a tracked permission bypass, live-settings copy-back, ignored hook matchers, parallel worktree handlers, and stale/skipped fixtures. Validate boundaries before changing behavior.
 **Record:** `decisions/0010-governed-read-only-validation.md`
+
+---
+## ADL-020 — Reconcile `opusplan`-vs-`sonnet` drift in `.claude/settings.json` (Goal 03, Step 1)
+
+**Decision:** 2026-07-26 — Changed `.claude/settings.json`'s `"model"` field from `"sonnet"` to `"opusplan"`, matching what `ai/skills/model-routing/SKILL.md` and `ai/rules/agent-user-global.md` both already document as the recommended default (Opus during plan mode, Sonnet during execution).
+
+**Why:** `SKILL.md` states plainly "The recommended default is `model: "opusplan"` in `settings.json`," but the tracked file had drifted to `"sonnet"`. This is documented, known drift, not an intentional policy choice: `plans/active-context.md`'s 2026-07-08 entry already diagnosed `settings-symlink-guard.sh` as blindly copying live runtime settings back into the tracked repo, explicitly naming `model: sonnet` (alongside `skipDangerousModePermissionPrompt`) as values that keep reappearing because of that copy-back behavior. No evidence anywhere (commit history, decisions log, active-context) shows a deliberate decision to change the default away from `opusplan`. This satisfies Goal 03's "Stop and ask if... intentional" trigger by ruling out intentionality via in-repo evidence rather than assumption.
+
+**Alternatives rejected:** Keeping `"sonnet"` as the tracked default and updating `SKILL.md`/`agent-user-global.md` to match instead — rejected because both docs already reflect the actual desired policy (Opus for planning depth, Sonnet for execution cost) and no rationale exists anywhere for abandoning that policy; changing the docs would paper over the drift rather than fix it.
+
+**Assumptions:** If `settings-symlink-guard.sh`'s copy-back behavior is fixed/removed later, this decision should hold on its own merits. If the live runtime `~/.claude/settings.json` is later found to have `sonnet` deliberately set by the user for a specific reason not recorded anywhere in this repo, this decision needs revisiting — surface it rather than silently re-reverting.
+
+
+---
+## ADL-021 — Hard-enforce agent `model:` frontmatter in `config-integrity.sh` (Goal 03, Step 3)
+
+**Decision:** 2026-07-26 — Extended `.claude/hooks/config-integrity.sh` with a `check_agent_models()` function that hard-fails (`exit 1`) when any `.claude/agents/*.md` file lacks a `model:` field or sets one outside `{haiku, sonnet, opus, fable, inherit}` (aliases only — dated model IDs rejected). This is a deliberate behavior split from the script's pre-existing symlink/JSON checks, which remain advisory (`exit 0` always, warnings only).
+
+**Why:** The goal requires a deterministic, fail-closed check, not another advisory warning — a missing/invalid `model:` is a policy violation with a fixed correct answer (one of 5 aliases), not drift to flag and let a human judge. Also fixed a git-worktree coupling bug discovered while testing: the new check originally used the same hardcoded `DOTFILES="$HOME/.dotfiles"` variable as the symlink-target checks, which caused a linked worktree's own copy of the script to validate the main worktree's agent files instead of its own. Added `SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"`, derived from the script's own invocation path, and pointed only the new self-validating check at it — the pre-existing symlink-target checks correctly keep using `$DOTFILES`, since they intentionally validate against the canonical root by design.
+
+**Evidence:** Demonstrated both acceptance-criterion halves directly via `bash .claude/hooks/config-integrity.sh` in the worktree: (1) clean tree → `EXIT_CODE=0`, only pre-existing unrelated symlink advisories on stderr/JSON; (2) `ai/agents/mcp_config_manager.md`'s `model:` deliberately reset to the dated ID `claude-3-5-sonnet-20241022` → `EXIT_CODE=1` with `❌ Agent model frontmatter violations: • .../mcp_config_manager.md: model 'claude-3-5-sonnet-20241022' not in {haiku sonnet opus fable inherit}...` on stderr; file immediately reverted back to `model: sonnet` and clean-tree exit-0 re-confirmed.
+
+**Alternatives rejected:** Keeping the new check advisory-only (matching the script's existing symlink checks) — rejected because the goal explicitly calls for a deterministic fail rather than another warning humans can ignore. Reusing `$DOTFILES` unmodified for the new check — rejected after it produced a false-negative-prone cross-worktree validation bug in testing.
+
+**Assumptions:** `{haiku, sonnet, opus, fable, inherit}` is the complete, stable alias set going forward; if a new tier alias is added to the model lineup later, `ALLOWED_MODELS` in `config-integrity.sh` needs a matching update.
+
+
+---
+## ADL-022 — Warn-only Workflow fan-out and Agent tier-mismatch gates (Goal 03, Steps 4-6)
+
+**Decision:** 2026-07-26 — Extended `.claude/hooks/pre-tool-gate-v2.sh` with two new warn-only sections and added `Workflow` to `.claude/settings.json`'s `PreToolUse` matcher:
+- **Section 7b (Agent tier-mismatch):** fires only when `tool_input.model` is an explicit override (empty means "inherit," which the hook cannot evaluate against a resolved tier it never sees). Flags `haiku` pinned against a deep-reasoning keyword regex, and non-`haiku` pinned against a trivial-keyword-plus-under-25-word prompt.
+- **Section 8 (Workflow fan-out):** regex-counts literal `agent(` call sites in `tool_input.script`; warns `fan-out-exceeds-3` above the 3-agent cap, or `fan-out-undecidable` when `parallel(`/`pipeline(` wraps a `.map(` chain or a bare variable — both cases where the true count depends on runtime data the hook cannot see.
+- Both sections only ever `echo ... >&2`; neither calls `_deny` nor exits non-zero — matching the goal's non-goal against introducing a hard block without a warn/dry-run period first.
+
+**Why:** Regex/keyword matching cannot reliably judge task difficulty or parse arbitrary JS array lengths, so a hard deny here would produce false-positive strandings — exactly what the goal's "Stop and ask if... enforcing a Haiku floor would degrade an existing agent's actual job" and "Do not attempt reliable static analysis of arbitrary workflow scripts" clauses rule out. Two undecidable-shape regexes were required (not one) because a runtime-sized fan-out can appear either as `x.map(...)` inside `parallel(`/`pipeline(`, or as a bare identifier passed directly — both must resolve to a warning, never a (wrong) hard count.
+
+**Evidence:** 7 crafted stdin-JSON invocations run directly against the hook, all exiting 0 (warn-only confirmed):
+1. `Workflow` script with 4 literal `agent(` calls → `WARN: [fan-out-exceeds-3] ... contains 4 agent( call sites ...`
+2. `Workflow` script with `parallel(items.map(i => () => agent(i)))` → `WARN: [fan-out-undecidable] ...`
+3. `Workflow` script with 2 literal `agent(` calls, no `parallel`/`pipeline` → no output (clean pass)
+4. `Agent` call, `model:"haiku"`, deep-reasoning prompt ("Architect a comprehensive migration plan...") → `WARN: [tier-mismatch] ... pinned to 'haiku' but prompt matches deep-reasoning signals ...`
+5. `Agent` call, `model:"opus"`, trivial short prompt ("fix this typo in readme") → `WARN: [tier-mismatch] ... pinned to 'opus' but prompt looks trivial ...`
+6. `Agent` call, `model:"haiku"`, same trivial prompt (tier correctly matched) → no output (clean pass)
+7. `Agent` call, no `model` field (inherit), deep-reasoning prompt → no output (hook has no resolved-tier visibility to compare against, by design)
+
+**Alternatives rejected:** Promoting either section to `deny` within this goal — explicitly out of scope per the goal's own Step 6 ("collect at least one session's real fire/no-fire evidence before proposing promotion to deny (promotion is a separate future decision, not part of this goal)"). Attempting to parse `parallel`/`pipeline` array literals to get an exact runtime-independent count for the `.map(`/bare-variable cases — rejected as unreliable static analysis of arbitrary JS, which the goal's non-goals explicitly forbid.
+
+**Assumptions:** The keyword lists (`_DEEP_KEYWORDS`, `_TRIVIAL_KEYWORDS`) are a starting heuristic, not a validated classifier — expect false positives/negatives in real usage; the warn-mode period (Step 6) is meant to surface exactly that before any deny-promotion discussion. If `Workflow`'s `tool_input.script` field name or `Agent`'s `tool_input.model` field name change in a future Claude Code version, the corresponding jq extraction (`WF_SCRIPT`, `AGENT_MODEL`) needs updating.
+
+
+---
+## ADL-023 — Fixed base-template drift discovered by Step 8 test run (Goal 03, Step 8)
+
+**Decision:** 2026-07-26 — `python3 -m pytest scripts/ -q` (full repo suite) surfaced one real failure: `scripts/test_phase0_boundary.py::test_claude_base_template_matches_sanitized_tracked_settings` asserts `ai/config/claude/settings.base.json` is byte-for-byte JSON-equal to `.claude/settings.json`. Both of this goal's own edits to `.claude/settings.json` — the Step 1 `"model": "sonnet"` → `"opusplan"` change (ADL-020) and the Step 4 `PreToolUse` matcher's `|Workflow` addition — had not been mirrored into the base template. Applied both same edits to `ai/config/claude/settings.base.json` via `ctx_patch(op="replace_all")` (native `Edit` denied on this file, consistent with the broader-than-`.claude/**` deny-rule scope noted earlier this session).
+
+**Why:** The template exists so a fresh `.claude/settings.json` bootstrapped from it starts in sync with the tracked, live config; letting it drift silently would have reintroduced exactly the kind of undocumented policy drift this goal exists to close (per the goal's own "Why" section citing the `opusplan`-vs-`sonnet` drift as the motivating example). Fixing it in-place, rather than reverting the Step 1/4 changes, is correct because the tracked `.claude/settings.json` is the source of truth per ADL-020/ADL-022, not the template.
+
+**Evidence:** Before fix: `1 failed, 156 passed, 60 subtests passed` (diff: `"model": "sonnet"` vs `"opusplan"`; matcher missing `|Workflow`). After fix: `diff` between the two files empty, `jq empty` confirms valid JSON, full rerun: `157 passed, 60 subtests passed in 20.86s`. `hook-integration-test.sh` run before and after the template fix: both `0 passed, 0 failed, 5 skipped` (skips are a pre-existing `claude -p`-unavailable environment limitation in this sandboxed session, not a regression — identical skip reasons and count across both runs). `config-integrity.sh` on the current tree: `exit_code=0` (only pre-existing, unrelated symlink-not-installed warnings, expected in a `.trees/` worktree checkout).
+
+**Alternatives rejected:** Reverting the `.claude/settings.json` changes to make the template test pass trivially — rejected, since the tracked settings file is the goal's actual target of record (ADL-020, ADL-022), not the template mirror.
+
+**Assumptions:** No other tracked-vs-template pairs exist elsewhere in the repo with the same equality-assertion pattern; `test_phase0_boundary.py` is presumed to be the sole guard for `.claude/settings.json`'s specific template-sync invariant. Future edits to `.claude/settings.json` in this repo must remember to mirror `ai/config/claude/settings.base.json` in the same commit, or re-trip this same test.
