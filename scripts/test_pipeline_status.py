@@ -37,7 +37,7 @@ def init_repo(path: Path, branch: str = "main") -> Path:
 
 def add_bare_origin(repo: Path, tmp: Path, push_branch: str = "main") -> Path:
     bare = tmp / "origin.git"
-    git(tmp, "init", "-q", "--bare", str(bare))
+    git(tmp, "init", "-q", "--bare", "-b", push_branch, str(bare))
     git(repo, "remote", "add", "origin", str(bare))
     git(repo, "push", "-q", "-u", "origin", push_branch)
     return bare
