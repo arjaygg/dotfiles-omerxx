@@ -1,37 +1,37 @@
 # Active Context
 
-## Current (2026-07-26) — Agentic git pipeline: Steps 0-6 committed; Step 7 (shakedown) next
+## Current (2026-07-26) — Agentic git pipeline: Steps 0-7 complete and committed; only main-merge confirmation remains open
 
 **Worktree/branch:** `.trees/docsrevise-agentic-git-pipeline-plan` / `docs/revise-agentic-git-pipeline-plan`.
 Standing directive (set via `/goal`): `goals/2026-07-25-03-agentic-git-pipeline.md` — complete all
 remaining steps + acceptance criteria, don't stop mid-way. Full design: D1-D7 in
 `plans/2026-07-25-agentic-git-pipeline.md`.
 
-**Done and committed:**
+**Done and committed (all 8 steps):**
 - Step 0 (`958090a`) — Stop-hook spike findings.
 - Step 1 (`dd5d248`) — `scripts/ai/pipeline-status.sh` + 15/15 fixture tests.
 - Step 2 (`e083cfe`, `1912c3e`) — `scripts/ai/validate-changeset.sh` + `validation:`/`pipeline: {}`
   stubs in `.claude-atomic.yaml`, 10/10 fixture tests.
 - Step 3 (`32690de`) — `.claude/hooks/git-pipeline-gate.sh` + `stop.sh` two-hook chain
   (task-gate.sh → git-pipeline-gate.sh, first-deny-wins) + `hook-config.yaml` level key.
-- Step 4 (`219c0f8`) — `.claude-atomic.yaml` `pipeline:` autonomy flags (`auto_commit`/`auto_push`/
-  `auto_pr`/`auto_ship`/`auto_clean`, all `false` by default).
-- Step 5 (`909d0d2`) — `ai/skills/auto-ship/SKILL.md` orchestration skill (entry gate, D4 leg
-  sequence, D3 always-confirm carve-outs, D6 audit trail + rollback runbook).
-- Step 6 (`21d510a`) — retired stale `post-task-fence.sh` live-mechanism claims in
-  `ai/rules/hyper-atomic-commits.md` and `ai/skills/hyper-atomic-commits-reference/SKILL.md`;
-  both now describe the live `stop.sh` → `task-gate.sh` → `git-pipeline-gate.sh` chain.
+- Step 4 (`219c0f8`) — `.claude-atomic.yaml` `pipeline:` autonomy flags, all `false` by default.
+- Step 5 (`909d0d2`) — `ai/skills/auto-ship/SKILL.md` orchestration skill.
+- Step 6 (`21d510a`) — retired stale `post-task-fence.sh` claims; docs now describe the live
+  `stop.sh` → `task-gate.sh` → `git-pipeline-gate.sh` chain.
+- Step 7 — end-to-end shakedown: `chore/pipeline-shakedown` branch, PR #352, merged (`9513480`)
+  into this intermediate branch per explicit user decision (PR base had no CI configured, so
+  full-`main` CI-wait/sync legs are documented, unvalidated gaps — ADL-021 in `plans/decisions.md`,
+  not failures).
+- Doc sync (`0479d87`) — goal doc, `plans/progress.md`, `plans/decisions.md` all reflect Step 7
+  completion and its gaps.
 
-**Not yet done:**
-- Step 7 — end-to-end shakedown on a real scratch branch (commit → PR → CI-wait via
-  Monitor-bridged `ci-watch` → merge via `stack-ship` → main sync → `stack-clean`), driven by
-  gate prompts with all `pipeline:` flags still `false` (confirm-first).
-- Flip Steps 3-6 `[ ]` → `[x]` in `goals/2026-07-25-03-agentic-git-pipeline.md` and sync
-  `plans/progress.md`/`plans/decisions.md`.
+**Only remaining open item:** merging this branch's content into `main` requires a fresh,
+separate user confirmation — explicitly withheld per prior user decision, not yet requested.
+Do not merge to `main` without new organic user authorization.
 
 plan: plans/2026-07-25-agentic-git-pipeline.md
-step: 6 of 7 complete and committed; Step 7 in progress
-focus: run the Step 7 shakedown, then flip acceptance checkboxes and close out
+step: Steps 0-7 complete and committed; only the main-merge confirmation gate remains
+focus: await explicit user go-ahead before any merge into main; nothing else outstanding
 
 ## Current (2026-07-17) — Chrome MCP efficiency hook + M8 orphan cleanup: commit 1 of 3 landed; session has hit 8 compactions, restart recommended
 
