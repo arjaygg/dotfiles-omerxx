@@ -454,6 +454,14 @@ Executing `plans/2026-07-07-ai-harness-improvement-proposal.md` per user "go" (P
   extra manual prompts. **Gaps, accepted by explicit user decision (2026-07-26):** CI-wait
   (D4a) and sync-against-main legs unexercised (PR base wasn't `main`); shakedown branch's own
   `.claude/pipeline-log.jsonl` entries lost when its worktree was removed. (2026-07-26)
+  **Update (2026-07-26, later) — gaps closed, goal fully complete:** PR #353
+  (`docs/revise-agentic-git-pipeline-plan` -> `main`) landed with CI confirmed green via
+  `ai/skills/ci-watch/SKILL.md` before merge (`gh pr merge --merge --delete-branch`, after a
+  rebase attempt hit a GitHub `GraphQL: This branch can't be rebased` error) and local `main`
+  fast-forward-synced afterward — exercising the CI-wait (D4a) and sync-against-main legs for
+  real. Follow-up PR #354 (`docs/goal03-step7-gap-closure`, merged 2026-07-26) updated the goal
+  doc to remove the now-closed-gap language. See ADL-027 in `plans/decisions.md`. **Goal 03 is
+  now fully complete: all 8 steps done, all acceptance criteria checked.**
 - [x] AI primitives audit workflow: 5-area inventory + 3-tool capability research + 4-dimension gap analysis + adversarial verification (2026-06-12)
 - [x] fury v3.1.0 BDD context discovery (dotfiles PR #184, merged 2026-05-16)
 - [x] auc-conversion Serena memory aliases for fury (PR #641, merged 2026-05-16)
