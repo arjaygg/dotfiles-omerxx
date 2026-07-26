@@ -37,7 +37,10 @@ written as "plan Step N".**
   `ci-status.md` variants). The `plans/active-context.md` checkpoint landed as `6f2bcc6`.
   Verified: `bash -n` syntax check, live dogfood run, ~0.197–0.201s warm-repo timing (under the
   200ms budget), zero network calls.
-- **Plan Steps 3–7**: **not started**. Awaiting explicit per-step user go-ahead (Steps 0-2 done).
+- **Plan Steps 3–7**: **done**. Steps 3-6 landed on this branch; Step 7's end-to-end
+  shakedown is done with all legs exercised, including PR #353's real merge of this branch
+  into `main` (2026-07-26), which closed the previously-documented CI-wait and
+  sync-against-main gaps (see the Step 7 note below).
 
 `scripts/validate_goals.py` (the validator the `goal-authoring` convention calls for) does not
 exist in this repo, so this goal file has not been machine-validated for heading order or index
@@ -96,18 +99,24 @@ step's full rationale and D-note corrections live in the plan; this list is a tr
   per D5), `AGENTS.md` (edit if it references the old fence bridge). Removes the dead
   `post-task-fence.sh` bridge claim; describes the live `task-gate.sh` + `git-pipeline-gate.sh`
   chain.
-- **Step 7 — End-to-end shakedown** — **done, with documented gaps**. Files: none (validation
+- **Step 7 — End-to-end shakedown** — **done, all legs exercised**. Files: none (validation
   step only) — payload was `plans/2026-07-26-pipeline-shakedown-log.md` on scratch branch
-  `chore/pipeline-shakedown` (PR #352). Exercised commit → push → PR → merge → cleanup for real,
-  via `gh pr merge --rebase --delete-branch` (never `--admin`) followed by worktree/branch removal.
-  **Known gaps, accepted by explicit user decision (2026-07-26):** the PR's base was the
-  intermediate `docs/revise-agentic-git-pipeline-plan` branch, not `main` — `.github/workflows/
-  claude-auto-gates.yml` only triggers `on: pull_request: branches: [main]`, so there was no real
-  CI to wait on (the `ci_pending`/Monitor-bridged CI-wait leg, D4a, was not exercised), and
-  `pipeline-status.sh`'s `sync_due`/`cleanup_due` signals are hardcoded against `main` so they
-  never fired for this base (the sync-against-main leg was not exercised either). A full run
-  covering CI-wait and sync-against-main remains outstanding, deferred until this feature branch
-  itself lands in `main`.
+  `chore/pipeline-shakedown` (PR #352), plus the final landing of this feature branch itself
+  (PR #353, `docs/revise-agentic-git-pipeline-plan` → `main`). PR #352 exercised commit → push →
+  PR → merge → cleanup for real, via `gh pr merge --rebase --delete-branch` (never `--admin`)
+  followed by worktree/branch removal. **The two previously-outstanding legs were closed out by
+  PR #353's own landing (2026-07-26):** CI ran for real against `main` (`.github/workflows/
+  claude-auto-gates.yml` triggers on `pull_request: branches: [main]`) and was watched via a
+  background poller per `ai/skills/ci-watch/SKILL.md` (all checks green, confirmed via
+  `gh pr checks`) — exercising the `ci_pending`/CI-wait leg (D4a) for real. The rebase-merge
+  attempt failed with a GitHub-side `GraphQL: This branch can't be rebased` error (linear history,
+  no branch protection, no rulesets — root cause not further diagnosed; treated as a one-off
+  GitHub API/mergeability-cache issue) and was completed via `gh pr merge --merge --delete-branch`
+  instead, preserving full atomic commit history rather than falling back to squash. Local `main`
+  was then fast-forwarded from `origin/main` (`git pull --ff-only`, resolving the worktree via
+  `git worktree list --porcelain`) — exercising the sync-against-main leg for real — and the
+  merged branch's worktree/local branch were removed only after confirming
+  `git merge-base --is-ancestor` against `main`.
 
 Ordering note (from the plan's Step 3/4 note): Step 2 must stub a minimal `pipeline: {}` in
 `.claude-atomic.yaml` so Step 3's opt-in no-op check has something concrete to test; Step 4 then
@@ -174,11 +183,11 @@ Plan Step 7:
   zero manual "now do X" prompts from the user beyond the standing goal-level authorization plus
   one explicit merge-target confirmation (the intermediate-branch base had no CI configured) — the
   commit → push → PR → merge → cleanup legs ran end to end.
-- [ ] **Not fully met** — the CI-wait leg (D4a) and the sync-against-main leg were not exercised,
-  because PR #352's base was the intermediate `docs/revise-agentic-git-pipeline-plan` branch, not
-  `main` (see Step 7 note above). Accepted as a documented gap by explicit user decision
-  (2026-07-26); a full run covering both legs is deferred until this feature branch lands in
-  `main`.
+- [x] The previously-documented gap — the CI-wait leg (D4a) and the sync-against-main leg
+  not being exercised because PR #352's base was the intermediate
+  `docs/revise-agentic-git-pipeline-plan` branch, not `main` — is now closed: PR #353 landed this
+  feature branch itself into `main` on 2026-07-26, with CI confirmed green before merge and
+  `main` fast-forward-synced afterward, exercising both legs for real (see Step 7 note above).
 
 Cross-cutting (spans plan Steps 3–7):
 - [x] Every gate decision on this working branch (`docs/revise-agentic-git-pipeline-plan`) has a
