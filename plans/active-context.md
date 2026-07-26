@@ -1,51 +1,37 @@
 # Active Context
 
-## Current (2026-07-26) — Agentic git pipeline: Steps 0-2 committed; this session has compacted repeatedly — restart before Step 3
+## Current (2026-07-26) — Agentic git pipeline: Steps 0-6 committed; Step 7 (shakedown) next
 
-**COMPACTION BRAKE — read this first:** this session has compacted multiple times. Per
-`ai/rules/context-and-compaction.md` ("Use `/compact` at most 1-2 times per session — prefer
-checkpointing and starting fresh"), the user should start a **fresh session** before approving or
-starting Step 3. This entry is the resume point for that fresh session.
+**Worktree/branch:** `.trees/docsrevise-agentic-git-pipeline-plan` / `docs/revise-agentic-git-pipeline-plan`.
+Standing directive (set via `/goal`): `goals/2026-07-25-03-agentic-git-pipeline.md` — complete all
+remaining steps + acceptance criteria, don't stop mid-way. Full design: D1-D7 in
+`plans/2026-07-25-agentic-git-pipeline.md`.
 
-**Worktree/branch:** `.trees/docsrevise-agentic-git-pipeline-plan` / `docs/revise-agentic-git-pipeline-plan`, isolated per explicit user instruction ("fold to a plan, but create a new stack branch to isolate the changes").
+**Done and committed:**
+- Step 0 (`958090a`) — Stop-hook spike findings.
+- Step 1 (`dd5d248`) — `scripts/ai/pipeline-status.sh` + 15/15 fixture tests.
+- Step 2 (`e083cfe`, `1912c3e`) — `scripts/ai/validate-changeset.sh` + `validation:`/`pipeline: {}`
+  stubs in `.claude-atomic.yaml`, 10/10 fixture tests.
+- Step 3 (`32690de`) — `.claude/hooks/git-pipeline-gate.sh` + `stop.sh` two-hook chain
+  (task-gate.sh → git-pipeline-gate.sh, first-deny-wins) + `hook-config.yaml` level key.
+- Step 4 (`219c0f8`) — `.claude-atomic.yaml` `pipeline:` autonomy flags (`auto_commit`/`auto_push`/
+  `auto_pr`/`auto_ship`/`auto_clean`, all `false` by default).
+- Step 5 (`909d0d2`) — `ai/skills/auto-ship/SKILL.md` orchestration skill (entry gate, D4 leg
+  sequence, D3 always-confirm carve-outs, D6 audit trail + rollback runbook).
+- Step 6 (`21d510a`) — retired stale `post-task-fence.sh` live-mechanism claims in
+  `ai/rules/hyper-atomic-commits.md` and `ai/skills/hyper-atomic-commits-reference/SKILL.md`;
+  both now describe the live `stop.sh` → `task-gate.sh` → `git-pipeline-gate.sh` chain.
 
-Plan originally authored by a Fable plan agent, then reviewed by two independent fresh Fable
-advisor passes: round 1 (`advisor-review-git-pipeline-plan` — hook mechanics: Stop-hook JSON
-contract, autonomy-tier carve-outs, validation coverage, step sequencing) and round 2
-(`advisor-review-governance-gaps` — audit trail, kill switch, rollback runbook, self-escalation,
-concurrent sessions, identity assertion). All findings from both rounds folded into
-`plans/2026-07-25-agentic-git-pipeline.md` in this worktree.
-
-**Step 0 — DONE** (commit `958090a`, `docs(plans): record Step 0 Stop-hook spike findings`).
-
-**Step 1 — DONE** (commit `dd5d248`, `scripts/ai/pipeline-status.sh` + `scripts/test_pipeline_status.py`,
-15/15 fixture tests passing). Checkpointed as `6f2bcc6` and synced to the goal file as `bfbadff`/`caeea6f`.
-
-**Step 2 — DONE.** `scripts/ai/validate-changeset.sh` (routes staged files into docs/config/source/
-unknown per D2; `.claude/hooks/*.sh` forced to `source`; unknown never blocks) plus the `validation:`
-+ stubbed `pipeline: {}` blocks in `.claude-atomic.yaml`:
-- Committed in two atomic commits: `e083cfe` (`feat(pipeline): add validate-changeset.sh + validation
-  routing config`) and `1912c3e` (`test(pipeline): add fixture suite for validate-changeset.sh`).
-- `scripts/test_validate_changeset.py` — 10/10 fixture tests passing, covering docs/config/source/
-  unknown routing, the `.claude/hooks/*.sh` forced-source override, custom `validation:` block
-  pattern routing for atypical extensions, and the no-staged-files trivial-pass case.
-- Dogfooding against the real repo (not just synthetic fixtures) surfaced and fixed two real bugs:
-  a shellcheck-directive-misparse (SC1072/SC1073, a header comment starting with the literal word
-  "shellcheck") and a `local f="$1" abspath="$REPO_ROOT/$f"` SC2318 ordering bug (RHS saw the outer
-  `$f`, not the just-declared local) at two call sites — both fixed by splitting into separate
-  `local` statements.
-- A hyper-atomic "blocked" state (3 staged files / 3 subsystems) was hit mid-session; resolved per
-  the documented recovery path — unstaged the test file, committed the implementation pair first,
-  then re-staged and committed the test file as its own atomic unit.
-
-**Not yet done:** Step 2's acceptance criteria are checked off in the goal file (this checkpoint);
-`git status` is clean. Per the goal's binding "Stop and ask if" rule, Step 3 (`.claude/hooks/
-git-pipeline-gate.sh` + `stop.sh` edit + `hook-config.yaml` level key) requires a separate, explicit
-user go-ahead not yet requested — authorization for Step 2 does not extend to Step 3.
+**Not yet done:**
+- Step 7 — end-to-end shakedown on a real scratch branch (commit → PR → CI-wait via
+  Monitor-bridged `ci-watch` → merge via `stack-ship` → main sync → `stack-clean`), driven by
+  gate prompts with all `pipeline:` flags still `false` (confirm-first).
+- Flip Steps 3-6 `[ ]` → `[x]` in `goals/2026-07-25-03-agentic-git-pipeline.md` and sync
+  `plans/progress.md`/`plans/decisions.md`.
 
 plan: plans/2026-07-25-agentic-git-pipeline.md
-step: 2 of 7 complete and committed (e083cfe, 1912c3e); Step 3 not authorized
-focus: (in a fresh session) ask the user explicitly for go-ahead on Step 3 before starting any of it
+step: 6 of 7 complete and committed; Step 7 in progress
+focus: run the Step 7 shakedown, then flip acceptance checkboxes and close out
 
 ## Current (2026-07-17) — Chrome MCP efficiency hook + M8 orphan cleanup: commit 1 of 3 landed; session has hit 8 compactions, restart recommended
 
