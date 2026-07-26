@@ -102,7 +102,7 @@
     ],
     "defaultMode": "acceptEdits"
   },
-  "model": "sonnet",
+  "model": "opusplan",
   "enableAllProjectMcpServers": true,
   "skillOverrides": {
     "ado-workitem": "off",
@@ -235,7 +235,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|Read|Edit|Write|MultiEdit|Grep|Glob|Agent",
+        "matcher": "Bash|Read|Edit|Write|MultiEdit|Grep|Glob|Agent|Workflow",
         "hooks": [
           {
             "type": "command",
