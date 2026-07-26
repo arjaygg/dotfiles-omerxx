@@ -2,7 +2,7 @@
 name: mcp_config_manager
 description: Specialist subagent for safely parsing, manipulating, and migrating JSON configuration schemas across various AI tools (Cursor, Claude Code, Windsurf, Gemini, Codex).
 tools: Bash, Read, Edit, Write, Glob, Grep
-model: claude-3-5-sonnet-20241022
+model: sonnet
 permissionMode: acceptEdits
 ---
 

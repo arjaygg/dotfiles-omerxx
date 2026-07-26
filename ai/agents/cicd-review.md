@@ -3,6 +3,7 @@ name: cicd-review
 description: CI/CD human escalation and incident management via MS Teams
 version: 1.0
 type: agent
+model: inherit
 ---
 
 # CI/CD Review Agent

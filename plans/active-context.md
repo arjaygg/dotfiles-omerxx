@@ -1,5 +1,51 @@
 # Active Context
 
+## Current (2026-07-26) — Goal 03: deterministic model-routing enforcement complete (Steps 1-8 done, warn-only)
+
+Goal file: `goals/2026-07-26-03-deterministic-model-routing-enforcement.md`. Branch/worktree:
+`chore/deterministic-model-routing-enforcement` at `.trees/deterministic-model-routing-enforcement`.
+`goals/00-index.md` Goal 03 status moved `Proposed` → `Completed (warn-only)`.
+
+**All 8 steps done:**
+- Step 1: resolved `opusplan` vs `sonnet` drift — `.claude/settings.json` now matches
+  `ai/skills/model-routing/SKILL.md`'s documented default (`opusplan`). ADL-020.
+- Step 2: `cicd-audit.md`, `cicd-monitor.md`, `cicd-review.md` given explicit `model:` frontmatter
+  per SKILL.md's tier table; `mcp_config_manager.md`'s pinned dated model ID replaced with a
+  supported alias.
+- Step 3: `.claude/hooks/config-integrity.sh` extended with `check_agent_models()` — hard-fails
+  when any `.claude/agents/*.md` lacks `model:` or sets a value outside
+  `{haiku, sonnet, opus, fable, inherit}`. Demonstrated both directions (bad model → exit 1, clean
+  tree → exit 0). ADL-021.
+- Step 4: `pre-tool-gate-v2.sh` matcher extended to `Workflow`; new Section 8 regex-counts
+  `agent(` call sites, warns `fan-out-exceeds-3` above the 3-agent cap, warns
+  `fan-out-undecidable` for `parallel(`/`pipeline(` wrapping a `.map(` or bare variable.
+- Step 5: new Section 7b flags `Agent` tier mismatch — trivial prompt pinned off-haiku,
+  deep-reasoning prompt pinned to haiku; no-op when `model` is unset (inherit, unresolvable by a
+  PreToolUse hook).
+- Step 6: both new sections run warn-only; 7 crafted stdin-JSON fire/no-fire cases recorded in
+  ADL-022 (4 fire, 3 clean pass). Promotion to `deny` explicitly deferred, not part of this goal.
+- Step 7: added an "Enforcement" section to `ai/skills/model-routing/SKILL.md` mapping each policy
+  clause to its actual mechanism; states plainly that main-loop tier selection is advisory-only
+  (no hook can call `/model`) and why.
+- Step 8: `python3 -m pytest scripts/ -q` surfaced one real regression this step introduced —
+  `ai/config/claude/settings.base.json` had drifted from the tracked `.claude/settings.json`
+  (Steps 1 and 4's edits not mirrored into the template). Fixed via `ctx_patch(op="replace_all")`;
+  157 passed / 60 subtests passed after the fix, 0 regressions. `hook-integration-test.sh`:
+  0 passed / 0 failed / 5 skipped (pre-existing `claude -p`-unavailable sandbox limitation, not a
+  regression) both before and after. ADL-023.
+
+**Enforcement boundary documented, not solved:** Claude Code exposes no hook that can switch the
+main-loop model — main-session tier selection stays permanently advisory-only. Stated directly in
+SKILL.md's new Enforcement section, per the goal's explicit non-goal.
+
+**Deferred, out of scope for this goal:** promoting either new gate section from warn to deny
+(separate future decision per the goal's Stop-and-ask condition); durable ADR
+`decisions/0013-deterministic-model-routing-enforcement.md`.
+
+plan: none (tracked via this entry + `plans/decisions.md` ADL-020 through ADL-023)
+step: complete — all 8 steps; gates stay warn-only
+focus next: draft `decisions/0013-...` durable ADR; no further action required by the goal itself
+
 ## Current (2026-07-17) — Chrome MCP efficiency hook + M8 orphan cleanup: commit 1 of 3 landed; session has hit 8 compactions, restart recommended
 
 **COMPACTION BRAKE — read this first:** this session has compacted 8 times. Per
