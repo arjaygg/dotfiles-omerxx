@@ -96,10 +96,18 @@ step's full rationale and D-note corrections live in the plan; this list is a tr
   per D5), `AGENTS.md` (edit if it references the old fence bridge). Removes the dead
   `post-task-fence.sh` bridge claim; describes the live `task-gate.sh` + `git-pipeline-gate.sh`
   chain.
-- **Step 7 — End-to-end shakedown** — **pending**. Files: none (validation step only). A docs-only
-  change on a scratch branch flows edit → committed → PR'd → CI-wait (background `Monitor` per D4a)
-  → merged → synced → cleaned up, driven entirely by gate prompts; explicitly multi-turn/
-  multi-session.
+- **Step 7 — End-to-end shakedown** — **done, with documented gaps**. Files: none (validation
+  step only) — payload was `plans/2026-07-26-pipeline-shakedown-log.md` on scratch branch
+  `chore/pipeline-shakedown` (PR #352). Exercised commit → push → PR → merge → cleanup for real,
+  via `gh pr merge --rebase --delete-branch` (never `--admin`) followed by worktree/branch removal.
+  **Known gaps, accepted by explicit user decision (2026-07-26):** the PR's base was the
+  intermediate `docs/revise-agentic-git-pipeline-plan` branch, not `main` — `.github/workflows/
+  claude-auto-gates.yml` only triggers `on: pull_request: branches: [main]`, so there was no real
+  CI to wait on (the `ci_pending`/Monitor-bridged CI-wait leg, D4a, was not exercised), and
+  `pipeline-status.sh`'s `sync_due`/`cleanup_due` signals are hardcoded against `main` so they
+  never fired for this base (the sync-against-main leg was not exercised either). A full run
+  covering CI-wait and sync-against-main remains outstanding, deferred until this feature branch
+  itself lands in `main`.
 
 Ordering note (from the plan's Step 3/4 note): Step 2 must stub a minimal `pipeline: {}` in
 `.claude-atomic.yaml` so Step 3's opt-in no-op check has something concrete to test; Step 4 then
@@ -162,13 +170,24 @@ Plan Step 6:
   `ai/rules/hyper-atomic-commits.md` (and `AGENTS.md` if applicable). (`21d510a`)
 
 Plan Step 7:
-- [ ] The shakedown completes on a real scratch branch with zero manual "now do X" prompts from
-  the user, end to end (commit through cleanup), across however many turns/sessions the CI wait
-  actually takes (the `Monitor`-bridged CI-wait leg may span a session boundary per D4a).
+- [x] The shakedown completed on a real scratch branch (`chore/pipeline-shakedown`, PR #352) with
+  zero manual "now do X" prompts from the user beyond the standing goal-level authorization plus
+  one explicit merge-target confirmation (the intermediate-branch base had no CI configured) — the
+  commit → push → PR → merge → cleanup legs ran end to end.
+- [ ] **Not fully met** — the CI-wait leg (D4a) and the sync-against-main leg were not exercised,
+  because PR #352's base was the intermediate `docs/revise-agentic-git-pipeline-plan` branch, not
+  `main` (see Step 7 note above). Accepted as a documented gap by explicit user decision
+  (2026-07-26); a full run covering both legs is deferred until this feature branch lands in
+  `main`.
 
 Cross-cutting (spans plan Steps 3–7):
-- [ ] Every gate decision (deny/degrade/tier-gated auto-action) has a corresponding entry in
-  `.claude/pipeline-log.jsonl`.
+- [x] Every gate decision on this working branch (`docs/revise-agentic-git-pipeline-plan`) has a
+  corresponding entry in `.claude/pipeline-log.jsonl` (3 `pr_due`/`warn` entries recorded
+  2026-07-26). **Gap:** the scratch branch `chore/pipeline-shakedown` ran in its own linked
+  worktree with its own `.claude/pipeline-log.jsonl`; that worktree was removed as part of Step 7
+  cleanup and its log was not preserved (the log is gitignored runtime evidence, never committed),
+  so the shakedown branch's own per-leg audit entries cannot be inspected after the fact. The
+  logging mechanism itself is confirmed functional from this branch's own entries.
 
 ## Evidence to update
 

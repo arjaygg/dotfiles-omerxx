@@ -358,5 +358,27 @@ once opted in — the gate hook only detects and nudges (`909d0d2`); retired sta
 `stop.sh` → `task-gate.sh` → `git-pipeline-gate.sh` chain (`21d510a`).
 **Why:** Tracked in the plan/goal docs already; recorded here per this repo's convention of a
 concise ADL entry for durable decisions, without duplicating the full D1-D7 rationale.
-**Record:** `plans/2026-07-25-agentic-git-pipeline.md`, `goals/2026-07-25-03-agentic-git-pipeline.md`.
-Step 7 (end-to-end shakedown) is the sole remaining step.
+
+---
+
+## ADL-021 — Agentic git pipeline Step 7: end-to-end shakedown, partial (documented gaps)
+
+**Decision:** 2026-07-26 — Ran the full commit→push→PR→merge→cleanup lifecycle on a real
+scratch branch (`chore/pipeline-shakedown`, worktree `.trees/pipeline-shakedown`) with zero
+manual "now do X" prompts beyond the standing goal-level authorization plus one explicit
+merge-target confirmation. PR #352 opened against the intermediate
+`docs/revise-agentic-git-pipeline-plan` base (not `main`, since this whole goal's work lives
+on that branch); merged via `gh pr merge --rebase --delete-branch` at `9513480`. Cleanup ran
+via `git worktree remove` / `git branch -d` / `git fetch --prune` (not `stack-clean`, to avoid
+exercising its own automation while verifying the pipeline that automation depends on).
+**Why:** PR #352's base had no CI configured (it isn't `main`), so the D4a CI-wait leg and
+the sync-against-main leg had nothing to exercise. Presented with this via `AskUserQuestion`,
+the user chose "Merge into the intermediate branch" ("go per your recommendation") and
+explicitly did not authorize a merge into `main` — that gate stays open, pending a fresh,
+separate confirmation whenever this feature branch itself is ready to land.
+**Record:** `goals/2026-07-25-03-agentic-git-pipeline.md` (Step 7 tracking), PR #352,
+`plans/progress.md`. Evidence: `.claude/pipeline-log.jsonl` on this branch has 3 real
+`pr_due`/`warn` entries confirming the gate hook fires correctly; the shakedown branch's own
+log entries were not preserved (lived in the now-removed linked worktree, gitignored, never
+committed) — accepted as a permanent, non-actionable gap. The CI-wait and sync-against-main
+legs remain unexercised until a `main`-based run happens; deferred, not silently dropped.

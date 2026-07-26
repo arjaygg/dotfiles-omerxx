@@ -395,11 +395,15 @@ Executing `plans/2026-07-07-ai-harness-improvement-proposal.md` per user "go" (P
 
 ## Done
 
-- [x] Agentic git pipeline Steps 0-6 (Stop-hook spike, `pipeline-status.sh`, `validate-changeset.sh`,
+- [x] Agentic git pipeline Steps 0-7 (Stop-hook spike, `pipeline-status.sh`, `validate-changeset.sh`,
   `git-pipeline-gate.sh`+`stop.sh` chain, `.claude-atomic.yaml` autonomy flags, `auto-ship`
-  skill, stale-doc reconciliation) — commits `958090a`..`21d510a`; see
+  skill, stale-doc reconciliation, end-to-end shakedown) — commits `958090a`..`21d510a`; see
   `plans/2026-07-25-agentic-git-pipeline.md` / `goals/2026-07-25-03-agentic-git-pipeline.md`.
-  Step 7 (end-to-end shakedown) remaining. (2026-07-26)
+  Step 7 shakedown ran on `chore/pipeline-shakedown` (PR #352, merged `9513480` into
+  `docs/revise-agentic-git-pipeline-plan`) covering commit→push→PR→merge→cleanup with zero
+  extra manual prompts. **Gaps, accepted by explicit user decision (2026-07-26):** CI-wait
+  (D4a) and sync-against-main legs unexercised (PR base wasn't `main`); shakedown branch's own
+  `.claude/pipeline-log.jsonl` entries lost when its worktree was removed. (2026-07-26)
 - [x] AI primitives audit workflow: 5-area inventory + 3-tool capability research + 4-dimension gap analysis + adversarial verification (2026-06-12)
 - [x] fury v3.1.0 BDD context discovery (dotfiles PR #184, merged 2026-05-16)
 - [x] auc-conversion Serena memory aliases for fury (PR #641, merged 2026-05-16)
