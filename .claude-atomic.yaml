@@ -42,3 +42,34 @@ thresholds:
   max_files: 10
   max_subsystems: 3
   max_diff_lines: 500
+
+# Validation routing for scripts/ai/validate-changeset.sh (plan Step 2, D2).
+# Categories are checked in pattern order; first match wins. Files matching no
+# pattern fall through to "unknown" (validate-changeset.sh warns but never blocks
+# on unknown). NOTE: .claude/hooks/*.sh is always forced to "source" in the script
+# itself, regardless of this config, per the D2 hook-script correction.
+validation:
+  docs:
+    - "docs/"
+    - "decisions/"
+    - "plans/"
+    - "goals/"
+    - "*.md"
+  config:
+    - "*.yaml"
+    - "*.yml"
+    - "*.json"
+    - "*.toml"
+    - "zshrc/"
+    - "nushell/"
+  source:
+    - "*.sh"
+    - "*.bash"
+    - "*.py"
+    - "scripts/"
+    - ".claude/hooks/"
+
+# Stubbed empty for now — present-but-empty signals opt-in with all autonomy
+# flags off. Plan Step 3 checks for this key's presence (no-op gate test); Step 4
+# fills in the real auto_commit/auto_push/auto_pr/auto_ship/auto_clean schema.
+pipeline: {}
