@@ -1,6 +1,11 @@
 # Active Context
 
-## Current (2026-07-26) — Agentic git pipeline: Step 0 committed, Step 1 complete (pipeline-status.sh + fixtures), pending commit; stop before Step 2
+## Current (2026-07-26) — Agentic git pipeline: Steps 0-2 committed; this session has compacted repeatedly — restart before Step 3
+
+**COMPACTION BRAKE — read this first:** this session has compacted multiple times. Per
+`ai/rules/context-and-compaction.md` ("Use `/compact` at most 1-2 times per session — prefer
+checkpointing and starting fresh"), the user should start a **fresh session** before approving or
+starting Step 3. This entry is the resume point for that fresh session.
 
 **Worktree/branch:** `.trees/docsrevise-agentic-git-pipeline-plan` / `docs/revise-agentic-git-pipeline-plan`, isolated per explicit user instruction ("fold to a plan, but create a new stack branch to isolate the changes").
 
@@ -13,32 +18,34 @@ concurrent sessions, identity assertion). All findings from both rounds folded i
 
 **Step 0 — DONE** (commit `958090a`, `docs(plans): record Step 0 Stop-hook spike findings`).
 
-**Step 1 — functionally complete, NOT YET COMMITTED.** `scripts/ai/pipeline-status.sh` (new,
-untracked) + `scripts/test_pipeline_status.py` (new, untracked, 15 tests):
-- Read-only signal aggregator per D1/D1b/D4: emits one of `split_needed`/`commit_due`/`pr_due`/
-  `ci_pending`/`merge_due`/`sync_due`/`cleanup_due`/`none` plus a one-line reason, `--json` or
-  plain text, always exits 0, zero network calls.
-- Fixed a logic gap found this session: original code didn't distinguish "zero commits beyond
-  main" (should be `none`) from "commits exist but unpushed" (`pr_due`) — now gated via
-  `AHEAD_OF_BASE` (vs `BASE_REF` = `origin/<main>` or local `<main>`) before computing `UNPUSHED`
-  (vs `@{u}`).
-- Verified: `bash -n` syntax OK, executable, dogfood-verified in this real repo
-  (`pr_due` — 2 commits ahead of origin, correct), timed ~0.197-0.201s warm (within the <200ms
-  Accepts budget — borderline margin, worth watching if more logic is added).
-- **All 15 fixture tests pass** (`python3 -m unittest scripts.test_pipeline_status -v` →
-  `Ran 15 tests in 9.823s / OK`), covering all 7 signals plus the required D4 worktree-topology
-  fixture (merged branch with/without a linked worktree) and D1b stale-`ci-status.md` fixture
-  (both branch-mismatch and SHA-mismatch variants), plus bonus squash-merge-detection coverage.
+**Step 1 — DONE** (commit `dd5d248`, `scripts/ai/pipeline-status.sh` + `scripts/test_pipeline_status.py`,
+15/15 fixture tests passing). Checkpointed as `6f2bcc6` and synced to the goal file as `bfbadff`/`caeea6f`.
 
-**Not yet done:** commit `scripts/ai/pipeline-status.sh` + `scripts/test_pipeline_status.py` via
-`~/.dotfiles/scripts/ai/commit.sh` (check `atomic-status.sh` state first, per hyper-atomic
-discipline). Only Step 1 was authorized ("Start Step 1 now") — per standing precedent, stop and
-ask the user explicitly before starting Step 2 (`scripts/ai/validate-changeset.sh` +
-`.claude-atomic.yaml` stub).
+**Step 2 — DONE.** `scripts/ai/validate-changeset.sh` (routes staged files into docs/config/source/
+unknown per D2; `.claude/hooks/*.sh` forced to `source`; unknown never blocks) plus the `validation:`
++ stubbed `pipeline: {}` blocks in `.claude-atomic.yaml`:
+- Committed in two atomic commits: `e083cfe` (`feat(pipeline): add validate-changeset.sh + validation
+  routing config`) and `1912c3e` (`test(pipeline): add fixture suite for validate-changeset.sh`).
+- `scripts/test_validate_changeset.py` — 10/10 fixture tests passing, covering docs/config/source/
+  unknown routing, the `.claude/hooks/*.sh` forced-source override, custom `validation:` block
+  pattern routing for atypical extensions, and the no-staged-files trivial-pass case.
+- Dogfooding against the real repo (not just synthetic fixtures) surfaced and fixed two real bugs:
+  a shellcheck-directive-misparse (SC1072/SC1073, a header comment starting with the literal word
+  "shellcheck") and a `local f="$1" abspath="$REPO_ROOT/$f"` SC2318 ordering bug (RHS saw the outer
+  `$f`, not the just-declared local) at two call sites — both fixed by splitting into separate
+  `local` statements.
+- A hyper-atomic "blocked" state (3 staged files / 3 subsystems) was hit mid-session; resolved per
+  the documented recovery path — unstaged the test file, committed the implementation pair first,
+  then re-staged and committed the test file as its own atomic unit.
+
+**Not yet done:** Step 2's acceptance criteria are checked off in the goal file (this checkpoint);
+`git status` is clean. Per the goal's binding "Stop and ask if" rule, Step 3 (`.claude/hooks/
+git-pipeline-gate.sh` + `stop.sh` edit + `hook-config.yaml` level key) requires a separate, explicit
+user go-ahead not yet requested — authorization for Step 2 does not extend to Step 3.
 
 plan: plans/2026-07-25-agentic-git-pipeline.md
-step: 1 of 7 (pipeline-status.sh + fixture tests complete, pending commit; Step 2 not authorized)
-focus: commit Step 1's deliverables via commit.sh, then stop and ask the user before starting Step 2
+step: 2 of 7 complete and committed (e083cfe, 1912c3e); Step 3 not authorized
+focus: (in a fresh session) ask the user explicitly for go-ahead on Step 3 before starting any of it
 
 ## Current (2026-07-17) — Chrome MCP efficiency hook + M8 orphan cleanup: commit 1 of 3 landed; session has hit 8 compactions, restart recommended
 
