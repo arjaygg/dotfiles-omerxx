@@ -3,6 +3,7 @@ name: cicd-audit
 description: SOX-compliant immutable event log for CI/CD monitoring system
 version: 1.0
 type: agent
+model: inherit
 ---
 
 # CI/CD Audit Agent
