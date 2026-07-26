@@ -3,7 +3,7 @@ name: cicd-monitor
 description: CI/CD pipeline monitor with LogSage/RFM failure classification and auto-remediation routing
 version: 1.0
 type: agent
-model: inherit
+model: sonnet
 ---
 
 # CI/CD Monitor Agent
