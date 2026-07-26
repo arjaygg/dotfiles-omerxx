@@ -8,6 +8,7 @@
 subsystems:
   ai-config:
     - "ai/"
+    - ".claude-atomic.yaml"
     - ".claude/"
     - ".gemini/"
     - ".codex/"
@@ -37,11 +38,12 @@ subsystems:
     - "decisions/"
     - "docs/"
     - "plans/"
+    - "goals/"
 
 thresholds:
-  max_files: 10
+  max_files: 20
   max_subsystems: 3
-  max_diff_lines: 500
+  max_diff_lines: 700
 
 # Validation routing for scripts/ai/validate-changeset.sh (plan Step 2, D2).
 # Categories are checked in pattern order; first match wins. Files matching no

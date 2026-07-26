@@ -1,5 +1,55 @@
 # Progress — 2026-06-12
 
+## Done — 2026-07-26 deterministic model-routing enforcement (Goal 03)
+
+Goal: `goals/2026-07-26-03-deterministic-model-routing-enforcement.md`. Convert prose-only model/
+subagent routing policy into hard-block-or-static-fail mechanisms where possible, and document the
+one boundary that structurally cannot be hook-enforced (main-loop model switching).
+
+- [x] Step 1 — Resolved `opusplan` vs `sonnet` drift: `.claude/settings.json` `"model"` changed
+      `"sonnet"` → `"opusplan"`, matching `ai/skills/model-routing/SKILL.md`'s documented default.
+      ADL-020 in `plans/decisions.md`.
+- [x] Step 2 — Explicit `model:` frontmatter added to `cicd-audit.md`, `cicd-monitor.md`,
+      `cicd-review.md` per SKILL.md's tier table; `mcp_config_manager.md`'s pinned dated model ID
+      replaced with a supported alias.
+- [x] Step 3 — `.claude/hooks/config-integrity.sh` extended with `check_agent_models()`: hard-fails
+      (`exit 1`) when any `.claude/agents/*.md` lacks `model:` or sets a value outside
+      `{haiku, sonnet, opus, fable, inherit}` (aliases only, dated IDs rejected). Verified both
+      directions: deliberately-bad `model:` → exit 1 with violation detail; clean tree → exit 0.
+      ADL-021.
+- [x] Step 4 — `pre-tool-gate-v2.sh` matcher extended to include `Workflow`; new Section 8
+      regex-counts `agent(` call sites plus `parallel([...])`/`pipeline(` shape — warns
+      `fan-out-exceeds-3` above the 3-agent cap when confidently parsed, warns
+      `fan-out-undecidable` when the fan-out size depends on runtime data (`.map(` chain or bare
+      variable). Never denies.
+- [x] Step 5 — New `pre-tool-gate-v2.sh` Section 7b flags `Agent` tier mismatch: trivial prompt
+      pinned off-haiku, deep-reasoning prompt pinned to haiku. No-ops when `model` is left unset
+      (inherit) since the hook cannot see the resolved tier.
+- [x] Step 6 — Both new gate sections run warn-only. 7 crafted stdin-JSON invocations exercised
+      directly against the hook, all exit 0: 4 produced the expected warning (fan-out-exceeds-3,
+      fan-out-undecidable, tier-mismatch haiku-on-deep-reasoning, tier-mismatch opus-on-trivial), 3
+      produced clean passes (under-cap fan-out, correctly-matched tier, unset/inherit model).
+      Evidence recorded in ADL-022. Promotion to `deny` explicitly out of scope for this goal.
+- [x] Step 7 — Added an "Enforcement" section to `ai/skills/model-routing/SKILL.md` mapping every
+      policy clause to its actual mechanism (hook, hard-fail script, or advisory-only), stating
+      plainly that main-loop tier selection cannot be hook-enforced (no hook can invoke `/model`)
+      and why.
+- [x] Step 8 — Ran `hook-integration-test.sh` and the full `scripts/` suite. First run surfaced a
+      real regression: `ai/config/claude/settings.base.json` had drifted from the tracked
+      `.claude/settings.json` (Steps 1 and 4's edits — `opusplan` and the `Workflow` matcher — not
+      mirrored into the template), caught by
+      `test_phase0_boundary.py::test_claude_base_template_matches_sanitized_tracked_settings`.
+      Fixed via `ctx_patch(op="replace_all")` (native `Edit` denied on this file). Final:
+      `157 passed, 60 subtests passed` (up from `1 failed, 156 passed`); `hook-integration-test.sh`
+      unchanged at `0 passed, 0 failed, 5 skipped` (pre-existing sandbox limitation, not a
+      regression) before and after. ADL-023.
+
+**Outcome:** All 8 steps complete; all acceptance criteria met. Both new gate sections remain
+warn-only per the goal's explicit non-goal against introducing a hard block without a prior
+dry-run/warn period. `goals/00-index.md` Goal 03 status: `Proposed` → `Completed (warn-only)`.
+Deferred (not part of this goal): promotion of either gate to `deny`; durable ADR
+`decisions/0013-deterministic-model-routing-enforcement.md`.
+
 ## In Progress — Chrome MCP efficiency hook + M8 orphan cleanup (branch `chore/chrome-mcp-rules-cleanup`)
 
 - [x] Write `ai/rules/chrome-mcp-efficiency.md` (decision tree, required patterns, anti-patterns, exceptions)

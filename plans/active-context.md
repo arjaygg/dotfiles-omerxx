@@ -29,9 +29,71 @@ remaining steps + acceptance criteria, don't stop mid-way. Full design: D1-D7 in
 separate user confirmation — explicitly withheld per prior user decision, not yet requested.
 Do not merge to `main` without new organic user authorization.
 
+**Update (2026-07-26, later):** user gave explicit fresh authorization — "create PR and merge to
+main, sync local, cleanup". PR #353 opened against `main`; `main` had advanced in the interim
+(commits `52ceab5`, `4f13e33` — Goal 03 model-routing enforcement work below). Reconciling via
+`git merge origin/main` on this branch; conflicts in this file, `goals/00-index.md` (numbering
+collision, this branch's goal renumbered 03→04), and `plans/decisions.md` resolved by keeping both
+sides' content. Remaining: complete merge commit, push, verify PR mergeable, ship via
+`stack-ship`, sync local `main`, cleanup.
+
 plan: plans/2026-07-25-agentic-git-pipeline.md
-step: Steps 0-7 complete and committed; only the main-merge confirmation gate remains
-focus: await explicit user go-ahead before any merge into main; nothing else outstanding
+step: Steps 0-7 complete and committed; executing user-authorized merge-to-main pipeline
+focus: finish `git merge origin/main` conflict resolution, then push -> ship -> sync -> cleanup
+
+## Current (2026-07-26) — Goal 03: deterministic model-routing enforcement complete (Steps 1-8 done, warn-only)
+
+**Follow-up (2026-07-26):** User explicitly requested a fixed routing override on top of Goal 03 —
+Opus coordinator (low effort), Fable advisor, Sonnet default subagent tier, Haiku for
+trivial/mechanical. Applied on `chore/model-routing-opus-coordinator`
+(`.trees/model-routing-opus-coordinator`): `.claude/settings.json` `model` → `opus`, `effortLevel`
+→ `low`; `settings.base.json` mirrored; `cicd-audit/monitor/review.md` `model: inherit` → `sonnet`
+(prevents silent escalation to Opus). See `decisions/0014-fixed-opus-coordinator-override.md` and
+ADL-024. `config-integrity.sh` exit 0; `test_phase0_boundary.py` 8 passed.
+
+Goal file: `goals/2026-07-26-03-deterministic-model-routing-enforcement.md`. Branch/worktree:
+`chore/deterministic-model-routing-enforcement` at `.trees/deterministic-model-routing-enforcement`.
+`goals/00-index.md` Goal 03 status moved `Proposed` → `Completed (warn-only)`.
+
+**All 8 steps done:**
+- Step 1: resolved `opusplan` vs `sonnet` drift — `.claude/settings.json` now matches
+  `ai/skills/model-routing/SKILL.md`'s documented default (`opusplan`). ADL-020.
+- Step 2: `cicd-audit.md`, `cicd-monitor.md`, `cicd-review.md` given explicit `model:` frontmatter
+  per SKILL.md's tier table; `mcp_config_manager.md`'s pinned dated model ID replaced with a
+  supported alias.
+- Step 3: `.claude/hooks/config-integrity.sh` extended with `check_agent_models()` — hard-fails
+  when any `.claude/agents/*.md` lacks `model:` or sets a value outside
+  `{haiku, sonnet, opus, fable, inherit}`. Demonstrated both directions (bad model → exit 1, clean
+  tree → exit 0). ADL-021.
+- Step 4: `pre-tool-gate-v2.sh` matcher extended to `Workflow`; new Section 8 regex-counts
+  `agent(` call sites, warns `fan-out-exceeds-3` above the 3-agent cap, warns
+  `fan-out-undecidable` for `parallel(`/`pipeline(` wrapping a `.map(` or bare variable.
+- Step 5: new Section 7b flags `Agent` tier mismatch — trivial prompt pinned off-haiku,
+  deep-reasoning prompt pinned to haiku; no-op when `model` is unset (inherit, unresolvable by a
+  PreToolUse hook).
+- Step 6: both new sections run warn-only; 7 crafted stdin-JSON fire/no-fire cases recorded in
+  ADL-022 (4 fire, 3 clean pass). Promotion to `deny` explicitly deferred, not part of this goal.
+- Step 7: added an "Enforcement" section to `ai/skills/model-routing/SKILL.md` mapping each policy
+  clause to its actual mechanism; states plainly that main-loop tier selection is advisory-only
+  (no hook can call `/model`) and why.
+- Step 8: `python3 -m pytest scripts/ -q` surfaced one real regression this step introduced —
+  `ai/config/claude/settings.base.json` had drifted from the tracked `.claude/settings.json`
+  (Steps 1 and 4's edits not mirrored into the template). Fixed via `ctx_patch(op="replace_all")`;
+  157 passed / 60 subtests passed after the fix, 0 regressions. `hook-integration-test.sh`:
+  0 passed / 0 failed / 5 skipped (pre-existing `claude -p`-unavailable sandbox limitation, not a
+  regression) both before and after. ADL-023.
+
+**Enforcement boundary documented, not solved:** Claude Code exposes no hook that can switch the
+main-loop model — main-session tier selection stays permanently advisory-only. Stated directly in
+SKILL.md's new Enforcement section, per the goal's explicit non-goal.
+
+**Deferred, out of scope for this goal:** promoting either new gate section from warn to deny
+(separate future decision per the goal's Stop-and-ask condition); durable ADR
+`decisions/0013-deterministic-model-routing-enforcement.md`.
+
+plan: none (tracked via this entry + `plans/decisions.md` ADL-020 through ADL-023)
+step: complete — all 8 steps; gates stay warn-only
+focus next: draft `decisions/0013-...` durable ADR; no further action required by the goal itself
 
 ## Current (2026-07-17) — Chrome MCP efficiency hook + M8 orphan cleanup: commit 1 of 3 landed; session has hit 8 compactions, restart recommended
 

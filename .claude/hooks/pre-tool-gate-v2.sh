@@ -139,7 +139,9 @@ eval "$(echo "$INPUT" | jq -r '
   @sh "SUBAGENT=\(.tool_input.subagent_type // "")",
   @sh "RUN_BG=\(.tool_input.run_in_background // false)",
   @sh "CONTENT=\(.tool_input.content // "")",
-  @sh "SESSION_ID=\(.session_id // "")"
+  @sh "SESSION_ID=\(.session_id // "")",
+  @sh "AGENT_MODEL=\(.tool_input.model // "")",
+  @sh "WF_SCRIPT=\(.tool_input.script // "")"
 ' 2>/dev/null)" 2>/dev/null || exit 0
 
 # session_id arrives via the stdin JSON payload, not an env var — no
@@ -891,20 +893,72 @@ if [[ "$TOOL_NAME" == "Glob" && -n "$PATTERN" ]]; then
 fi
 
 # ============================================================
-# SECTION 7: Agent — parallelism check
+# SECTION 7: Agent — parallelism + model-tier checks (warn only, never deny)
 # ============================================================
 if [[ "$TOOL_NAME" == "Agent" ]]; then
-    # Exempt read-only and background agents
+    # Exempt read-only and background agents from both checks below.
     if [[ "$SUBAGENT" == "Explore" || "$SUBAGENT" == "Plan" || "$RUN_BG" == "true" ]]; then
         exit 0
     fi
+
+    # 7a. Parallelism hint — prompt looks like multiple independent sub-tasks
     NUMBERED_ITEMS=$(echo "$PROMPT" | grep -cE '^\s*[0-9]+\.\s' || true)
     BULLET_ITEMS=$(echo "$PROMPT" | grep -cE '^\s*[-]*\s+[A-Z]' || true)
     if [[ "$NUMBERED_ITEMS" -ge 3 || "$BULLET_ITEMS" -ge 3 ]]; then
         echo "HINT: This Agent call appears to involve multiple independent sub-tasks." >&2
         echo "Use TaskCreate for parallel execution instead." >&2
         echo "If tasks are truly sequential or dependent, rephrase your prompt to make that explicit." >&2
-        exit 0
+    fi
+
+    # 7b. Model-tier mismatch (Goal 03 — deterministic-model-routing-enforcement,
+    # Step 5). Heuristic keyword/length matching only, NOT a reliable classifier
+    # — a regex cannot judge task difficulty. Fires only when tool_input.model
+    # is an EXPLICIT override: an empty AGENT_MODEL means "inherit session
+    # model", whose resolved tier this hook has no visibility into, so there is
+    # nothing to compare the prompt against. Warn-only per the goal's non-goal
+    # ("enforcing a Haiku floor would degrade an existing agent's actual job").
+    if [[ -n "$AGENT_MODEL" ]]; then
+        _PROMPT_LOWER=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]')
+        _PROMPT_WORDS=$(echo "$PROMPT" | wc -w | tr -d ' ')
+        _DEEP_KEYWORDS='architect|design tradeoffs|root.?cause|security (audit|review)|complex refactor|migration plan|beyond.?frontier|adversarial|comprehensive audit|ambiguous|multi-step reasoning'
+        _TRIVIAL_KEYWORDS='typo|rename|one-line|list the files|format this|trivial|simple lookup|check if.{0,20}exists|bump version'
+
+        if [[ "$AGENT_MODEL" == "haiku" && "$_PROMPT_LOWER" =~ $_DEEP_KEYWORDS ]]; then
+            echo "WARN: [tier-mismatch] Agent call pinned to 'haiku' but prompt matches deep-reasoning signals (architecture/security/migration/ambiguous). Consider 'sonnet', 'opus', or 'inherit'. See ai/skills/model-routing/SKILL.md." >&2
+        elif [[ "$AGENT_MODEL" != "haiku" && "$_PROMPT_WORDS" -lt 25 && "$_PROMPT_LOWER" =~ $_TRIVIAL_KEYWORDS ]]; then
+            echo "WARN: [tier-mismatch] Agent call pinned to '$AGENT_MODEL' but prompt looks trivial (short, mechanical). Consider 'haiku' to reduce cost. See ai/skills/model-routing/SKILL.md." >&2
+        fi
+    fi
+fi
+
+# ============================================================
+# SECTION 8: Workflow — fan-out (agent-count) advisory (warn only, never deny)
+# Goal 03 (deterministic-model-routing-enforcement), Step 4. Detection is
+# regex-based on the submitted script text only — no JS parsing — per the
+# goal's explicit non-goal: "Do not attempt reliable static analysis of
+# arbitrary workflow scripts. Cap to regex-detectable shapes plus explicit
+# warn for undecidable cases."
+# ============================================================
+if [[ "$TOOL_NAME" == "Workflow" && -n "$WF_SCRIPT" ]]; then
+    _AGENT_CALLS=$( (echo "$WF_SCRIPT" | grep -oE '(^|[^A-Za-z0-9_])agent\s*\(' || true) | wc -l | tr -d ' ')
+
+    # Undecidable shape 1: parallel(/pipeline( fanning out over a runtime-sized
+    # array via .map( — the item count isn't known until the script executes.
+    _UNDECIDABLE=0
+    if echo "$WF_SCRIPT" | grep -qE '(parallel|pipeline)\s*\(\s*[A-Za-z_][A-Za-z0-9_.]*\s*\.map\s*\('; then
+        _UNDECIDABLE=1
+    fi
+    # Undecidable shape 2: parallel(/pipeline( called with a bare variable
+    # (not a literal array, not a .map( chain) — the item count lives in a
+    # variable this hook has no way to evaluate.
+    if echo "$WF_SCRIPT" | grep -qE '(parallel|pipeline)\s*\(\s*[A-Za-z_][A-Za-z0-9_.]*\s*[,)]'; then
+        _UNDECIDABLE=1
+    fi
+
+    if [[ "$_UNDECIDABLE" -eq 1 ]]; then
+        echo "WARN: [fan-out-undecidable] Workflow script has a parallel(/pipeline( call over a variable or .map() array — this hook cannot statically count the resulting agent fan-out. Manually confirm concurrent agents stay <= 3 per ai/rules/agent-user-global.md. Detected $_AGENT_CALLS literal agent( call site(s) as a lower bound." >&2
+    elif [[ "$_AGENT_CALLS" -gt 3 ]]; then
+        echo "WARN: [fan-out-exceeds-3] Workflow script contains $_AGENT_CALLS agent( call sites — exceeds the 3-agent cap in ai/rules/agent-user-global.md. Confirm this workflow genuinely needs that much concurrency (see ai/skills/model-routing/SKILL.md Enforcement section)." >&2
     fi
 fi
 
