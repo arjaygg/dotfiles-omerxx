@@ -74,6 +74,9 @@ graphify-out/
 tokentelemetry/
 .claude/hooks/.logs/
 
+# git-pipeline-gate audit log (append-only, machine-local; plans/2026-07-25-agentic-git-pipeline.md)
+.claude/pipeline-log.jsonl
+
 # TDD-Guard local test-run state (machine-local, regenerated per pytest run)
 .claude/tdd-guard/
 

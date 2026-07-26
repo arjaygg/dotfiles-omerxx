@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
 # Consolidated Stop dispatcher (R6, docs/plans/2026-07-08-reduce-context-redundancy.md)
+# Extended (plan: plans/2026-07-25-agentic-git-pipeline.md, Step 3) with git-pipeline-gate.sh.
 # Folds: session-end.sh, plan-completion-check.sh, feedback-capture.sh,
-#        task-gate.sh, lean-ctx hook observe (backgrounded).
-# task-gate.sh is the only sub-hook that can emit a blocking permissionDecision
-# JSON on stdout; the other three only produce side effects / stderr warnings,
-# so no JSON merge is needed — task-gate.sh runs last and its raw stdout/exit
-# code become this script's stdout/exit code, preserving its block semantics.
+#        task-gate.sh, git-pipeline-gate.sh, lean-ctx hook observe (backgrounded).
+#
+# task-gate.sh and git-pipeline-gate.sh are the only sub-hooks that can emit a
+# blocking Stop decision, and they run in that fixed order with first-deny-wins
+# arbitration: if task-gate.sh already signaled a block (either the correct
+# {"decision":"block",...} shape or task-gate.sh's known legacy
+# {"hookSpecificOutput":{"permissionDecision":"deny",...}} shape -- a
+# pre-existing bug tracked separately and not fixed here), that output wins
+# verbatim and git-pipeline-gate.sh does not run at all. Otherwise
+# git-pipeline-gate.sh's own stdout/exit code become this script's stdout/exit
+# code, preserving its block semantics.
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,14 +26,30 @@ _run() {
     printf '%s' "$_INPUT" | bash "$_script" 2>&3
 }
 
+_is_block() {
+    [[ -z "$1" ]] && return 1
+    echo "$1" | jq -e '(.decision == "block") or (.hookSpecificOutput.permissionDecision == "deny")' >/dev/null 2>&1
+}
+
 (printf '%s' "$_INPUT" | bash -lc 'lean-ctx hook observe' &>/dev/null) &
 
 _run "$SCRIPT_DIR/session-end.sh"
 _run "$SCRIPT_DIR/plan-completion-check.sh"
 _run "$SCRIPT_DIR/feedback-capture.sh"
 
-printf '%s' "$_INPUT" | bash "$SCRIPT_DIR/task-gate.sh"
+_TASK_GATE_OUT="$(printf '%s' "$_INPUT" | bash "$SCRIPT_DIR/task-gate.sh" 2>&3)"
 _rc=$?
+
+if _is_block "$_TASK_GATE_OUT"; then
+    printf '%s\n' "$_TASK_GATE_OUT"
+    wait
+    exit "$_rc"
+fi
+[[ -n "$_TASK_GATE_OUT" ]] && printf '%s\n' "$_TASK_GATE_OUT"
+
+_GIT_GATE_OUT="$(printf '%s' "$_INPUT" | bash "$SCRIPT_DIR/git-pipeline-gate.sh" 2>&3)"
+_rc=$?
+[[ -n "$_GIT_GATE_OUT" ]] && printf '%s\n' "$_GIT_GATE_OUT"
 
 wait
 exit "$_rc"
