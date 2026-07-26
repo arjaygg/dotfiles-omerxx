@@ -405,3 +405,14 @@ Durable record: `decisions/0005-autonomous-watchdog-loop.md`
 **Alternatives rejected:** Reverting the `.claude/settings.json` changes to make the template test pass trivially — rejected, since the tracked settings file is the goal's actual target of record (ADL-020, ADL-022), not the template mirror.
 
 **Assumptions:** No other tracked-vs-template pairs exist elsewhere in the repo with the same equality-assertion pattern; `test_phase0_boundary.py` is presumed to be the sole guard for `.claude/settings.json`'s specific template-sync invariant. Future edits to `.claude/settings.json` in this repo must remember to mirror `ai/config/claude/settings.base.json` in the same commit, or re-trip this same test.
+
+---
+## ADL-024 — Fixed Opus coordinator + Sonnet CI/CD-agent tier (explicit user override of 0013)
+
+**Decision:** 2026-07-26 — Per explicit user request ("primary coordinator is Opus 5 with low effort, advisor Fable 5, others Sonnet 5, Haiku for trivial/mechanical"), set `.claude/settings.json` `"model": "opusplan"` → `"opus"`, `"effortLevel": "high"` → `"low"` (`advisorModel: fable` already correct); mirrored into `ai/config/claude/settings.base.json` via `cp` (kept byte-identical). Changed `ai/agents/cicd-audit.md`, `cicd-monitor.md`, `cicd-review.md` from `model: inherit` (backfilled by ADL-021/0013) to `model: sonnet`, since `inherit` would now silently escalate these non-trivial agents to Opus. `mcp_config_manager.md` (`model: sonnet` from 0013) untouched.
+
+**Why:** Distinct from the `opusplan`-vs-`sonnet` accidental drift 0013 fixed — this is a deliberate, stated routing preference, not a rediscovered regression. Recorded so a future session/hook doesn't mistake it for the same drift class and revert it. Full rationale: `decisions/0014-fixed-opus-coordinator-override.md`.
+
+**Evidence:** `bash .claude/hooks/config-integrity.sh` → exit 0 (only pre-existing, unrelated live-symlink-not-installed warnings). `python3 -m pytest scripts/test_phase0_boundary.py -q` → 8 passed, including the base-template byte-equality test.
+
+**Alternatives rejected:** Leaving 0013's `opusplan`/`inherit` values in place — rejected, contradicts the user's explicit request. Overriding silently without a decision record — rejected, indistinguishable from unintentional drift.

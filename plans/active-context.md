@@ -2,6 +2,14 @@
 
 ## Current (2026-07-26) — Goal 03: deterministic model-routing enforcement complete (Steps 1-8 done, warn-only)
 
+**Follow-up (2026-07-26):** User explicitly requested a fixed routing override on top of Goal 03 —
+Opus coordinator (low effort), Fable advisor, Sonnet default subagent tier, Haiku for
+trivial/mechanical. Applied on `chore/model-routing-opus-coordinator`
+(`.trees/model-routing-opus-coordinator`): `.claude/settings.json` `model` → `opus`, `effortLevel`
+→ `low`; `settings.base.json` mirrored; `cicd-audit/monitor/review.md` `model: inherit` → `sonnet`
+(prevents silent escalation to Opus). See `decisions/0014-fixed-opus-coordinator-override.md` and
+ADL-024. `config-integrity.sh` exit 0; `test_phase0_boundary.py` 8 passed.
+
 Goal file: `goals/2026-07-26-03-deterministic-model-routing-enforcement.md`. Branch/worktree:
 `chore/deterministic-model-routing-enforcement` at `.trees/deterministic-model-routing-enforcement`.
 `goals/00-index.md` Goal 03 status moved `Proposed` → `Completed (warn-only)`.

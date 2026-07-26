@@ -102,7 +102,7 @@
     ],
     "defaultMode": "acceptEdits"
   },
-  "model": "opusplan",
+  "model": "opus",
   "enableAllProjectMcpServers": true,
   "skillOverrides": {
     "ado-workitem": "off",
@@ -458,7 +458,7 @@
     }
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "high",
+  "effortLevel": "low",
   "advisorModel": "fable",
   "plansDirectory": "./plans",
   "tui": "fullscreen",
