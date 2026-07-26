@@ -342,3 +342,21 @@ Durable record: `decisions/0005-autonomous-watchdog-loop.md`
 **Decision:** 2026-07-13 — Add public-hygiene scanning, config diagnosis, static hook-schema checks, and structured fixture execution as a read-only layer. Keep permission/default-setting changes, runtime copy-back replacement, hook registration changes, and generated-overlay migration in a separate human-reviewed phase.
 **Why:** Current evidence shows privacy/path findings, a tracked permission bypass, live-settings copy-back, ignored hook matchers, parallel worktree handlers, and stale/skipped fixtures. Validate boundaries before changing behavior.
 **Record:** `decisions/0010-governed-read-only-validation.md`
+
+---
+
+## ADL-020 — Agentic git pipeline Steps 3-6: gate hook, autonomy flags, auto-ship skill, doc reconciliation
+
+**Decision:** 2026-07-26 — Implemented plan Steps 3-6 (`plans/2026-07-25-agentic-git-pipeline.md`,
+full D1-D7 design rationale there): `.claude/hooks/git-pipeline-gate.sh` + `stop.sh`'s
+`task-gate.sh` → `git-pipeline-gate.sh` first-deny-wins chain + `hook-config.yaml` level key
+(`32690de`); `.claude-atomic.yaml`'s `pipeline:` autonomy flags, all `false` by default
+(`219c0f8`); `ai/skills/auto-ship/SKILL.md` as the orchestration layer that actually runs a leg
+once opted in — the gate hook only detects and nudges (`909d0d2`); retired stale
+`post-task-fence.sh` "live mechanism" claims in `ai/rules/hyper-atomic-commits.md` and
+`ai/skills/hyper-atomic-commits-reference/SKILL.md`, both now describing the real
+`stop.sh` → `task-gate.sh` → `git-pipeline-gate.sh` chain (`21d510a`).
+**Why:** Tracked in the plan/goal docs already; recorded here per this repo's convention of a
+concise ADL entry for durable decisions, without duplicating the full D1-D7 rationale.
+**Record:** `plans/2026-07-25-agentic-git-pipeline.md`, `goals/2026-07-25-03-agentic-git-pipeline.md`.
+Step 7 (end-to-end shakedown) is the sole remaining step.

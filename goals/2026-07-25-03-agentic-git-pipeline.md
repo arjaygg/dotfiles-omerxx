@@ -132,34 +132,34 @@ Plan Step 2:
   sibling block that unblocks plan Step 3's opt-in check.
 
 Plan Step 3:
-- [ ] `.claude/hooks/git-pipeline-gate.sh` is built against the plan Step 0 spike's confirmed
+- [x] `.claude/hooks/git-pipeline-gate.sh` is built against the plan Step 0 spike's confirmed
   Stop-hook contract; no-ops when `core.hooksPath` isn't the dotfiles path or no `pipeline:` block
-  exists; denies with a clear reason + next-action hint on a real due-signal.
-- [ ] Gate never issues a 3rd consecutive deny for the same stage in one session (2 denies/stage
+  exists; denies with a clear reason + next-action hint on a real due-signal. (`32690de`)
+- [x] Gate never issues a 3rd consecutive deny for the same stage in one session (2 denies/stage
   plus the D1 global per-session cap); a real degrade emits both the stderr message and an
-  `osascript` notification.
+  `osascript` notification. (`32690de`)
 
 Plan Step 4:
-- [ ] `pipeline:` block absent = full confirm-first; each of `auto_commit`/`auto_push`/`auto_pr`/
-  `auto_ship`/`auto_clean` independently gates exactly the leg named in D3.
-- [ ] All always-confirm carve-outs are present and unconditional — not overridable by any flag
+- [x] `pipeline:` block absent = full confirm-first; each of `auto_commit`/`auto_push`/`auto_pr`/
+  `auto_ship`/`auto_clean` independently gates exactly the leg named in D3. (`219c0f8`)
+- [x] All always-confirm carve-outs are present and unconditional — not overridable by any flag
   combination: force-push outside `stack-sync`'s reviewed pattern, discarding work to resolve
   `blocked`/`overgrown`, `stack clean --force` on a dirty worktree, `gh pr merge --admin` (never
   used at all), deleting a genuinely-unmerged (non-squash) branch, `ci-watch`'s auto-deploy
   trigger, multi-branch `stack-ship`, and any pipeline self-edit to `.claude-atomic.yaml`/
-  `hook-config.yaml`/`.claude/hooks/*`.
+  `hook-config.yaml`/`.claude/hooks/*`. (`219c0f8`, documented in `auto-ship/SKILL.md`'s D3 section)
 
 Plan Step 5:
-- [ ] `ai/skills/auto-ship/SKILL.md` documents the full D4 leg sequence, the D3 tier checks, and
+- [x] `ai/skills/auto-ship/SKILL.md` documents the full D4 leg sequence, the D3 tier checks, and
   the D3a `gh auth status` identity assertion before any Tier-1/2 action; requires a dry-run/
   explain-only pass the first time a repo newly enables any Tier-1/2 flag; independently checks
   `hook-config.yaml`'s `git-pipeline-gate` level and no-ops if `off` (not solely reliant on the
-  Stop hook); includes the D6 rollback runbook as a documented section.
+  Stop hook); includes the D6 rollback runbook as a documented section. (`909d0d2`)
 
 Plan Step 6:
-- [ ] No remaining tracked-doc reference to `post-task-fence.sh` as a live mechanism; the live
+- [x] No remaining tracked-doc reference to `post-task-fence.sh` as a live mechanism; the live
   fence chain (`task-gate.sh` + `git-pipeline-gate.sh`) is accurately described in
-  `ai/rules/hyper-atomic-commits.md` (and `AGENTS.md` if applicable).
+  `ai/rules/hyper-atomic-commits.md` (and `AGENTS.md` if applicable). (`21d510a`)
 
 Plan Step 7:
 - [ ] The shakedown completes on a real scratch branch with zero manual "now do X" prompts from
