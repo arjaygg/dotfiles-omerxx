@@ -10,7 +10,8 @@ description: >
   Use for: "build this feature", "implement end to end", "orchestrate this", "run cap",
   "full TDD cycle", "automate the workflow", "multi-agent workflow". NOT for planning-only,
   tests-only, implementing-only, or review-only requests — cap runs those phases inline
-  (the standalone /stark, /fury, /ironman, /hawk skills are currently disabled).
+  (the standalone /stark, /fury, /ironman, /hawk skills are enabled per-project via
+  skillOverrides — do not assume they are available or disabled; cap does not need them).
 triggers:
   - /cap
   - orchestrate
