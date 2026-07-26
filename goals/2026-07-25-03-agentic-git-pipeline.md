@@ -37,7 +37,7 @@ written as "plan Step N".**
   `ci-status.md` variants). The `plans/active-context.md` checkpoint landed as `6f2bcc6`.
   Verified: `bash -n` syntax check, live dogfood run, ~0.197–0.201s warm-repo timing (under the
   200ms budget), zero network calls.
-- **Plan Steps 2–7**: **not started**. Awaiting explicit per-step user go-ahead.
+- **Plan Steps 3–7**: **not started**. Awaiting explicit per-step user go-ahead (Steps 0-2 done).
 
 `scripts/validate_goals.py` (the validator the `goal-authoring` convention calls for) does not
 exist in this repo, so this goal file has not been machine-validated for heading order or index
@@ -74,7 +74,7 @@ step's full rationale and D-note corrections live in the plan; this list is a tr
   <200ms signal detector classifying `split_needed`/`commit_due`/`pr_due`/`ci_pending`/`merge_due`/
   `sync_due`/`cleanup_due` against 15 fixtures, including the D4 multi-worktree topology and both
   D1b stale-`ci-status.md` variants.
-- **Step 2 — Validation selection** — **pending**. Files: `scripts/ai/validate-changeset.sh` (new),
+- **Step 2 — Validation selection** — **done** (`e083cfe`, `1912c3e`). Files: `scripts/ai/validate-changeset.sh` (new),
   `.claude-atomic.yaml` (edit — new `validation:` block plus a stubbed empty `pipeline: {}` sibling
   block). Routes docs-only/config/source/unknown subsystems per D2 (`.claude/hooks/*.sh` classifies
   as `source`); never blocks on unknown; unknown-subsystem warnings surface visibly for PR-body
@@ -124,11 +124,11 @@ Plan Step 1:
   none) plus a one-line reason.
 
 Plan Step 2:
-- [ ] `scripts/ai/validate-changeset.sh` routes docs-only/config/source/unknown staged changesets
+- [x] `scripts/ai/validate-changeset.sh` routes docs-only/config/source/unknown staged changesets
   per D2, with `.claude/hooks/*.sh` classified as `source`; never blocks on an unrecognized
   subsystem; unknown-subsystem warnings are surfaced in a form plan Step 5's PR-creation leg can
   inject into the PR body; `commit.sh` unmodified.
-- [ ] `.claude-atomic.yaml` gains the `validation:` block plus the stubbed empty `pipeline: {}`
+- [x] `.claude-atomic.yaml` gains the `validation:` block plus the stubbed empty `pipeline: {}`
   sibling block that unblocks plan Step 3's opt-in check.
 
 Plan Step 3:
