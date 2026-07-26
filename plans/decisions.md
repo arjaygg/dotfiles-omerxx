@@ -463,3 +463,28 @@ legs remain unexercised until a `main`-based run happens; deferred, not silently
 via `git merge origin/main`, resolving conflicts in this file (renumbered this branch's ADL-020/
 ADL-021 to ADL-025/ADL-026 to avoid colliding with main's numbering), `plans/active-context.md`,
 and `goals/00-index.md` (this branch's goal renumbered 03→04) by keeping both sides' content.
+
+---
+
+## ADL-027 — Agentic git pipeline Step 7: CI-wait and sync-against-main gaps closed for real
+
+**Decision:** 2026-07-26 — PR #353 (`docs/revise-agentic-git-pipeline-plan` -> `main`) landed
+with CI confirmed green via `ai/skills/ci-watch/SKILL.md`'s background poller before merge
+(`gh pr merge --merge --delete-branch`, after a `gh` rebase attempt failed with a GitHub-side
+`GraphQL: This branch can't be rebased` error), and local `main` was fast-forward-synced
+afterward (`git pull --ff-only`). This closed both legs ADL-026 had left open: the D4a CI-wait
+leg and the sync-against-main leg. Follow-up PR #354 (`docs/goal03-step7-gap-closure`, merged
+2026-07-26 via `gh pr merge --rebase --delete-branch`, succeeded cleanly this time) updated
+`goals/2026-07-25-03-agentic-git-pipeline.md`'s "current state" section, Step 7 note, and
+acceptance-criteria checkbox to reflect both legs as exercised, replacing the prior
+"documented gap, deferred" language.
+**Why:** The goal's standing directive requires all acceptance criteria to be met, not just
+technically-complete-with-caveats; once `main` had a real CI-having base to merge into, there
+was no reason to leave the goal doc describing a gap that no longer existed.
+**Record:** PR #353, PR #354, `goals/2026-07-25-03-agentic-git-pipeline.md`,
+`plans/active-context.md`. Both feature-branch worktrees (`docsrevise-agentic-git-pipeline-plan`,
+`docsgoal03-step7-gap-closure`) were removed after confirming their content was byte-identical
+to what landed on `main` (rebase-merge changes commit SHAs but not content — verified via
+`git diff <old-sha> <new-sha> -- <file>` returning empty before each worktree removal).
+**Status:** Goal 03 (agentic git pipeline) is now fully complete — all 8 steps done, all
+acceptance criteria checked, no open legs remaining.
