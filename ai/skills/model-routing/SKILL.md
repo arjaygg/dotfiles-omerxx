@@ -105,9 +105,11 @@ Combining `/fast on` + `/effort high` = best interactive experience for standard
 ## Subagent model routing
 
 Subagents declare their own model via the `model:` frontmatter field in
-`.claude/agents/*.md` (accepts `opus`, `sonnet`, `haiku`, `inherit`, or an explicit
-model ID). Unset means "inherit the orchestrator's current model" — this is correct
-for agents whose complexity varies with the task (e.g. `cicd-monitor`, `cicd-review`).
+`.claude/agents/*.md` (accepts `opus`, `sonnet`, `haiku`, `fable`, or `inherit` —
+aliases only, never a dated model ID; `.claude/hooks/config-integrity.sh` hard-fails
+the tree on any other value). Unset means "inherit the orchestrator's current model" —
+this is correct for agents whose complexity varies with the task (e.g. `cicd-monitor`,
+`cicd-review`).
 
 Set an explicit override only when the agent's job is consistently at one end of the
 complexity spectrum:
@@ -129,6 +131,31 @@ Enter plan mode (`/plan`) for:
 - Decisions where you want human review before any files are touched
 
 With `opusplan` set, plan mode automatically upgrades to Opus for the planning phase.
+
+## Enforcement
+
+This policy is prose guidance, not automatically self-enforcing. Each clause below maps
+to whatever actually holds it in place today — several clauses have no hook and rely on
+this document plus habit.
+
+| Policy clause | Mechanism | Enforcement level |
+|----------------|-----------|--------------------|
+| Main-loop model tier (Sonnet/Opus/Fable via `/model`, `opusplan`) | None — **advisory-only, structurally.** Claude Code exposes no hook that can call `/model` or otherwise switch the main session's model; hooks only see/gate tool calls, they cannot mutate session-level model state. There is no mechanism to add here — this is a permanent platform boundary, not a gap to close. | None (by design of the platform) |
+| `.claude/settings.json` default (`model: "opusplan"`) tracked correctly | Human/agent discipline + `plans/decisions.md` ADL-020 recording the fix; `settings-symlink-guard.sh` can silently copy a drifted runtime value back into the tracked file (see ADL-020's "Why") | None — drift-prone, no hook currently blocks a bad value from landing in the tracked file |
+| Subagent `model:` frontmatter is a supported alias (`haiku`/`sonnet`/`opus`/`fable`/`inherit`, no dated IDs) | `.claude/hooks/config-integrity.sh`'s `check_agent_models()` | **Hard-enforced** — `exit 1` on violation (ADL-021) |
+| Workflow fan-out stays ≤ 3 concurrent agents | `.claude/hooks/pre-tool-gate-v2.sh` Section 8 (`Workflow` matcher, regex-counts `agent(` call sites, flags undecidable `.map()`/variable fan-out) | **Warn-only** (ADL-022) — regex cannot reliably parse arbitrary JS array sizes, so a hard count would be unreliable; promotion to deny is an explicit future decision, not part of this policy |
+| Agent tier matches task difficulty (no Haiku on deep-reasoning work, no frontier tier on trivial work) | `.claude/hooks/pre-tool-gate-v2.sh` Section 7b (`Agent` matcher, keyword/length heuristic against an explicit `model:` override only) | **Warn-only** (ADL-022) — keyword matching is a heuristic, not a difficulty classifier; only fires on explicit overrides since the hook cannot see a resolved "inherit" tier |
+| Subagent delegation contains context (fork vs fresh choice) | None — prose rule in `ai/rules/agent-user-global.md` § Agent Spawning | None |
+| Effort level / fast mode match task type | None — prose rule + `primitive-hint.sh` (advisory suggestion, not a gate) | None |
+| Advisor auto-escalation fires before declaring a task done | None — `Stop` hooks only support `decision: "block"`, not `additionalContext`, so this trigger cannot be hook-injected; see "Known limitation" above | None |
+
+**Why main-loop tier selection can't be closed:** every other row either has a concrete
+hook today or a documented reason promotion to `deny` hasn't happened yet. Main-loop model
+selection is different in kind — there is no `PreToolUse`/`PostToolUse`/`Stop` hook surface
+that intercepts or rewrites which model the orchestrator itself runs on. Hooks gate tool
+calls; they cannot reach into session/model state. Any future Claude Code version that
+exposes such a surface would change this row; until then, treat it as permanently
+advisory and rely on the `opusplan` default plus manual `/model` switches.
 
 ## Cursor equivalent
 
