@@ -932,7 +932,10 @@ if [[ "$TOOL_NAME" == "Agent" ]]; then
 fi
 
 # ============================================================
-# SECTION 8: Workflow — fan-out (agent-count) advisory (warn only, never deny)
+# SECTION 8: Workflow — fan-out (agent-count) enforcement. Determinate
+# over-cap (literal agent( count > 3) is a hard deny (promoted 2026-07-27,
+# ADL-022 follow-up); undecidable shapes (runtime-sized .map()/variable
+# fan-out) remain warn-only since the true count can't be known statically.
 # Goal 03 (deterministic-model-routing-enforcement), Step 4. Detection is
 # regex-based on the submitted script text only — no JS parsing — per the
 # goal's explicit non-goal: "Do not attempt reliable static analysis of
@@ -958,7 +961,7 @@ if [[ "$TOOL_NAME" == "Workflow" && -n "$WF_SCRIPT" ]]; then
     if [[ "$_UNDECIDABLE" -eq 1 ]]; then
         echo "WARN: [fan-out-undecidable] Workflow script has a parallel(/pipeline( call over a variable or .map() array — this hook cannot statically count the resulting agent fan-out. Manually confirm concurrent agents stay <= 3 per ai/rules/agent-user-global.md. Detected $_AGENT_CALLS literal agent( call site(s) as a lower bound." >&2
     elif [[ "$_AGENT_CALLS" -gt 3 ]]; then
-        echo "WARN: [fan-out-exceeds-3] Workflow script contains $_AGENT_CALLS agent( call sites — exceeds the 3-agent cap in ai/rules/agent-user-global.md. Confirm this workflow genuinely needs that much concurrency (see ai/skills/model-routing/SKILL.md Enforcement section)." >&2
+        _deny "Workflow script contains $_AGENT_CALLS agent( call sites — exceeds the 3-agent cap in ai/rules/agent-user-global.md. Split into multiple Workflow invocations or reduce fan-out. See ai/skills/model-routing/SKILL.md Enforcement section."
     fi
 fi
 
