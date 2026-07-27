@@ -141,6 +141,14 @@ for _skill_dir in "$HOME/.dotfiles/ai/skills"/*/; do
     ln -sfn "../../ai/skills/$_name" "$_target"
 done
 
+# Claude Code references symlink — relative link so worktrees resolve correctly.
+_references_target="$HOME/.dotfiles/.claude/references"
+if [ -e "$_references_target" ] && [ ! -L "$_references_target" ]; then
+    echo "Skipping $_references_target (exists and is not a symlink)"
+else
+    ln -sfn "../ai/references" "$_references_target"
+fi
+
 # Claude Code user-scoped skills: ~/.claude/skills must be a REAL directory.
 # Stow creates it as a directory symlink (→ .dotfiles/.claude/skills), which
 # Claude Code does not follow when discovering user-scoped skills across projects.
