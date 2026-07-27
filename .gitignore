@@ -1,4 +1,6 @@
 .DS_Store
+# Tier 3 behavioral eval grader output (machine-generated per run; plans/2026-07-28-step16-spec.md)
+evals/results/
 tmux/plugins/
 raycast
 fzf
