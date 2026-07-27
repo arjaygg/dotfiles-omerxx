@@ -132,3 +132,10 @@ For any request containing 2+ distinct actions joined by AND/THEN/ALSO/PLUS, bef
 
 Before editing >3 files: list the files and why each is in scope. Stop if any are not obviously connected to the request.
 
+## Orchestrator-Worker Paradigm
+
+When executing complex tasks, follow the Orchestrator-Worker paradigm to maximize efficiency and token savings:
+
+- **Role Boundaries:** The main session acts as the Coordinator (highest frontier model), focusing exclusively on architecture, planning, and code review. It delegates hands-on, multi-file code implementation tasks to Executor sub-agents (smaller worker models).
+- **Frozen Spec Pattern:** Before spinning up any worker agent, the Coordinator must generate a frozen specification file at `plans/spec.md` to provide unambiguous instructions to the Executor.
+- **Anti-Nesting Rule:** CRITICAL: Executor sub-agents must perform implementation themselves and are strictly forbidden from spawning nested sub-agents.
