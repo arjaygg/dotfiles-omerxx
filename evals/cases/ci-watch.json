@@ -1,0 +1,31 @@
+{
+  "skill": "ci-watch",
+  "trigger": {
+    "positive": [
+      "watch this PR's CI run and let me know when it's done",
+      "monitor GitHub Actions in the background and notify me on failure",
+      "keep an eye on the build without me polling it manually"
+    ],
+    "negative": [
+      {
+        "prompt": "create a pull request for my current branch",
+        "owner": "stack-pr"
+      },
+      {
+        "prompt": "check the current status of my stack of PRs",
+        "owner": "stack-status"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "watch this PR's CI run and let me know when it's done",
+      "expected_output": "invokes the ci-watch skill and follows its documented steps",
+      "files": [],
+      "expectations": [
+        "routes to ci-watch",
+        "does not fall back to raw shell commands"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "skill": "explore",
+  "trigger": {
+    "positive": [
+      "find where the auth middleware is implemented in this repo",
+      "explore this codebase using pctx instead of grep",
+      "give me a structured overview of this unfamiliar module"
+    ],
+    "negative": [
+      {
+        "prompt": "do a root-cause debugging investigation of this bug",
+        "owner": "investigation-depth"
+      },
+      {
+        "prompt": "which model tier should handle this exploration task",
+        "owner": "model-routing"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "find where the auth middleware is implemented in this repo",
+      "expected_output": "invokes the explore skill and follows its documented steps",
+      "files": [],
+      "expectations": [
+        "routes to explore",
+        "does not fall back to raw shell commands"
+      ]
+    }
+  ]
+}

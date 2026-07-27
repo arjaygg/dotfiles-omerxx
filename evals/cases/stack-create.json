@@ -1,0 +1,31 @@
+{
+  "skill": "stack-create",
+  "trigger": {
+    "positive": [
+      "create a new worktree and branch for the payments refactor",
+      "stack a branch on top of feature/auth for the login fix",
+      "I need parallel development on two features, set up separate worktrees"
+    ],
+    "negative": [
+      {
+        "prompt": "open a pull request for my current branch",
+        "owner": "stack-pr"
+      },
+      {
+        "prompt": "check the status of my whole PR stack",
+        "owner": "stack-status"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "create a new worktree and branch for the payments refactor",
+      "expected_output": "invokes the stack-create skill and follows its documented steps",
+      "files": [],
+      "expectations": [
+        "routes to stack-create",
+        "does not fall back to raw shell commands"
+      ]
+    }
+  ]
+}

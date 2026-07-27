@@ -1,0 +1,31 @@
+{
+  "skill": "session-artifacts",
+  "trigger": {
+    "positive": [
+      "update plans/active-context.md with our current focus",
+      "log this decision in the rolling decisions.md file",
+      "what's the template for progress.md checkbox tracking"
+    ],
+    "negative": [
+      {
+        "prompt": "save a WIP commit before I context switch",
+        "owner": "checkpoint"
+      },
+      {
+        "prompt": "do a root-cause investigation on this bug",
+        "owner": "investigation-depth"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "update plans/active-context.md with our current focus",
+      "expected_output": "invokes the session-artifacts skill and follows its documented steps",
+      "files": [],
+      "expectations": [
+        "routes to session-artifacts",
+        "does not fall back to raw shell commands"
+      ]
+    }
+  ]
+}
