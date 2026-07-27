@@ -1,6 +1,7 @@
 ---
 name: cicd-monitor
 description: CI/CD pipeline monitor with LogSage/RFM failure classification and auto-remediation routing
+tools: Read, Bash, SendMessage, TaskCreate
 version: 1.0
 type: agent
 model: sonnet
