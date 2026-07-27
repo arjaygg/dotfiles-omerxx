@@ -1,18 +1,28 @@
-# Native Agent Orchestration (Claude Code)
+# Native Agent Orchestration (Claude Code) — v2
 
 Adapts the Orchestrator-Worker paradigm in `ai/rules/agent-user-global.md` § Orchestrator-Worker
 to Claude Code's own primitives, replacing the tmux-driven control loop in
 `ai/skills/tmux-orchestrator/SKILL.md` **for Claude-Code workers only**.
+
+**Goal:** an AI-native engineering harness that is agentic *and* autonomous — where autonomy is
+*earned by measured evidence*, not switched on by config.
 
 Scope: Claude Code exclusively. Every primitive named below is a real Claude Code tool, settings
 key, or hook event — verified against the live tool schemas, `docs.claude.com`, and this repo on
 2026-07-27 (Claude Code 2.1.220). Non-Claude CLIs (Cursor, Codex, AGY) are out of scope and stay
 on tmux — see Step 7.
 
+**v2 changes:** integrates practices from `addyosmani/agent-skills`
+(`~/git/agent-skills`, HEAD `7829ffd`) — a 24-skill production pack with a three-tier eval harness.
+Part II records what we import and what we deliberately reject. Part III is the autonomy ladder,
+which is this plan's own synthesis and has no counterpart in either source.
+
 Renamed from `plans/native_agent_orchestration_plan.md` to the `YYYY-MM-DD-<context>` convention
 required by `ai/rules/agent-user-global.md` § Plan Documents.
 
 ---
+
+# Part I — Orchestration mechanics
 
 ## 0. Delegation gate — when NOT to delegate
 
@@ -42,8 +52,6 @@ migration, multi-file refactor) that is not a TDD cycle. Anything both need — 
 format, the tool budget, the acceptance gate — is defined here and `cap` adopts it, so the two do
 not diverge. Do not re-implement cap's phase machinery.
 
----
-
 ## 1. Runtime selection — the Coordinator's first decision
 
 Three native mechanisms exist. Pick one per task; do not mix within a phase.
@@ -52,7 +60,14 @@ Three native mechanisms exist. Pick one per task; do not mix within a phase.
 |---|---|---|
 | **`Workflow`** | deterministic, repeatable, multi-phase fan-out; needs schema-validated returns and replay | `Workflow({script, args})` / `Workflow({scriptPath, resumeFromRunId})` |
 | **Ad-hoc `Agent`** | one-off, dynamically-shaped, or single-worker delegation | `Agent({subagent_type, prompt, name, model, isolation})` |
-| **Agent Teams** | long-lived named teammates the user watches and converses with | `teammateMode` + `SendMessage` (experimental) |
+| **Agent Teams** | teammates that must *challenge each other* to reach the answer | `teammateMode` + `SendMessage` (experimental) |
+
+The Agent Teams row is sharpened from `agent-skills/references/orchestration-patterns.md`, which
+draws the distinction well: **subagent fan-out produces a verdict on a known artifact; Agent Teams
+runs an investigation to find the artifact among competing hypotheses.** Teams cost noticeably more
+and are only justified when the adversarial debate is what produces correctness — e.g. an
+intermittent production bug with four mutually exclusive plausible causes. For a routine review,
+use fan-out.
 
 **`Workflow`** is the only deterministic primitive. Inside a script: `agent(prompt, opts)`,
 `parallel(thunks)` (barrier), `pipeline(items, ...stages)` (no barrier — the default),
@@ -70,6 +85,9 @@ stage N genuinely needs all of stage N-1 (dedup, early-exit on zero, cross-item 
 deny** (promoted 2026-07-27, ADL-022 follow-up). A `parallel()`/`pipeline()` over a `.map()` or a
 bare variable is statically undecidable and only warns `[fan-out-undecidable]` — in that case the
 Coordinator is responsible for bounding the array to ≤3 concurrent workers itself.
+
+**Parallel fan-out requires multiple `Agent` calls in a single assistant turn.** Sequential turns
+serialize execution. (`orchestration-patterns.md` § "Spawning multiple subagents in parallel".)
 
 ## 2. Roles and model tiers
 
@@ -107,13 +125,18 @@ Repo rule (`ai/rules/agent-user-global.md:76-84`): prefer a fork for search/expl
 use a fresh agent when isolation is the point (independent review) or a specialised tool set is
 needed.
 
+**Prefer the built-in `Explore` subagent for read-heavy research** before defining a custom research
+persona (`orchestration-patterns.md` Pattern 5). It is read-only by construction and purpose-built
+for returning a digest instead of polluting the main context. Define a custom researcher only when
+`Explore` genuinely does not fit.
+
 **Mandatory for every fresh worker in this repo:** the prompt must open with the pctx init mandate
 (`Serena.initialInstructions()` + `LeanCtx.ctxCall({name: "ctx_intent", ...})` before any file
 access). Without it the worker reaches for `ls`/`grep` and is hard-blocked by
 `pre-tool-gate-v2.sh`. `cap-workflow.js:257-278` already has this as a reusable `pctxInit()` block —
 reuse it, do not re-author it.
 
-Corollary: the prior draft's "Context Caching" claim was wrong. A fresh subagent inherits nothing;
+Corollary: the v0 draft's "Context Caching" claim was wrong. A fresh subagent inherits nothing;
 context-packing is *mandatory*, not avoided. Only a fork inherits.
 
 ## 4. The frozen spec
@@ -124,7 +147,7 @@ pointer plus the non-negotiables.
 Worker prompt = three parts, always:
 1. the pctx init mandate (fresh workers only)
 2. the **absolute** path to the spec file
-3. the `**Accepts:**` criteria restated inline, the branch name, and the tool/nesting constraints
+3. the `Accepts` criteria restated inline, the branch name, and the tool/nesting constraints
 
 Every spec step declares `**Files:**` (absolute paths in scope) and `**Accepts:**` (an observable
 condition the Coordinator can re-verify by running a command itself), per
@@ -149,10 +172,21 @@ Frontmatter keys in use today across the 11 definitions: `name` (11), `descripti
 `model` (11), `tools` (7), `type` (5), `version` (5), `permissionMode` (1).
 `memory:` and `isolation:` are used by **zero** — adding them is real work, not a switch to flip.
 
+The full supported set for plugin-distributed agents is: `name`, `description`, `tools`,
+`disallowedTools`, `model`, `maxTurns`, `skills`, `memory`, `background`, `effort`, `isolation`,
+`color`, `initialPrompt` (`orchestration-patterns.md` § "Frontmatter restrictions"). Two gotchas
+worth internalising:
+
+- **Plugin agents silently ignore `hooks`, `mcpServers`, and `permissionMode`.** Our
+  `mcp_config_manager` sets `permissionMode` — that works today because these are symlinked into
+  `.claude/agents/`, not distributed as a plugin. If we ever ship them as a plugin, it stops working.
+- **`skills:` and `mcpServers:` are honored for subagents but ignored for teammates.** A persona
+  that depends on a skill must have it configured at session level to work in both modes.
+
 ### Anti-nesting is a config control, not a prompt
 
 Subagents **can** spawn subagents by default — up to three layers below the main conversation on
-2.1.219+ (this machine is 2.1.220). The prior draft's "hardcode the rule into the worker's system
+2.1.219+ (this machine is 2.1.220). The v0 draft's "hardcode the rule into the worker's system
 prompt" is the weakest available control. Enforce declaratively, in priority order:
 
 1. **Per-agent** — declare an explicit `tools:` allowlist that omits `Agent`, or list `Agent` under
@@ -163,6 +197,14 @@ prompt" is the weakest available control. Enforce declaratively, in priority ord
 2. **Global** — `env.CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` in settings.json (needs ≥2.1.217);
    `"1"` disables nesting outright. Not set anywhere in this repo today.
 3. Keep the prose rule in the system prompt as a redundant second layer only.
+
+> ⚠️ **`agent-skills` is stale here and we must not import its claim.**
+> `orchestration-patterns.md` § "Platform-enforced rules" asserts *"Subagents cannot spawn other
+> subagents (verbatim from the docs)"* and concludes its Anti-patterns B and D "cannot exist on
+> Claude Code by construction." That guarantee was removed in 2.1.219. Their orchestration safety
+> model rests on a platform property that no longer holds; `doubt-driven-development`'s
+> "Loading Constraints" section inherits the same false premise. Our `tools:`-allowlist control is
+> the correct compensating mechanism — Step 1 closes it.
 
 `Agent(agent_type)` allowlist syntax applies only to an agent running as the main thread via
 `claude --agent`; inside a subagent definition the parenthesized type list is ignored.
@@ -191,7 +233,7 @@ isolation. The two keys are independent decisions, not alternatives.
 
 ## 6. Retrieving worker output
 
-The prior draft's "the orchestrator just reads the `git diff`" is only true in one of two cases.
+The v0 draft's "the orchestrator just reads the `git diff`" is only true in one of two cases.
 State both:
 
 - **No isolation** — worker edits the shared tree; Coordinator reads `git diff` / `git status`
@@ -264,17 +306,53 @@ orphaned worker task blocks Stop. Drive every task to `completed` or `cancelled`
 
 ## 9. Verification gate — the Coordinator never accepts output on trust
 
-On every worker return, before advancing:
+Two bars apply to every worker return, and they are different things
+(`agent-skills/references/definition-of-done.md`):
+
+- **Acceptance criteria** — per-task, from the spec. *"Did we build this thing?"*
+- **Definition of Done** — standing, project-wide, identical every time. *"Is it ready?"*
+
+A return is accepted only when **both** pass. Sequence:
 
 1. Validate the return against the declared phase schema.
 2. **Re-run the spec's `Accepts` command yourself.** Never accept the worker's self-report.
 3. Inspect the real diff via the correct retrieval path for the isolation mode (§6).
-4. Apply the quality checklist: conventional-commit format, no commits on `main`, PR stacked on the
-   correct parent, CI green or the failure surfaced with a run URL, no secrets committed.
+4. Apply the standing Definition of Done (Step 9 creates `ai/references/definition-of-done.md`).
 5. Only then `TaskUpdate({status: "completed"})`.
 
 If verification fails the task stays `in_progress` and a blocker task is created. Do not begin
 Step N+1 until Step N's `Accepts` criteria are met.
+
+### 9b. Adversarial verification (the doubt cycle)
+
+For any **non-trivial** worker output — branching logic, cross-boundary change, an unverifiable
+asserted property (thread-safety, idempotence, ordering), or an irreversible blast radius — schema
+validation plus a re-run is not enough. Run the doubt cycle from
+`agent-skills/skills/doubt-driven-development/SKILL.md`:
+
+**CLAIM → EXTRACT → DOUBT → RECONCILE → STOP**
+
+Three rules carry almost all the value:
+
+- **Pass ARTIFACT + CONTRACT to the reviewer. Never pass the CLAIM.** Handing a reviewer your
+  conclusion biases it toward agreement.
+- **The prompt must be adversarial:** *"Find what is wrong. Assume the author is overconfident.
+  Do NOT validate. Do NOT summarize."*
+- **Bound the loop at 3 cycles**, then escalate. If 3 feels insufficient, the artifact is too big —
+  decompose it; do not lift the bound.
+
+RECONCILE classifies each finding in precedence order: **contract misread → valid+actionable →
+valid trade-off → noise.** The reviewer's output is data, not verdict.
+
+**Doubt theater (checkable signal):** across 2+ cycles where the reviewer surfaced substantive
+findings, zero were classified actionable → you are validating, not doubting. Stop and escalate.
+
+> Evidence this matters, from this repo: the v1 audit of this very plan ran 4 verifiers into
+> adversarial refuters, but passed each refuter the verdict, the evidence, **and** the proposed
+> correction. 16 of 71 findings were overturned — a rate high enough to suggest the refuters were
+> reacting to the framing, not the artifact. Under the doubt-cycle contract they would have received
+> only the plan text plus the contract. **Adopt the ARTIFACT+CONTRACT-only rule in every review
+> harness we build.**
 
 ## 10. Failure semantics
 
@@ -303,7 +381,9 @@ progress and yields the run id for `resumeFromRunId`. Use `log()` at phase bound
 cancels.
 
 **Log every cap.** If the orchestration bounds coverage (top-N, no-retry, sampling), `log()` what
-was dropped — silent truncation reads as "covered everything" when it did not.
+was dropped — silent truncation reads as "covered everything" when it did not. The v1 audit hit
+exactly this: a `.slice(0, 8)` refuter cap silently dropped 13 high-severity findings, recovered
+only because the cap was logged.
 
 ## 12. Agent Teams and `teammateMode` — correcting a common error
 
@@ -313,11 +393,181 @@ was dropped — silent truncation reads as "covered everything" when it did not.
 `.claude/settings.json:471`.
 
 Agent teams remain experimental. `SendMessage` addresses teammates by name; idle teammates stay
-running and addressable (hidden from the panel after 30 s, resumed on message).
+running and addressable (hidden from the panel after 30 s, resumed on message). Clean up **through
+the lead**, never a teammate — teammates lack full team context for cleanup.
 
 ---
 
-## Steps
+# Part II — Practices imported from `addyosmani/agent-skills`
+
+## 13. The five-layer model, and our missing layers
+
+`agent-skills/docs/developer-onboarding.md` §1 frames an agent harness as five composable layers.
+Mapping ours against it exposes exactly two holes:
+
+| Layer | Job | Theirs | Ours | Status |
+|---|---|---|---|---|
+| **Skills** (*How*) | workflows with verification gates | `skills/<name>/SKILL.md` (24) | `ai/skills/` (~70) | present, **unvalidated** |
+| **Personas** (*Who*) | roles with a perspective + output format | `agents/<role>.md` (4) | `ai/agents/` (11) | present |
+| **Commands** (*When*) | user-facing entry points, orchestration layer | `.claude/commands/` | `ai/commands/` | present |
+| **References** (*What to check*) | shared checklists pulled in on demand | `references/*.md` (7) | — | **MISSING** |
+| **Evals** (*Does it work*) | proof skills trigger and behave | `evals/cases/*.json` (24) | — | **MISSING** |
+
+The eval gap is the serious one. We run ~3× their skill count with **zero** evidence that any skill
+triggers when it should, or that two of the ~70 descriptions don't collide. Description collision
+scales quadratically; at 70 skills it is near-certain, and it manifests as the wrong skill
+activating — which looks like a model failure and gets debugged as one.
+
+## 14. Skill anatomy and the anti-rationalization device
+
+`agent-skills/docs/skill-anatomy.md` standardises every skill on: **Overview / When to Use (incl.
+when NOT to) / Core Process / Common Rationalizations / Red Flags / Verification.**
+
+Three of those sections are the ones that matter for autonomy, and we have none of them:
+
+- **Common Rationalizations** — a two-column table of the excuses an agent uses to skip a step,
+  each paired with a factual rebuttal. This is the direct countermeasure to an autonomous agent
+  talking itself out of a gate under pressure. Their example: *"I'm confident, skip the doubt step"*
+  → *"Confidence correlates poorly with correctness on novel problems."*
+- **Red Flags** — observable signs the skill is being violated, usable for self-monitoring and
+  review. The best ones are **checkable**, like the doubt-theater signal in §9b.
+- **Verification** — exit criteria where every checkbox demands evidence, not judgement.
+
+Their context-efficiency rules also apply directly to our ~70 skills:
+SKILL.md **under 500 lines**; progressive disclosure via supporting files; refs one level deep;
+and — the highest-leverage one — **prefer scripts over inline code, because executing a script
+consumes no context, only its output does, whereas inline code blocks are paid for on every load.**
+
+## 15. The three-tier eval harness
+
+From `agent-skills/evals/README.md`. This is the single highest-value import.
+
+| Tier | Checks | Runs | Cost |
+|---|---|---|---|
+| **1. Structural** | frontmatter, naming, required sections, command parity | CI | free |
+| **2. Trigger & routing** | positive prompts rank their skill top-k; negative prompts don't; no two descriptions near-collide | CI | free |
+| **3. Behavioral** | an agent following the skill satisfies its `expectations[]` | on demand | tokens |
+
+**Tier 2 is the one to build first.** It is a deterministic lexical approximation of routing
+(stemmed TF-IDF over descriptions) — no model calls, CI-safe, free. It catches the two failure modes
+that dominate real trigger bugs: a description missing the vocabulary users actually say, and an
+over-broad description that outranks the right skill. Their metrics: a **rank-1 rate** with a CI
+floor (`--min-rank1 80` against an 86% baseline), and a **collision check that errors at ≥75%
+pairwise description similarity, warns at ≥50%**. A Tier-2 failure means *fix the description*.
+
+Case format, one file per skill, `evals/cases/<skill>.json`: `trigger.positive[]` (≥3 realistic
+paraphrases users would actually type — copying the description games the eval),
+`trigger.negative[]` (≥2, each naming the `owner` skill that must outrank this one), and `evals[]`
+(≥1 behavioral, with `prompt`, `expected_output`, `files[]`, and `expectations[]`).
+
+Tier 3 details worth copying verbatim:
+- Each execution eval runs **in a throwaway git repo** with fixtures materialized and committed as
+  the baseline; the grader judges the **full `--output-format stream-json` trace including tool
+  calls**, not just the final message.
+- Traces are **fenced as untrusted data** in the grader prompt and **piped over stdin** — argv would
+  hit the OS argument-size limit.
+- The executor runs with an explicit permission mode and pre-approved tool list, so evals genuinely
+  edit files rather than being denied and narrating instead.
+- **Pressure cases**: discipline skills carry evals for **time pressure, sunk cost, and authority
+  pressure** — verifying the workflow still holds when the prompt argues for skipping it.
+
+That last one is the direct measurement of autonomous robustness, and it feeds Part III.
+
+## 16. Core operating behaviors
+
+`agent-skills/skills/using-agent-skills/SKILL.md` defines six always-on, non-negotiable behaviors
+that sit above every individual skill. We have fragments of these scattered across
+`agent-user-global.md`; they are worth consolidating:
+
+1. **Surface assumptions** — state them explicitly before non-trivial work; "correct me now or I
+   proceed with these."
+2. **Manage confusion actively** — on inconsistency: STOP, name the confusion, present the
+   tradeoff, wait. Never silently pick an interpretation.
+3. **Push back when warranted** — quantify the downside ("adds ~200 ms latency", not "might be
+   slower"). *"Sycophancy is a failure mode."*
+4. **Enforce simplicity** — "if you build 1000 lines and 100 would suffice, you have failed."
+5. **Maintain scope discipline** — surgical precision, not unsolicited renovation.
+6. **Verify, don't assume** — evidence, never "seems right."
+
+Plus a 10-item failure-mode list that reads as a self-audit checklist.
+
+They also ship a **skill discovery decision tree** and inject the meta-skill at `SessionStart`
+(`hooks/session-start.sh`). With ~70 skills and no router, we need this more than they do.
+
+## 17. What we reject, and the tension we must resolve honestly
+
+**Rejected — the stale anti-nesting guarantee.** Covered in §5. Their safety model assumes a
+platform property removed in 2.1.219.
+
+**Rejected — "no scripted orchestration."** Their Anti-pattern C forbids *"a sequential orchestrator
+that paraphrases"* — an agent that runs `/spec` → `/plan` → `/build` on the user's behalf — and
+Pattern 4 insists the user must be the orchestrator. **This is in direct conflict with our goal of
+an autonomous harness, and it deserves a real answer rather than a dodge.**
+
+Their three stated failure causes:
+
+| Their objection | Does it apply to us? |
+|---|---|
+| (a) each hand-off summarizes context → accumulated drift | **No** — only if hand-offs are prose. A `Workflow` stage hands off a **schema-validated object**, and our frozen spec hands off a **file**. Artifact-passing has no paraphrase step, so there is nothing to drift. |
+| (b) loses the human checkpoints that catch wrong-direction work | **Yes, and this one is real.** It is not an argument against automation; it is an argument that checkpoints must be *explicitly placed and explicitly earned*. That is Part III. |
+| (c) doubles token cost via an orchestrator paraphrasing turn | **No** — there is no orchestrator turn in a `Workflow` script. Control flow is deterministic JS. |
+
+Two of three objections dissolve under artifact-passing, which is precisely what `Workflow` and
+`cap` already do. Their catalog was written for *conversational* orchestrators and does not consider
+the `Workflow` primitive at all — the word never appears in it. Objection (b) survives and becomes
+the governing constraint on autonomy.
+
+**The resulting rule:** automate the *transport* between phases; never automate away the
+*checkpoint*. A checkpoint may only be removed when Part III's evidence bar is met.
+
+We also adopt their governance rule for the pattern catalog itself — add a new orchestration pattern
+only after you have used it twice in real work, can name a concrete artifact demonstrating it, can
+say why an existing pattern would not have worked, and can describe its anti-pattern shadow.
+*"Premature catalog entries become aspirational documentation that no one follows."*
+
+---
+
+# Part III — The autonomy ladder
+
+Neither source defines how a harness *becomes* autonomous. This is the synthesis, and it is the
+piece that turns the rest of this plan into an AI-native engineering team rather than a
+well-organised set of prompts.
+
+**Governing principle: evals are the currency that buys autonomy.** A checkpoint is removed only
+when there is measured evidence that the gate behind it holds without a human. Absent that evidence,
+"autonomous" just means "unsupervised."
+
+| Tier | Name | Human involvement | Evidence required to enter |
+|---|---|---|---|
+| **A0** | Assisted | approves every tool call | none — the default |
+| **A1** | Supervised | approves each phase transition | Tier 1 green; skill has a Verification section |
+| **A2** | Checkpointed | approves at planned checkpoints only | Tier 2 rank-1 ≥ floor; no description collision ≥75% |
+| **A3** | Bounded-autonomous | reviews the final artifact; agent self-gates in between | Tier 3 behavioral pass **and** pressure cases pass (time / sunk-cost / authority) |
+| **A4** | Delegated | reviews outcomes on a cadence, not per-run | A3 sustained across N runs + rollback path proven + observability alerting live |
+
+Rules that keep the ladder honest:
+
+- **Tiers are per-workflow, not global.** `/ci-watch` can be A4 while a schema migration stays A1.
+  Record the tier in the workflow's `meta`, next to its phases.
+- **Promotion requires evidence in the repo**, not a judgement call — a green eval run, committed.
+- **Demotion is automatic.** Any `blocked` outcome, any failed pressure case, or any Definition-of-
+  Done miss drops the workflow one tier until re-earned. This must be mechanical, not remembered.
+- **Irreversible actions never exceed A2** regardless of evidence: production deploys, data
+  migrations, public API changes, force-pushes, credential handling. Blast radius caps the tier.
+- **Pressure cases are the A3 gate specifically** because they measure the failure mode autonomy
+  actually has: an agent that follows the process when unchallenged and abandons it the moment the
+  prompt says "we're short on time, just ship it."
+
+This ladder is what the existing `.claude-atomic.yaml` D3 autonomy flags and the
+`git-pipeline-gate.sh` due-signal detection should be re-expressed in terms of, so that one
+vocabulary covers both the git pipeline and agent orchestration.
+
+---
+
+# Steps
+
+Steps 1-8 are Part I mechanics; 9-14 build the imported layers; 15 wires the ladder. Steps 1, 4, 9,
+and 10 are independent and can run in parallel.
 
 ### Step 1 — Close the anti-nesting hole in existing agent definitions
 **Files:** `ai/agents/cicd-audit.md`, `ai/agents/cicd-auto-retry.md`, `ai/agents/cicd-monitor.md`,
@@ -359,8 +609,9 @@ produces a hook log line.
 **Files:** `.claude/workflows/orchestrate.js` (new — first entry in this directory)
 **Accepts:** script has the required `export const meta = {name, description, phases}` literal;
 ≤3 literal `agent(` call sites so `pre-tool-gate-v2.sh` SECTION 8 does not hard-deny; every
-`agent()` call passes a `schema` and a `label`; every result is null-guarded; a dry run completes
-and returns a validated object.
+`agent()` call passes a `schema` and a `label`; every result is null-guarded; the doubt-cycle
+reviewer stage receives ARTIFACT+CONTRACT only (never the CLAIM); a dry run returns a validated
+object.
 
 ### Step 7 — Scope `tmux-orchestrator` to non-Claude CLIs
 **Files:** `ai/skills/tmux-orchestrator/SKILL.md`
@@ -379,9 +630,62 @@ favour of Step 6's workflow.
 zero tmux references. There is no "convert from tmux" work here; the only real gaps are the spec
 handoff and the acceptance gate.
 
+### Step 9 — Create the missing References layer
+**Files:** `ai/references/definition-of-done.md` (new), `ai/references/README.md` (new),
+`setup.sh` (symlink `ai/references` → `.claude/references`)
+**Accepts:** the Definition of Done separates Correctness / Quality / Integration / Documentation /
+Ship-readiness and is explicitly distinguished from per-task acceptance criteria; §9 above links to
+it; at least two existing skills reference it instead of restating the checklist.
+
+### Step 10 — Stand up Tier 1: the skill linter
+**Files:** `scripts/lib/skill_lint.py` (new), `scripts/validate_skills.py` (new),
+`.pre-commit-config.yaml`
+**Accepts:** linter checks every `ai/skills/*/SKILL.md` for valid frontmatter, `name` matching the
+directory, a `description` containing both what-it-does and a "Use when" trigger, ≤500 lines, and
+presence of a Verification section; exits 1 on error; runs in pre-commit; a baseline report of
+current violations across all ~70 skills is committed so the count can only go down.
+
+### Step 11 — Stand up Tier 2: trigger & routing evals
+**Files:** `evals/cases/<skill>.json` (new, seeded for the 10 most-used skills),
+`scripts/run_evals.py` (new), pre-commit entry
+**Accepts:** stemmed TF-IDF ranking over all skill descriptions; each seeded case has ≥3 positive
+and ≥2 `owner`-tagged negative prompts; the runner prints a rank-1 rate and fails below a committed
+floor; a pairwise description-similarity check errors at ≥75% and warns at ≥50%; the **current
+collision report across all ~70 skills is committed** — expect real hits, that is the finding.
+
+### Step 12 — Retrofit the anatomy sections into high-traffic skills
+**Files:** `ai/skills/cap/SKILL.md`, `ai/skills/auto-ship/SKILL.md`,
+`ai/skills/investigation-depth/SKILL.md`, `ai/skills/stack-ship/SKILL.md`,
+`ai/skills/hyper-atomic-commits-reference/SKILL.md`
+**Accepts:** each gains a **Common Rationalizations** table (≥4 rows), a **Red Flags** list with at
+least one *checkable* signal, and a **Verification** checklist where every box names its evidence;
+Step 10's linter passes on all five.
+
+### Step 13 — Add the skill router and inject it at SessionStart
+**Files:** `ai/skills/using-my-skills/SKILL.md` (new), `.claude/hooks/session-init.sh`
+**Accepts:** a discovery decision tree covering every enabled skill in `skillOverrides`; the six
+Core Operating Behaviors (§16) stated as non-negotiable; the hook injects it once per session and
+degrades gracefully without `jq`; a regression test asserts the JSON payload shape.
+
+### Step 14 — Stand up Tier 3 and the pressure cases
+**Files:** `scripts/run_evals.py` (`--behavioral`), `evals/fixtures/<skill>/`,
+`evals/results/` (gitignored)
+**Accepts:** behavioral evals run in a throwaway git repo with fixtures committed as baseline; the
+grader judges the full stream-json trace including tool calls; traces are fenced as untrusted data
+and piped over **stdin, never argv**; every discipline skill carries a time-pressure, a sunk-cost,
+and an authority-pressure case; grader output validates as JSON before write.
+
+### Step 15 — Express the autonomy ladder in config
+**Files:** `.claude-atomic.yaml`, `ai/rules/agent-user-global.md`,
+`.claude/hooks/git-pipeline-gate.sh`
+**Accepts:** the D3 autonomy flags are re-expressed as A0-A4 tiers; every workflow and pipeline
+stage declares its tier; promotion requires a committed green eval run; **demotion on any `blocked`
+outcome, failed pressure case, or Definition-of-Done miss is mechanical, not remembered**;
+irreversible actions are capped at A2 by an assertion in the gate, not by convention.
+
 ---
 
-## Corrections applied to the prior draft
+## Corrections applied to the v0 draft
 
 | Prior claim | Reality |
 |---|---|
@@ -392,8 +696,21 @@ handoff and the acceptance gate.
 | Anti-nesting via system prompt | nesting is allowed by default (3 layers); enforce via `tools:` allowlist / `disallowedTools` / `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` |
 | "the orchestrator just reads the `git diff`" | empty under worktree isolation — needs `git diff <base>...<branch>` or `EnterWorktree` |
 | "the framework automatically resumes the orchestrator" | no such generic behaviour; name the mechanism (§7) |
-| Next Step 1: convert tmux worker definitions | no tmux worker definitions exist; `ai/agents/` already has 11 |
-| Next Step 2: change tech-lead "instead of tmux pane splitting" | tech-lead v2 has zero tmux references — and is currently disabled |
+| v0 Next Step 1: convert tmux worker definitions | no tmux worker definitions exist; `ai/agents/` already has 11 |
+| v0 Next Step 2: change tech-lead "instead of tmux pane splitting" | tech-lead v2 has zero tmux references — and is currently disabled |
 | `teammateMode: "auto"` as the anti-tmux switch | it is a *display* setting; `auto` means "split into tmux/iTerm2 panes if available" — already set |
 | `TaskCompleted`/`TeammateIdle` proposed as new | `TaskCompleted` already wired; both ignore `matcher` |
 | (absent) | `Workflow` — the actual deterministic orchestration primitive |
+
+## Sources
+
+- `~/git/agent-skills` @ `7829ffd` — `references/orchestration-patterns.md`,
+  `references/definition-of-done.md`, `docs/skill-anatomy.md`, `docs/developer-onboarding.md`,
+  `evals/README.md`, `CONTRIBUTING.md`, `skills/using-agent-skills/SKILL.md`,
+  `skills/doubt-driven-development/SKILL.md`, `skills/context-engineering/SKILL.md`
+- Live Claude Code tool schemas (`Agent`, `Workflow`, `SendMessage`, `Task*`, `Monitor`) —
+  Claude Code 2.1.220
+- `docs.claude.com` sub-agents, hooks, agent-teams, models references
+- This repo: `.claude/settings.json`, `.claude/hooks/pre-tool-gate-v2.sh`,
+  `scripts/hook_config_check.py`, `ai/skills/cap/`, `plans/agent-delegation-patterns.md`,
+  `plans/skill-delegation-patterns.md`, `plans/2026-06-12-ai-primitives-upgrade.md`
