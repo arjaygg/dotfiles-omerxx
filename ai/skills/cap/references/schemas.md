@@ -123,7 +123,7 @@ Returned by each Hawk dimension agent (Phase 6). One per dimension.
   "dimension": "architecture|quality|resilience|security",
   "findings": [
     {
-      "severity": "CRITICAL|HIGH|MEDIUM|LOW",
+      "lens": "correctness|security|resilience|style|doubt",
       "category": "architecture|quality|resilience|security",
       "file": "pkg/scheduler/handler.go",
       "line": 42,
@@ -136,7 +136,10 @@ Returned by each Hawk dimension agent (Phase 6). One per dimension.
 ```
 
 Required: `dimension`, `findings`
-Each finding requires: `severity`, `category`, `file`, `line`, `description`, `fix`, `confidence`
+Each finding requires: `lens`, `category`, `file`, `line`, `description`, `fix`, `confidence`
+
+No `severity`, `priority`, or ranking field on a finding — the producing lens does not rank
+its own findings; the Coordinator triages (see `ai/skills/lensed-review`).
 
 ---
 
@@ -147,10 +150,8 @@ Returned by adversarial verify agents (one per confirmed finding, Phase 6).
 ```json
 {
   "isReal": true,
-  "reasoning": "Found SQL parameterization missing at pkg/repo/query.go:42",
-  "adjustedSeverity": "HIGH"
+  "reasoning": "Found SQL parameterization missing at pkg/repo/query.go:42"
 }
 ```
 
 Required: `isReal`, `reasoning`
-Optional: `adjustedSeverity` (if severity should differ from original finding)
