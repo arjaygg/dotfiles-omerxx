@@ -477,3 +477,14 @@ Executing `plans/2026-07-07-ai-harness-improvement-proposal.md` per user "go" (P
 - [ ] Wave 1 — Hygiene & safety (skill repatriation, guard fix, dead hooks, dup rule file, corrupted commands)
 - [ ] Wave 2 — Modernization (frontmatter sweep, hook chain async, todo-gate events, CI consolidation, progressive disclosure, rules→skills)
 - [ ] Wave 3 — Orchestration & cross-tool (ai/agents, headless hardening, agent teams, routines, --bg, ~/.agents/skills, pctx parity, Gemini extension)
+
+## 2026-07-28 — Goal 05 checkpoint 3
+
+- Step 4 done+committed (0143388211a893b3f07992cdb88895e8e3d0413e, branch step4).
+- Step 5 done+committed (b72b2b4a2ec90ae28ea65a7f5a4580ecf6481fff, branch step5),
+  accepted with two open verification caveats (hook_config_check.py pre-existing
+  failures out of scope; SubagentStop firing only manually simulated).
+- Step 9 done+committed (5c3aafe, branch chore/native-agent-orchestration-step9);
+  worker correctly deviated from the frozen spec's stale "71 entries" figure and
+  ledgered all 104 real skillOverrides entries in ai/skills/REMOVALS.md.
+- Next: Step 10 (consolidate review into lensed-review), now unblocked.
