@@ -104,8 +104,8 @@ validation:
 #   - any pipeline-driven edit to .claude-atomic.yaml, hook-config.yaml, or
 #     .claude/hooks/* (no self-escalation of its own tier or gate level)
 pipeline:
-  auto_commit: false
-  auto_push: false
-  auto_pr: false
-  auto_ship: false
-  auto_clean: false
+  auto_commit: true
+  auto_push: true
+  auto_pr: true
+  auto_ship: true
+  auto_clean: true
