@@ -1,5 +1,28 @@
 # pctx Functions — 2026-07-15 (refreshed; no drift vs 2026-07-14 snapshot)
 
+**2026-07-27 session note — REAL DRIFT in Serena and LeanCtx.** `mcp__pctx__list_functions` re-run
+for the native-agent-orchestration plan review. Namespaces unchanged (Serena/Qmd/LeanCtx/Repomix/
+Graphify), but two function sets moved. The per-namespace sections below are stale where noted.
+
+- **Serena — now 21 fns.** *Removed from live list:* `listDir`, `findFile`, `searchForPattern`,
+  `checkOnboardingPerformed`. *Added:* `replaceContent`, `replaceInFiles` (multi-file, supports
+  `dry_run` + `occurrence_ids` + `expected_count`), `findImplementations`, `findDeclaration`,
+  `getDiagnosticsForFile`, `safeDeleteSymbol`. This confirms `ai/rules/tool-priority.md` §3's note
+  that `searchForPattern`/`findFile`/`listDir` are absent in the `claude-code` context.
+- **LeanCtx — now 12 core fns:** `ctxCall`, `ctxCallgraph`, `ctxCompose`, `ctxExpand`, `ctxGlob`,
+  `ctxPatch`, `ctxRead`, `ctxSearch`, `ctxSession`, `ctxShell`, `ctxTree`, `shell`. *Removed from
+  core:* `ctxEdit`, `ctxGraph`, `ctxKnowledge`, `ctxOverview`, `ctxProvider` (reachable via
+  `ctxCall` only). *Added:* `ctxCompose` (now the documented PRIMARY orient-first call), `ctxPatch`
+  (hash-anchored edits, replaces `ctxEdit`), `ctxGlob`, `ctxCallgraph`, `ctxExpand`, `shell`.
+  `ctxRead` **now requires `mode`**, and the mode set changed to
+  `full|anchored|raw|signatures|map|auto|diff|lines:N-M|reference|task` (`aggressive`/`entropy`/`ref`
+  are gone; `anchored`/`raw`/`reference` are new). The prior snapshot's mode list is wrong.
+- `Serena.readMemory({ memory_name: "START_HERE" })` **now succeeds** — the memory exists, so the
+  repeated bootstrap-gap callout in the 2026-07-16 note below is resolved.
+- Unchanged and re-confirmed: `ctxCall`'s payload field is `arguments` (not `args`); Qmd is still
+  `query`/`get`/`multiGet`/`status`; Repomix and Graphify function sets match the snapshot.
+- Also confirmed: `readMemory` rejects `memoryName` — the key is `memory_name`.
+
 **2026-07-16 session note:** `mcp__pctx__list_functions` re-run for the
 cross-client-config-portability goal; namespace/function set matches this snapshot exactly
 (Serena/Qmd/LeanCtx/Repomix, same names). `Serena.readMemory({ memory_name: "START_HERE" })` again
