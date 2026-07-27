@@ -365,7 +365,6 @@
     ],
     "TaskCreated": [
       {
-        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
@@ -376,11 +375,31 @@
     ],
     "TaskCompleted": [
       {
-        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
             "command": "bash \"$HOME/.dotfiles/.claude/hooks/task-event-tracker.sh\""
+          }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/teammate-quality-gate.sh\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/teammate-quality-gate.sh\""
           }
         ]
       }
