@@ -25,7 +25,7 @@ print(json.dumps({
 PYEOF
 }
 
-VALID_MODEL_RE='^(opusplan|opus|sonnet|haiku|fable|best|claude-[a-z0-9.-]+)$'
+VALID_MODEL_RE='^(opusplan|opus|sonnet|haiku|fable|best|claude-[a-z0-9.-]+)(\[1m\])?$'
 issues=()
 
 # Resolve effective "model" setting: project settings.json wins over global.
