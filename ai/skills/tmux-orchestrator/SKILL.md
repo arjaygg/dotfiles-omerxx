@@ -46,7 +46,7 @@ tmux send-keys -t 1 "y" Enter
 ```
 
 ## Guidelines for Use
-1. Always generate a frozen spec (`plans/spec.md`) before spawning a worker to provide unambiguous instructions.
-2. Instruct the worker to refer to `plans/spec.md` as its primary input.
+1. Always generate a per-worker frozen spec (`plans/specs/<label>.md`, template: `plans/specs/TEMPLATE.md`) before spawning a worker to provide unambiguous instructions. Never use a single shared `plans/spec.md`.
+2. Instruct the worker to refer to its `plans/specs/<label>.md` as its primary input.
 3. Check worker pane status regularly to apply self-healing if needed.
 4. Send a termination command to the worker once its tasks are fully completed and verified.

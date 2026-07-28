@@ -1,0 +1,2 @@
+2026-07-28T10:00:13Z Normal   Pod/worker-7f9c   Started container migration-runner
+2026-07-28T10:00:14Z Warning  Pod/worker-7f9c   BackOff: connection reset by peer (db-pool)

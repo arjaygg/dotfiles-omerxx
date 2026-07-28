@@ -1,6 +1,7 @@
 ---
 name: cicd-audit
 description: SOX-compliant immutable event log for CI/CD monitoring system
+tools: Read, Edit, SendMessage
 version: 1.0
 type: agent
 model: sonnet

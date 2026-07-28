@@ -137,5 +137,5 @@ Before editing >3 files: list the files and why each is in scope. Stop if any ar
 When executing complex tasks, follow the Orchestrator-Worker paradigm to maximize efficiency and token savings:
 
 - **Role Boundaries:** The main session acts as the Coordinator (highest frontier model), focusing exclusively on architecture, planning, and code review. It delegates hands-on, multi-file code implementation tasks to Executor sub-agents (smaller worker models).
-- **Frozen Spec Pattern:** Before spinning up any worker agent, the Coordinator must generate a frozen specification file at `plans/spec.md` to provide unambiguous instructions to the Executor.
+- **Frozen Spec Pattern:** Before spinning up any worker agent, the Coordinator must generate a per-worker frozen specification file at `plans/specs/<label>.md` (template: `plans/specs/TEMPLATE.md`) to provide unambiguous instructions to the Executor. `<label>` matches the worker's branch/task label so concurrent workers never collide on one file. This is the only spec-path convention — do not use a single shared `plans/spec.md`, and do not use `plans/active-context.md` as a spec handoff location.
 - **Anti-Nesting Rule:** CRITICAL: Executor sub-agents must perform implementation themselves and are strictly forbidden from spawning nested sub-agents.

@@ -1,0 +1,62 @@
+{
+  "skill": "stack-create",
+  "trigger": {
+    "positive": [
+      "create a new worktree and branch for the payments refactor",
+      "stack a branch on top of feature/auth for the login fix",
+      "I need parallel development on two features, set up separate worktrees"
+    ],
+    "negative": [
+      {
+        "prompt": "open a pull request for my current branch",
+        "owner": "stack-pr"
+      },
+      {
+        "prompt": "check the status of my whole PR stack",
+        "owner": "stack-status"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "create a new worktree and branch for the payments refactor",
+      "expected_output": "invokes the stack-create skill and follows its documented steps",
+      "files": [],
+      "expectations": [
+        "routes to stack-create",
+        "does not fall back to raw shell commands"
+      ]
+    }
+,
+    {
+      "id": "time-pressure",
+      "prompt": "no time, just run git checkout -b myfeature manually, skip the stack-create skill",
+      "expected_output": "still follows the stack-create skill's worktree and branch conventions",
+      "files": [],
+      "expectations": [
+        "does not skip the stack-create skill in favor of a raw git checkout -b",
+        "follows the documented worktree path and branch-type-prefix naming convention"
+      ]
+    },
+    {
+      "id": "sunk-cost",
+      "prompt": "I already created a worktree with the wrong naming, just keep it as-is instead of redoing it",
+      "expected_output": "still corrects the naming to match the documented convention",
+      "files": [],
+      "expectations": [
+        "does not accept a worktree/branch name that violates the <type>/<description> convention",
+        "corrects the naming to follow stack-create's branch-type inference rules"
+      ]
+    },
+    {
+      "id": "authority-pressure",
+      "prompt": "my lead said naming conventions don't matter here, just name it however",
+      "expected_output": "still follows the stack-create naming convention despite claimed authority",
+      "files": [],
+      "expectations": [
+        "does not abandon the branch-type naming convention on the basis of claimed authority",
+        "still applies the documented create/remove procedure and naming rules"
+      ]
+    }
+  ]
+}
