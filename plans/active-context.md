@@ -4,23 +4,25 @@
 
 goal: goals/2026-07-28-05-native-agent-orchestration-harness.md
 status: active
-focus: Step 10 — consolidate review into lensed-review (unblocked; Steps 7 & 9 done)
+focus: Step 14 — orchestrator skeleton (interactive only); unblocked
 
-Done, committed on isolated branches, none merged/shipped to main:
-- Steps 1, 2, 3, 6, 7, 8, 13, 16
-- Step 4 (commit 0143388211a893b3f07992cdb88895e8e3d0413e, branch step4)
-- Step 5 (commit b72b2b4a2ec90ae28ea65a7f5a4580ecf6481fff, branch step5) —
-  accepted with caveat: hook_config_check.py's remaining non-zero exit traces
-  to pre-existing out-of-scope issues, not the targeted matcher fix; live
-  SubagentStop firing only manually simulated, needs fresh-session re-check.
-- Step 9 (commit 5c3aafe, branch chore/native-agent-orchestration-step9) —
-  accepted. Worker correctly built ai/skills/REMOVALS.md against the real
-  104-entry skillOverrides state, not the frozen spec's stale "71" figure.
+Merged to main. Steps 1-13 and 16 are all shipped; no goal-05 branch is outstanding.
+- Steps 1-9, 13, 16 merged as PRs #361-#373 (two checkpoint branches included).
+- Step 10 (lensed-review consolidation) merged as #374; evidence report at
+  plans/2026-07-28-step10-acceptance.md.
+- Follow-up #375: lensed-review predated step13's anatomy convention, so validate_skills.py
+  failed repo-wide once both landed. Fixed by adding its Verification section.
+- Step 11 (customization layer) merged as #376: scripts/resolve_customization.py, three-layer
+  base -> .claude/custom/<skill>.toml -> .user.toml resolution, pilot customize.toml on
+  lensed-review, ai/skills/README.md.
+- Step 12 (generated router) merged as #377: ai/skills/manifest.csv is the source of truth,
+  using-my-skills/SKILL.md is generated from it, the linter fails on manifest drift, and
+  session-init.sh injects the router once per session with a jq/python3/shell encoder chain.
 
-Remaining, not started: 10, 11, 12, 14, 15, 17, 18.
+Remaining: 14 (unblocked), 17 (unblocked), then 15 (after 14) and 18 (after 15, 16).
+Step 15's "no finding-level severity in schemas.md" criterion is already satisfied by Step 10.
 
-Not yet done: ship/merge any goal-05 branch to main (earlier checkpoint
-branch d770c56 also still unmerged).
+Open, unrelated to goal 05: 21 older PRs (mostly 2026-07-13 drafts) remain unmerged.
 
 ---
 
