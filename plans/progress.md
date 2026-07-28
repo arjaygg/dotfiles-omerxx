@@ -550,9 +550,49 @@ Executing `plans/2026-07-07-ai-harness-improvement-proposal.md` per user "go" (P
       (floor 0.80), 0 collisions; new suite 13/13.
 - No unattended-mode code — no `run_in_background`, no detached paths, no HALT protocol.
       Step 15 owns those, and the next change to `ai/skills/cap/references/schemas.md`.
-- [ ] **Open, surfaced while merging #383:** `stack merge` run from inside a worktree fails with
-      `'main' is already used by worktree` *after* the merge has already gone through, so it
-      reports an error for a successful merge and skips the stack update. Re-running from
-      `~/.dotfiles` recovered it. Same run warned "Charcoal rebase encountered issues
-      (non-fatal)" and synced 0 of 51 PR bases — no dependents for Step 14, unexamined for the
-      other 34 worktrees.
+- [x] **Surfaced while merging #383, ~~open~~ fixed by #384:** `stack merge` run from inside a
+      worktree reported `'main' is already used by worktree` *after* the merge had already gone
+      through. Root cause: `gh pr merge --delete-branch` cannot delete a branch checked out in a
+      worktree, and the default branch is permanently checked out in the primary worktree, so
+      the failure was expected — `stack-ship.sh` just surfaced it as a warning on every merge.
+      `d5cdddd` filters the known-benign text and warns only on what remains. Verified live:
+      the merge of #384 itself printed no such warning.
+- [ ] **Still open from that same run:** "Charcoal rebase encountered issues (non-fatal)" and
+      0 of 51 PR bases synced — no dependents for Step 14, unexamined for the other 34
+      worktrees. Not touched by #384.
+
+## 2026-07-28 — Stack tooling fixes (PR #384)
+
+- [x] `clean-stack.sh` now detects rebase- and squash-merged branches. `git branch -d` only
+      accepts a branch whose tip is an ancestor, but `gh pr merge --rebase` rewrites the
+      commits, so every rebase merge printed "Branch not fully merged; use --force", left the
+      branch behind, and still reported `SUCCESS: Cleaned`. Adds a `git cherry` patch-id check
+      (survives the default branch advancing) plus a tree-equality check (covers squash, where
+      patch-ids cannot match). A genuinely unmerged branch still warns and is preserved.
+      Narrower trigger than first assumed: `-d` also accepts a branch merged into its *upstream*,
+      so the bug needs the remote branch deleted **and** a rewritten merge.
+- [x] `stack-ship.sh` stops warning on the expected worktree delete failure (see above).
+- [x] `scripts/test_stack_clean.py` — 4 cases incl. genuinely-unmerged-must-be-preserved, since
+      the bug was silent (exit 0, "Cleaned" printed). Suite 210 -> 214.
+- Test-design note: cherry-picking a commit whose parent is already HEAD can produce a
+  byte-identical SHA when both land in the same second, making the branch a real ancestor and
+  silently voiding the rebase scenario. The tests amend afterwards to force a distinct SHA; an
+  earlier draft passed for exactly that wrong reason.
+- [ ] **Open (cosmetic):** `stack-ship.sh` resolves the merge target to a bare SHA rather than
+      `main` in its plan output and `.stack-ship/log.jsonl` entries.
+
+## 2026-07-28 — Goal 05 housekeeping
+
+- [x] Coordinator re-ran Step 14's nine acceptance criteria against `main` — distinct from the
+      worker's own dry-run evidence above, per the Definition of Done requiring the `Accepts`
+      check be "re-run by the Coordinator, not self-reported by the worker". All nine hold; the
+      §21 isolation check is the one worth restating, since it is behavioural rather than
+      structural: the reviewer stage is handed `changedFiles` + `REVIEW_SCHEMA` and is
+      deliberately denied `impl.summary` and `impl.valid`.
+- [x] Deleted three stale merged remote branches — `chore/native-agent-orchestration-step11`
+      (#376), `-step12` (#377), `-step14` (#383) — each verified as zero unique commits against
+      `main` first. No goal-05 branch or worktree remains.
+- Process note: two sessions checkpointed Step 14 into `plans/` within ~20 minutes (#385 and
+  this one), because `active-context.md` still named Step 14 as the active focus with a
+  worktree "already created" that had in fact been removed. #385 landed first and is the
+  authoritative record; this entry adds only what it could not have known.

@@ -21,7 +21,9 @@ Step 15 owns the next change to `ai/skills/cap/references/schemas.md`.
 
 Open, unrelated to goal 05:
 - The ~55-60k static context baseline (PR #381 raised the autocompact threshold but did not
-  shrink the floor); whether that fix holds is still unverified.
+  shrink the floor); whether that fix holds is still unverified — re-measure compaction
+  frequency from transcript `usage` fields. Measured since: ~75% of the baseline is fixed
+  Claude Code overhead, so trimming the rules chain buys ~2% of a 200k window — not worth it.
 - 21 older PRs (mostly 2026-07-13 drafts) remain unmerged.
 - `stack merge` warns "Charcoal rebase encountered issues (non-fatal)" and synced 0 of 51 PR
   bases on #383. Harmless for Step 14 (no dependents); unexamined for the other 34 worktrees.
