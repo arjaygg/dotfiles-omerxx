@@ -115,7 +115,7 @@ async function run() {
     // Understand what symbols are in the file
     Serena.getSymbolsOverview({ relative_path: "path/to/file.go" }),
     // List what's in a directory
-    Serena.listDir({ relative_path: "path/to/dir", recursive: false }),
+    LeanCtx.ctxTree({ path: "path/to/dir" }),
   ]);
   return { overview, listing };
 }
@@ -123,13 +123,13 @@ async function run() {
 
 **When to use each:**
 - `getSymbolsOverview` — before reading a source file; gives structure without full content
-- `listDir` — instead of `ls`; structured, gitignore-aware
-- `findFile` — instead of `find`; project-indexed search by filename
+- `LeanCtx.ctxTree` — instead of `ls`; structured, token-efficient
+- `LeanCtx.ctxGlob` / `Glob` — instead of `find`; gitignore-aware filename matching
 
 ```typescript
 // Find a file by name
 async function run() {
-  return await Serena.findFile({ file_mask: "worker*.go", relative_path: "." });
+  return await LeanCtx.ctxGlob({ pattern: "**/worker*.go", path: "." });
 }
 ```
 
@@ -140,23 +140,20 @@ async function run() {
 ```typescript
 // mcp__pctx__execute_typescript
 async function run() {
-  return await Serena.searchForPattern({
-    substring_pattern: "YourPattern", // Regex, DOTALL-enabled
-    relative_path: ".",               // Scope: "." = whole project, or a subdir
-    restrict_search_to_code_files: true,  // Skip non-code files
-    context_lines_before: 2,
-    context_lines_after: 2,
+  return await LeanCtx.ctxSearch({
+    pattern: "YourPattern", // Regex/text pattern
+    path: ".",              // Scope: "." = whole project, or a subdir
+    max_results: 50,
     // Optional: restrict by glob
-    // paths_include_glob: "*.go",
-    // paths_exclude_glob: "vendor/**",
+    // include: "**/*.go",
+    // exclude: "vendor/**",
   });
 }
 ```
 
 **Tips:**
 - Use non-greedy `.*?` not `.*` in patterns spanning lines
-- Set `restrict_search_to_code_files: false` to also search markdown, yaml, etc.
-- Scope with `relative_path: "src/handlers"` to narrow the search
+- Scope with `path: "src/handlers"` or `include` / `exclude` globs to narrow the search
 
 ---
 
@@ -171,7 +168,7 @@ async function run() {
     Serena.findSymbol({ name_path_pattern: "ProcessPayment", depth: 1 }),
     Serena.findReferencingSymbols({ name_path: "ProcessPayment", relative_path: "src/payments/handler.go" }),
     Serena.getSymbolsOverview({ relative_path: "src/payments/handler.go" }),
-    Serena.findFile({ file_mask: "*payment*.go", relative_path: "." }),
+    LeanCtx.ctxGlob({ pattern: "**/*payment*.go", path: "." }),
   ]);
   
   return {
@@ -189,9 +186,9 @@ async function run() {
 
 | Instead of... | Use... |
 |---|---|
-| `Bash: grep -r "FuncName" .` | `Serena.searchForPattern` or `Serena.findSymbol` |
-| `Bash: find . -name "*.go"` | `Serena.findFile` or `Glob` |
-| `Bash: ls src/handlers/` | `Serena.listDir` |
+| `Bash: grep -r "FuncName" .` | `Serena.findSymbol` or `LeanCtx.ctxSearch` |
+| `Bash: find . -name "*.go"` | `LeanCtx.ctxGlob` or `Glob` |
+| `Bash: ls src/handlers/` | `LeanCtx.ctxTree` or `Glob` |
 | `Bash: cat src/handler.go` | `Serena.getSymbolsOverview` then `Read` with `limit/offset` |
 | `Bash: head -50 file.go` | `Read` with `limit: 50` |
 | Multiple sequential Serena calls | One `mcp__pctx__execute_typescript` with `Promise.all` |
@@ -225,5 +222,5 @@ When this skill is invoked:
 
 **If Serena returns empty results:**
 - Try a broader `name_path_pattern` (remove the class prefix)
-- Try `searchForPattern` with the name as a literal string
+- Try `LeanCtx.ctxSearch` with the name as a literal string
 - Check if the project is indexed: run `Serena.getCurrentConfig()`

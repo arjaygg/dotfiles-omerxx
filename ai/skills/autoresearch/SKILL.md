@@ -216,7 +216,7 @@ Load the appropriate reference file based on the subcommand:
 ```typescript
 // Via mcp__pctx__execute_typescript — ONE call, not sequential
 const [scopeFiles, overview] = await Promise.all([
-  Serena.searchForPattern({ substring_pattern: ".", relative_path: "<scope-dir>" }),
+  LeanCtx.ctxGlob({ pattern: "**/*", path: "<scope-dir>", max_results: 200 }),
   Serena.getSymbolsOverview({ relative_path: "<scope-dir>" }),
 ]);
 return { scopeFiles, overview };

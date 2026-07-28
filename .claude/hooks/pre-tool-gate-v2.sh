@@ -597,7 +597,7 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
     # 2a. grep/rg (but not git grep) — no Grep tool exists in this session; use LeanCtx.ctxSearch
     if [[ ( "$CMD" == grep\ * || "$CMD" == rg\ * ) && "$CMD" != *"git grep"* ]]; then
         _deny_routing "search" "BLOCKED: Use LeanCtx.ctxSearch instead of 'grep'/'rg' (no Grep tool exists in this session).
-  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ query: '<pattern>' })
+  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ pattern: '<pattern>', path: '.' })
   Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
     fi
 
@@ -683,7 +683,7 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
         fi
         _deny "BLOCKED: Piped '$PIPE_CMD' is not allowed after a command.
   Use the Read tool with a limit parameter, jq for JSON output, or LeanCtx.ctxSearch for text search.
-  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ query: '<pattern>' })"
+  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ pattern: '<pattern>', path: '.' })"
     fi
 fi
 
@@ -877,7 +877,7 @@ if [[ "$TOOL_NAME" == "Grep" && -n "$PATTERN" ]]; then
     fi
     # General pattern — LeanCtx.ctxSearch is a direct drop-in
     _MSG="$_SERENA_PREFIX: Use LeanCtx.ctxSearch instead of Grep — it's gitignore-aware, session-cached, and token-efficient.
-  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ query: '${PATTERN}' })"
+  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ pattern: '${PATTERN}', path: '.' })"
     [[ "$_SERENA_LEVEL" == "block" ]] && _deny "$_MSG"
     echo "$_MSG" >&2
     exit 0

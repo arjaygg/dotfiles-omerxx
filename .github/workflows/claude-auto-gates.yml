@@ -80,6 +80,9 @@ jobs:
       - name: Summarize dead skill references
         run: python3 scripts/skill_reference_check.py --summary || true
 
+      - name: Check pctx SDK guidance examples
+        run: python3 scripts/pctx_sdk_example_check.py --summary
+
   # Fails if test coverage drops vs the base branch.
   # Requires the project to produce a coverage report; configure COVERAGE_CMD
   # and COVERAGE_FILE for the target repo's test runner.

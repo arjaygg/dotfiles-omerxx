@@ -185,16 +185,18 @@ Run the test again and check the log output.
 
 ```typescript
 // Hypothesis: null pointer
-const pointerAssignments = await Serena.searchForPattern(
-  "p\\s*:=|p\\s*=",
-  { glob: "suspicious_file.go", restrict_search_to_code_files: true }
-);
+const pointerAssignments = await LeanCtx.ctxSearch({
+  pattern: "p\\s*:=|p\\s*=",
+  path: ".",
+  include: "suspicious_file.go"
+});
 
 // Hypothesis: race condition
-const goroutineSpawns = await Serena.searchForPattern(
-  "go\\s+func|sync.Mutex",
-  { glob: "**/*.go", restrict_search_to_code_files: true }
-);
+const goroutineSpawns = await LeanCtx.ctxSearch({
+  pattern: "go\\s+func|sync.Mutex",
+  path: ".",
+  include: "**/*.go"
+});
 ```
 
 #### 3c — Document Each Finding
