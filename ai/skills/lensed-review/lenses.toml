@@ -1,0 +1,44 @@
+# Lens registry for ai/skills/lensed-review. Five keys per lens (see SKILL.md):
+# code, applies_to, when, after, instruction. instruction = "" disables the lens.
+
+[correctness]
+code = "correctness"
+applies_to = "any"
+when = "always — the baseline lens for any code or doc review"
+after = ""
+instruction = "references/lens-correctness.md"
+
+[security]
+code = "security"
+applies_to = "code"
+when = "touches auth, input handling, secrets, network calls, or dependency versions"
+after = ""
+instruction = "references/lens-security.md"
+
+[resilience]
+code = "resilience"
+applies_to = "code"
+when = "touches error handling, retries, external calls, or concurrency"
+after = ""
+instruction = "references/lens-resilience.md"
+
+[performance]
+code = "performance"
+applies_to = "code"
+when = "explicitly requested — not part of the default lens set"
+after = ""
+instruction = ""
+
+[style]
+code = "style"
+applies_to = "code"
+when = "always — complexity, duplication, and maintainability checks"
+after = ""
+instruction = "references/lens-style.md"
+
+[doubt]
+code = "doubt"
+applies_to = "any"
+when = "always — adversarially re-checks correctness's findings before they're reported"
+after = "correctness"
+instruction = "references/lens-doubt.md"

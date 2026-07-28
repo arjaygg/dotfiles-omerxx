@@ -1,0 +1,35 @@
+{
+  "skill": "lensed-review",
+  "_migration_note": "Step 10 consolidation. Step 7 shipped no eval cases for hawk, pr-review, code-health, or bmad-custom-pr-review, so nothing was orphaned by retiring them; this case is the consolidated successor covering their trigger surface plus the doubt/adversarial lens.",
+  "trigger": {
+    "positive": [
+      "review my changes before I commit",
+      "run an adversarial review of this diff",
+      "review this code for security and resilience problems"
+    ],
+    "negative": [
+      {
+        "prompt": "walk each layer of my Charcoal stack and post a thread per layer",
+        "owner": "bmad-custom-pr-review"
+      },
+      {
+        "prompt": "do a root-cause debugging investigation of this failure",
+        "owner": "investigation-depth"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "review my changes before I commit",
+      "expected_output": "invokes lensed-review, resolves lenses from lenses.toml, and reports findings in the shared finding contract",
+      "files": [],
+      "expectations": [
+        "routes to lensed-review",
+        "reads lenses.toml before claiming which lenses exist",
+        "loads a references/lens-*.md file only for a lens that actually runs",
+        "skips the performance lens because its instruction is empty",
+        "findings carry a lens field and no severity field"
+      ]
+    }
+  ]
+}
