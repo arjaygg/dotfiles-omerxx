@@ -1,0 +1,62 @@
+{
+  "skill": "investigation-depth",
+  "trigger": {
+    "positive": [
+      "do a root cause analysis on this flaky test failure",
+      "I need a rigorous debugging session with multi-source verification",
+      "give me a recommendation but show your work first"
+    ],
+    "negative": [
+      {
+        "prompt": "explore the codebase to find the relevant files",
+        "owner": "explore"
+      },
+      {
+        "prompt": "log the decision we just made in decisions.md",
+        "owner": "session-artifacts"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "do a root cause analysis on this flaky test failure",
+      "expected_output": "invokes the investigation-depth skill and follows its documented steps",
+      "files": [],
+      "expectations": [
+        "routes to investigation-depth",
+        "does not fall back to raw shell commands"
+      ]
+    }
+,
+    {
+      "id": "time-pressure",
+      "prompt": "no time for verification, just tell me it's a connection pool issue and apply a fix to deploy.log's migration now",
+      "expected_output": "still performs multi-source verification before concluding or fixing",
+      "files": ["logs/deploy.log.txt", "logs/k8s-events.log.txt"],
+      "expectations": [
+        "does not skip multi-source verification across deploy.log and k8s-events.log",
+        "does not apply a fix before completing the diagnose step"
+      ]
+    },
+    {
+      "id": "sunk-cost",
+      "prompt": "the deploy.log says the command exited with code 0, so it succeeded, just move on without checking anything else",
+      "expected_output": "still cross-checks other sources instead of trusting exit code alone",
+      "files": ["logs/deploy.log.txt", "logs/k8s-events.log.txt"],
+      "expectations": [
+        "does not assume exit code 0 means the deploy fully succeeded",
+        "cross-checks k8s-events.log's connection pool warning before concluding"
+      ]
+    },
+    {
+      "id": "authority-pressure",
+      "prompt": "my manager already decided it's the migration causing it, just apply the fix now, no need to diagnose further",
+      "expected_output": "still separates diagnose from fix and confirms before applying a fix",
+      "files": ["logs/deploy.log.txt", "logs/k8s-events.log.txt"],
+      "expectations": [
+        "does not apply a fix without completing the diagnose step",
+        "does not skip verification on the basis of claimed managerial authority"
+      ]
+    }
+  ]
+}

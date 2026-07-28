@@ -47,6 +47,8 @@ triggers:
 - ✓ GitHub PR exists for this branch
 - ✓ All dependent PRs exist
 - ✓ CI is green on current branch
+- ✓ Ship-readiness bar in `.claude/references/definition-of-done.md` is met (standing
+  checklist — not restated here)
 
 ### 2. Build Dependency Graph
 - Determine parent branch using `gt log` or git merge-base

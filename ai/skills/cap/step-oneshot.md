@@ -116,11 +116,11 @@ Portable validation rules:
 
 After either runtime completes, if `autonomous` is **false** and `advisor` is available:
 
-Call `advisor()` with the workflow result for final sanity check:
-- All 7 phases completed? (check `result.blocked` — false = success)
-- No CRITICAL/HIGH findings remaining? (`result.criticalHighRemaining === 0`)
-- Tests count reasonable for scope? (`result.testsCount`)
-- Plan acceptance criteria met?
+Call `advisor()` with the workflow result for final sanity check against the run's own
+acceptance criteria (`result.blocked`, `result.criticalHighRemaining`, `result.testsCount`,
+plan acceptance criteria), then apply the standing Definition of Done
+(`.claude/references/definition-of-done.md`) before reporting success — acceptance criteria
+answer "did we build this?", the DoD answers "is it ready?" and both must pass.
 
 Report the advisor's verdict to the user.
 

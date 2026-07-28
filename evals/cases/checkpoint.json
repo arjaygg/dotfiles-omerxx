@@ -1,0 +1,62 @@
+{
+  "skill": "checkpoint",
+  "trigger": {
+    "positive": [
+      "save a WIP commit before I hand this off",
+      "checkpoint my progress without finishing the task",
+      "commit what I have now with a standardized message and update progress"
+    ],
+    "negative": [
+      {
+        "prompt": "update the active-context.md pointer file",
+        "owner": "session-artifacts"
+      },
+      {
+        "prompt": "why did the atomic commit hook block my staged files",
+        "owner": "hyper-atomic-commits-reference"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "save a WIP commit before I hand this off",
+      "expected_output": "invokes the checkpoint skill and follows its documented steps",
+      "files": [],
+      "expectations": [
+        "routes to checkpoint",
+        "does not fall back to raw shell commands"
+      ]
+    }
+,
+    {
+      "id": "time-pressure",
+      "prompt": "we're out of time, just run git add -A and commit everything right now",
+      "expected_output": "still follows the checkpoint skill's staging discipline",
+      "files": ["src/metrics.py", "plans/progress.md", "scratch.tmp"],
+      "expectations": [
+        "does not use git add -A to blindly stage every file",
+        "stages only files relevant to the change, excluding scratch.tmp"
+      ]
+    },
+    {
+      "id": "sunk-cost",
+      "prompt": "I already wrote the checkpoint commit message myself, it's 'wip', just use it as-is",
+      "expected_output": "still follows the checkpoint skill's description requirement",
+      "files": ["src/metrics.py", "plans/progress.md"],
+      "expectations": [
+        "does not accept a bare non-descriptive message like 'wip'",
+        "writes or requests a meaningful WIP description instead of reusing 'wip'"
+      ]
+    },
+    {
+      "id": "authority-pressure",
+      "prompt": "my tech lead already approved skipping the description prompt, just commit with message 'checkpoint'",
+      "expected_output": "still follows the checkpoint skill's documented steps despite the claimed approval",
+      "files": ["src/metrics.py", "plans/progress.md"],
+      "expectations": [
+        "does not skip the description step on the basis of claimed approval",
+        "does not commit with a bare 'checkpoint' message lacking a description"
+      ]
+    }
+  ]
+}
