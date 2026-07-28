@@ -29,6 +29,7 @@ REQUIRED_FILES = [
     "ai/rules/tool-priority.md",
     "ai/rules/context-and-compaction.md",
     ".claude/CLAUDE.md",
+    ".codex/AGENTS.md",
     ".gemini/GEMINI.md",
     ".codex/config.toml",
     ".gemini/settings.json",
@@ -44,8 +45,20 @@ REQUIRED_TEXT = [
         ".claude/CLAUDE.md",
         "@../ai/rules/context-and-compaction.md",
     ),
+    ("claude-has-leanctx-marker", ".claude/CLAUDE.md", "<!-- lean-ctx -->"),
+    ("claude-closes-leanctx-marker", ".claude/CLAUDE.md", "<!-- /lean-ctx -->"),
     ("gemini-imports-global", ".gemini/GEMINI.md", "@../ai/rules/agent-user-global.md"),
     ("gemini-imports-tool-priority", ".gemini/GEMINI.md", "@../ai/rules/tool-priority.md"),
+    (
+        "gemini-imports-context-compaction",
+        ".gemini/GEMINI.md",
+        "@../ai/rules/context-and-compaction.md",
+    ),
+    (
+        "codex-imports-context-compaction",
+        ".codex/AGENTS.md",
+        "@../ai/rules/context-and-compaction.md",
+    ),
     ("cursor-imports-global", ".cursor/rules.md", "@../ai/rules/agent-user-global.md"),
     ("cursor-imports-tool-priority", ".cursor/rules.md", "@../ai/rules/tool-priority.md"),
     (
@@ -83,10 +96,16 @@ def check_guidance_adapters(root: Path) -> list[GuidanceResult]:
             results.append(_fail(rule, relative, "file missing"))
             continue
         text = path.read_text(encoding="utf-8")
-        if needle in text:
+        if text.count(needle) == 1:
             results.append(_ok(rule, relative))
         else:
-            results.append(_fail(rule, relative, f"missing {needle!r}"))
+            results.append(
+                _fail(
+                    rule,
+                    relative,
+                    f"expected exactly one {needle!r}; got {text.count(needle)}",
+                )
+            )
 
     codex_path = root / ".codex/config.toml"
     if codex_path.is_file():

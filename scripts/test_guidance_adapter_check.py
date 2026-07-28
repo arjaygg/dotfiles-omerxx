@@ -25,13 +25,22 @@ class GuidanceAdapterCheckTests(unittest.TestCase):
                     "@../ai/rules/agent-user-global.md",
                     "@../ai/rules/tool-priority.md",
                     "@../ai/rules/context-and-compaction.md",
+                    "<!-- lean-ctx -->",
+                    "<!-- /lean-ctx -->",
                 ]
             ),
         )
         write(
             root / ".gemini/GEMINI.md",
-            "\n".join(["@../ai/rules/agent-user-global.md", "@../ai/rules/tool-priority.md"]),
+            "\n".join(
+                [
+                    "@../ai/rules/agent-user-global.md",
+                    "@../ai/rules/tool-priority.md",
+                    "@../ai/rules/context-and-compaction.md",
+                ]
+            ),
         )
+        write(root / ".codex/AGENTS.md", "@../ai/rules/context-and-compaction.md\n")
         write(
             root / ".cursor/rules.md",
             "\n".join(
@@ -70,6 +79,53 @@ class GuidanceAdapterCheckTests(unittest.TestCase):
 
         self.assertIn(
             ("gemini-imports-global", ".gemini/GEMINI.md", "fail"),
+            [(result.rule, result.path, result.status) for result in results],
+        )
+
+    def test_claude_marker_is_required(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            self.make_repo(root)
+            write(
+                root / ".claude/CLAUDE.md",
+                "\n".join(
+                    [
+                        "@../ai/rules/agent-user-global.md",
+                        "@../ai/rules/tool-priority.md",
+                        "@../ai/rules/context-and-compaction.md",
+                    ]
+                ),
+            )
+
+            results = check_guidance_adapters(root)
+
+        failures = {
+            (result.rule, result.path, result.status) for result in results
+        }
+        self.assertIn(
+            ("claude-has-leanctx-marker", ".claude/CLAUDE.md", "fail"),
+            failures,
+        )
+        self.assertIn(
+            ("claude-closes-leanctx-marker", ".claude/CLAUDE.md", "fail"),
+            failures,
+        )
+
+    def test_duplicate_claude_shared_import_fails(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            self.make_repo(root)
+            path = root / ".claude/CLAUDE.md"
+            path.write_text(
+                path.read_text(encoding="utf-8")
+                + "\n@../ai/rules/context-and-compaction.md\n",
+                encoding="utf-8",
+            )
+
+            results = check_guidance_adapters(root)
+
+        self.assertIn(
+            ("claude-imports-context-compaction", ".claude/CLAUDE.md", "fail"),
             [(result.rule, result.path, result.status) for result in results],
         )
 
