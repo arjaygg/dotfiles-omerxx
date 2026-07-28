@@ -84,3 +84,6 @@ tokentelemetry/
 
 # pre-compact.sh generated resume snapshot (regenerated every compaction)
 plans/session-snapshot.md
+
+# personal skill customization overrides (see ai/skills/README.md)
+.claude/custom/*.user.toml

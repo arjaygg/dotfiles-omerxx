@@ -64,6 +64,19 @@ Invoke via `/lensed-review`, or when the user asks for a code/doc review in any 
 phrasings above. If the user names a specific lens ("just check security"), run only that lens per
 step 2 above.
 
+## Customization
+
+Shipped defaults live in `customize.toml` (do not edit it — it is overwritten on update).
+Overrides resolve base → `.claude/custom/lensed-review.toml` →
+`.claude/custom/lensed-review.user.toml`. Get the merged result with
+`python3 scripts/resolve_customization.py lensed-review`.
+
+**If the resolver is unavailable or fails, use the three-file fallback:** read all three paths
+yourself in that order and apply the merge rules by hand — scalars override, tables deep-merge,
+arrays of tables keyed by `code` or `id` replace on matching key and append on new, all other
+arrays append. Do **not** fall back to reading only `customize.toml`: that silently drops every
+override. Name which layers you applied, and any `file:` value you could not read.
+
 ## Verification
 
 Confirm each of these against the actual run, not from memory:
