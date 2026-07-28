@@ -1,0 +1,361 @@
+<!--
+  report-template.html — skeleton for the agent cost review dashboard.
+
+  Publish target is the Artifact tool when available, otherwise a local file the user
+  opens. Either way the wrapper supplies <!doctype>/<head>/<body>, so this file starts at
+  <title> and contains page content only.
+
+  Design intent: an instrument panel, not a marketing page. Prose in the system sans;
+  every number, label and axis in mono with tabular figures, because columns of digits
+  that don't align are hard to trust. Restrained teal accent so the semantic red/green
+  carry the only urgency on the page. One accent, one ramp, two status colours — resist
+  adding more.
+
+  Fonts are system stacks on purpose: the Artifact CSP blocks font CDNs, and a blocked
+  webfont fails silently into whatever the browser picks. System faces are guaranteed and
+  cost nothing to load.
+
+  Replace every {{PLACEHOLDER}}. Delete sections that the data does not support rather
+  than shipping an empty panel.
+-->
+
+<title>{{AGENT}} Cost Review — {{WINDOW}}</title>
+
+<style>
+  :root {
+    --paper: #f5f7f8;
+    --surface: #ffffff;
+    --surface-2: #fbfcfc;
+    --ink: #121a20;
+    --ink-2: #55636e;
+    --ink-3: #7d8b98;
+    --rule: #e1e7ea;
+    --rule-strong: #cdd6db;
+    --accent: #0f7c8a;
+
+    /* Sequential ramp, darkest = largest share. Ordinal, so identity always
+       travels with a label or legend, never with colour alone. */
+    --seq-1: #0a5560;
+    --seq-2: #0f8090;
+    --seq-3: #3eaab6;
+    --seq-4: #a3d6dc;
+
+    --crit: #a33322;  --crit-bg: #f8ecea;
+    --good: #1f6b4a;  --good-bg: #eaf3ee;
+
+    /* Legible on seq-1 and seq-2 only. Labels on the two lighter steps go
+       beneath the bar — light-on-mid-teal fails contrast in one theme or the
+       other, and there is no single value that works on both. */
+    --on-fill: #ffffff;
+
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Cascadia Mono", Consolas, monospace;
+  }
+
+  /* Dark theme is authored, not inverted. The ramp reverses so the largest share
+     stays the most prominent step against a dark ground. */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #12171b; --surface: #1a2026; --surface-2: #1e252c;
+      --ink: #e6ecf0; --ink-2: #9aa8b4; --ink-3: #6d7b88;
+      --rule: #29323a; --rule-strong: #3a454f;
+      --accent: #4fbcc7;
+      --seq-1: #8fdae2; --seq-2: #4fb8c4; --seq-3: #2b8794; --seq-4: #1c5a64;
+      --crit: #f08c7e; --crit-bg: #33201d;
+      --good: #6bc79a; --good-bg: #172a22;
+      --on-fill: #0c2429;
+    }
+  }
+  /* The viewer's theme toggle stamps data-theme on the root and must win in both
+     directions, so both values are restated explicitly. */
+  :root[data-theme="dark"] {
+    --paper: #12171b; --surface: #1a2026; --surface-2: #1e252c;
+    --ink: #e6ecf0; --ink-2: #9aa8b4; --ink-3: #6d7b88;
+    --rule: #29323a; --rule-strong: #3a454f;
+    --accent: #4fbcc7;
+    --seq-1: #8fdae2; --seq-2: #4fb8c4; --seq-3: #2b8794; --seq-4: #1c5a64;
+    --crit: #f08c7e; --crit-bg: #33201d;
+    --good: #6bc79a; --good-bg: #172a22;
+    --on-fill: #0c2429;
+  }
+  :root[data-theme="light"] {
+    --paper: #f5f7f8; --surface: #ffffff; --surface-2: #fbfcfc;
+    --ink: #121a20; --ink-2: #55636e; --ink-3: #7d8b98;
+    --rule: #e1e7ea; --rule-strong: #cdd6db;
+    --accent: #0f7c8a;
+    --seq-1: #0a5560; --seq-2: #0f8090; --seq-3: #3eaab6; --seq-4: #a3d6dc;
+    --crit: #a33322; --crit-bg: #f8ecea;
+    --good: #1f6b4a; --good-bg: #eaf3ee;
+    --on-fill: #ffffff;
+  }
+
+  body {
+    background: var(--paper); color: var(--ink);
+    font-family: var(--sans); font-size: 15px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Spacing comes from flex/grid gap throughout — no per-element margins to
+     collapse or double up. */
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 44px 24px 80px;
+          display: flex; flex-direction: column; gap: 44px; }
+  section { display: flex; flex-direction: column; gap: 18px; }
+
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .11em;
+             text-transform: uppercase; color: var(--ink-3); }
+  h1 { font-size: clamp(26px, 4vw, 36px); font-weight: 650; letter-spacing: -.021em;
+       line-height: 1.15; text-wrap: balance; margin: 0; }
+  h2 { font-size: 19px; font-weight: 620; letter-spacing: -.012em; margin: 0;
+       text-wrap: balance; }
+  .thesis { font-size: clamp(17px, 2.4vw, 20px); line-height: 1.45; color: var(--ink-2);
+            max-width: 62ch; text-wrap: pretty; margin: 0; }
+  .thesis strong { color: var(--ink); font-weight: 600; }
+  .sec-head { display: flex; flex-direction: column; gap: 6px;
+              border-top: 1px solid var(--rule-strong); padding-top: 14px; }
+  .sec-sub { color: var(--ink-2); font-size: 14.5px; max-width: 70ch; margin: 0; }
+  .sec-sub strong { color: var(--ink); font-weight: 600; }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+  .tile { background: var(--surface); border: 1px solid var(--rule); border-radius: 4px;
+          padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .tile-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: .09em;
+                text-transform: uppercase; color: var(--ink-3); }
+  .tile-value { font-family: var(--mono); font-size: 30px; font-weight: 600;
+                letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.05; }
+  .tile-note { font-size: 13px; color: var(--ink-2); line-height: 1.4; }
+  .tile-crit .tile-value { color: var(--crit); }
+  .tile-good .tile-value { color: var(--good); }
+
+  /* State reads as form as well as number, so what needs attention is visible
+     without reading the digits. */
+  .pill { align-self: flex-start; font-family: var(--mono); font-size: 11px;
+          font-weight: 600; padding: 2px 7px; border-radius: 3px; }
+  .pill-crit { color: var(--crit); background: var(--crit-bg); }
+  .pill-good { color: var(--good); background: var(--good-bg); }
+
+  .figure { background: var(--surface); border: 1px solid var(--rule); border-radius: 4px;
+            padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .fig-title { font-size: 14.5px; font-weight: 600; }
+  .fig-cap { font-size: 13px; color: var(--ink-2); line-height: 1.45; margin: 0; }
+  .fig-cap strong { color: var(--ink); font-weight: 600; }
+
+  /* Wide content scrolls inside its own container; the page body never scrolls
+     sideways. */
+  .scroller, .t-scroll { overflow-x: auto; }
+  svg { display: block; max-width: 100%; height: auto; }
+  .grid-line { stroke: var(--rule); stroke-width: 1; }
+  .axis-text { font-family: var(--mono); font-size: 9.5px; fill: var(--ink-3); }
+  .axis-text-2 { font-family: var(--mono); font-size: 11px; fill: var(--ink-2);
+                 font-variant-numeric: tabular-nums; }
+  .bar { fill: var(--seq-2); } .bar-peak { fill: var(--seq-1); }
+  .bar:hover, .bar-peak:hover { fill: var(--accent); }
+  .seg-label { font-family: var(--mono); font-size: 12px; font-weight: 600;
+               fill: var(--on-fill); font-variant-numeric: tabular-nums; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 13px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .swatch { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+
+  .bars { display: flex; flex-direction: column; gap: 10px; }
+  .bar-row { display: grid; grid-template-columns: minmax(120px, 178px) 1fr minmax(64px, auto);
+             align-items: center; gap: 14px; }
+  .bar-name { font-size: 13.5px; line-height: 1.35; }
+  .bar-name .sub { color: var(--ink-3); font-size: 12px; }
+  .bar-track { background: var(--surface-2); border: 1px solid var(--rule);
+               border-radius: 2px; height: 18px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--seq-2); border-radius: 0 2px 2px 0; }
+  .bar-fill.hi { background: var(--seq-1); }
+  .bar-fill.lo { background: var(--seq-3); }
+  .bar-fill.save { background: var(--good); }
+  .bar-val { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums;
+             text-align: right; font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  caption { text-align: left; font-family: var(--mono); font-size: 10.5px;
+            letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3);
+            padding-bottom: 9px; }
+  th { text-align: left; font-family: var(--mono); font-size: 10.5px; letter-spacing: .07em;
+       text-transform: uppercase; color: var(--ink-3); font-weight: 500;
+       padding: 0 12px 8px 0; border-bottom: 1px solid var(--rule-strong); white-space: nowrap; }
+  td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right;
+         white-space: nowrap; }
+  th.num { text-align: right; }
+  tr.total td { border-top: 1px solid var(--rule-strong); border-bottom: none;
+                font-weight: 650; padding-top: 11px; }
+  .up { color: var(--crit); } .down { color: var(--good); }
+
+  .callout { background: var(--surface); border: 1px solid var(--rule);
+             border-left: 3px solid var(--accent); border-radius: 0 4px 4px 0;
+             padding: 15px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .callout-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: .09em;
+                   text-transform: uppercase; color: var(--accent); }
+  .callout p { margin: 0; font-size: 14.5px; line-height: 1.5; max-width: 74ch; }
+  .callout.crit { border-left-color: var(--crit); }
+  .callout.crit .callout-label { color: var(--crit); }
+  .callout.good { border-left-color: var(--good); }
+  .callout.good .callout-label { color: var(--good); }
+
+  .notes { font-size: 12.5px; color: var(--ink-2); line-height: 1.55; }
+  .notes p { margin: 0; }
+  .notes ol { margin: 10px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+  .notes strong { color: var(--ink); font-weight: 600; }
+  .notes code { font-family: var(--mono); font-size: 11.5px; background: var(--surface-2);
+                border: 1px solid var(--rule); border-radius: 2px; padding: .5px 4px; }
+
+  a { color: var(--accent); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  @media (max-width: 560px) {
+    .bar-row { grid-template-columns: 1fr; gap: 4px; }
+    .bar-val { text-align: left; }
+  }
+</style>
+
+<div class="wrap">
+
+  <!-- Lead with the gap between throughput and cost, not the total. A total
+       invites "spend less"; the gap invites "fix the overhead". -->
+  <header class="masthead" style="display:flex;flex-direction:column;gap:14px">
+    <div class="eyebrow">{{AGENT}} · Cost &amp; Value Review · {{WINDOW}}</div>
+    <h1>{{THESIS_HEADLINE}}</h1>
+    <p class="thesis">{{THESIS_PARAGRAPH}}</p>
+  </header>
+
+  <section>
+    <div class="tiles">
+      <div class="tile">
+        <div class="tile-label">Spend</div>
+        <div class="tile-value">{{COST}}</div>
+        <span class="pill pill-crit">{{COST_DELTA}}</span>
+        <div class="tile-note">{{COST_NOTE}}</div>
+      </div>
+      <div class="tile tile-good">
+        <div class="tile-label">Work shipped</div>
+        <div class="tile-value">{{PRS_MERGED}}</div>
+        <span class="pill pill-good">{{THROUGHPUT_DELTA}}</span>
+        <div class="tile-note">{{DELIVERY_NOTE}}</div>
+      </div>
+      <div class="tile tile-crit">
+        <div class="tile-label">Cost per merged PR</div>
+        <div class="tile-value">{{COST_PER_PR}}</div>
+        <span class="pill pill-crit">{{UNIT_REGRESSION}}</span>
+        <div class="tile-note">{{UNIT_NOTE}}</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Spent on context, not output</div>
+        <div class="tile-value">{{CONTEXT_SHARE}}</div>
+        <div class="tile-note">{{CONTEXT_NOTE}}</div>
+      </div>
+    </div>
+
+    <!-- The verdict, early. If the spend is worth it, say so here — otherwise
+         the reader's first instinct is to cut usage. -->
+    <div class="callout good">
+      <div class="callout-label">Executive read</div>
+      <p>{{EXECUTIVE_READ}}</p>
+    </div>
+  </section>
+
+  <!-- COMPOSITION. Stacked bar plus the table: the bar carries the shape, the
+       table carries the numbers, and the table is also the accessible fallback
+       for the two lighter ramp steps. -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Composition</div>
+      <h2>{{COMPOSITION_HEADLINE}}</h2>
+      <p class="sec-sub">{{COMPOSITION_INTRO}}</p>
+    </div>
+    <div class="figure">
+      <div class="fig-title">{{COMPOSITION_FIG_TITLE}}</div>
+      <div class="scroller">
+        <svg viewBox="0 0 960 92" role="img" aria-label="{{COMPOSITION_ALT}}">
+          <!-- 2px surface gaps between segments; widths are percent of 954. -->
+          <rect x="0"   y="0" width="{{W1}}" height="44" rx="2" fill="var(--seq-1)"><title>{{T1}}</title></rect>
+          <rect x="{{X2}}" y="0" width="{{W2}}" height="44" rx="2" fill="var(--seq-2)"><title>{{T2}}</title></rect>
+          <rect x="{{X3}}" y="0" width="{{W3}}" height="44" rx="2" fill="var(--seq-3)"><title>{{T3}}</title></rect>
+          <rect x="{{X4}}" y="0" width="{{W4}}" height="44" rx="2" fill="var(--seq-4)"><title>{{T4}}</title></rect>
+          <!-- Inline labels on the two darkest steps only; the rest sit below. -->
+          <text class="seg-label"  x="14"     y="28">{{P1}}</text>
+          <text class="seg-label"  x="{{L2}}" y="28">{{P2}}</text>
+          <text class="axis-text-2" x="{{X3}}" y="62">{{P3}}</text>
+          <text class="axis-text-2" x="{{X4}}" y="62">{{P4}}</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="swatch" style="background:var(--seq-1)"></span>Context re-read</span>
+        <span class="legend-item"><span class="swatch" style="background:var(--seq-2)"></span>Context write</span>
+        <span class="legend-item"><span class="swatch" style="background:var(--seq-3)"></span>Generation</span>
+        <span class="legend-item"><span class="swatch" style="background:var(--seq-4)"></span>Fresh input</span>
+      </div>
+      <div class="t-scroll">{{COMPOSITION_TABLE}}</div>
+      <p class="fig-cap">{{COMPOSITION_CAPTION}}</p>
+    </div>
+  </section>
+
+  <!-- TREND. State whether this is an incident or a run-rate; the answer changes
+       the whole recommendation. Emphasise peaks and the final bar. -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Trend</div>
+      <h2>{{TREND_HEADLINE}}</h2>
+      <p class="sec-sub">{{TREND_INTRO}}</p>
+    </div>
+    <div class="figure">
+      <div class="fig-title">{{TREND_FIG_TITLE}}</div>
+      <div class="scroller">
+        <svg viewBox="0 0 960 202" role="img" aria-label="{{TREND_ALT}}">
+          {{TREND_GRIDLINES}}
+          <!-- One <rect class="bar"> per day, baseline y=160, plot height 150.
+               class="bar-peak" on the notable days. Each carries a <title> for
+               a native hover readout — no JS needed. -->
+          {{TREND_BARS}}
+          {{TREND_ANNOTATIONS}}
+        </svg>
+      </div>
+      <p class="fig-cap">{{TREND_CAPTION}}</p>
+    </div>
+  </section>
+
+  <!-- One section per lever, ordered by dollars recovered. Each ends in a costed
+       Action callout — a recommendation without a number gets ignored. -->
+  {{LEVER_SECTIONS}}
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Value &amp; impact</div>
+      <h2>{{VALUE_HEADLINE}}</h2>
+      <p class="sec-sub">{{VALUE_INTRO}}</p>
+    </div>
+    <div class="t-scroll">{{VALUE_TABLE}}</div>
+    <div class="tiles">{{VALUE_TILES}}</div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Recommendations</div>
+      <h2>{{RECS_HEADLINE}}</h2>
+      <p class="sec-sub">{{RECS_INTRO}}</p>
+    </div>
+    <div class="figure">
+      <div class="fig-title">Estimated monthly saving by lever</div>
+      <div class="bars">{{SAVINGS_BARS}}</div>
+    </div>
+    <div class="t-scroll">{{RECS_TABLE}}</div>
+  </section>
+
+  <!-- Caveats belong in the report, not only in chat. A page that gets forwarded
+       needs its disclaimers attached — especially the billing one. -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Method &amp; caveats</div>
+      <h2>How these numbers were produced</h2>
+    </div>
+    <div class="notes">
+      <p>{{METHOD_PARAGRAPH}}</p>
+      <ol>{{CAVEAT_ITEMS}}</ol>
+    </div>
+  </section>
+
+</div>

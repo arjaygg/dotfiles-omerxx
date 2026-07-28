@@ -18,6 +18,7 @@ lensed-review,review,cap,hyper-atomic-commits-reference,inline,findings in the s
 pr-review,review,lensed-review,stack-ship,PR comment,posted review findings
 coach,review,,,inline,usage anti-pattern feedback
 ai-usage-analyst,review,,,inline,adoption and usage dashboard
+agent-cost-review,review,,coach,~/reports/<YYYY-MM>-agent-cost/,cost+value dashboard and ranked savings levers
 hyper-atomic-commits-reference,ship,lensed-review,stack-create,inline,commit-state guidance
 stack-create,ship,hyper-atomic-commits-reference,stack-pr,.trees/,new branch and worktree
 stack-status,ship,,stack-navigate,inline,stack hierarchy
