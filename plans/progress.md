@@ -681,3 +681,48 @@ Executing `plans/2026-07-07-ai-harness-improvement-proposal.md` per user "go" (P
       rewrote their commits; content is on `main`. Safe to delete, and doing so makes a branch survey
       readable.
 - [ ] **Open — Charcoal "0 of 51 PR bases synced"**, untouched by any of today's fixes.
+
+## 2026-07-28 — Goal 05 Step 18: autonomy ladder reconciled with config
+
+Branch `feature/autonomy-ladder-reconcile`. Commits `a553f11` (tiers + resolver + tests),
+`9cadf12` (gate demotion writer + tests + auto-ship contract), plus this docs commit.
+
+- [x] **C1 flags as A0-A4 tiers.** `.claude-atomic.yaml` `pipeline:` declares `A2` per leg. The
+      resolver hard-errors (exit 3) on a legacy boolean rather than guessing a tier.
+- [x] **C2 machine-writable store, not a script literal.** Declared ceiling in
+      `.claude-atomic.yaml`; demotion markers under `--git-common-dir`; evidence in committed
+      `evals/reports/<stage>.json`. Only `HARD_CAP` stays a literal, deliberately — it is the
+      invariant config must not be able to raise. **Scoped to the five legs**; tiering workflows and
+      ~75 skills is deferred (plan amended rather than left to drift).
+- [x] **C3 promotion needs committed green evidence.** `git cat-file -e HEAD:`, not `git ls-files`
+      — the latter exits 0 on a staged file. `test_staged_but_uncommitted_report_grants_nothing`
+      shows the trap and the fix in one assertion.
+- [x] **C4 demotion written by the gate, not remembered.** Fed by `.claude/pipeline-log.jsonl`, the
+      audit trail the gate already appends to and auto-ship routes terminal statuses into.
+      Attribution is explicit (`stage` required), never inferred: `orchestrate.js`'s halt payload has
+      no stage field and most of its 13 `blocked` emitters are orchestrator infrastructure, so
+      guessing would demote a leg the failure never touched. Refusals are non-defects, so an
+      unattended run cannot ratchet its own tier down by correctly stopping to ask. A watermark makes
+      healing permanent against the append-only log.
+- [x] **C5 A2 cap on irreversible legs.** The resolver refuses a higher declared value (exit 3)
+      rather than clamping it. **Pre-action enforcement is Step 19** — a Stop hook necessarily runs
+      after the merge it would have guarded.
+- [x] **C6 gap re-accepted in writing.** Signed, dated, asymmetric, with an enforced expiry. See
+      `plans/decisions.md` 2026-07-28 and plan Part VIII "Current state vs this ladder".
+
+Verification: `python3 -m pytest scripts/test_autonomy_tier.py scripts/test_autonomy_demotion.py`
+→ 29 passed + 3 subtests. `bash -n` clean on the gate. Resolver output confirmed from inside a
+worktree, showing the marker path resolving to the shared `.git/` (the `--git-common-dir` fix).
+
+**Live consequence worth knowing:** `auto_ship`/`auto_clean` now *resolve* to effective A0 (no
+evidence, under the A2 cap). Nothing consults the resolver yet, so behaviour is unchanged today —
+Step 19 is where that becomes enforcement, and it will stop unattended merges.
+
+**Two notes for whoever picks this up:**
+- `ctx_patch`'s syntax validator false-positived on the gate edit (flagged `write_demotions() {`
+  while real `bash -n` was clean). The file was spliced and verified with `bash -n` instead.
+  `validate_syntax=false` is advertised in its error text but absent from its schema.
+- `.claude/settings.json` and `ai/config/claude/settings.base.json` are **not** byte-identical
+  (3 hunks — base is deliberately `$HOME`-relative), and `config-integrity.sh` has zero references
+  to `settings.base`. The goal file's "keep byte-identical" invariant does not exist as stated;
+  Step 19 needs the real check, which is the `diff <(jq -S .) <(jq -S .)` command in the plan.

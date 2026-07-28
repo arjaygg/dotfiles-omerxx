@@ -740,12 +740,44 @@ The rule that makes this compatible with Appendix A's rejection of paraphrasing 
 the transport between phases; never automate away the checkpoint.** Removal is governed by this
 ladder and nothing else.
 
-> **Current state vs this ladder.** `.claude-atomic.yaml` has all five pipeline autonomy flags
-> (`auto_commit`, `auto_push`, `auto_pr`, `auto_ship`, `auto_clean`) set `true` as of commit
-> `7390f63`, while none of Tiers 1-4 exist. The repo is therefore operating at roughly A4 with A0
-> evidence, and `auto_ship`/`auto_clean` are irreversible actions the ladder caps at A2. This is a
-> deliberate, user-accepted risk, recorded here so the gap is visible rather than implicit. Step 18
-> reconciles the flags with the ladder.
+> **Current state vs this ladder** *(resolved by Step 18, 2026-07-28)*. Before Step 18 the five
+> pipeline flags were booleans set `true` as of commit `7390f63` with none of Tiers 1-4 built —
+> roughly A4 behaviour on A0 evidence, and `auto_ship`/`auto_clean` sat above the A2 cap this
+> ladder puts on irreversible actions.
+>
+> Step 18 replaced the booleans with declared A0-A4 tiers, added `scripts/ai/autonomy-tier.sh` to
+> resolve the tier actually in force, and taught `git-pipeline-gate.sh` to write demotion markers.
+> The evidence position itself is unchanged, but is now visible rather than implicit:
+> `evals/cases/` contains no case for any pipeline leg, so `evidence_tier` is **A0 for all five**.
+>
+> **Signed re-acceptance (2026-07-28, arjaygg).** The three *reversible* legs (`auto_commit`,
+> `auto_push`, `auto_pr`) continue to run at A2 on a dated risk-acceptance rather than on evidence.
+> It lives in `.claude-atomic.yaml`'s `autonomy_override:` block with `basis: risk-accepted` and
+> `expires: 2026-10-31`, and is deliberately kept out of `evidence_tier` so that "promotion
+> requires a committed green eval run" stays a true statement about evidence. The expiry is
+> enforced by the resolver, not decorative: past that date the three legs fall back to A0.
+> Discharge the debt by authoring `evals/cases/auto-ship.json` (Tier 2 trigger + Tier 3 behavioral
+> + the three pressure cases) and committing a green `evals/reports/<stage>.json`.
+>
+> The two *irreversible* legs are **not** re-accepted. `auto_ship`/`auto_clean` are capped at A2 by
+> the resolver, which refuses a higher declared value rather than clamping it, and the override is
+> refused for them outright — risk-acceptance cannot buy autonomy on an irreversible leg. With no
+> evidence they resolve to **effective A0**. Nothing enforces that yet; Step 19 is where it gets
+> teeth.
+
+**Corrections from implementing Step 18.** Two of this Part's claims did not survive contact with
+the harness. Amending them here rather than letting plan and repo drift:
+
+- **A Stop hook cannot fail closed on an irreversible action.** `git-pipeline-gate.sh` is
+  registered only on `Stop` (`.claude/settings.json` → `stop.sh`), and a Stop-hook
+  `{"decision":"block"}` means *"do not end the session"*, not *"deny this tool call"*. By the time
+  it runs, the merge has already happened. The Stop gate is therefore **detection, demotion and
+  audit**; the pre-action invariant belongs in `pre-tool-gate-v2.sh` (PreToolUse), the only hook
+  here that can deny an invocation. Step 19 carries it.
+- **"Every workflow and pipeline stage declares its tier" is scoped to the five pipeline legs.**
+  Tiering all ~75 skills and every workflow is a far larger surface than Step 18's three declared
+  files can hold, and no evidence exists to place any of them on the ladder yet. The resolver is
+  keyed by leg (`--stage`); extending it to workflows is deferred rather than half-done.
 
 ---
 
@@ -920,16 +952,44 @@ single-item case, and a contradictory-input case; grading reports finding *distr
 concerns, not only count; the vague-input case is asserted to shift the distribution less than the
 specific-input case.
 
-### Step 18 — Reconcile the autonomy ladder with config *(after 15, 16)*
+### Step 18 — Reconcile the autonomy ladder with config *(after 15, 16)* — **DONE 2026-07-28**
 **Files:** `.claude-atomic.yaml`, `ai/rules/agent-user-global.md`,
-`.claude/hooks/git-pipeline-gate.sh`
-**Accepts:** the five pipeline flags are expressed as A0-A4 tiers; every workflow and pipeline stage
-declares its tier in a machine-writable store (not a script literal); promotion requires a committed
-green eval run; demotion on any `blocked`, failed pressure case, Definition-of-Done miss, or
-`followup_review_recommended: true` is enforced by the gate, not remembered; the gate **asserts**
-that `auto_ship` and `auto_clean` cannot exceed A2, failing closed rather than by convention; the
-current A4-with-A0-evidence gap noted in Part VIII is either closed or explicitly re-accepted in
-writing.
+`.claude/hooks/git-pipeline-gate.sh`, `scripts/ai/autonomy-tier.sh` (new),
+`scripts/test_autonomy_tier.py` + `scripts/test_autonomy_demotion.py` (new),
+`ai/skills/auto-ship/SKILL.md` (terminal-status contract)
+**Accepts:** the five pipeline flags are expressed as A0-A4 tiers; each pipeline leg declares its
+tier in a machine-writable store (not a script literal); promotion requires a committed green eval
+run, checked with `git cat-file -e HEAD:` rather than `git ls-files` (which succeeds on a merely
+staged file, so `git add` alone would buy a promotion); demotion on a stage-attributed `blocked`
+outcome is written by the gate, not remembered; `auto_ship`/`auto_clean` are capped at A2 by a
+resolver that **refuses** a higher declared value rather than clamping it; the
+A4-with-A0-evidence gap is explicitly re-accepted in writing for the three reversible legs, with an
+enforced expiry, and **not** re-accepted for the two irreversible ones.
+
+**Amended during implementation** — see Part VIII's "Corrections" note. Two clauses as originally
+worded were unachievable and were narrowed rather than faked:
+- "the **gate** asserts ... failing closed" → the Stop hook cannot precede an irreversible action,
+  so it does detection/demotion/audit and Step 19 owns the pre-action deny.
+- "**every workflow** and pipeline stage" → scoped to the five pipeline legs; tiering ~75 skills and
+  every workflow is deferred.
+
+### Step 19 — Pre-action enforcement of the A2 cap *(after 18)*
+**Files:** `.claude/hooks/pre-tool-gate-v2.sh`, `.claude/settings.json` +
+`ai/config/claude/settings.base.json`
+**Accepts:** the irreversible-leg commands are matched by patterns derived from the literal
+invocations in `ai/skills/auto-ship/SKILL.md` (`stack-ship.sh`, `stack-clean`, `gh pr merge`) — a
+`Bash(stack ship*)`-style prefix matches none of them and must not be used; a PreToolUse deny fires
+before the invocation when `autonomy-tier.sh --stage <leg>` resolves below what the leg needs; the
+assertion reads the **merged** permission set (`.claude/settings.json` +
+`.claude/settings.local.json`, local winning), since the gitignored local file has higher precedence
+and would otherwise shadow it; a stray `allow` entry degrades autonomy and surfaces an advisory
+rather than hard-blocking every Stop, because D3 forbids the pipeline from editing the config to fix
+itself; `LEVEL=off` remains an unconditional bypass.
+
+**Open question for Step 19:** `skipDangerousModePermissionPrompt: true` is set in both
+`.claude/settings.json` and `.claude/settings.local.json`, and `permissions.defaultMode` is `auto`
+with an empty `ask` list. Whether a `permissions.ask` entry actually prompts under that combination
+is unverified — establish it before relying on `ask` as the A2 checkpoint mechanism.
 
 ---
 
@@ -1004,9 +1064,12 @@ globs subsumes its knowledge base. Prefer the general mechanism over reopening t
 2. ~~**`/tech-lead`** (Step 8) — re-enable and retrofit, or retire.~~ **Decided 2026-07-28: retire.**
    The skill stays disabled (both `skillOverrides` entries unchanged); no spec-handoff/gate retrofit.
    Step 9's ledger entry for `tech-lead` records `retired` with this decision as rationale.
-3. **Autonomy flags vs ladder** (Step 18) — the repo currently runs all five pipeline flags on with
-   no eval tiers built. Accepted as deliberate risk; Step 18 either closes the gap or re-accepts it
-   in writing.
+3. ~~**Autonomy flags vs ladder** (Step 18) — the repo currently runs all five pipeline flags on
+   with no eval tiers built.~~ **Decided 2026-07-28: re-accepted in writing, asymmetrically.** The
+   three reversible legs keep A2 on a dated, signed risk-acceptance with an enforced
+   `expires: 2026-10-31`; the two irreversible legs are not re-accepted and resolve to effective A0
+   under the A2 cap. Recorded in Part VIII's "Current state vs this ladder" and
+   `.claude-atomic.yaml`'s `autonomy_override:` block. Implemented in Step 18.
 
 ---
 
