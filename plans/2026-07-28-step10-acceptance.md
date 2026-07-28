@@ -16,7 +16,7 @@
 | `c421a8c` | 9 ledger rows recording the consolidation |
 | `a81e8ec` + `eac38ed` | shims for the 5 review agents (second commit restores the symlink layout) |
 | `53daea8` | `evals/cases/lensed-review.json`; last `severity` mention removed from schemas |
-| `9d4bcd2` | `.claude/skills/lensed-review` symlink |
+| `90ccda7` | `.claude/skills/lensed-review` symlink |
 
 ## Acceptance checkboxes
 
