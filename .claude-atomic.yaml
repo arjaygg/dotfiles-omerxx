@@ -71,28 +71,62 @@ validation:
     - "scripts/"
     - ".claude/hooks/"
 
-# Autonomy tiers (plan Step 4, D3; goal: goals/2026-07-25-03-agentic-git-pipeline.md).
-# All flags default false -- block-present-but-all-off is equivalent to the
-# Step 2 stub (opt-in to the git-pipeline-gate.sh nudge, zero auto-actions).
-# Each flag independently unlocks exactly one D4 lifecycle leg for the
-# not-yet-built ai/skills/auto-ship/SKILL.md (Step 5) to run without asking;
-# git-pipeline-gate.sh's own signal detection and warn/block nudging is
-# unaffected by these flags either way -- it always surfaces a due signal.
+# Autonomy tiers (plan Part VIII + Step 18; goal: goals/2026-07-25-03-agentic-git-pipeline.md).
 #
-#   auto_commit -- Tier 0: commit.sh runs once validate-changeset.sh passes
+# Each key below declares the A0-A4 tier a pipeline leg is AUTHORIZED to reach. This
+# file is the DECLARED CEILING and is human-owned: nothing in the pipeline may write
+# to it (see the always-confirm list below). It is never the whole answer -- resolve
+# the tier actually in force with:
+#
+#     scripts/ai/autonomy-tier.sh --stage auto_ship --json
+#
+#   effective = min(hard_cap, declared, max(evidence_tier, override_tier))
+#               minus one tier if an unhealed demotion marker exists, floored at A0
+#
+# The ladder (plan Part VIII):
+#   A0 Assisted            human approves every tool call
+#   A1 Supervised          human approves each phase transition
+#   A2 Checkpointed        human approves at planned checkpoints only
+#   A3 Bounded-autonomous  human reviews the final artifact; agent self-gates between
+#   A4 Delegated           human reviews outcomes on a cadence
+#
+# HARD CAP -- irreversible legs may never exceed A2 regardless of accumulated
+# evidence (Part VIII: "Blast radius caps the tier"). auto_ship and auto_clean are
+# capped at A2 by scripts/ai/autonomy-tier.sh, which REFUSES a higher declared value
+# rather than silently clamping it. Raising either is a config error, not a preference.
+#
+# EVIDENCE -- promotion requires a committed green eval run, never a judgement call.
+# As of 2026-07-28 no eval case exists for any pipeline leg (evals/cases/ covers 11
+# skills; auto-ship is not among them), so evidence_tier is A0 for all five legs. The
+# three reversible legs run on a dated, signed risk-acceptance instead: see
+# plans/decisions.md (2026-07-28) and plan Part VIII. The resolver reports that as
+# override_tier with basis "risk-accepted", deliberately kept OUT of evidence_tier so
+# that "promotion requires an eval run" remains a true statement about evidence_tier.
+# The override is refused for auto_ship/auto_clean -- risk-acceptance cannot buy
+# autonomy on an irreversible leg.
+#
+# NOTE on wording: the "Tier 0/1/2" labels below are D4 *lifecycle legs* (they match
+# auto-ship/SKILL.md's own section headings) and are a DIFFERENT axis from the A0-A4
+# autonomy ladder above. A leg's lifecycle tier says when it fires; its A-tier says
+# how much human involvement firing it requires.
+#
+#   auto_commit -- leg 0: commit.sh runs once validate-changeset.sh passes
 #                  on a non-main branch. Committing on `main` is always
 #                  refused outright (stack create first) -- never overridable.
-#   auto_push   -- Tier 1: push the branch once commit_due clears.
-#   auto_pr     -- Tier 1: open/update the PR via `stack pr` + background
+#   auto_push   -- leg 1: push the branch once commit_due clears.
+#   auto_pr     -- leg 1: open/update the PR via `stack pr` + background
 #                  ci-watch once pr_due fires.
-#   auto_ship   -- Tier 2: merge via `stack-ship` + fast-forward sync `main`
+#   auto_ship   -- leg 2: merge via `stack-ship` + fast-forward sync `main`
 #                  once merge_due fires (CI green, re-checked by stack-ship
 #                  itself). Fires an osascript notification on completion.
-#   auto_clean  -- Tier 2: `stack-clean` the merged branch once cleanup_due
+#   auto_clean  -- leg 2: `stack-clean` the merged branch once cleanup_due
 #                  fires. Fires an osascript notification on completion.
 #
-# Always-confirm regardless of any flag above -- never overridable by any
-# flag combination (D3):
+# A0 on any key = that leg always asks. Removing the `pipeline:` block entirely
+# reverts to full confirm-first (git-pipeline-gate.sh no-ops without it).
+#
+# Always-confirm regardless of any tier above -- never overridable by any
+# tier combination (D3):
 #   - force-push outside stack-sync's own --force-with-lease pattern
 #   - discarding staged/unstaged work to resolve a blocked/overgrown state
 #   - `stack clean --force` on a dirty worktree
@@ -104,8 +138,33 @@ validation:
 #   - any pipeline-driven edit to .claude-atomic.yaml, hook-config.yaml, or
 #     .claude/hooks/* (no self-escalation of its own tier or gate level)
 pipeline:
-  auto_commit: true
-  auto_push: true
-  auto_pr: true
-  auto_ship: true
-  auto_clean: true
+  auto_commit: A2
+  auto_push: A2
+  auto_pr: A2
+  auto_ship: A2   # HARD CAP A2 -- irreversible; a higher value is a config error
+  auto_clean: A2  # HARD CAP A2 -- irreversible; a higher value is a config error
+
+# Risk-acceptance override (plan Part VIII "Current state vs this ladder"; Step 18).
+#
+# This is the written, dated re-acceptance of running the three REVERSIBLE legs with
+# no eval evidence behind them. It is what Step 18's Accepts calls "explicitly
+# re-accepted in writing" -- made machine-readable so the gap is visible in
+# `autonomy-tier.sh` output rather than buried in a comment.
+#
+# It is NOT evidence. The resolver reports it as `override_tier` with this `basis`,
+# separate from `evidence_tier`, so "promotion requires a committed green eval run"
+# stays a true statement about evidence. It is refused outright for auto_ship and
+# auto_clean -- risk-acceptance cannot buy autonomy on an irreversible leg.
+#
+# `expires` is ENFORCED, not decorative: past that date the resolver grants nothing
+# from this block and the three legs fall back to their real evidence tier (A0).
+# Discharge the debt before then by authoring evals/cases/auto-ship.json (Tier 2
+# trigger + Tier 3 behavioral + the three pressure cases), running it, and committing
+# evals/reports/<stage>.json with {"green": true, "tier": "A2"}.
+autonomy_override:
+  tier: A2
+  basis: risk-accepted
+  stages: auto_commit auto_push auto_pr
+  expires: 2026-10-31
+  signed_off_by: arjaygg
+  decision: plans/decisions.md 2026-07-28 -- autonomy ladder vs pipeline flags
