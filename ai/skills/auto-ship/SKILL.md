@@ -189,6 +189,29 @@ log's recorded hashes:
   future Phase 4 work in its RFC (`decisions/RFC-STACK-SHIP-001.md`) and is
   **not** a dependency here — this runbook is manual-but-documented.
 
+## Common Rationalizations
+
+| Excuse | Rebuttal |
+|---|---|
+| "The user enabled auto-ship once, so future tiers are pre-approved too" | Each tier (commit/push+PR/merge/clean) has its own gate and its own opt-in key in `.claude-atomic.yaml` — enabling Tier 0 never implies Tier 2 approval. |
+| "This is the second run today, skip the first-enable dry-run" | The dry-run requirement is keyed to first-enable of a *tier*, not a calendar day — a newly-enabled tier still needs its dry-run regardless of how many prior runs of other tiers happened. |
+| "D3a identity check already passed earlier this session" | Identity can drift mid-session (`gh auth switch`) — re-assert identity at the leg that actually ships, not from a cached earlier check. |
+| "auto_ship above A2 is basically the same risk as A2" | The always-confirm carve-outs exist precisely because merge/ship actions are irreversible in a way commit/PR actions aren't — never auto-escalate past A2 without explicit confirmation. |
+
+## Red Flags
+
+- A tier's action runs without checking that tier's specific key in `.claude-atomic.yaml` (e.g. `auto_ship` action running when only `auto_commit` is enabled) — *checkable*: does the executed leg match an enabled key in the config file?
+- `gh api user` (or equivalent identity assertion) was not re-run immediately before a Tier 2 leg.
+- A tier runs its first-ever execution without a preceding dry-run.
+- Any autonomy tier above A2 executes without an explicit user confirmation logged in the audit trail.
+
+## Verification
+
+- [ ] The executed leg's config key (`auto_commit`/`auto_push`/`auto_pr`/`auto_ship`/`auto_clean`) is present and enabled in `.claude-atomic.yaml` (evidence: config file content quoted alongside the executed leg).
+- [ ] Identity was asserted via `gh api user` immediately before any Tier 2 action (evidence: command output timestamp near the ship action).
+- [ ] A dry-run preceded the first-ever execution of a newly-enabled tier (evidence: audit trail entry for the dry-run).
+- [ ] Every entry above A2 has a corresponding explicit user-confirmation record in the audit trail (evidence: audit log line).
+
 ## Related
 
 - `ai/skills/stack-pr/SKILL.md`, `ai/skills/stack-ship/SKILL.md`,

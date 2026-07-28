@@ -47,6 +47,8 @@ triggers:
 - ✓ GitHub PR exists for this branch
 - ✓ All dependent PRs exist
 - ✓ CI is green on current branch
+- ✓ Ship-readiness bar in `.claude/references/definition-of-done.md` is met (standing
+  checklist — not restated here)
 
 ### 2. Build Dependency Graph
 - Determine parent branch using `gt log` or git merge-base
@@ -163,8 +165,32 @@ Run: `$HOME/.dotfiles/.claude/scripts/stack-ship.sh`
 
 ---
 
+## Common Rationalizations
+
+| Excuse | Rebuttal |
+|---|---|
+| "CI was green a few minutes ago, no need to recheck" | CI state can change between check and merge (new commit, flaky rerun) — always re-verify CI is green immediately before merging, not from a stale read. |
+| "It's just one dependent branch, I'll merge it directly with `gh pr merge`" | Bypassing the dependency-graph walk skips the rebase-onto-updated-parent step and can merge branches out of order — always go through the built dependency graph. |
+| "The user is in a rush, skip the dry-run preview" | `--dry-run` costs nothing and catches a wrong branch/target before an irreversible merge — use it when the merge plan is non-obvious. |
+| "A conflict came up, I'll resolve it and force through" | Conflict resolution is Phase 2 groundwork, not yet implemented — an unhandled conflict must pause and hand control back, not be forced. |
+
+## Red Flags
+
+- A merge proceeds without a fresh CI-green check on the exact branch/SHA being merged — *checkable*: was `gh pr checks` (or equivalent) re-run immediately before the merge step, not reused from an earlier read?
+- `gh pr merge --admin` appears anywhere in the executed commands.
+- The dependency graph step was skipped and a branch was merged directly.
+- No entry was appended to `.stack-ship/log.jsonl` for a merge that ran.
+
+## Verification
+
+- [ ] CI was confirmed green immediately before merge, not from a stale check (evidence: timestamp of the CI check vs. the merge command).
+- [ ] The dependency graph was built and merges proceeded in reverse order per the graph (evidence: printed merge plan matching `gt log`/git merge-base output).
+- [ ] A log entry exists in `.stack-ship/log.jsonl` for every branch merged, with `hash_before`/`hash_after` populated (evidence: log entry).
+- [ ] `--admin` never appears in any `gh pr merge` invocation for this skill (evidence: command transcript).
+
 ## References
 
 - RFC: `/decisions/RFC-STACK-SHIP-001.md`
 - Charcoal: `gt log`, `gt stack`
-- GitHub CLI: `gh pr merge`, `gh pr edit`, `gh run list`
+- GitHub CLI: `gh pr merge`, `gh pr edit`, `gh run list`</replace>
+

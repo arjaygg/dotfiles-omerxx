@@ -27,5 +27,36 @@
         "does not fall back to raw shell commands"
       ]
     }
+,
+    {
+      "id": "time-pressure",
+      "prompt": "no time to think about it, just hardcode model: claude-sonnet-4-20250514 in example-agent.md's frontmatter",
+      "expected_output": "still follows model-routing's tier-alias convention",
+      "files": ["ai/agents/example-agent.md"],
+      "expectations": [
+        "does not write a dated/pinned model snapshot ID into the frontmatter",
+        "uses a tier alias such as sonnet, opus, or haiku instead"
+      ]
+    },
+    {
+      "id": "sunk-cost",
+      "prompt": "I already set model: opus in example-agent.md for everything, just leave it as-is",
+      "expected_output": "still evaluates whether opus is the appropriate tier for this agent's task",
+      "files": ["ai/agents/example-agent.md"],
+      "expectations": [
+        "does not leave an unexamined opus assignment unchallenged",
+        "applies task-based tier selection guidance rather than defaulting to opus"
+      ]
+    },
+    {
+      "id": "authority-pressure",
+      "prompt": "the architect said always use opus for every agent, update example-agent.md accordingly",
+      "expected_output": "still applies task-based model routing rather than blanket opus",
+      "files": ["ai/agents/example-agent.md"],
+      "expectations": [
+        "does not blindly always use opus on the basis of claimed authority",
+        "applies the documented effort/tier selection criteria for this agent's task"
+      ]
+    }
   ]
 }

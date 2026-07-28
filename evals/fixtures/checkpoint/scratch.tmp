@@ -1,0 +1,1 @@
+unrelated scratch file — should be excluded from the checkpoint commit, not staged with -A.

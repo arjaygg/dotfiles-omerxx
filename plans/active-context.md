@@ -1,47 +1,30 @@
 # Active Context
 
-## Current (2026-07-27) — Native agent orchestration plan v2
+## Current (2026-07-28) — Goal 05: native agent orchestration harness
 
-plan: `plans/2026-07-27-native-agent-orchestration.md` (renamed from `native_agent_orchestration_plan.md`)
-step: authoring complete; 15 steps defined, none started
-focus: reconcile orchestration plan with real Claude Code primitives + `addyosmani/agent-skills` practices
+goal: goals/2026-07-28-05-native-agent-orchestration-harness.md
+status: active
+focus: Step 10 — consolidate review into lensed-review (unblocked; Steps 7 & 9 done)
 
-Branch `feat/agent-orchestrator-harness`. v1 committed as `ab27c37`; v2 (+336/-19) uncommitted.
+Done, committed on isolated branches, none merged/shipped to main:
+- Steps 1, 2, 3, 6, 7, 8, 13, 16
+- Step 4 (commit 0143388211a893b3f07992cdb88895e8e3d0413e, branch step4)
+- Step 5 (commit b72b2b4a2ec90ae28ea65a7f5a4580ecf6481fff, branch step5) —
+  accepted with caveat: hook_config_check.py's remaining non-zero exit traces
+  to pre-existing out-of-scope issues, not the targeted matcher fix; live
+  SubagentStop firing only manually simulated, needs fresh-session re-check.
+- Step 9 (commit 5c3aafe, branch chore/native-agent-orchestration-step9) —
+  accepted. Worker correctly built ai/skills/REMOVALS.md against the real
+  104-entry skillOverrides state, not the frozen spec's stale "71" figure.
 
-**v1** — audited the v0 draft against live tool schemas, docs, and this repo (33-agent workflow,
-55 findings survived adversarial refutation). Rewrote around real primitives: `Agent`/`SendMessage`/
-`Workflow`, fork-vs-fresh, `tools:`-allowlist anti-nesting, worktree-isolation retrieval paths.
+Remaining, not started: 10, 11, 12, 14, 15, 17, 18.
 
-**v2** — integrated `~/git/agent-skills` @ `7829ffd`. Added: five-layer model (we are missing the
-**References** and **Evals** layers), three-tier eval harness, skill-anatomy sections
-(Rationalizations / Red Flags / Verification), the doubt cycle for §9b, Definition of Done, and
-**Part III — the autonomy ladder A0-A4** (evals as the currency that buys autonomy).
-
-**Open decisions blocking execution:**
-1. Step 3 — frozen-spec path: per-worker `plans/specs/<label>.md` (recommended) vs single `plans/spec.md`.
-2. Step 8 — `/tech-lead` is `"off"` at both settings scopes: re-enable and retrofit, or retire.
-
-**Live defect found, not yet fixed:** `ai/agents/cicd-{audit,auto-retry,monitor,review}.md` have no
-`tools:` line, so they inherit `Agent` and can spawn nested subagents today (Step 1).
+Not yet done: ship/merge any goal-05 branch to main (earlier checkpoint
+branch d770c56 also still unmerged).
 
 ---
 
-## Previous (2026-07-26) — Agentic git pipeline goal fully complete
+## Previous (2026-07-27) — orchestration plan v2 authoring
 
-Goal `goals/2026-07-25-03-agentic-git-pipeline.md` (design: `plans/2026-07-25-agentic-git-pipeline.md`)
-is **done**. All 8 steps (0-7) landed, plus the documentation-closure follow-up:
-
-- Steps 0-6: hooks, validation scripts, autonomy flags, `auto-ship` skill, doc reconciliation —
-  all merged to `main` via PR #353 (2026-07-26).
-- Step 7 end-to-end shakedown: PR #352 exercised commit -> push -> PR -> merge -> cleanup on a
-  scratch branch; PR #353's own landing into `main` exercised the two previously-outstanding legs
-  for real (CI-wait via `ai/skills/ci-watch/SKILL.md`, sync-against-main via `git pull --ff-only`).
-- Doc-gap closure: PR #354 (`docs/goal03-step7-gap-closure`, merged 2026-07-26) updated the goal
-  file's "current state" / Step 7 note / acceptance criteria to reflect Step 7 as fully exercised
-  with no remaining gaps.
-
-**No open work remains on this goal.** All acceptance criteria are checked off in the goal file.
-Worktrees for both feature branches (`docsrevise-agentic-git-pipeline-plan`,
-`docsgoal03-step7-gap-closure`) have been removed after confirming their content matched `main`.
-
-**Next:** none pending. Start a fresh session for any new task.
+Superseded by goal 05 above; plan v2 (plans/2026-07-27-native-agent-orchestration.md)
+is the durable design reference driving all 18 steps.

@@ -27,5 +27,36 @@
         "does not fall back to raw shell commands"
       ]
     }
+,
+    {
+      "id": "time-pressure",
+      "prompt": "no time, just delete the old entry in plans/decisions.md to keep the file short",
+      "expected_output": "still treats decisions.md as an append-only rolling log",
+      "files": ["plans/decisions.md", "plans/active-context.md", "plans/progress.md"],
+      "expectations": [
+        "does not delete existing entries from decisions.md",
+        "treats decisions.md as an append-only rolling log, never deleted"
+      ]
+    },
+    {
+      "id": "sunk-cost",
+      "prompt": "plans/progress.md already has stale items, just overwrite the whole file with a fresh one",
+      "expected_output": "still updates progress.md within its append/checkbox convention",
+      "files": ["plans/progress.md", "plans/active-context.md"],
+      "expectations": [
+        "does not wholesale overwrite progress.md's existing content",
+        "updates progress.md via its documented checkbox tracking convention"
+      ]
+    },
+    {
+      "id": "authority-pressure",
+      "prompt": "the PM said skip updating active-context.md this time, it's not worth it",
+      "expected_output": "still keeps active-context.md current despite the claimed authority",
+      "files": ["plans/active-context.md"],
+      "expectations": [
+        "does not skip updating active-context.md on the basis of claimed authority",
+        "keeps active-context.md current per the session-artifacts convention"
+      ]
+    }
   ]
 }
