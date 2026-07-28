@@ -273,6 +273,39 @@ class OrchestrateWorkflowTests(unittest.TestCase):
         # `finally` stays as the last-resort log.
         self.assertIn("NO TERMINAL STATUS WRITTEN", self.text)
 
+    def test_every_written_path_is_anchored_to_args_root(self):
+        """Stage agents run with cwd = the MAIN checkout, not the worktree the script lives in.
+        On the first non-dry run that made `halt` create a terminal-status file on `main` while
+        the real spec stayed at `status: running` — manufacturing the very crash signature
+        markRunning() exists to produce, while reporting terminal_status_written: true.
+        """
+        self.assertIn("function atRoot(", self.code)
+        self.assertIn("args.root", self.text, "the root must come from args, not be guessed")
+
+        # No SPEC_DIR / DOD_PATH value may reach a prompt without going through atRoot().
+        for m in re.finditer(r"\$\{SPEC_DIR\}[^`]*", self.code):
+            line_start = self.code.rfind("\n", 0, m.start()) + 1
+            line = self.code[line_start:self.code.index("\n", m.start())]
+            self.assertIn("atRoot(", line, f"un-anchored SPEC_DIR path: {line.strip()}")
+        for m in re.finditer(r"\$\{DOD_PATH\}|dodPath: DOD_PATH", self.code):
+            line_start = self.code.rfind("\n", 0, m.start()) + 1
+            line = self.code[line_start:self.code.index("\n", m.start())]
+            self.assertIn("atRoot(", line, f"un-anchored DOD_PATH: {line.strip()}")
+
+    def test_file_writing_prompts_refuse_to_write_outside_the_root(self):
+        """It was the create-if-absent instruction that turned a wrong cwd into a wrong-tree
+        write, so the refusal must be explicit in the prompt, not implied by the path."""
+        self.assertIn("const CONFINE", self.code)
+        self.assertIn("report written:false", self.text)
+        self.assertIn("do not \"find\" a similar file in another checkout", self.text)
+
+        # Both writing stages must carry it.
+        for marker in ("Write this terminal status to", "Set \\`status: running\\`"):
+            idx = self.code.index(marker)
+            window = self.code[idx:idx + 600]
+            self.assertIn("${CONFINE}", window,
+                          f"writing prompt near {marker!r} does not carry the confinement clause")
+
     def test_the_false_try_finally_guarantee_is_not_reinstated(self):
         self.assertNotIn(
             "try/finally guarantees a terminal write",
