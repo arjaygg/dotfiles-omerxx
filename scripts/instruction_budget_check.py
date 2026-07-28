@@ -27,6 +27,15 @@ class BudgetResult:
     status: str
 
 
+@dataclass(frozen=True)
+class ClientBudgetResult:
+    client: str
+    entrypoint: str
+    files: int
+    actual_bytes: int
+    estimated_tokens: int
+
+
 def check_instruction_budgets(
     root: Path,
     budgets: dict[str, int] | None = None,
@@ -44,6 +53,71 @@ def check_instruction_budgets(
                 limit_bytes=limit,
                 actual_bytes=actual,
                 status="ok" if actual <= limit else "over-budget",
+            )
+        )
+    return results
+
+
+_DEFAULT_CLIENT_ENTRYPOINTS = {
+    "claude": ".claude/CLAUDE.md",
+    "codex": ".codex/AGENTS.md",
+    "cursor": ".cursor/rules.md",
+    "agy": ".gemini/GEMINI.md",
+}
+
+
+def _import_targets(path: Path) -> list[str]:
+    targets: list[str] = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError):
+        return targets
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("@") and not stripped.startswith("@@"):
+            target = stripped[1:].strip().split(maxsplit=1)[0]
+            if target:
+                targets.append(target)
+    return targets
+
+
+def _transitive_instruction_paths(entrypoint: Path) -> list[Path]:
+    ordered: list[Path] = []
+    visited: set[Path] = set()
+
+    def visit(path: Path) -> None:
+        try:
+            canonical = path.resolve()
+        except OSError:
+            canonical = path.absolute()
+        if canonical in visited or not canonical.is_file():
+            return
+        visited.add(canonical)
+        ordered.append(canonical)
+        for target in _import_targets(canonical):
+            visit((canonical.parent / target).resolve())
+
+    visit(entrypoint)
+    return ordered
+
+
+def check_client_instruction_budgets(
+    root: Path,
+    entrypoints: dict[str, str] | None = None,
+) -> list[ClientBudgetResult]:
+    results: list[ClientBudgetResult] = []
+    for client, relative_path in sorted(
+        (entrypoints or _DEFAULT_CLIENT_ENTRYPOINTS).items()
+    ):
+        paths = _transitive_instruction_paths(root / relative_path)
+        actual_bytes = sum(len(path.read_bytes()) for path in paths)
+        results.append(
+            ClientBudgetResult(
+                client=client,
+                entrypoint=relative_path,
+                files=len(paths),
+                actual_bytes=actual_bytes,
+                estimated_tokens=(actual_bytes + 3) // 4,
             )
         )
     return results
@@ -71,7 +145,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     results = check_instruction_budgets(args.root.resolve())
     if args.summary:
-        print(json.dumps(summarize_results(results), indent=2))
+        summary = summarize_results(results)
+        summary["clients"] = [
+            asdict(result)
+            for result in check_client_instruction_budgets(args.root.resolve())
+        ]
+        print(json.dumps(summary, indent=2))
     else:
         print(json.dumps([asdict(result) for result in results], indent=2))
     return 1 if any(result.status != "ok" for result in results) else 0
