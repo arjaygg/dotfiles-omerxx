@@ -5,8 +5,11 @@
   "servers": [
     {
       "name": "serena",
-      "command": "serena_wrapper.sh",
+      "command": "bash",
       "args": [
+        "-c",
+        "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec \"$HOME/.dotfiles/.local/bin/serena_wrapper.sh\" \"$@\"",
+        "pctx-serena",
         "--context",
         "claude-code",
         "--project-from-cwd",
@@ -16,8 +19,11 @@
     },
     {
       "name": "qmd",
-      "command": "qmd",
+      "command": "bash",
       "args": [
+        "-c",
+        "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec qmd \"$@\"",
+        "pctx-qmd",
         "mcp"
       ]
     },
@@ -26,7 +32,7 @@
       "command": "bash",
       "args": [
         "-c",
-        "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"
+        "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"
       ],
       "env": {
         "LEAN_CTX_CACHE_TTL": "300"
@@ -34,15 +40,22 @@
     },
     {
       "name": "repomix",
-      "command": "repomix",
+      "command": "bash",
       "args": [
+        "-c",
+        "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec repomix \"$@\"",
+        "pctx-repomix",
         "--mcp"
       ]
     },
     {
       "name": "graphify",
-      "command": "graphify-mcp-conditional",
-      "args": []
+      "command": "bash",
+      "args": [
+        "-c",
+        "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec graphify-mcp-conditional \"$@\"",
+        "pctx-graphify"
+      ]
     }
   ],
   "logger": {
