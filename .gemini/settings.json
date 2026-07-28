@@ -11,47 +11,62 @@
   "hooks": {
     "AfterTool": [
       {
+        "matcher": ".*",
         "hooks": [
           {
-            "command": "/Users/agallentes/.local/bin/lean-ctx hook observe",
-            "type": "command"
+            "type": "command",
+            "command": "bash -lc '\"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" hook observe'"
           }
-        ],
-        "matcher": ".*"
+        ]
       }
     ],
     "BeforeTool": [
       {
+        "matcher": "shell|execute_command|run_command|run_shell_command",
         "hooks": [
           {
-            "command": "/Users/agallentes/.local/bin/lean-ctx hook rewrite",
-            "type": "command"
+            "type": "command",
+            "command": "bash -lc '\"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" hook rewrite'"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.gemini/hooks/context-file-gate.sh\""
           }
-        ],
-        "matcher": "shell|execute_command|run_shell_command"
+        ]
       },
       {
+        "matcher": "view_file|read_file|read_many_files|grep_search|grep|search|list_dir|glob|list_files",
         "hooks": [
           {
-            "command": "/Users/agallentes/.local/bin/lean-ctx hook redirect",
-            "type": "command"
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.gemini/hooks/context-file-gate.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash -lc '\"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" hook redirect'"
           }
-        ],
-        "matcher": "read_file|read_many_files|grep|search|list_dir|glob|list_files"
+        ]
       }
     ]
   },
   "mcpServers": {
     "pctx": {
+      "command": "bash",
       "args": [
-        "mcp",
-        "start",
-        "-q",
-        "--stdio",
         "-c",
-        "/Users/agallentes/.config/pctx/pctx.json"
+        "exec pctx mcp start --stdio -c \"$HOME/.config/pctx/pctx.json\""
+      ]
+    },
+    "lean-ctx": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"
       ],
-      "command": "pctx"
+      "env": {
+        "LEAN_CTX_CACHE_TTL": "300",
+        "RUST_LOG": "error"
+      }
     }
   },
   "security": {

@@ -12,6 +12,17 @@
         "-c",
         "${PCTX_CONFIG}"
       ]
+    },
+    "lean-ctx": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"
+      ],
+      "env": {
+        "LEAN_CTX_CACHE_TTL": "300",
+        "RUST_LOG": "error"
+      }
     }
   },
   "security": {
@@ -30,6 +41,47 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ Cache: %cache_hit% ▸ %time% ▸ %project%%git_status%%task_list_id%'"
+    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% \u25b8 %percent% (%remaining%) \u25b8 Cache: %cache_hit% \u25b8 %time% \u25b8 %project%%git_status%%task_list_id%'"
+  },
+  "hooks": {
+    "AfterTool": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc '\"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" hook observe'"
+          }
+        ]
+      }
+    ],
+    "BeforeTool": [
+      {
+        "matcher": "shell|execute_command|run_command|run_shell_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc '\"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" hook rewrite'"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.gemini/hooks/context-file-gate.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "view_file|read_file|read_many_files|grep_search|grep|search|list_dir|glob|list_files",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.gemini/hooks/context-file-gate.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash -lc '\"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" hook redirect'"
+          }
+        ]
+      }
+    ]
   }
 }

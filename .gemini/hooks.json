@@ -1,4 +1,32 @@
 {
+  "context-file-gate": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command|view_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.gemini/hooks/context-file-gate.sh\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "context-observe": {
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.gemini/hooks/context-observe.sh\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
   "git-commit-guard": {
     "PreToolUse": [
       {
@@ -6,7 +34,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/axos-agallentes/.dotfiles/.gemini/hooks/git-commit-guard.sh",
+            "command": "bash \"$HOME/.dotfiles/.gemini/hooks/git-commit-guard.sh\"",
             "timeout": 30
           }
         ]
@@ -20,7 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/axos-agallentes/.dotfiles/.gemini/hooks/pr-title-conventional-guard.sh",
+            "command": "bash \"$HOME/.dotfiles/.gemini/hooks/pr-title-conventional-guard.sh\"",
             "timeout": 30
           }
         ]
@@ -34,7 +62,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/axos-agallentes/.dotfiles/.gemini/hooks/pre-push-remote-check.sh",
+            "command": "bash \"$HOME/.dotfiles/.gemini/hooks/pre-push-remote-check.sh\"",
             "timeout": 30
           }
         ]

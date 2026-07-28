@@ -1,23 +1,29 @@
 {
   "mcpServers": {
     "pctx": {
-      "command": "/Users/axos-agallentes/homebrew/bin/pctx",
+      "command": "bash",
       "args": [
-        "mcp",
-        "start",
-        "-q",
-        "--stdio",
         "-c",
-        "/Users/axos-agallentes/.config/pctx/pctx.json"
+        "exec pctx mcp start --stdio -c \"$HOME/.config/pctx/pctx.json\""
       ]
     },
-
+    "lean-ctx": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"
+      ],
+      "env": {
+        "LEAN_CTX_CACHE_TTL": "300",
+        "RUST_LOG": "error"
+      }
+    },
     "notebooklm": {
-      "command": "/Users/axos-agallentes/.local/bin/notebooklm-mcp",
+      "command": "notebooklm-mcp",
       "args": []
     },
     "chrome-devtools": {
-      "command": "/Users/axos-agallentes/.local/bin/chrome-devtools-mcp-wrapper.sh",
+      "command": "chrome-devtools-mcp-wrapper.sh",
       "args": []
     }
   }
