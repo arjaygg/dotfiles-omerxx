@@ -138,7 +138,7 @@ Returned by each Hawk dimension agent (Phase 6). One per dimension.
 Required: `dimension`, `findings`
 Each finding requires: `lens`, `category`, `file`, `line`, `description`, `fix`, `confidence`
 
-No `severity`, `priority`, or ranking field on a finding — the producing lens does not rank
+No ranking, priority, or triage-order field on a finding — the producing lens does not rank
 its own findings; the Coordinator triages (see `ai/skills/lensed-review`).
 
 ---
