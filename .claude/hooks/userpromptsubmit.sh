@@ -47,7 +47,10 @@ except:
 
 # ─── Helper: run a side-effect hook in background (no output needed) ──────────
 _bg() {
-    (echo "$_INPUT" | bash "$1" &>/dev/null) &
+    (
+        exec 3>&-
+        printf '%s' "$_INPUT" | bash "$1"
+    ) </dev/null >/dev/null 2>&1 &
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -73,7 +76,7 @@ _run "$HOME/.dotfiles/.claude/hooks/prompt-parallelism-hint.sh"
 _run "$HOME/.dotfiles/.claude/hooks/plan-todowrite-reminder.sh"
 
 # 7. tmux activity bridge — fire-and-forget, no stdin
-(bash "$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh" activity-start &>/dev/null) &
+(bash "$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh" activity-start </dev/null >/dev/null 2>&1 3>&-) &
 
 # 8. Prompt capture — logs prompts for analytics
 _bg "$HOME/.dotfiles/.claude/hooks/prompt-capture.sh"
@@ -88,7 +91,10 @@ _bg "$HOME/.dotfiles/.claude/hooks/symbol-intent.sh"
 _run "$HOME/.dotfiles/.claude/hooks/env-preflight.sh"
 
 # 13. lean-ctx observe — fire-and-forget telemetry
-(echo "$_INPUT" | lean-ctx hook observe &>/dev/null) &
+(
+    exec 3>&-
+    printf '%s' "$_INPUT" | lean-ctx hook observe
+) </dev/null >/dev/null 2>&1 &
 
 # ─── Output combined additionalContext ────────────────────────────────────────
 if [[ -n "$_COMBINED_CTX" ]]; then
@@ -99,5 +105,6 @@ print(json.dumps({'hookSpecificOutput': {'hookEventName': 'UserPromptSubmit', 'a
 " <<< "$_COMBINED_CTX"
 fi
 
-wait
+# Background jobs close every hook output descriptor, so waiting would turn
+# fire-and-forget telemetry into prompt latency.
 exit 0
