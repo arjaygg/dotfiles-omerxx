@@ -67,9 +67,8 @@ CACHE_AGE=0
 # format: "binary:install-command"
 declare -A BINARY_AUTO_INSTALL=(
     ["qmd"]="npm install -g @tobilu/qmd"
-    ["rtk"]="brew install rtk"
 )
-REQUIRED_BINARIES=("qmd" "rtk")
+REQUIRED_BINARIES=("qmd")
 
 # Use cache if fresh enough
 if [[ -f "$CACHE_FILE" ]]; then
@@ -114,7 +113,6 @@ if [[ ${#MISSING_BINARIES[@]} -gt 0 && "$_SKIP_ENV_CHECKS" -eq 0 ]]; then
     for m in "${MISSING_BINARIES[@]}"; do
         case "$m" in
             qmd) echo "  - qmd (semantic search sync): npm install -g @tobilu/qmd" ;;
-            rtk) echo "  - rtk (token optimizer): brew install rtk" ;;
             *)   echo "  - $m: no auto-install command, install manually" ;;
         esac
     done
@@ -124,6 +122,9 @@ fi
 PCTX_WARNINGS=()
 if ! command -v "pctx" &> /dev/null; then
     PCTX_WARNINGS+=("pctx binary not found in PATH (npm i -g @portofcontext/pctx)")
+fi
+if ! command -v "lean-ctx" &> /dev/null; then
+    PCTX_WARNINGS+=("lean-ctx binary not found in PATH (primary context runtime)")
 fi
 if [[ ! -r "$HOME/.config/pctx/pctx.json" ]]; then
     PCTX_WARNINGS+=("~/.config/pctx/pctx.json is missing or unreadable")

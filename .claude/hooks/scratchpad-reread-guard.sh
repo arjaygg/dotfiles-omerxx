@@ -5,9 +5,8 @@
 # Why a standalone hook instead of folding into pre-tool-gate-v2.sh: that gate
 # is a large consolidated file covering unrelated security/policy concerns
 # (git safety, PR conventions, plan scope, session-init gating). This is a
-# narrow, orthogonal bookkeeping concern — same rationale the gate's own
-# header gives for leaving rtk-rewrite.sh and the lean-ctx redirect standalone
-# rather than folding them in blind.
+# narrow, orthogonal bookkeeping concern — the same rationale for keeping the
+# LeanCtx redirect standalone rather than folding it into an unrelated gate.
 #
 # Rationale: ai/rules/context-and-compaction.md documents scratchpad files as
 # write-mostly — Claude Code's post-compaction rebuild can reinject recently

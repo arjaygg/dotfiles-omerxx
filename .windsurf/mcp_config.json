@@ -3,8 +3,9 @@
     "lean-ctx": {
       "command": "lean-ctx",
       "env": {
-        "LEAN_CTX_DATA_DIR": "/Users/axos-agallentes/.lean-ctx",
-        "LEAN_CTX_FULL_TOOLS": "1"
+        "LEAN_CTX_DATA_DIR": "/Users/agallentes/.lean-ctx",
+        "LEAN_CTX_FULL_TOOLS": "1",
+        "RUST_LOG": "error"
       }
     },
     "pctx": {
@@ -14,7 +15,7 @@
         "-q",
         "--stdio",
         "-c",
-        "/Users/axos-agallentes/.config/pctx/pctx.json"
+        "/Users/agallentes/.config/pctx/pctx.json"
       ],
       "command": "pctx"
     }

@@ -1,25 +1,4 @@
 {
-  "selectedAuthType": "oauth-personal",
-  "mcpServers": {
-    "pctx": {
-      "command": "/Users/axos-agallentes/.local/bin/agy-mcp-legacy-shim.py",
-      "args": [
-        "--",
-        "/Users/axos-agallentes/homebrew/bin/pctx",
-        "mcp",
-        "start",
-        "-q",
-        "--stdio",
-        "-c",
-        "/Users/axos-agallentes/.config/pctx/pctx.json"
-      ]
-    }
-  },
-  "security": {
-    "auth": {
-      "selectedType": "oauth-personal"
-    }
-  },
   "context": {
     "fileName": [
       "AGENTS.md",
@@ -29,14 +8,56 @@
   "experimental": {
     "enableAgents": true
   },
-  "statusLine": {
-    "type": "command",
-    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ Cache: %cache_hit% ▸ %time% ▸ %project%%git_status%%task_list_id%'"
+  "hooks": {
+    "AfterTool": [
+      {
+        "hooks": [
+          {
+            "command": "/Users/agallentes/.local/bin/lean-ctx hook observe",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "BeforeTool": [
+      {
+        "hooks": [
+          {
+            "command": "/Users/agallentes/.local/bin/lean-ctx hook rewrite",
+            "type": "command"
+          }
+        ],
+        "matcher": "shell|execute_command|run_shell_command"
+      },
+      {
+        "hooks": [
+          {
+            "command": "/Users/agallentes/.local/bin/lean-ctx hook redirect",
+            "type": "command"
+          }
+        ],
+        "matcher": "read_file|read_many_files|grep|search|list_dir|glob|list_files"
+      }
+    ]
   },
-  "model": "Gemini 3.1 Pro (High)",
-  "trustedWorkspaces": [
-    "/Users/axos-agallentes/git/auc-conversion",
-    "/Users/axos-agallentes/git/auc-dbprofiling",
-    "/Users/axos-agallentes/.dotfiles"
-  ]
+  "mcpServers": {
+    "pctx": {
+      "args": [
+        "mcp",
+        "start",
+        "-q",
+        "--stdio",
+        "-c",
+        "/Users/agallentes/.config/pctx/pctx.json"
+      ],
+      "command": "pctx"
+    }
+  },
+  "security": {
+    "auth": {
+      "selectedType": "oauth-personal"
+    }
+  },
+  "selectedAuthType": "oauth-personal"
 }

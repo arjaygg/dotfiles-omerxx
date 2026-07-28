@@ -1,10 +1,8 @@
 {
   "mcpServers": {
     "pctx": {
-      "command": "/Users/axos-agallentes/.local/bin/agy-mcp-legacy-shim.py",
+      "command": "/Users/axos-agallentes/homebrew/bin/pctx",
       "args": [
-        "--",
-        "/Users/axos-agallentes/homebrew/bin/pctx",
         "mcp",
         "start",
         "-q",
@@ -13,6 +11,7 @@
         "/Users/axos-agallentes/.config/pctx/pctx.json"
       ]
     },
+
     "notebooklm": {
       "command": "/Users/axos-agallentes/.local/bin/notebooklm-mcp",
       "args": []

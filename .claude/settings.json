@@ -1,13 +1,380 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "advisorModel": "fable",
+  "alwaysThinkingEnabled": true,
+  "autoCompact": true,
+  "autoMemory": false,
+  "compactCustomInstructions": "After compaction, immediately re-read plans/session-snapshot.md first if it exists — it is generated fresh from the live transcript and git state at the moment of compaction, so it is more trustworthy than hand-edited files. Fall back to plans/active-context.md only if session-snapshot.md is absent, and treat active-context.md with suspicion if its content conflicts with session-snapshot.md or the verified conversation history — it can carry over stale content from an earlier or unrelated task. Do not waste summary tokens on content already captured in plans/ files (active-context.md, decisions.md, progress.md) — those files persist on disk and will be re-read. Focus the summary on: in-flight tool call results not yet written to disk, ephemeral error messages, and any decisions made verbally that have not been recorded. Always preserve: current branch name, uncommitted file list, active plan file path, and the exact task being worked on at the moment of compaction. Do not re-Read CLAUDE.md, AGENTS.md, or any file they @-import (rules/*.md) after compaction — their content is reloaded automatically as part of the system prompt and a manual re-read wastes tokens on content already in context. Never copy hook advisory text into the summary — exclude [SESSION INIT ...] banners, MANDATORY: graphify-out lines, [STACK HEALTH]/[PLANS HEALTH]/hook: stack-health/hook: plans-health output, and <supermemory-recall>/<supermemory-context> blocks entirely; they are re-injected live by hooks and only compound noise across compaction cycles.",
+  "effortLevel": "high",
+  "enableAllProjectMcpServers": true,
+  "enabledPlugins": {
+    "autoresearch@autoresearch": false,
+    "bash-language-server@claude-code-lsps": false,
+    "gopls-lsp@claude-plugins-official": false,
+    "skill-creator@claude-plugins-official": true
+  },
   "env": {
     "AR_DISABLE_SIMPLIFY_GATE": "1",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "88",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_FORK_SUBAGENT": "1",
-    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "3",
+    "HEADROOM_CONTEXT_TOOL": "lean-ctx",
     "USE_BUILTIN_RIPGREP": "0"
   },
+  "extraKnownMarketplaces": {
+    "autoresearch": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/uditgoenka/autoresearch.git"
+      }
+    }
+  },
+  "hooks": {
+    "ConfigChange": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/config-integrity.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*_settings"
+      }
+    ],
+    "InstructionsLoaded": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/instructions-loaded.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/context-monitor.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/post-tool-analytics.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/prompt-score-commit.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/teammate-quality-gate.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": "Agent"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "/Users/agallentes/.local/bin/lean-ctx hook observe",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "/Users/agallentes/.local/bin/lean-ctx hook read-dedup",
+            "type": "command"
+          }
+        ],
+        "matcher": "Read"
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/pre-compact.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "/Users/agallentes/.local/bin/lean-ctx hook observe",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/pre-tool-gate-v2.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash|Read|Edit|Write|MultiEdit|Grep|Glob|Agent"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/graphify-redirect.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": "Grep|Glob"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bash -lc 'lean-ctx hook redirect'",
+            "type": "command"
+          }
+        ],
+        "matcher": "Read|read|ReadFile|read_file|View|view|Grep|grep|Search|search|ListFiles|list_files|ListDirectory|list_directory"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/scratchpad-reread-guard.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": "Read"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/chrome-mcp-guard.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": "mcp__claude-in-chrome__.*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "/Users/agallentes/.local/bin/lean-ctx hook rewrite",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash|bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "/Users/agallentes/.local/bin/lean-ctx hook redirect",
+            "type": "command"
+          }
+        ],
+        "matcher": "Read|read|ReadFile|read_file|View|view|Grep|grep|Search|search|ListFiles|list_files|ListDirectory|list_directory|Glob|glob"
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "/Users/agallentes/.local/bin/lean-ctx hook observe",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/sessionstart.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "/Users/agallentes/.local/bin/lean-ctx hook observe",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/stop.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "/Users/agallentes/.local/bin/lean-ctx hook observe",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/task-event-tracker.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "TaskCreated": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/task-event-tracker.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/userpromptsubmit.sh\"",
+            "timeout": 120,
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\"",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "/Users/agallentes/.local/bin/lean-ctx hook observe",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/worktree-create.sh\"",
+            "type": "command"
+          },
+          {
+            "command": "bash \"$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh\" worktree-enter",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/worktree-remove.sh\"",
+            "type": "command"
+          },
+          {
+            "command": "bash \"$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh\" worktree-exit",
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ]
+  },
+  "model": "sonnet",
   "permissions": {
     "allow": [
       "Read(*)",
@@ -56,6 +423,7 @@
       "mcp__lean-ctx__ctx_retrieve",
       "mcp__lean-ctx__ctx_provider"
     ],
+    "defaultMode": "acceptEdits",
     "deny": [
       "Bash(rm -rf *)",
       "Bash(sudo *)",
@@ -103,13 +471,13 @@
       "Read",
       "Grep",
       "Glob"
-    ],
-    "defaultMode": "auto"
+    ]
   },
-  "model": "opus[1m]",
-  "enableAllProjectMcpServers": true,
+  "plansDirectory": "./plans",
+  "preferredNotifChannel": "ghostty",
   "skillOverrides": {
     "ado-workitem": "off",
+    "ai-usage-analyst": "off",
     "aside": "off",
     "auc-dev-a": "off",
     "auc-dev-b": "off",
@@ -119,7 +487,6 @@
     "auc-sm": "off",
     "auc-tech-writer": "off",
     "autoresearch": "off",
-    "azure-devops-cli": "off",
     "bmad-bmad-master.agent": "off",
     "bmad-bmm-analyst.agent": "off",
     "bmad-bmm-architect.agent": "off",
@@ -170,7 +537,6 @@
     "bmad-review-adversarial-general": "off",
     "bmad-shard-doc": "off",
     "checkpoint": "off",
-    "ci": "off",
     "claude-api": "off",
     "claude-architect": "off",
     "claude-auto": "off",
@@ -197,20 +563,15 @@
     "monitor-patterns": "off",
     "ollama": "off",
     "pctx-code-mode": "off",
-    "qmd-routing": "off",
     "quarantine-analyst": "off",
     "quarantine-triage-live": "off",
-    "release-prep": "off",
-    "repomix": "off",
     "resource-guard": "off",
-    "resume-context": "off",
     "schedule": "off",
     "session-defer": "off",
     "session-done": "off",
     "session-next": "off",
     "session-picker": "off",
     "session-undefer": "off",
-    "squash-wip": "off",
     "stark": "off",
     "start-story": "off",
     "story-complete": "off",
@@ -220,353 +581,17 @@
     "vision": "off",
     "watchdog-remediate": "off"
   },
-  "hooks": {
-    "ConfigChange": [
-      {
-        "matcher": ".*_settings",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/config-integrity.sh\""
-          }
-        ]
-      }
-    ],
-    "InstructionsLoaded": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/instructions-loaded.sh\""
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/context-monitor.sh\""
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/post-tool-analytics.sh\""
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/prompt-score-commit.sh\""
-          }
-        ]
-      },
-      {
-        "matcher": "Agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/teammate-quality-gate.sh\""
-          }
-        ]
-      },
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\""
-          }
-        ]
-      },
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.cargo/bin/lean-ctx hook read-dedup"
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/pre-compact.sh\""
-          }
-        ]
-      },
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\""
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash|Read|Edit|Write|MultiEdit|Grep|Glob|Agent|Workflow",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/pre-tool-gate-v2.sh\""
-          }
-        ]
-      },
-      {
-        "matcher": "Grep|Glob",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/graphify-redirect.sh\""
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.dotfiles/.claude/hooks/rtk-rewrite.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Read|read|ReadFile|read_file|View|view|Grep|grep|Search|search|ListFiles|list_files|ListDirectory|list_directory",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'lean-ctx hook redirect'"
-          }
-        ]
-      },
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/scratchpad-reread-guard.sh\""
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__claude-in-chrome__.*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/chrome-mcp-guard.sh\""
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.cargo/bin/lean-ctx hook rewrite"
-          }
-        ]
-      },
-      {
-        "matcher": "Read|read|ReadFile|read_file|View|view|Grep|grep|Search|search|ListFiles|list_files|ListDirectory|list_directory|Glob|glob",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.cargo/bin/lean-ctx hook redirect"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\""
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/sessionstart.sh\""
-          }
-        ]
-      },
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\""
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/stop.sh\""
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\""
-          }
-        ]
-      }
-    ],
-    "TaskCompleted": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/task-event-tracker.sh\""
-          }
-        ]
-      }
-    ],
-    "TaskCreated": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/task-event-tracker.sh\""
-          }
-        ]
-      }
-    ],
-    "TeammateIdle": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/teammate-quality-gate.sh\""
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/teammate-quality-gate.sh\""
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/userpromptsubmit.sh\"",
-            "timeout": 120
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\""
-          }
-        ]
-      }
-    ],
-    "WorktreeCreate": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/worktree-create.sh\""
-          },
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh\" worktree-enter"
-          }
-        ]
-      }
-    ],
-    "WorktreeRemove": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/worktree-remove.sh\""
-          },
-          {
-            "type": "command",
-            "command": "bash \"$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh\" worktree-exit"
-          }
-        ]
-      }
-    ]
-  },
-  "worktree": {},
-  "workflowSizeGuideline": "small",
+  "skipWorkflowUsageWarning": true,
   "statusLine": {
-    "type": "command",
-    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ %cost% ▸ Cache: %cache_hit% ▸ %time% ▸ %project%%git_status%%task_list_id%'"
+    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ %cost% ▸ Cache: %cache_hit% ▸ %time% ▸ %project%%git_status%%task_list_id%'",
+    "type": "command"
   },
-  "enabledPlugins": {
-    "autoresearch@autoresearch": false,
-    "bash-language-server@claude-code-lsps": false,
-    "gopls-lsp@claude-plugins-official": false,
-    "skill-creator@claude-plugins-official": true
-  },
-  "extraKnownMarketplaces": {
-    "autoresearch": {
-      "source": {
-        "source": "git",
-        "url": "https://github.com/uditgoenka/autoresearch.git"
-      }
-    }
-  },
-  "alwaysThinkingEnabled": true,
-  "effortLevel": "low",
-  "advisorModel": "fable",
-  "plansDirectory": "./plans",
+  "teammateMode": "auto",
   "tui": "fullscreen",
   "voice": {
     "enabled": true,
     "mode": "hold"
   },
-  "skipWorkflowUsageWarning": true,
-  "preferredNotifChannel": "ghostty",
-  "teammateMode": "auto",
   "voiceEnabled": true,
-  "autoCompact": true,
-  "autoMemory": false,
-  "compactCustomInstructions": "After compaction, immediately re-read plans/session-snapshot.md first if it exists — it is generated fresh from the live transcript and git state at the moment of compaction, so it is more trustworthy than hand-edited files. Fall back to plans/active-context.md only if session-snapshot.md is absent, and treat active-context.md with suspicion if its content conflicts with session-snapshot.md or the verified conversation history — it can carry over stale content from an earlier or unrelated task. Do not waste summary tokens on content already captured in plans/ files (active-context.md, decisions.md, progress.md) — those files persist on disk and will be re-read. Focus the summary on: in-flight tool call results not yet written to disk, ephemeral error messages, and any decisions made verbally that have not been recorded. Always preserve: current branch name, uncommitted file list, active plan file path, and the exact task being worked on at the moment of compaction. Do not re-Read CLAUDE.md, AGENTS.md, or any file they @-import (RTK.md, rules/*.md) after compaction — their content is reloaded automatically as part of the system prompt and a manual re-read wastes tokens on content already in context. Never copy hook advisory text into the summary — exclude [SESSION INIT ...] banners, MANDATORY: graphify-out lines, [STACK HEALTH]/[PLANS HEALTH]/hook: stack-health/hook: plans-health output, and <supermemory-recall>/<supermemory-context> blocks entirely; they are re-injected live by hooks and only compound noise across compaction cycles."
+  "worktree": {}
 }

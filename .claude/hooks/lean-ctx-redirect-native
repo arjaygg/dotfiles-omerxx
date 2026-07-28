@@ -1,0 +1,2 @@
+#!/bin/sh
+exec "/Users/agallentes/.local/bin/lean-ctx" hook redirect

@@ -1,58 +1,44 @@
-# lean-ctx — Context Intelligence Engine
+# lean-ctx — Context Runtime
 
-**Integration mode:** pctx upstream only. Shell hooks are NOT active (rtk handles shell compression).
+**Integration mode:** primary file, tree, text-search, and shell-output runtime. LeanCtx is available both as a native MCP server and through pctx.
 
-## Usage
+## Authoritative Routing
 
-lean-ctx is available via `pctx execute_typescript` alongside Serena:
+- **Serena through pctx:** semantic code navigation, symbols, references, impact analysis, and symbol-aware edits.
+- **LeanCtx directly:** one file/tree/text/shell operation when no output filtering is needed.
+- **pctx `execute_typescript`:** two or more operations, mixed Serena/LeanCtx/Qmd calls, or filtering before results enter context.
+- **Native tools:** editing or specialized capabilities Serena/LeanCtx do not provide.
+- **Fallback:** if LeanCtx is unavailable, use the client’s native dedicated tool rather than installing a second output compressor.
 
-- `ctx_tree`  — AST skeleton tree for 14 languages; use for map-mode first pass on unfamiliar code
-- `ctx_read`  — cached file read with MD5 dedup (F1/F2 shorthand on cache hit, ~13 tokens)
-- `ctx_shell` — semantic shell output compression with CEP Compliance Score
+## Core LeanCtx Tools
 
-## When to Use
+- `ctx_read` / `LeanCtx.ctxRead` — cached file reads with intent-specific modes.
+- `ctx_tree` / `LeanCtx.ctxTree` — compact directory maps.
+- `ctx_search` / `LeanCtx.ctxSearch` — text and regex search.
+- `ctx_shell` / `LeanCtx.ctxShell` — compressed command, build, test, and log output.
+- `ctx_patch` / `LeanCtx.ctxPatch` — hash-anchored text edits.
+- `ctx_session` / `LeanCtx.ctxSession` — cross-session context state.
 
-**Map mode (exploration):** `ctx_tree` → Serena.getSymbolsOverview → `ctx_read` if repeated
-**Edit mode (precision):** Serena.findSymbol → Serena.replaceSymbolBody → Edit
+## Shell and Exact Evidence
 
-Switch from lean-ctx to Serena once you've identified the edit target.
+Use `ctx_shell` for commands by default. When exact output, quotes, counts, or line-level evidence is required, pass `raw: true` or run:
 
-## What NOT to Use
+~~~bash
+lean-ctx raw "<exact command>"
+~~~
 
-- `lean-ctx init --global` — **never run**; shell hooks conflict with rtk (double-compression)
-- lean-ctx CCP (Context Continuity Protocol) — not activated; existing session-end.sh + pre-compact.sh are authoritative
+Never wrap a LeanCtx shell call in another output compressor or enable parallel command rewriters.
 
-## Analytics (secondary)
+## Agent Setup
 
-```bash
-lean-ctx gain        # cache hit rate and token savings for file reads
-lean-ctx discover    # read patterns that would benefit from caching
-```
+~~~bash
+export HEADROOM_CONTEXT_TOOL=lean-ctx
+lean-ctx init --agent claude
+lean-ctx init --agent codex
+~~~
 
-These are separate from `rtk gain` (which covers shell commands). Different scopes, both valid.
+Headroom must receive `HEADROOM_CONTEXT_TOOL=lean-ctx` so its compatibility path cannot select or install another context tool. Persist the selector in each launcher or agent environment, not only an interactive shell.
 
-## Config
+## Fallbacks
 
-`~/.lean-ctx/config.toml` — cache TTL and other settings
-`LEAN_CTX_CACHE_TTL` is set in `~/.config/pctx/pctx.json` env block (not in shell profile)
-
-## Installation
-
-```bash
-# Install binary (check https://github.com/yvgude/lean-ctx for installer)
-lean-ctx init --agent   # agent mode only — sets up MCP server, NOT shell hooks
-
-# Verify no shell hooks were added:
-alias | grep lean       # must return nothing
-```
-
-## pctx.json entry
-
-```json
-{
-  "name": "lean-ctx",
-  "command": "lean-ctx",
-  "args": ["mcp", "--stdio"],
-  "env": { "LEAN_CTX_CACHE_TTL": "300" }
-}
-```
+If LeanCtx is unavailable, use the client’s native dedicated tool. Do not install or invoke a second output-compression runtime as a fallback.

@@ -36,28 +36,28 @@ trust_level = "trusted"
 [projects."~/git"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes"]
+[projects."/Users/agallentes"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes/git"]
+[projects."/Users/agallentes/git"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes/.dotfiles"]
+[projects."/Users/agallentes/.dotfiles"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes/git/auc-conversion"]
+[projects."/Users/agallentes/git/auc-conversion"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes/git/auc-deployment-manifest"]
+[projects."/Users/agallentes/git/auc-deployment-manifest"]
 trust_level = "trusted"
 
-[projects."/Users/axos-agallentes/git/auc-discovery"]
+[projects."/Users/agallentes/git/auc-discovery"]
 trust_level = "trusted"
 
 [mcp_servers.pctx]
 type = "stdio"
 command = "pctx"
-args = ["mcp", "start", "--stdio", "-c", "/Users/axos-agallentes/.config/pctx/pctx.json"]
+args = ["mcp", "start", "--stdio", "-c", "/Users/agallentes/.config/pctx/pctx.json"]
 startup_timeout_sec = 90
 
 [notice.model_migrations]
@@ -78,62 +78,62 @@ hooks = true
 [marketplaces.openai-bundled]
 last_updated = "2026-04-22T10:12:08Z"
 source_type = "local"
-source = "/Users/axos-agallentes/.codex/.tmp/bundled-marketplaces/openai-bundled"
+source = "/Users/agallentes/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
 [[skills.config]]
-path = "/Users/axos-agallentes/.dotfiles/ai/skills/ado-workitem/SKILL.md"
+path = "/Users/agallentes/.dotfiles/ai/skills/ado-workitem/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-dev-a/SKILL.md"
+path = "/Users/agallentes/.dotfiles/ai/skills/auc-dev-a/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-dev-b/SKILL.md"
+path = "/Users/agallentes/.dotfiles/ai/skills/auc-dev-b/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-dev-c/SKILL.md"
+path = "/Users/agallentes/.dotfiles/ai/skills/auc-dev-c/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-devintegration-suite/SKILL.md"
+path = "/Users/agallentes/.dotfiles/ai/skills/auc-devintegration-suite/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-manifest-review/SKILL.md"
+path = "/Users/agallentes/.dotfiles/ai/skills/auc-manifest-review/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-qa/SKILL.md"
+path = "/Users/agallentes/.dotfiles/ai/skills/auc-qa/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-sm/SKILL.md"
+path = "/Users/agallentes/.dotfiles/ai/skills/auc-sm/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/axos-agallentes/.dotfiles/ai/skills/auc-tech-writer/SKILL.md"
+path = "/Users/agallentes/.dotfiles/ai/skills/auc-tech-writer/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/axos-agallentes/.dotfiles/ai/skills/bmad-custom-pr-review/SKILL.md"
+path = "/Users/agallentes/.dotfiles/ai/skills/bmad-custom-pr-review/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/axos-agallentes/.codex/skills/.system/plugin-creator/SKILL.md"
+path = "/Users/agallentes/.codex/skills/.system/plugin-creator/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/axos-agallentes/.codex/skills/.system/skill-installer/SKILL.md"
+path = "/Users/agallentes/.codex/skills/.system/skill-installer/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/axos-agallentes/.codex/skills/.system/skill-creator/SKILL.md"
+path = "/Users/agallentes/.codex/skills/.system/skill-creator/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/axos-agallentes/.dotfiles/ai/skills/tech-lead/SKILL.md"
+path = "/Users/agallentes/.dotfiles/ai/skills/tech-lead/SKILL.md"
 enabled = false
 
 [tui]
@@ -154,5 +154,5 @@ status_line_use_colors = true
 "gpt-5.5" = 4
 
 [mcp_servers.lean-ctx]
-command = "/Users/axos-agallentes/.cargo/bin/lean-ctx"
+command = "/Users/agallentes/.local/bin/lean-ctx"
 args = []

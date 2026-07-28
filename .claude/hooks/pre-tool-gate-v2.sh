@@ -6,13 +6,9 @@
 #           (folded 2026-07-08, H2 — see Section 2h/2i/2j)
 # Matcher: Bash|Read|Edit|Write|MultiEdit|Grep|Glob|Agent
 #
-# NOT folded in (left as standalone PreToolUse entries in settings.json):
-#   rtk-rewrite.sh, `lean-ctx hook rewrite` — both mutate tool_input.command
-#   before it runs. Their content/ordering interaction with this gate's own
-#   command-rewrite path (Section 2g pipe-stripping) was not fully verifiable
-#   from this worktree (rtk-rewrite.sh lives only at the live, untracked
-#   ~/.claude/hooks/rtk-rewrite.sh, not in the tracked repo), so folding them
-#   in was judged too risky to do blind. Conservatively left separate.
+# NOT folded in (left as a standalone PreToolUse entry in settings.json):
+#   `lean-ctx hook redirect` owns native read/search redirection. Keeping one
+#   dedicated LeanCtx redirect owner avoids competing input rewriters.
 #
 # Design: single process, jq for JSON parse (~3ms vs python3 ~30ms).
 #         No SYNCHRONOUS SQLite writes on this path — hook_metric()/
@@ -675,7 +671,7 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
         if [[ "$PIPE_CMD" == "head" || "$PIPE_CMD" == "tail" ]]; then
             _BASE_CMD=$(echo "$CMD" | sed 's/ *|.*//')
             _FIRST_WORD=$(echo "$_BASE_CMD" | awk '{print $1}')
-            if echo "$_FIRST_WORD" | grep -qE '^(gh|kubectl|git|argocd|az|docker|helm|aws|rtk|jq|curl)$'; then
+            if echo "$_FIRST_WORD" | grep -qE '^(gh|kubectl|git|argocd|az|docker|helm|aws|jq|curl)$'; then
                 echo "$INPUT" | jq --arg cmd "$_BASE_CMD" '.tool_input.command = $cmd'
                 echo "REWRITE: Stripped '| $PIPE_CMD' — running: $_BASE_CMD" >&2
                 exit 0
@@ -743,7 +739,7 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Mult
         [[ "$FILE_PATH" =~ (^|/)\.trees/ ]] && _IN_WORKTREE=1
         _IN_GIT_REPO=0
         git rev-parse --is-inside-work-tree &>/dev/null && _IN_GIT_REPO=1
-        for kernel in "CLAUDE.md" "RTK.md" ".claude/settings.json"; do
+        for kernel in "CLAUDE.md" ".claude/settings.json"; do
             if [[ "$FILE_PATH" == *"$kernel" ]]; then
                 if [[ "$_IN_WORKTREE" -eq 0 && "$_IN_GIT_REPO" -eq 1 && ( "$_CURRENT_BRANCH" == "main" || "$_CURRENT_BRANCH" == "master" || -z "$_CURRENT_BRANCH" ) ]]; then
                     echo "CAUTION: Editing $kernel mid-session invalidates the LLM prompt cache. Proceed only if necessary."

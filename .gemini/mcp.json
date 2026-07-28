@@ -10,7 +10,7 @@
         "-q",
         "--stdio",
         "-c",
-        "/Users/axos-agallentes/.config/pctx/pctx.json"
+        "/Users/agallentes/.config/pctx/pctx.json"
       ]
     }
   }

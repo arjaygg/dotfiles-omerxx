@@ -152,11 +152,11 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
             ;;
     esac
 
-    # RTK diagnostic hint: detect compressed test failures
+    # LeanCtx diagnostic hint: recover exact test failures
     if [[ "${EXIT_CODE:-0}" != "0" ]]; then
         if echo "$CMD" | grep -qiE '(go test|pytest|npm test|npx jest|dotnet test|cargo test)'; then
             if echo "$OUTPUT" | grep -q '\[lean-ctx:' || [[ "$LINE_COUNT" -lt 10 ]]; then
-                echo "RTK_DIAGNOSTIC_HINT: Test failed but output was compressed by rtk. To see full error details, re-run with: rtk proxy $CMD" >&2
+                echo "LEAN_CTX_DIAGNOSTIC_HINT: Test failed with compressed output. Re-run via LeanCtx.ctxShell with raw=true, or: lean-ctx raw \"$CMD\"" >&2
             fi
         fi
     fi
