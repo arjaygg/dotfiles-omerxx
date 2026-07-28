@@ -64,7 +64,10 @@ ensure_path() {
 
 setup_mcp() {
     echo "Configuring lean-ctx MCP server..."
-    lean-ctx init --global 2>/dev/null || true
+    # `--agent`, never `--global`: decisions/0004-lean-ctx-pctx-upstream.md rejects
+    # --global because its shell hooks double-compress against rtk. Also restated in
+    # ai/rules/context-and-compaction.md.
+    lean-ctx init --agent 2>/dev/null || true
     lean-ctx doctor --fix 2>/dev/null || true
 }
 
