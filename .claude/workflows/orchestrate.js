@@ -26,6 +26,30 @@ export const meta = {
 const DOD_PATH = 'ai/references/definition-of-done.md'
 const SPEC_DIR = 'plans/specs'
 
+// Stage agents run with cwd = the MAIN checkout, NOT the worktree this script lives in. So a
+// relative path in a stage prompt silently resolves against the wrong tree. Observed on the first
+// non-dry run (wf_48902af9-8a4): `halt` created a fresh terminal-status file at
+// <main>/plans/specs/<label>.md while the real spec in the worktree stayed at `status: running` —
+// and the run still reported terminal_status_written: true, i.e. it manufactured exactly the
+// crashed-run signature markRunning() exists to produce. See
+// plans/2026-07-28-harness-end-to-end-proof.md.
+//
+// Pass `args.root` as the absolute root of the tree the run belongs to. Omitting it keeps the old
+// relative behaviour, which is only correct when running from the main checkout.
+const ROOT = String((args && args.root) || '').replace(/\/+$/, '')
+
+function atRoot(rel) {
+  return ROOT ? `${ROOT}/${rel}` : rel
+}
+
+// Appended to every prompt that writes a file. The create-if-absent instruction is what turned a
+// wrong cwd into a wrong-tree write, so the refusal has to be explicit rather than implied.
+const CONFINE = ROOT
+  ? ` The path above is absolute and final: write ONLY to it. Do not create or modify any file ` +
+    `outside ${ROOT}. If that exact path is not writable, report written:false and stop — do NOT ` +
+    `create the file somewhere else, and do not "find" a similar file in another checkout.`
+  : ''
+
 // Bound on how many findings the acceptance stage is handed. §3: log every cap.
 const MAX_FINDINGS_TO_ACCEPTANCE = 20
 
@@ -174,7 +198,7 @@ function fixtureFor(stage, opts) {
   const found = !opts.dodMissing
   return (
     f.accept || {
-      dodPath: DOD_PATH,
+      dodPath: atRoot(DOD_PATH),
       dodFound: found,
       unmet: found ? [] : ['definition-of-done.md not found'],
       accepted: found,
@@ -277,9 +301,9 @@ function followupSignal(rulings) {
 // crash. Degenerate cases get their own deterministic filename rather than a third
 // title-derived name that could collide with either candidate.
 function haltPathFor(label, resolution) {
-  if (resolution === 'unresolved') return `${SPEC_DIR}/${label}-unresolved.md`
-  if (resolution === 'ambiguous') return `${SPEC_DIR}/${label}-ambiguous.md`
-  return `${SPEC_DIR}/${label}.md`
+  if (resolution === 'unresolved') return atRoot(`${SPEC_DIR}/${label}-unresolved.md`)
+  if (resolution === 'ambiguous') return atRoot(`${SPEC_DIR}/${label}-ambiguous.md`)
+  return atRoot(`${SPEC_DIR}/${label}.md`)
 }
 
 const terminal = { written: false }
@@ -305,7 +329,7 @@ async function halt(status, condition, ctx, extra) {
     'halt',
     `Write this terminal status to ${ctx.haltPath}. If the file exists, update its ` +
       `frontmatter in place; otherwise create it with this frontmatter and nothing else. ` +
-      `Do not edit any other file.\n\n${JSON.stringify(payload, null, 2)}`,
+      `Do not edit any other file.${CONFINE}\n\n${JSON.stringify(payload, null, 2)}`,
     { ...ctx.stageOpts, label: `halt:${ctx.label}`, phase: 'Accept', schema: STATUS_SCHEMA },
   )
   terminal.written = Boolean(written && written.written)
@@ -333,7 +357,7 @@ async function markRunning(specPath, ctx) {
   const written = await runStage(
     'mark_running',
     `Set \`status: running\` in the frontmatter of ${specPath}, leaving every other ` +
-      `frontmatter key and the entire body byte-identical. Do not edit any other file.`,
+      `frontmatter key and the entire body byte-identical. Do not edit any other file.${CONFINE}`,
     {
       ...ctx.stageOpts,
       specPath,
@@ -428,7 +452,7 @@ try {
 return result
 
 async function main() {
-  const specPath = `${SPEC_DIR}/${label}.md`
+  const specPath = atRoot(`${SPEC_DIR}/${label}.md`)
 
   // ------------------------------------------------------------- Implement
   phase('Implement')
@@ -553,7 +577,7 @@ async function main() {
   // file, revert, and HALT with the unresolved questions and the patch path.
   if (byCategory.intent_gap > 0) {
     return halt('blocked', `${byCategory.intent_gap} intent_gap finding(s) need a human`, ctx, {
-      patch_file: `${SPEC_DIR}/${label}.attempted.patch`,
+      patch_file: atRoot(`${SPEC_DIR}/${label}.attempted.patch`),
     })
   }
   // A bad_spec means the spec should have prevented this: amend it and re-derive. That is
@@ -576,7 +600,7 @@ async function main() {
 
   const accept = await runStage(
     'accept',
-    `Read the standing Definition of Done at ${DOD_PATH}. If the file does not exist, set ` +
+    `Read the standing Definition of Done at ${atRoot(DOD_PATH)}. If the file does not exist, set ` +
       `dodFound=false and list that as the sole unmet item — do not invent criteria. ` +
       `Otherwise evaluate each DoD item against the changed files below and the ` +
       `${findings.length} review finding(s) supplied.\n\n` +
