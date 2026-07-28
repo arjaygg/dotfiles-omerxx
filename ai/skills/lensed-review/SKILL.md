@@ -64,6 +64,15 @@ Invoke via `/lensed-review`, or when the user asks for a code/doc review in any 
 phrasings above. If the user names a specific lens ("just check security"), run only that lens per
 step 2 above.
 
+## Verification
+
+Confirm each of these against the actual run, not from memory:
+
+- Every lens you claim to have run has a non-empty `instruction` in `lenses.toml`, and you
+  loaded reference files only for lenses that ran.
+- Every finding carries a `lens` matching a real lens `code`, and no `severity` field; any
+  lens with an `after` value ran after that lens, over its findings.
+
 ## Do not
 
 - Do not inline any lens's instructions in this file — they belong in `references/lens-*.md`.
