@@ -7,7 +7,10 @@ set -euo pipefail
 cat > /dev/null
 
 if command -v qmd &>/dev/null; then
-  (qmd update --quiet 2>/dev/null && qmd embed --quiet 2>/dev/null) &
+  (
+    exec </dev/null >/dev/null 2>&1 3>&-
+    qmd update --quiet && qmd embed --quiet
+  ) &
 fi
 
 exit 0
