@@ -1,0 +1,31 @@
+{
+  "skill": "model-routing",
+  "trigger": {
+    "positive": [
+      "should this task use Opus or Sonnet",
+      "when should I escalate to Fable 5 for a stalled task",
+      "configure subagent model routing in .claude/agents frontmatter"
+    ],
+    "negative": [
+      {
+        "prompt": "use Serena and LeanCtx to search this repo",
+        "owner": "explore"
+      },
+      {
+        "prompt": "why is my commit being blocked by a hook",
+        "owner": "hyper-atomic-commits-reference"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "should this task use Opus or Sonnet",
+      "expected_output": "invokes the model-routing skill and follows its documented steps",
+      "files": [],
+      "expectations": [
+        "routes to model-routing",
+        "does not fall back to raw shell commands"
+      ]
+    }
+  ]
+}

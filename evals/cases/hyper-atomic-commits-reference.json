@@ -1,0 +1,31 @@
+{
+  "skill": "hyper-atomic-commits-reference",
+  "trigger": {
+    "positive": [
+      "why did my commit get blocked by the git pipeline gate",
+      "how do I configure per-repo commit thresholds in .claude-atomic.yaml",
+      "explain the task-gate and git-pipeline-gate stop fence chain"
+    ],
+    "negative": [
+      {
+        "prompt": "make a WIP commit so I can save progress",
+        "owner": "checkpoint"
+      },
+      {
+        "prompt": "what's the current atomic commit state of my staged files",
+        "owner": "hyper-atomic-commits-reference"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "why did my commit get blocked by the git pipeline gate",
+      "expected_output": "invokes the hyper-atomic-commits-reference skill and follows its documented steps",
+      "files": [],
+      "expectations": [
+        "routes to hyper-atomic-commits-reference",
+        "does not fall back to raw shell commands"
+      ]
+    }
+  ]
+}
