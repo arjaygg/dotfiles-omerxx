@@ -488,3 +488,15 @@ Executing `plans/2026-07-07-ai-harness-improvement-proposal.md` per user "go" (P
   worker correctly deviated from the frozen spec's stale "71 entries" figure and
   ledgered all 104 real skillOverrides entries in ai/skills/REMOVALS.md.
 - Next: Step 10 (consolidate review into lensed-review), now unblocked.
+
+## 2026-07-28 — Goal 05 steps 10-12 shipped; one follow-up filed
+
+- Steps 1-13 and 16 all merged to main (PRs #361-#377); no goal-05 branch outstanding.
+- Step 10 evidence: plans/2026-07-28-step10-acceptance.md. Step 14 spec:
+  plans/specs/2026-07-28-step14.md; worktree/branch already created.
+- [ ] **Follow-up: `.claude/references` is never created in a worktree.** `setup.sh:154`
+  hardcodes `$HOME/.dotfiles/.claude/references`, so only the main checkout gets the symlink
+  even though its target is relative. Three skills read the `.claude/` path and silently miss
+  the Definition of Done in any worktree: `ai/skills/stack-ship/SKILL.md:50`,
+  `ai/skills/cap/step-04.md:10`, `ai/skills/cap/step-oneshot.md:122`. Pre-existing since
+  Step 2 — not caused by, and deliberately not folded into, Step 14.
