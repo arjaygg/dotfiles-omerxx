@@ -18,6 +18,17 @@
     "chrome-devtools": {
       "command": "chrome-devtools-mcp-wrapper.sh",
       "args": []
+    },
+    "lean-ctx": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"
+      ],
+      "env": {
+        "LEAN_CTX_CACHE_TTL": "300",
+        "RUST_LOG": "error"
+      }
     }
   }
 }

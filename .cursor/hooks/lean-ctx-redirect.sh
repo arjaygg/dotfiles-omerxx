@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-# lean-ctx hook — all native tools pass through
-exit 0
+set -euo pipefail
+exec "$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh" hook redirect

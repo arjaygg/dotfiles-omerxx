@@ -1,9 +1,28 @@
 {
   "version": 1,
   "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "bash \"$HOME/.dotfiles/.cursor/hooks/lean-ctx-rewrite.sh\""
+      },
+      {
+        "command": "bash \"$HOME/.dotfiles/.cursor/hooks/context-file-gate.sh\""
+      }
+    ],
+    "beforeReadFile": [
+      {
+        "command": "bash \"$HOME/.dotfiles/.cursor/hooks/context-file-gate.sh\""
+      },
+      {
+        "command": "bash \"$HOME/.dotfiles/.cursor/hooks/lean-ctx-redirect.sh\""
+      }
+    ],
     "postToolUse": [
       {
-        "command": ".cursor/hooks/advisor-escalate.sh"
+        "command": "bash \"$HOME/.dotfiles/.cursor/hooks/advisor-escalate.sh\""
+      },
+      {
+        "command": "bash \"$HOME/.dotfiles/.cursor/hooks/context-observe.sh\""
       }
     ]
   }

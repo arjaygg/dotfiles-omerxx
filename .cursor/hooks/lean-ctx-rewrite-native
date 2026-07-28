@@ -1,2 +1,2 @@
 #!/bin/sh
-exec "/Users/axos-agallentes/.cargo/bin/lean-ctx" hook rewrite
+exec "$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh" hook rewrite
