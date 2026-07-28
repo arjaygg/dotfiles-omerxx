@@ -646,3 +646,38 @@ Executing `plans/2026-07-07-ai-harness-improvement-proposal.md` per user "go" (P
       `ecacd06`, so those fixes do not cover this path. The remote squash-merge succeeds, then
       the local branch delete fails and the stack update is skipped. Workaround: verify with
       `gh pr view <n> --json state` and run sync/clean separately.
+
+## 2026-07-28 — Session close-out: stack tooling, settings sanitation, Step 17, ci-watch
+
+- [x] **#388 — `clean-stack.sh` worktree resolution + force-delete guard.** Cleaning a `docs/`
+      branch crashed with `HOOK CRASH ... git branch -D`. Two defects in sequence: the worktree path
+      was rebuilt from the branch name using a prefix list that disagrees with `stack create`, so
+      removal was skipped and the branch stayed checked out; then #384's bare `git branch -D` under
+      `set -e` aborted the run. Resolution now comes from `git worktree list --porcelain`; both
+      force-delete sites route through a guard that warns. Both new tests fail against the old
+      script and pass against the fix, verified by swapping the script under one suite.
+- [x] **#391 — `$HOME` normalised in staged `settings.json`.** Root cause of the recurring path
+      drift is `lean-ctx doctor --fix`, reproduced directly. Writing the entry differently does not
+      survive: it re-absolutises from `$HOME/...` and from a bare `lean-ctx hook <name>` alike.
+      Also fixed `install.sh` running the rejected `init --global`.
+- [x] **#393 — machine-local-only keys stripped from the commit.** `skipDangerousModePermissionPrompt`
+      is a deliberate local default living in the gitignored `settings.local.json`; only the tracked
+      copy is a problem. Verified live with both drift kinds injected: staged blob had neither, valid
+      JSON, working copy untouched. Suite 300/300.
+- [x] **#392 — Step 17 (Tier 4 input sensitivity)** merged and Coordinator-verified.
+- [x] **#335 — `ci-watch` headSha filter.** Reviewed a 11-day-old PR and found its fix could never
+      have executed: `gh run list` has no `--arg` flag, and the call swallowed stderr, so `NOW` was
+      always empty and the new empty-guard would have spun silently for all 30 polls and reported a
+      bare TIMEOUT every time — worse than the stale-verdict bug it targeted. Fixed by binding the
+      SHA through real `jq`, and stopped swallowing stderr so a failed query is distinguishable from
+      "no run yet". Verified against live GitHub data.
+- [ ] **Open — `doctor --fix` has a wider blast radius than `.claude/settings.json`.** It also
+      rewrites `.cursor/rules/lean-ctx.mdc`, `.windsurf/mcp_config.json` and `opencode/opencode.json`
+      (injecting an MCP block and a `permission: bash deny` section into the last). User does not use
+      windsurf/opencode, so ignored by decision — but those files stay tracked and will keep showing
+      dirty. Note `opencode/opencode.json` is also invalid JSON (trailing comma) and nothing
+      validates it.
+- [ ] **Open — 89 stale merged branch refs.** They only look ahead of `main` because rebase-merges
+      rewrote their commits; content is on `main`. Safe to delete, and doing so makes a branch survey
+      readable.
+- [ ] **Open — Charcoal "0 of 51 PR bases synced"**, untouched by any of today's fixes.
