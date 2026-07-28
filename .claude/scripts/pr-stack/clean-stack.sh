@@ -70,7 +70,31 @@ fi
 # worktree's own root, producing a bogus nested .trees/<name>/.trees/<name>
 # path and silently skipping worktree removal.
 REPO_ROOT=$(cd "$(git rev-parse --git-common-dir 2>/dev/null || echo .git)/.." && pwd)
-WORKTREE_PATH="$REPO_ROOT/.trees/$WINDOW_NAME"
+
+# Ask git which worktree has this branch checked out rather than rebuilding the
+# path from the branch name. WINDOW_NAME strips a fixed prefix list
+# (feature|feat|bugfix|fix|hotfix|release|chore) while `stack create` sanitizes
+# by removing the slash, so any other prefix — docs/, test/, perf/, ci/ — yielded
+# `.trees/docs/<name>`, which never exists. Worktree removal was then skipped
+# silently and the branch was still checked out when the delete ran.
+WORKTREE_PATH=""
+_wt=""
+while IFS= read -r _line; do
+    case "$_line" in
+        "worktree "*) _wt="${_line#worktree }" ;;
+        "branch refs/heads/"*)
+            if [ "${_line#branch refs/heads/}" = "$BRANCH" ]; then
+                WORKTREE_PATH="$_wt"
+                break
+            fi
+            ;;
+    esac
+done < <(git worktree list --porcelain 2>/dev/null)
+
+# Fall back to the derived path for a directory git no longer tracks as a worktree.
+if [ -z "$WORKTREE_PATH" ]; then
+    WORKTREE_PATH="$REPO_ROOT/.trees/$WINDOW_NAME"
+fi
 
 if [ -d "$WORKTREE_PATH" ]; then
     if [ "$FORCE" = false ]; then
@@ -116,15 +140,26 @@ branch_content_landed() {
     git diff --quiet "$branch" "$base" 2>/dev/null
 }
 
+# `git branch -D` still fails when the branch is checked out in a worktree, and
+# this script runs under `set -e` with an ERR trap — an unguarded call turns a
+# recoverable condition into "HOOK CRASH". Report what git said and let the run
+# finish; the caller can rerun after removing the worktree.
+force_delete_branch() {
+    local reason="$1" err
+    if err=$(git branch -D "$BRANCH" 2>&1); then
+        print_info "Deleted local branch: $BRANCH ($reason)"
+    else
+        print_warning "Could not delete $BRANCH ($reason): ${err%%$'\n'*}"
+    fi
+}
+
 if git branch --list "$BRANCH" | grep -q "$BRANCH"; then
     if git branch -d "$BRANCH" 2>/dev/null; then
         print_info "Deleted local branch: $BRANCH"
     elif [ "$FORCE" = true ]; then
-        git branch -D "$BRANCH"
-        print_info "Deleted local branch: $BRANCH (forced)"
+        force_delete_branch "forced"
     elif branch_content_landed "$BRANCH" "$DEFAULT_BRANCH"; then
-        git branch -D "$BRANCH"
-        print_info "Deleted local branch: $BRANCH (rebase/squash-merged into $DEFAULT_BRANCH)"
+        force_delete_branch "rebase/squash-merged into $DEFAULT_BRANCH"
     else
         print_warning "Branch not fully merged; use --force to delete anyway"
     fi
