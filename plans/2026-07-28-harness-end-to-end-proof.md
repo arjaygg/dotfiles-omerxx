@@ -101,3 +101,51 @@ refuse to create a file outside it.
 **Until this is fixed, `orchestrate.js` should only be run from the main checkout**, and Part VIII's
 ladder should not credit any autonomy to a path whose terminal-status guarantee silently writes to
 the wrong tree.
+
+---
+
+## Fix applied and verified (same day)
+
+**Chosen approach:** `args.root` + a confinement clause on every writing prompt.
+
+- `ROOT` comes from `args.root`; `atRoot(rel)` prefixes it. Every path that reaches a stage prompt
+  now goes through it — `haltPathFor()`, `specPath`, `patch_file`, and `DOD_PATH`. Omitting
+  `args.root` preserves the old relative behaviour, which is correct only from the main checkout.
+- `CONFINE` is appended to both writing prompts (`halt`, `mark_running`): *the path is absolute and
+  final, write only to it, do not create anything outside ROOT, report `written:false` and stop
+  rather than creating the file elsewhere or "finding" a similar file in another checkout.* The
+  create-if-absent instruction is what converted a wrong cwd into a wrong-tree write, so the refusal
+  had to be explicit rather than implied by the path.
+
+**Re-run with the fix** (`wf_8ed52c3a-6fe`, same spec, spec reset to `status: draft` first):
+
+| | Before (`wf_48902af9-8a4`) | After (`wf_8ed52c3a-6fe`) |
+|---|---|---|
+| `mark_running` target | worktree (by accident) | worktree |
+| `implement` target | worktree | worktree |
+| **`halt` target** | **`<main>/plans/specs/…` — new 11-line file** | **`<worktree>/plans/specs/…` — updated in place** |
+| Worktree spec final state | `status: running`, never updated | `status: blocked` + condition |
+| Body preserved | n/a (wrote a new file) | yes — 66 lines, `intent-contract` intact |
+| Stray file on `main` | yes | **no** |
+| `terminal_status_written` | `true` (false claim) | `true` (accurate) |
+
+The false-crash-signature problem is gone: the spec now ends at `blocked` with its condition, so the
+next run reads a completed-and-blocked run correctly instead of inferring a kill.
+
+**Regression tests** (`scripts/test_orchestrate_workflow.py`, 37 passing): every `SPEC_DIR`/`DOD_PATH`
+interpolation must go through `atRoot()`, and both writing prompts must carry `${CONFINE}` including
+the `report written:false` refusal. A future un-anchored path fails the suite.
+
+### Still open, deliberately
+
+- **Nothing forces callers to pass `args.root`.** Omitting it silently restores the old behaviour.
+  A stricter version would refuse to run from a non-main cwd without a root, but the script cannot
+  see its own location, so it cannot detect that today. Option (3) from above — a runtime affordance
+  giving a script its own path — remains the durable fix.
+- **The undated `plans/specs/<label>.md` convention still conflicts with the hook.** The workaround
+  is to date the *label*. `plans/specs/TEMPLATE.md` should say so, or `haltPathFor()` should insert
+  the date itself.
+- Triage produced different-but-valid findings across the two runs (`intent_gap`×2 then
+  `bad_spec`×2 — the doubt lens critiqued this very document's claims). Both correctly halted for a
+  human. Non-determinism across runs is expected of an LLM stage and is not a defect, but it does
+  mean a single green run is not evidence of a stable contract.
