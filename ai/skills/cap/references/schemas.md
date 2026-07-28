@@ -124,22 +124,38 @@ Returned by each Hawk dimension agent (Phase 6). One per dimension.
   "findings": [
     {
       "lens": "correctness|security|resilience|style|doubt",
-      "category": "architecture|quality|resilience|security",
-      "file": "pkg/scheduler/handler.go",
-      "line": 42,
-      "description": "Brief description of the issue",
-      "fix": "Concrete actionable fix",
-      "confidence": 0.85
+      "location": "pkg/scheduler/handler.go:42-48",
+      "trigger_condition": "the problem, or the condition exposing it, in one line",
+      "guard_snippet": "the concrete fix, guard, or missing check",
+      "potential_consequence": "what goes wrong if it ships as-is"
     }
   ]
 }
 ```
 
 Required: `dimension`, `findings`
-Each finding requires: `lens`, `category`, `file`, `line`, `description`, `fix`, `confidence`
+Each finding requires: `lens`, `location`, `trigger_condition`, `guard_snippet`,
+`potential_consequence` — plus any field the producing lens declares for itself.
 
-No ranking, priority, or triage-order field on a finding — the producing lens does not rank
-its own findings; the Coordinator triages (see `ai/skills/lensed-review`).
+| Field | Meaning |
+|---|---|
+| `lens` | the code of the lens that produced it — the dedupe rule needs it |
+| `location` | `file:line-range` for code, section for documents |
+| `trigger_condition` | the problem, or the condition exposing it, in one line |
+| `guard_snippet` | the concrete fix, guard, or missing check |
+| `potential_consequence` | what goes wrong if it ships as-is |
+
+No ranking, priority, `severity`, or triage-order field on a finding — the producing lens does
+not rank its own findings; the Coordinator triages (see `ai/skills/lensed-review`). A reviewer
+sees one artifact through one lens, and severity is a function of consequence *for the
+artifact's consumer*, which only the Coordinator knows.
+
+**Dedupe only findings with the same claim *and* the same required action.** Then evaluate each
+survivor independently — do not reject a finding because a related finding was rejected. Overlap
+between lenses is signal, not noise.
+
+This shape is enforced in `.claude/workflows/orchestrate.js` (`FINDING_SCHEMA`) and asserted by
+`scripts/test_orchestrate_workflow.py`. The three move together — a rename here breaks both.
 
 ---
 

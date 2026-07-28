@@ -169,6 +169,30 @@ already writes to, modeled on `stack-ship`'s own `.stack-ship/log.jsonl`
 schema (timestamp, actor, action, hashes). Reuse that file; do not create a
 second log.
 
+## Terminal Status (HALT)
+
+This skill runs unattended, so **every leg that can stop writes a terminal status before
+stopping** — there is nobody to read a chat message, and a leg that ends without one is
+indistinguishable from a crash. That includes the boring exits: a refused leg, a
+degrade-to-confirm, a D3a identity failure, and `split_needed`.
+
+The definition lives in `plans/2026-07-27-native-agent-orchestration.md` §15 and is implemented
+in `.claude/workflows/orchestrate.js` (`halt()`). Do not restate the rules here — reuse them.
+The minimum payload is `status` (`done`|`blocked`), the blocking condition in one line, and the
+artifact path.
+
+Where it goes: the existing audit trail, `.claude/pipeline-log.jsonl`. Do not create a second
+log — the status is one more entry in the file this skill already appends to, so a resumed run
+finds it by reading what it already reads.
+
+Degenerate cases get their own deterministic filename rather than a third name that could
+collide with either candidate: an unresolvable branch or PR id lands at `<id>-unresolved.md`, an
+ambiguous match at `<id>-ambiguous.md`.
+
+A `done` status that could not be persisted is **not** reportable as success. If the write
+fails, the leg is `blocked` — the run finished but cannot prove it, which is the same thing to
+whoever picks it up next.
+
 ## Rollback Runbook (D6 point 3)
 
 No new tooling — recovery uses existing primitives, keyed off the audit
@@ -211,6 +235,7 @@ log's recorded hashes:
 - [ ] Identity was asserted via `gh api user` immediately before any Tier 2 action (evidence: command output timestamp near the ship action).
 - [ ] A dry-run preceded the first-ever execution of a newly-enabled tier (evidence: audit trail entry for the dry-run).
 - [ ] Every entry above A2 has a corresponding explicit user-confirmation record in the audit trail (evidence: audit log line).
+- [ ] Every leg that stopped — including refusals, degrade-to-confirm, and identity failures — wrote a terminal status to `.claude/pipeline-log.jsonl` (evidence: the status entry, quoted, with its `status` and condition).
 
 ## Related
 
@@ -221,4 +246,5 @@ log's recorded hashes:
   responds to (detection only, never executes a leg itself)
 - `scripts/ai/pipeline-status.sh`, `scripts/ai/validate-changeset.sh`
 - `plans/2026-07-25-agentic-git-pipeline.md` — full design (D1-D7)
+- `plans/2026-07-27-native-agent-orchestration.md` §15 — the terminal-status (HALT) definition this skill reuses
 - `ai/rules/hyper-atomic-commits.md` — canonical commit wrapper discipline
