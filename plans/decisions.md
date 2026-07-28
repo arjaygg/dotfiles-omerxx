@@ -661,3 +661,51 @@ Also fixed alongside: `ai/skills/lean-ctx/scripts/install.sh` ran `lean-ctx init
 `decisions/0004-lean-ctx-pctx-upstream.md` rejects (shell-hook double compression with rtk). Now
 `--agent`. Not the trigger for today's drift — `main()` exits early when lean-ctx is already
 installed — but it would have violated the decision record on a fresh machine.
+
+## 2026-07-28 — Resolve a worktree from git, not by rebuilding its path from the branch name
+
+**Decision:** `clean-stack.sh` finds the worktree via `git worktree list --porcelain`, matching on
+the branch, instead of reconstructing `.trees/<name>` from the branch name. The derived path stays
+only as a fallback for a directory git no longer tracks.
+
+**Why:** `WINDOW_NAME` stripped a fixed prefix list (`feature|feat|bugfix|fix|hotfix|release|chore`)
+while `stack create` sanitises by removing the slash. The two agree only for prefixes on that list,
+so `docs/goal05-step14-checkpoint` had the script looking in `.trees/docs/goal05-step14-checkpoint`
+while the worktree was at `.trees/docsgoal05-step14-checkpoint`. Worktree removal was skipped
+silently, leaving the branch checked out — and the delete then aborted the whole script with
+`HOOK CRASH`, because #384 had added a bare `git branch -D` under `set -e` plus an ERR trap. That
+bare call was my regression: before it, the same state fell through to a harmless warning.
+
+**Alternatives rejected:** extending the prefix list — it would drift again the moment a new
+conventional-commit type is used, and it does not fix the underlying disagreement between the two
+naming schemes. Asking git is authoritative and immune to both.
+
+**Assumptions:** every force-delete now routes through `force_delete_branch()`, which captures
+git's message and warns instead of aborting. `git branch -D` still legitimately fails when the
+branch is checked out elsewhere (locked or stale worktree), so the guard is defence in depth rather
+than dead code.
+
+---
+
+## 2026-07-28 — Strip machine-local-only settings keys from the commit, not from the machine
+
+**Decision:** `sanitize-staged-settings.sh` (renamed from `normalize-settings-paths.sh`) now runs a
+second pass that removes keys in `LOCAL_ONLY_KEYS` — currently just
+`skipDangerousModePermissionPrompt` — from the **staged** `.claude/settings.json`.
+
+**Why:** bypass-permissions-on is a deliberate local default on this machine. It already lives in
+`.claude/settings.local.json`, which is gitignored and takes precedence, so the runtime keeps it
+regardless of the tracked file. The only real problem is that Claude Code *also* writes the key into
+`~/.claude/settings.json`, a symlink into this repo, so a legitimate local preference kept arriving
+in a published file where `test_tracked_settings_do_not_enable_dangerous_mode_bypass` rejects it.
+Stripping it from the commit is therefore lossless — nothing about local behaviour changes.
+
+**Alternatives rejected:** arguing the default down — it is the user's choice and not a defect.
+Weakening the boundary test — it exists to keep exactly this out of a public repo. Re-serialising
+the JSON to drop the key — `json.dump` would reformat all ~580 lines and bury the real change, so
+the key's line is removed textually and the result re-parsed, with a dangling comma repaired if the
+key was the last member of its object.
+
+**Assumptions:** `.claude/settings.local.json` stays gitignored and higher-precedence — both are
+already pinned by `test_machine_local_settings_overlay_is_not_tracked`. If a future local-only key
+appears, adding it to `LOCAL_ONLY_KEYS` is the whole change.
