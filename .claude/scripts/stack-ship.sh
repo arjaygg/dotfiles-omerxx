@@ -17,6 +17,18 @@ TARGET_BRANCH=""
 LOG_DIR=".stack-ship"
 LOG_FILE="$LOG_DIR/log.jsonl"
 
+# --yes exists because the confirmation below is a bare `read -p`, which blocks forever with no
+# TTY. That made every non-interactive caller hang: `auto-ship`, cron, and any agent run. Found by
+# hanging on it (plans/2026-07-28-harness-end-to-end-proof.md records the session).
+#
+# It is NOT a convenience flag, and `auto-ship` must never pass it. The prompt IS the A2 checkpoint
+# for an irreversible action: Part VIII caps auto_ship/auto_clean at A2 = "human approves at planned
+# checkpoints", so bypassing the prompt unattended would put the leg above its own cap. --yes is for
+# a run a human has ALREADY authorised out-of-band, which is why it demands --reason and records it
+# in the audit log — a bypass must never be anonymous.
+ASSUME_YES=0
+YES_REASON=""
+
 # Helper functions
 # NOTE: log_* helpers write to stderr, not stdout. Several functions below
 # (e.g. build_graph) call these for progress output while also returning
@@ -49,6 +61,14 @@ parse_args() {
         ;;
       --branch)
         TARGET_BRANCH="$2"
+        shift 2
+        ;;
+      --yes|-y)
+        ASSUME_YES=1
+        shift
+        ;;
+      --reason)
+        YES_REASON="$2"
         shift 2
         ;;
       *)
@@ -92,28 +112,22 @@ build_graph() {
 
   log_info "Building dependency graph..."
 
-  # Find parent branch (first ancestor that is tracked or main)
-  local parent="main"
-  if git rev-parse "origin/$target" >/dev/null 2>&1; then
-    # Use git merge-base to find common ancestor
-    parent=$(git merge-base "$target" main)
-    # If merge-base is the same as target, parent is main
-    if [[ "$parent" == "$(git rev-parse "$target")" ]]; then
-      parent="main"
-    else
-      # Find which tracked branch this merge-base corresponds to
-      for branch in $(git branch -r --format='%(refname:short)'); do
-        if git rev-parse --verify "$branch" >/dev/null 2>&1; then
-          if [[ "$(git rev-parse "$branch")" == "$parent" ]]; then
-            parent="${branch#origin/}"
-            break
-          fi
-        fi
-      done
-    fi
+  # The merge target is whatever the PR says its base is — `gh pr merge` takes no --base, so the
+  # PR is the authority. Ask it directly.
+  #
+  # The previous implementation guessed: it took `git merge-base "$target" main`, then scanned every
+  # remote ref for one whose SHA matched, and used that name. That reported "Parent branch: origin"
+  # and printed a merge plan reading "→ origin" for a PR whose base was `main`. Harmless to the merge
+  # itself, but a dry-run exists precisely to show the plan before an irreversible action, so a
+  # mislabelled target defeats the check it is there to provide.
+  local parent
+  parent=$(gh pr view "$target" --json baseRefName -q .baseRefName 2>/dev/null || echo "")
+  if [[ -z "$parent" || "$parent" == "null" ]]; then
+    parent="main"
+    log_warning "Could not read the PR base for '$target'; assuming '$parent'"
   fi
 
-  log_success "Parent branch: $parent"
+  log_success "Parent branch: $parent (from the PR base — this is the real merge target)"
 
   # Find dependents: branches that have $target as ancestor
   local dependents=""
@@ -180,10 +194,21 @@ merge_branch() {
       # Log success
       mkdir -p "$LOG_DIR"
       local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-      local log_entry=$(cat <<EOF
-{"timestamp": "$timestamp", "operation": "merge", "branch": "$source_branch", "merged_into": "$target_branch", "hash_before": "$hash_before", "hash_after": "$hash_after", "status": "success", "actor": "$USER"}
-EOF
-)
+      # confirmed_by / bypass_reason make an A2-checkpoint bypass attributable after the fact. A
+      # merge that skipped the prompt must never be indistinguishable from one a human approved.
+      local confirmed_by="prompt"
+      local bypass_reason=""
+      if [[ "$ASSUME_YES" == "1" ]]; then
+        confirmed_by="--yes"
+        bypass_reason="$YES_REASON"
+      fi
+      local log_entry
+      log_entry=$(jq -nc \
+        --arg ts "$timestamp" --arg branch "$source_branch" --arg into "$target_branch" \
+        --arg hb "$hash_before" --arg ha "$hash_after" --arg actor "${USER:-unknown}" \
+        --arg confirmed_by "$confirmed_by" --arg bypass_reason "$bypass_reason" \
+        '{timestamp:$ts, operation:"merge", branch:$branch, merged_into:$into, hash_before:$hb, hash_after:$ha, status:"success", actor:$actor, confirmed_by:$confirmed_by, bypass_reason:$bypass_reason}' \
+        2>/dev/null) || log_entry="{\"timestamp\": \"$timestamp\", \"operation\": \"merge\", \"branch\": \"$source_branch\", \"merged_into\": \"$target_branch\", \"hash_before\": \"$hash_before\", \"hash_after\": \"$hash_after\", \"status\": \"success\", \"actor\": \"$USER\", \"confirmed_by\": \"$confirmed_by\", \"bypass_reason\": \"$bypass_reason\"}"
       echo "$log_entry" >> "$LOG_FILE"
       log_success "Merged $source_branch → $target_branch"
       # The --delete-branch failure described above is expected in this repo's
@@ -302,11 +327,29 @@ main() {
 
   echo ""
   log_warning "This will execute the merge plan above"
-  read -p "Continue? (y/n) " -n 1 -r
-  echo
-  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    log_warning "Cancelled"
-    exit 0
+  if [[ "$ASSUME_YES" == "1" ]]; then
+    if [[ -z "$YES_REASON" ]]; then
+      log_error "--yes requires --reason \"<who authorised this and when>\"."
+      log_error "The prompt being bypassed is the A2 checkpoint for an irreversible action, so the"
+      log_error "bypass has to be attributable. Re-run with --reason, or drop --yes."
+      exit 1
+    fi
+    log_warning "Confirmation bypassed via --yes: ${YES_REASON}"
+  elif [[ ! -t 0 ]]; then
+    # Fail loudly instead of blocking forever on a read that nobody can answer. Before this, a
+    # non-interactive caller hung indefinitely with the merge plan printed and no indication why.
+    log_error "No TTY: the confirmation prompt cannot be answered."
+    log_error "For a run a human has already authorised, pass --yes --reason \"<authorisation>\"."
+    log_error "auto-ship must NOT do this — the prompt is the A2 checkpoint and auto_ship is capped"
+    log_error "at A2 (see ai/rules/agent-user-global.md, Autonomy Tiers)."
+    exit 1
+  else
+    read -p "Continue? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      log_warning "Cancelled"
+      exit 0
+    fi
   fi
 
   # Execute merge
