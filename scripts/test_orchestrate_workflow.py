@@ -1,10 +1,12 @@
-"""Static gates for .claude/workflows/orchestrate.js (Goal 05 Step 14).
+"""Static gates for .claude/workflows/orchestrate.js (Goal 05 Steps 14 and 15).
 
-The live check is `Workflow({scriptPath, args:{dryRun:true}})`, which cannot run from
-Python. These tests pin the invariants that make that run safe and repeatable: the
-pre-tool-gate SECTION 8 fan-out cap, the meta literal, schema+label on every subagent
-call, null guards, reviewer input isolation, logged caps, and the absence of any
-unattended-mode construct (Step 15's scope).
+The live check is `Workflow({scriptPath, args:{dryRun:true, ...}})`, which cannot run from
+Python — the acceptance fixtures are driven entirely through `args` and their results are
+recorded in the PR body. These tests pin the invariants that make those runs safe and
+repeatable: the pre-tool-gate SECTION 8 fan-out cap, the meta literal, schema+label on every
+subagent call, null guards, reviewer input isolation, logged caps, the absence of any
+backgrounding construct, and — for Step 15 — the finding contract, the triage taxonomy with its
+scope-authority rule, the three persisted loop bounds, and the HALT paths.
 """
 
 from pathlib import Path
@@ -14,17 +16,32 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / ".claude/workflows/orchestrate.js"
+SCHEMAS = ROOT / "ai/skills/cap/references/schemas.md"
+AUTO_SHIP = ROOT / "ai/skills/auto-ship/SKILL.md"
 GATE = ROOT / ".claude/hooks/pre-tool-gate-v2.sh"
 
 # Same regex pre-tool-gate-v2.sh SECTION 8 uses to count literal subagent call sites.
 AGENT_CALL_RE = re.compile(r"(^|[^A-Za-z0-9_])agent\s*\(")
 MAX_AGENT_CALL_SITES = 3
 
+# The plan's §20 finding contract. These names are shared by orchestrate.js's FINDING_SCHEMA
+# and schemas.md's REVIEW_SCHEMA; the two must not drift apart.
+FINDING_FIELDS = ("lens", "location", "trigger_condition", "guard_snippet", "potential_consequence")
+
+# §23 taxonomy and §24 bounds.
+CATEGORIES = ("intent_gap", "bad_spec", "patch", "defer", "reject")
+BOUNDS = {"retry_count": 3, "doubt_cycle_iteration": 3, "review_loop_iteration": 5}
+
 
 class OrchestrateWorkflowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.text = SCRIPT.read_text(encoding="utf-8")
+        cls.code = "\n".join(
+            line for line in cls.text.splitlines() if not line.lstrip().startswith("//")
+        )
+
+    # ----------------------------------------------------------- Step 14 invariants
 
     def test_script_exists(self):
         self.assertTrue(SCRIPT.is_file(), f"missing {SCRIPT}")
@@ -59,7 +76,7 @@ class OrchestrateWorkflowTests(unittest.TestCase):
     def test_meta_phases_match_phase_calls(self):
         declared = re.findall(r"title:\s*'([^']+)'", self.text)
         called = re.findall(r"phase\('([^']+)'\)", self.text)
-        self.assertEqual(declared, called)
+        self.assertEqual(declared, sorted(set(called), key=called.index))
 
     def test_every_subagent_call_passes_schema_and_label(self):
         for line in self.text.splitlines():
@@ -68,21 +85,21 @@ class OrchestrateWorkflowTests(unittest.TestCase):
                 self.assertIn("label:", line, f"no label on: {line.strip()}")
 
     def test_every_stage_result_is_null_guarded(self):
-        for name in ("impl", "review", "accept"):
+        for name in ("impl", "review", "triage", "accept"):
             self.assertIn(f"if (!{name})", self.text, f"{name} result is not null-guarded")
 
     def test_reviewer_gets_artifact_and_contract_only(self):
-        review_block = self.text.split("phase('Review')", 1)[1].split("phase('Accept')", 1)[0]
-        self.assertIn("ARTIFACT", review_block)
-        self.assertIn("CONTRACT", review_block)
-        self.assertIn("lensed-review", review_block)
+        block = self.text.split("phase('Review')", 1)[1].split("phase('Triage')", 1)[0]
+        self.assertIn("ARTIFACT", block)
+        self.assertIn("CONTRACT", block)
+        self.assertIn("lensed-review", block)
         # The worker's claim of validity must never reach the reviewer (plan §21).
-        self.assertNotIn("impl.summary", review_block)
-        self.assertNotIn("impl.valid", review_block)
-        self.assertNotIn("impl.issues", review_block)
+        self.assertNotIn("impl.summary", block)
+        self.assertNotIn("impl.valid", block)
+        self.assertNotIn("impl.issues", block)
 
     def test_review_logic_is_delegated_not_embedded(self):
-        self.assertIn("Do not embed your own review", self.text)
+        self.assertIn("Do not embed your own", self.text)
 
     def test_definition_of_done_path_is_read_and_absence_is_logged(self):
         self.assertIn("ai/references/definition-of-done.md", self.text)
@@ -98,21 +115,158 @@ class OrchestrateWorkflowTests(unittest.TestCase):
     def test_dry_run_stubs_every_stage_with_schema_shaped_fixtures(self):
         self.assertIn("args.dryRun", self.text)
         self.assertIn("if (opts.dryRun)", self.text)
-        for stage in ("implement", "review"):
+        for stage in ("implement", "review", "triage", "halt"):
             self.assertIn(f"stage === '{stage}'", self.text)
         # Fixture keys must cover each schema's required list.
         for required in re.findall(r"required: \[([^\]]+)\]", self.text):
             for key in re.findall(r"'([^']+)'", required):
                 self.assertIn(f"{key}:", self.text, f"no fixture field for required key {key}")
 
-    def test_no_unattended_mode_code(self):
-        # Comments are stripped: the header names Step 15's constructs in order to
-        # disclaim them, which is the opposite of implementing them.
-        code = "\n".join(
-            line for line in self.text.splitlines() if not line.lstrip().startswith("//")
+    def test_no_backgrounding_constructs(self):
+        # The acceptance criterion greps the whole file, so these tokens must not appear even
+        # in a comment that disclaims them.
+        for forbidden in ("run_in_background", "detached", "ScheduleWakeup", "CronCreate"):
+            self.assertNotIn(forbidden, self.text, f"{forbidden} is forbidden on unattended paths")
+
+    # ----------------------------------------------------- §20 the finding contract
+
+    def test_finding_schema_uses_the_plan_field_names(self):
+        block = self.text.split("const FINDING_SCHEMA", 1)[1].split("const REVIEW_SCHEMA", 1)[0]
+        for field in FINDING_FIELDS:
+            self.assertIn(field, block, f"FINDING_SCHEMA is missing §20 field {field}")
+        # The pre-Step-15 shape must be gone, or schemas.md and this file have drifted.
+        for stale in ("description:", "fix:"):
+            self.assertNotIn(stale, block, f"stale pre-§20 field {stale} still in FINDING_SCHEMA")
+
+    def test_schemas_md_matches_the_same_contract(self):
+        text = SCHEMAS.read_text(encoding="utf-8")
+        block = text.split("## REVIEW_SCHEMA", 1)[1].split("## VERDICT_SCHEMA", 1)[0]
+        for field in FINDING_FIELDS:
+            self.assertIn(field, block, f"schemas.md REVIEW_SCHEMA is missing §20 field {field}")
+
+    def test_no_finding_level_severity_anywhere(self):
+        # Already true before Step 15 (Step 10 removed it) — this pins it so it stays true.
+        block = (
+            SCHEMAS.read_text(encoding="utf-8")
+            .split("## REVIEW_SCHEMA", 1)[1]
+            .split("## VERDICT_SCHEMA", 1)[0]
         )
-        for forbidden in ("run_in_background", "HALT", "detached", "ScheduleWakeup", "CronCreate"):
-            self.assertNotIn(forbidden, code, f"{forbidden} is Step 15's scope")
+        self.assertNotIn('"severity"', block)
+        finding_block = self.text.split("const FINDING_SCHEMA", 1)[1].split(
+            "const REVIEW_SCHEMA", 1
+        )[0]
+        self.assertNotIn("severity", finding_block)
+
+    def test_dedupe_requires_same_claim_and_same_action(self):
+        block = self.text.split("function dedupe", 1)[1].split("\n}", 1)[0]
+        self.assertIn("trigger_condition", block)
+        self.assertIn("guard_snippet", block)
+
+    # ---------------------------------------------------------- §23 triage taxonomy
+
+    def test_all_five_categories_present(self):
+        for category in CATEGORIES:
+            self.assertIn(f"'{category}'", self.text, f"category {category} missing")
+
+    def test_scope_authority_rule_rejects_inadmissible_authorities(self):
+        block = self.text.split("function enforceScopeAuthority", 1)[1].split("\n}", 1)[0]
+        # Only the intent itself may justify an out-of-scope defer/reject.
+        self.assertIn("authority === 'intent'", block)
+        # Anything else is rerouted, and a silent intent escalates to intent_gap.
+        self.assertIn("intent_gap", block)
+        self.assertIn("bad_spec", block)
+        self.assertRegex(block, r"log\(")
+
+    def test_tie_breakers_prefer_bad_spec_and_reject(self):
+        block = self.text.split("function applyTieBreakers", 1)[1].split("\nfunction ", 1)[0]
+        self.assertIn("preferring bad_spec", block)
+        self.assertIn("preferring reject", block)
+
+    def test_cascade_moots_lower_categories(self):
+        block = self.text.split("function applyCascade", 1)[1].split("\nfunction ", 1)[0]
+        self.assertIn("intent_gap", block)
+        self.assertIn("bad_spec", block)
+        self.assertIn("moot", block)
+
+    # ------------------------------------------------------------- §24 loop bounds
+
+    def test_all_three_bounds_declared_at_the_plan_values(self):
+        block = self.text.split("const BOUNDS =", 1)[1].split("\n", 1)[0]
+        for counter, bound in BOUNDS.items():
+            self.assertRegex(
+                block,
+                rf"{counter}:\s*{bound}\b",
+                f"{counter} must be bounded at {bound} — raising a bound is the §24 failure mode",
+            )
+
+    def test_counters_are_read_from_frontmatter_not_initialised(self):
+        block = self.text.split("const counters =", 1)[1].split("\n}", 1)[0]
+        for counter in BOUNDS:
+            self.assertIn(f"fm.{counter}", block, f"{counter} must come from spec frontmatter")
+
+    def test_non_convergence_condition_is_worded_for_the_fixture(self):
+        self.assertIn("(non-convergence)", self.text)
+        self.assertIn("review repair loop exceeded", self.text)
+
+    def test_worker_outcome_states_increment_retry_count(self):
+        # A null or empty return is a failure, not a success.
+        self.assertGreaterEqual(self.code.count("counters.retry_count += 1"), 3)
+
+    def test_triage_log_records_counts_and_addressed_findings(self):
+        block = self.text.split("ctx.triageLog = {", 1)[1].split("\n  }", 1)[0]
+        for key in ("counts:", "by_severity:", "addressed_findings:"):
+            self.assertIn(key, block)
+        # A pass that fixed nothing must be visibly a pass that fixed nothing.
+        self.assertIn("'none'", self.text)
+
+    # --------------------------------------------------------------- §25 follow-up
+
+    def test_followup_signal_is_computed_from_patch_findings_only(self):
+        block = self.text.split("function followupSignal", 1)[1].split("\n}", 1)[0]
+        self.assertIn("r.category === 'patch'", block)
+        self.assertIn("3 * counts.medium + counts.low", block)
+        self.assertIn(">= 5", block)
+        for excluded in ("defer", "reject"):
+            self.assertNotIn(excluded, block, f"{excluded} findings must not feed the signal")
+
+    # -------------------------------------------------------------------- §15 HALT
+
+    def test_halt_paths_are_deterministic_per_degenerate_case(self):
+        block = self.text.split("function haltPathFor", 1)[1].split("\n}", 1)[0]
+        self.assertIn("-unresolved.md", block)
+        self.assertIn("-ambiguous.md", block)
+
+    def test_terminal_status_carries_the_minimum_payload(self):
+        block = self.text.split("async function halt(", 1)[1].split("\n}", 1)[0]
+        for key in ("status,", "condition,", "artifact:"):
+            self.assertIn(key, block, f"HALT payload is missing {key}")
+
+    def test_unpersisted_done_is_not_reported_as_ok(self):
+        block = self.text.split("async function halt(", 1)[1].split("\n}", 1)[0]
+        self.assertIn("status === 'done' && terminal.written", block)
+
+    def test_every_exit_path_goes_through_halt(self):
+        # Only `main()`'s own returns and the top-level dispatch may return; each must halt.
+        body = self.code.split("async function main()", 1)[1]
+        for match in re.finditer(r"^\s*return (?!halt\()(?!\{$)", body, re.MULTILINE):
+            line = body[match.start() : body.index("\n", match.start())].strip()
+            self.assertIn("halt(", line, f"exit path bypasses HALT: {line}")
+
+    def test_a_thrown_stage_still_reports_a_missing_status(self):
+        self.assertIn("} finally {", self.code)
+        self.assertIn("NO TERMINAL STATUS WRITTEN", self.text)
+
+    # ------------------------------------------------------------------- auto-ship
+
+    def test_auto_ship_reuses_the_halt_definition_without_restating_it(self):
+        text = AUTO_SHIP.read_text(encoding="utf-8")
+        self.assertIn("## Terminal Status (HALT)", text)
+        self.assertIn("§15", text)
+        # One log, not a second one.
+        self.assertIn(".claude/pipeline-log.jsonl", text)
+        self.assertIn("Do not create a second", text)
+        self.assertIn("-unresolved.md", text)
+        self.assertIn("-ambiguous.md", text)
 
 
 if __name__ == "__main__":
