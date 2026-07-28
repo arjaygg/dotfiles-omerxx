@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DOTFILES_ROOT="${DOTFILES_ROOT:-$HOME/.dotfiles}"
+exec /usr/bin/env python3 "$DOTFILES_ROOT/ai/context/context_gate.py" "$@"

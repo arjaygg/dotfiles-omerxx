@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": 1,
+  "rollout": {
+    "default_phase": "warn",
+    "medium": "warn",
+    "large_warn_phase": "warn",
+    "large_block_phase": "deny",
+    "huge": "deny",
+    "override_file": "${XDG_CONFIG_HOME}/context-routing/override.json"
+  },
+  "thresholds": {
+    "small_max_bytes": 16384,
+    "small_max_lines": 200,
+    "large_over_bytes": 131072,
+    "large_over_lines": 1500,
+    "huge_over_bytes": 524288,
+    "focused_limit_lines": 200,
+    "post_compression_max_tokens": 4000,
+    "cached_reread_max_tokens": 32
+  },
+  "exact_modes": [
+    "raw",
+    "full",
+    "anchored"
+  ],
+  "focused_modes": [
+    "task",
+    "reference",
+    "lines"
+  ],
+  "generated": {
+    "names": [
+      "package-lock.json",
+      "npm-shrinkwrap.json",
+      "yarn.lock",
+      "pnpm-lock.yaml",
+      "cargo.lock",
+      "poetry.lock",
+      "uv.lock",
+      "go.sum"
+    ],
+    "suffixes": [
+      ".lock",
+      ".log",
+      ".min.css",
+      ".min.js",
+      ".map",
+      ".pb.go",
+      ".generated.go"
+    ],
+    "path_parts": [
+      "dist",
+      "build",
+      "coverage",
+      "generated",
+      "vendor"
+    ]
+  },
+  "messages": {
+    "medium": "Use ctx_read(mode=\"task\"), ctx_read(mode=\"reference\"), or ctx_read(mode=\"lines:N-M\")",
+    "large": "Use ctx_compose, then ctx_read(mode=\"task\") or a focused lines/reference read",
+    "huge": "Native full read denied; use ctx_search or ctx_read(mode=\"lines:N-M\")"
+  }
+}
