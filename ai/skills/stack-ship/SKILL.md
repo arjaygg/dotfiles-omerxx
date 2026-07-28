@@ -192,5 +192,5 @@ Run: `$HOME/.dotfiles/.claude/scripts/stack-ship.sh`
 
 - RFC: `/decisions/RFC-STACK-SHIP-001.md`
 - Charcoal: `gt log`, `gt stack`
-- GitHub CLI: `gh pr merge`, `gh pr edit`, `gh run list`</replace>
+- GitHub CLI: `gh pr merge`, `gh pr edit`, `gh run list`
 
