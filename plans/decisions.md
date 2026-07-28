@@ -744,3 +744,39 @@ legs fall back to A0 with no further action needed. Discharge the debt by author
 to a new Step 19 on `pre-tool-gate-v2.sh`. And "every workflow and pipeline stage declares its tier"
 was scoped to the five legs; tiering ~75 skills and every workflow is a far larger surface than
 Step 18's declared files can hold.
+
+## 2026-07-28 — Amend unsatisfiable acceptance criteria instead of passing them vacuously
+
+**Decision.** Where a Goal 05 acceptance criterion could not be satisfied *as worded*, amend the
+plan and record why, rather than either (a) marking the box passed because the intent was met, or
+(b) contorting the repo to satisfy a literal check that measures the wrong thing.
+
+**Why.** Five criteria were unsatisfiable: a `grep -c severity` count whose only hits were the
+prose forbidding the field; "fewer >=50% collision pairs" than a baseline already at zero; "every
+discipline skill" where "discipline skill" was never defined; "exits 0" on a checker with no
+severity tiers, which silently demanded three out-of-scope behaviour changes; and "kill a run
+mid-flight" for a signal no in-process handler can catch. Passing them silently would leave the
+plan asserting checks nobody can re-run — the exact drift the goal's "re-run by the Coordinator"
+rule exists to prevent. Contorting the repo would have been worse: driving the `severity` count to
+zero means deleting the rationale that keeps the field out.
+
+**Alternatives rejected.** *Mark passed on intent* — loses the ability to re-verify later.
+*Leave unchecked* — indistinguishable from work not done, and the goal cannot close.
+
+**Precedent set.** An acceptance criterion is itself a reviewable artifact. When a check and its
+intent disagree, fix the check, in the same commit, with the evidence that showed the disagreement.
+
+## 2026-07-28 — Treat a stale lint-baseline entry as a safety defect, not hygiene
+
+**Decision.** Prune dead entries from `scripts/skill_lint_baseline.json` as a fix, with a
+before/after proof, rather than as cleanup.
+
+**Why.** The baseline suppresses by `rule:path` key. Four dead `agent-missing-tools` entries meant
+deleting `tools:` from any `cicd-*` agent passed the pre-commit hook silently — so Goal 05's
+headline anti-nesting fix (Step 1) was unenforced for four named paths while every box and PR said
+it was done. A stale exemption is not neutral; it is an invariant that has quietly stopped
+existing.
+
+**Follow-up.** The plan already says shrinking the baseline is the only permitted edit to it. Worth
+adding a strict/prune mode that *fails* when the baseline lists a key that is no longer a live
+violation, so this cannot drift again — otherwise the next fixed violation leaves the same hole.

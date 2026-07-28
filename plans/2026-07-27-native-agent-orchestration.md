@@ -825,9 +825,25 @@ as a symlink after `./setup.sh`; `config-integrity.sh` exits 0.
 **Files:** `.claude/settings.json`, `ai/config/claude/settings.base.json`,
 `.claude/hooks/teammate-quality-gate.sh`
 **Accepts:** no `matcher` key on `TaskCreated`/`TaskCompleted`; `TeammateIdle` (no matcher) and
-`SubagentStop` wired to `teammate-quality-gate.sh`; `python3 scripts/hook_config_check.py` exits 0
-with no `MATCHER_UNSUPPORTED` issues; both settings files byte-identical; a spawned worker's
-completion produces a hook log line.
+`SubagentStop` wired to `teammate-quality-gate.sh`; `python3 scripts/hook_config_check.py` reports
+**zero `MATCHER_UNSUPPORTED` (`ignored-matcher`) issues**; both settings files byte-identical *as
+committed*; a spawned worker's completion produces a hook log line.
+
+**Amended 2026-07-28 (audit).** The original clause said the checker "exits 0". It exits 1 on *any*
+issue — `return 1 if issues else 0`, no severity tiers — so "exits 0" silently demanded three
+unrelated fixes that are behaviour changes outside this step's declared files:
+`missing-mcp-tool-matcher` on `PreToolUse` (extending `pre-tool-gate-v2.sh`'s matcher to `mcp__*`
+would make the gate fire on every MCP tool call) and `parallel-handlers` on
+`WorktreeCreate`/`WorktreeRemove` (consolidating handlers changes hook execution). Each needs its
+own decision. The matcher half is now genuinely met: six dead `matcher` keys were removed from
+`Stop` (×2), `UserPromptSubmit` (×2), `WorktreeCreate` and `WorktreeRemove`, taking
+`ignored-matcher` from 6 to 0.
+Also verified in this audit: `byte-identical` means **committed** state. A `diff` against the
+working copy on `main` shows three lean-ctx `$HOME` hunks that this machine absolutizes and
+`sanitize-staged-settings.sh` strips at commit time; the invariant is enforced by
+`scripts/test_portable_config_templates.py`, not by `config-integrity.sh`. And the live-firing
+caveat recorded in `plans/decisions.md` is discharged: `/tmp/.claude-teammate-quality-gate-*.log`
+holds real `SubagentStop — worker completed.` lines, not simulated ones.
 
 ### Step 6 — Tier 1: the skill linter
 **Files:** `scripts/lib/skill_lint.py` (new), `scripts/validate_skills.py` (new),
@@ -872,12 +888,29 @@ cannot retire them.
 `ai/skills/lensed-review/lenses.toml` (new), `ai/skills/lensed-review/references/lens-*.md` (new),
 `ai/skills/REMOVALS.md`, `evals/cases/`
 **Accepts:** `lenses.toml` conforms to §22's schema — parse the TOML and confirm the five keys per
-lens, and confirm a lens with an empty `instruction` is skipped in a dry run; each reference file is
-≤90 lines and loaded only when its lens runs; findings conform to §20 including the `lens` field and
-no `severity` (`grep -c severity` in the schemas → 0); the doubt cycle exists as the adversarial
-lens, not a separate harness; superseded skills get shims pinning their current output contract plus
-ledger entries; Step 7's collision report shows fewer ≥50% pairs than the committed baseline; Step 7
-eval cases for superseded skills are migrated in the same commit.
+lens, and confirm the enabled-lens filter (non-empty `instruction`) excludes the empty-`instruction`
+lens; each reference file is ≤90 lines and loaded only when its lens runs; findings conform to §20
+including the `lens` field and **no `severity` *field*** (assert the schema's property/`required`
+list, not a word count); the doubt cycle exists as the adversarial lens, not a separate harness;
+superseded skills get shims pinning their current output contract plus ledger entries; Step 7's
+collision report shows **no NEW ≥50% pair** versus the committed baseline; Step 7 eval cases for
+superseded skills are migrated in the same commit.
+
+**Amended 2026-07-28 (audit).** Three clauses were unsatisfiable as originally worded:
+- *`grep -c severity` in the schemas → 0.* The count is 2, and both hits are the prose that
+  **forbids** the field (`schemas.md:148,150`). Driving it to 0 would delete the rationale that
+  keeps the field out. The substantive requirement holds — `orchestrate.js`'s `FINDING_SCHEMA` has
+  no `severity` property and does not require one — so the check is now shape-based.
+- *"fewer ≥50% pairs than the baseline."* The committed baseline is already **zero** pairs ≥50%
+  (`| _none_ |`), so "fewer" is arithmetically impossible. Restated as "no NEW pair". Highest actual
+  similarity is `fury`↔`ironman` at 0.497, 0.003 under the warn line.
+- *"skipped in a dry run."* Nothing executable parses `lenses.toml` — the skip was prose plus an
+  LLM-graded Tier-3 expectation. Restated as the data-contract check it actually needs, covered by
+  `scripts/test_lensed_review_lenses.py`.
+
+Also noted: the eval-case-migration clause is **vacuously** satisfied — no superseded skill ever had
+an eval case, so nothing was migrated. `evals/cases/lensed-review.json` records this in a
+`_migration_note` rather than implying a migration happened.
 **Name note:** `lensed-review`, not `review` — `/review` is a Claude Code built-in.
 
 ### Step 11 — Customization layer *(after 10)*
@@ -933,16 +966,52 @@ basis is the spec's own scope language (must route `bad_spec`, not `defer`); the
 persist in spec frontmatter — set `review_loop_iteration` to 6 in a fixture and observe `blocked`
 with condition `non-convergence`; `followup_review_recommended` matches a hand-computed fixture;
 `grep -nE 'run_in_background|detached' .claude/workflows/orchestrate.js` → no match on unattended
-paths; kill a run mid-flight and confirm a terminal status file was written, including the
-unresolvable and ambiguous cases.
+paths; a run that ends without completing leaves a terminal status file, including the unresolvable
+and ambiguous cases.
+
+**Amended 2026-07-28 (audit).** The original clause said "kill a run mid-flight". Two problems, and
+the audit found the code did not satisfy either reading:
+- **A thrown stage left no artifact at all.** The `finally` block only called
+  `log('NO TERMINAL STATUS WRITTEN …')` — it never called `halt()` — while the comment above it
+  claimed "try/finally guarantees a terminal write on a thrown stage too". That claim was false.
+  Fixed: the write now lives in `catch (err)`, which unlike `finally` can distinguish "returned
+  without writing" from "threw" and can name the error; the original error is re-thrown, and a
+  failing recovery write cannot mask it.
+- **SIGKILL has no in-process handler**, which §15 already concedes, deferring to an other-side
+  detector: a spec whose frontmatter still says `running` with no terminal status is a crashed run.
+  That detector had **no producer** — nothing ever wrote `running`, `TEMPLATE.md` ships
+  `status: draft`, so an in-flight run was indistinguishable from a never-started one. Fixed by
+  `markRunning()`, called at the top of `main()` only (the bound-exceeded and bad-spec branches halt
+  without starting, so marking those `running` would invent an in-flight run).
+
+The old test asserted only that the strings `} finally {` and `NO TERMINAL STATUS WRITTEN` existed —
+both true throughout the bug's lifetime. Replaced with assertions on the `catch` body plus a guard
+against reinstating the false comment; verified by stashing the pre-fix script (3 fail before,
+35 pass after).
 
 ### Step 16 — Tier 3 and pressure cases *(after 7)*
 **Files:** `scripts/run_evals.py` (`--behavioral`), `evals/fixtures/<skill>/`, `evals/results/`
 (gitignored), `.gitignore`
 **Accepts:** the four Part VII Tier-3 properties hold — throwaway repo with committed fixture
 baseline, full-trace grading including tool calls, untrusted-fenced stdin never argv,
-JSON-validated grader output — each verified by running one behavioral case; every discipline skill
-carries a time-pressure, sunk-cost, and authority-pressure case.
+JSON-validated grader output — each verified by running one behavioral case; every **discipline
+skill** carries a time-pressure, sunk-cost, and authority-pressure case.
+
+**Discipline-skill roster (added 2026-07-28 — the term was used three times and never defined, so
+the population under test was unspecified and the criterion unfalsifiable).** A discipline skill is
+one whose value is that it makes you *follow a process you would otherwise shortcut* — so pressure
+cases test the thing it exists for. The ten with all three cases today: `checkpoint`, `ci-watch`,
+`explore`, `hyper-atomic-commits-reference`, `investigation-depth`, `model-routing`,
+`session-artifacts`, `stack-create`, `stack-pr`, `tool-routing`.
+
+Explicitly exempt: `lensed-review` — it is a *lens-dispatch* skill, and its axis of failure is input
+sensitivity, which Step 17's Tier-4 `sensitivity` block covers instead. Adding pressure cases there
+would test the wrong property.
+
+Known gap, not closed here: only 11 of ~70 skills carry any case file, so workflow-enforcing skills
+including `auto-ship`, `orchestrate`, `stack-ship` and `smart-commit` have no pressure coverage.
+`auto-ship`'s absence is the one that matters — it is the autonomy ladder's C6 debt (Part VIII), with
+`evals/cases/auto-ship.json` named as the discharge.
 
 ### Step 17 — Tier 4 input sensitivity *(after 10, 16)*
 **Files:** `scripts/run_evals.py` (`--sensitivity`), `evals/cases/lensed-review.json`,

@@ -20,11 +20,16 @@ and evidence live in plans/progress.md, not here. **Remaining: open the Step 18 
 Live consequence of Step 18 to carry forward: `auto_ship`/`auto_clean` now *resolve* to effective
 A0 (no eval evidence exists for any pipeline leg, and the A2 cap applies). Nothing consults the
 resolver yet, so behaviour is unchanged today — Step 19 turns that into enforcement and will stop
-unattended merges. Two facts found while implementing: `.claude/settings.json` and
-`settings.base.json` are **not** byte-identical (base is deliberately `$HOME`-relative) and
-`config-integrity.sh` never checks them against each other, so the goal file's "keep byte-identical"
-invariant is wrong as written; and `skipDangerousModePermissionPrompt: true` is set in both live
-settings and `settings.local.json`, which may defeat `permissions.ask` as an A2 checkpoint.
+unattended merges. Also: `skipDangerousModePermissionPrompt: true` is set in both live settings and
+`settings.local.json`, which may defeat `permissions.ask` as an A2 checkpoint — resolve before
+Step 19 relies on it.
+
+Correction (same day, self-caught): an earlier note here claimed `.claude/settings.json` and
+`settings.base.json` are not byte-identical and that nothing enforces it. **Both wrong.** As
+committed they ARE identical, and `scripts/test_portable_config_templates.py` enforces it. The
+3-hunk diff came from comparing the *dirty working copy* on `main`, which this machine absolutizes
+from `$HOME` and which `sanitize-staged-settings.sh` strips at commit time. Always compare
+committed state (`git show HEAD:<path>`) for this invariant.
 
 Carried forward from Step 15, still needs a decision:
 - The plan's §20 says schemas.md requires per-finding `severity` and Step 15 removes it. Step 10
