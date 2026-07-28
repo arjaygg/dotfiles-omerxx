@@ -524,3 +524,35 @@ Executing `plans/2026-07-07-ai-harness-improvement-proposal.md` per user "go" (P
       first user message. Raising the threshold bought headroom but did not shrink the floor.
 - [ ] **Unverified: whether the fix holds.** The threshold only applies to new sessions; confirm
       by re-measuring compaction frequency from transcript `usage` fields after a few sessions.
+
+## 2026-07-28 — Goal 05 Step 14: orchestrator skeleton (PR #383)
+
+- [x] `.claude/workflows/orchestrate.js` — first entry in that directory. Three phases
+      (Implement -> Review -> Accept). The worker stage is driven by the frozen spec at
+      `plans/specs/<label>.md`; the review stage delegates to the `lensed-review` skill and
+      passes artifact + contract only (plan §21); the acceptance stage reads
+      `ai/references/definition-of-done.md` or logs its absence.
+- [x] One literal subagent call site. Every stage funnels through a `runStage()` helper, so
+      `pre-tool-gate-v2.sh` SECTION 8's hard deny at 3 cannot fire no matter how many stages
+      are added later. That hook's regex counts comment text too — the first draft measured 4
+      because three of the matches were prose, so the token is now avoided outside the one call.
+- [x] `schema` + `label` on the call; `impl`/`review`/`accept` all null-guarded.
+- [x] The only coverage bound (`MAX_FINDINGS_TO_ACCEPTANCE = 20`) logs `CAP APPLIED` with the
+      dropped count before slicing (§3: log every cap).
+- [x] Verified by dry run, 0 agents spawned, both DoD paths exercised:
+      `args:{dryRun:true}` -> `{"ok":true,"dodFound":true,"unmet":[]}`;
+      `args:{dryRun:true,dodMissing:true}` -> `{"ok":false,"dodFound":false,"unmet":["definition-of-done.md not found"]}`.
+- [x] `scripts/test_orchestrate_workflow.py` — 13 tests pinning the invariants the dry run
+      depends on. **Deviation:** the plan's Files list for Step 14 names no test; this follows
+      repo convention (`unittest`, matching the 27 existing `scripts/test_*.py`) and is flagged
+      in the PR body rather than silently expanding the Files list.
+- [x] Gates: `validate_skills.py` no new violations; `run_evals.py --summary` rank1 0.8182
+      (floor 0.80), 0 collisions; new suite 13/13.
+- No unattended-mode code — no `run_in_background`, no detached paths, no HALT protocol.
+      Step 15 owns those, and the next change to `ai/skills/cap/references/schemas.md`.
+- [ ] **Open, surfaced while merging #383:** `stack merge` run from inside a worktree fails with
+      `'main' is already used by worktree` *after* the merge has already gone through, so it
+      reports an error for a successful merge and skips the stack update. Re-running from
+      `~/.dotfiles` recovered it. Same run warned "Charcoal rebase encountered issues
+      (non-fatal)" and synced 0 of 51 PR bases — no dependents for Step 14, unexamined for the
+      other 34 worktrees.
