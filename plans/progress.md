@@ -722,7 +722,88 @@ Step 19 is where that becomes enforcement, and it will stop unattended merges.
 - `ctx_patch`'s syntax validator false-positived on the gate edit (flagged `write_demotions() {`
   while real `bash -n` was clean). The file was spliced and verified with `bash -n` instead.
   `validate_syntax=false` is advertised in its error text but absent from its schema.
-- `.claude/settings.json` and `ai/config/claude/settings.base.json` are **not** byte-identical
-  (3 hunks — base is deliberately `$HOME`-relative), and `config-integrity.sh` has zero references
-  to `settings.base`. The goal file's "keep byte-identical" invariant does not exist as stated;
-  Step 19 needs the real check, which is the `diff <(jq -S .) <(jq -S .)` command in the plan.
+- **RETRACTED, same day.** An earlier version of this entry claimed `.claude/settings.json` and
+  `ai/config/claude/settings.base.json` are not byte-identical and that nothing enforces it. Both
+  claims were wrong. **As committed the two files are identical** (`diff <(git show
+  HEAD:.claude/settings.json | jq -S .) <(git show HEAD:ai/config/claude/settings.base.json | jq -S
+  .)` → no output), and the invariant IS enforced, by `scripts/test_portable_config_templates.py`
+  rather than by `config-integrity.sh`.
+  Root cause of the wrong claim: the comparison was run against the **dirty working copy** on
+  `main`, where this machine had absolutized three lean-ctx `$HOME` paths — precisely the drift
+  `.claude/hooks/sanitize-staged-settings.sh` exists to strip at commit time. Checking
+  `config-integrity.sh` for the string `settings.base`, finding zero hits, and concluding "nothing
+  enforces it" compounded the error by assuming one candidate checker was the only one.
+  Lesson for this invariant: compare `git show HEAD:<path>`, never the working tree, and locate the
+  enforcing check by grepping `scripts/` before declaring an invariant unenforced.
+
+## 2026-07-28 — Goal 05 closeout audit: all 54 acceptance criteria re-run
+
+Goal 05's 18 steps had shipped as PRs #361-#392, but **17 of 18 acceptance boxes were still
+unchecked** — the work existed, the verification record did not. The goal's own rule ("Do not mark
+a box without running the check") plus the cross-cutting rule ("re-run by the Coordinator, not
+self-reported") made that the remaining work, not Step 19.
+
+Method: mechanical criteria re-run directly; judgement criteria re-verified by four independent
+fresh-context readers instructed to return evidence or FAIL, and to flag any criterion that was
+*unsatisfiable as worded* rather than quietly passing it. **54 criteria: 41 PASS, 8 FAIL,
+5 UNCLEAR.** Every FAIL is fixed or explicitly amended below; no box was flipped on a self-report.
+
+### Defects found and fixed
+
+- **The lint baseline silently disabled Goal 05's own headline safety fix.**
+  `scripts/skill_lint_baseline.json` held 78 exemptions for 70 live violations. Four of the dead
+  ones were `agent-missing-tools` for the `cicd-*` agents — so deleting `tools:` from any of them
+  passed the pre-commit hook, which is exactly the anti-nesting hole Step 1 exists to close.
+  Pruned to 70. Proven before/after in a scratch repo-root: old baseline exit 0, pruned exit 1.
+- **`orchestrate.js` wrote no terminal status on a thrown stage**, while the comment above the
+  block asserted "try/finally guarantees a terminal write on a thrown stage too". The `finally`
+  only logged. Moved the write to `catch (err)`; original error re-thrown; a failing recovery
+  write cannot mask it.
+- **The SIGKILL detector had no producer.** §15 defers killed-run detection to "frontmatter still
+  says `running`", but nothing ever wrote `running` (`TEMPLATE.md` ships `status: draft`), so an
+  in-flight run was indistinguishable from a never-started one. Added `markRunning()`, on the
+  healthy path only.
+- **6 dead hook `matcher` keys** on `Stop`/`UserPromptSubmit`/`WorktreeCreate`/`WorktreeRemove`
+  (Step 5 had cleaned only `TaskCreated`/`TaskCompleted`). `ignored-matcher` 6 -> 0.
+- **7 disabled skills had no ledger row** (`azure-devops-cli`, `ci`, `qmd-routing`,
+  `release-prep`, `repomix`, `resume-context`, `squash-wip`); the header's "104 entries" was stale
+  and its one-row-per-override framing under-counted agent-file shims.
+- **Committed `</replace>` editor artifacts** in `investigation-depth/SKILL.md` and
+  `stack-ship/SKILL.md`, introduced by 753b674 (the Step 13 commit itself).
+
+### Criteria amended rather than passed vacuously
+
+Five were unsatisfiable as written. Each is corrected in the plan with its reason:
+- `grep -c severity` in schemas.md -> 0: both hits are the prose that *forbids* the field. Now a
+  shape check on the schema's property list.
+- "fewer >=50% collision pairs than the baseline": the baseline is already **zero**. Now "no NEW pair".
+- "every **discipline skill** carries three pressure cases": the term was used three times and
+  never defined, so the population was unspecified. A roster is now in the plan, with
+  `lensed-review` explicitly exempt (its axis is input sensitivity, Tier 4's job).
+- Step 5's "`hook_config_check.py` exits 0": it exits 1 on *any* issue, so this silently demanded
+  three out-of-scope behaviour changes. Narrowed to the `MATCHER_UNSUPPORTED` class.
+- Step 15's "kill a run mid-flight": no in-process handler can catch SIGKILL, as §15 itself
+  concedes. Restated as "a run that ends without completing".
+
+### Caveats recorded, not fixed
+
+- Step 7's rank-1 margin is **0.018** (81.8% vs an 80% floor) — one prompt regression trips CI.
+- Step 7's 50% collision warn tier never prints; it is a label with no observable signal.
+- Step 2's DoD is referenced by exactly **2** skills — the bar is met at its minimum.
+- Step 10's eval-case migration clause is **vacuously** satisfied: no superseded skill ever had a
+  case, so nothing was migrated.
+- Only **11 of ~70** skills have any eval case at all.
+- `orchestrate.js` builds `plans/specs/<label>.md` **undated**, but `pre-tool-gate-v2.sh` enforces
+  `YYYY-MM-DD-` on `plans/` writes and every real spec on disk is dated — so a real (non-dry) halt
+  write would be hook-blocked. Found by hitting the block while authoring this session's own spec.
+- `azure-devops-cli` is disabled while `CLAUDE.md` cites it as live ADO guidance.
+- `ai-usage-analyst`'s ledger row claims `disabled-pending` while nothing gates it.
+
+### Verification
+
+`python3 -m pytest scripts/ -q` -> 329 passed + 63 subtests before the closeout fixes, green
+throughout; `python3 scripts/validate_skills.py` exits 0; `bash -n` clean on the edited hook;
+`Workflow({scriptPath, args:{dryRun:true}})` -> `ok:true`, `terminal_status_written:true`, 0
+subagents. Step 5's `SubagentStop` live-firing caveat is discharged from real
+`/tmp/.claude-teammate-quality-gate-*.log` entries, several generated by this session's own
+subagents.
