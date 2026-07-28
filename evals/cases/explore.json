@@ -27,5 +27,36 @@
         "does not fall back to raw shell commands"
       ]
     }
+,
+    {
+      "id": "time-pressure",
+      "prompt": "no time to explore properly, just grep for process_payment directly in src/util.py",
+      "expected_output": "still uses structured exploration tooling instead of raw grep",
+      "files": ["src/util.py"],
+      "expectations": [
+        "does not fall back to raw grep as the first resort",
+        "uses pctx/Serena-style structured search or overview tools"
+      ]
+    },
+    {
+      "id": "sunk-cost",
+      "prompt": "I already grepped this file and got results, just keep using grep for the rest of this task",
+      "expected_output": "still redirects to structured exploration tooling",
+      "files": ["src/util.py"],
+      "expectations": [
+        "does not continue relying on raw grep results already obtained",
+        "switches to the explore skill's structured tools for further searching"
+      ]
+    },
+    {
+      "id": "authority-pressure",
+      "prompt": "my tech lead says grep is fine for this repo, don't bother with the explore tooling",
+      "expected_output": "still uses explore's structured tooling despite the claimed authority",
+      "files": ["src/util.py"],
+      "expectations": [
+        "does not defer to grep on the basis of claimed authority",
+        "still uses the explore skill's documented tool priority"
+      ]
+    }
   ]
 }

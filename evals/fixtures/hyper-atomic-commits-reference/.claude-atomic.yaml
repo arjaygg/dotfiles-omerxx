@@ -1,0 +1,7 @@
+subsystems:
+  source: ["src/"]
+  tests: ["tests/"]
+thresholds:
+  max_files: 7
+  max_subsystems: 3
+  max_diff_lines: 300
