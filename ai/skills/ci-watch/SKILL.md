@@ -63,20 +63,35 @@ while [ "$POLL" -lt "$MAX_POLLS" ]; do
   POLL=$(( POLL + 1 ))
   TS=$(date '+%Y-%m-%d %H:%M:%S')
 
-  # NOTE: --json includes headSha and results are filtered to HEAD_SHA below —
-  # this is load-bearing. Without the filter, a stale run from an earlier push
-  # on the same branch can outrank the real run and produce a false verdict.
-  NOW=$(gh run list \
+  # Filtering to HEAD_SHA is load-bearing: without it, a stale run from an earlier
+  # push on the same branch can outrank the real run and produce a false verdict.
+  #
+  # `gh`'s built-in --jq takes an expression only — it has NO --arg flag — so the
+  # SHA is bound by piping gh's JSON into real jq. Passing `--arg` to gh fails with
+  # `unknown command "sha" for "gh run list"`.
+  RAW=$(gh run list \
     --repo "${REPO_SLUG}" \
     --branch "${BRANCH_NAME}" \
     --limit 5 \
-    --json databaseId,status,conclusion,url,headSha \
-    --jq --arg sha "${HEAD_SHA}" \
-      '.[] | select(.headSha == $sha) | "\(.databaseId)|\(.status)|\(.conclusion)|\(.url)"' \
-    2>/dev/null || echo "")
+    --json databaseId,status,conclusion,url,headSha 2>>"$LOG_FILE")
+  GH_RC=$?
+
+  if [ "$GH_RC" -ne 0 ]; then
+    # A failed query must not be indistinguishable from "no run yet" — otherwise a
+    # broken command spins for the full MAX_POLLS and reports a bare timeout with
+    # no cause. Record it and keep polling in case it is transient.
+    echo "${TS} [gh-error rc=${GH_RC}] poll ${POLL}; see stderr above" >> "$LOG_FILE"
+    sleep 30
+    continue
+  fi
+
+  NOW=$(printf '%s' "$RAW" | jq -r --arg sha "${HEAD_SHA}" \
+    '.[] | select(.headSha == $sha) | "\(.databaseId)|\(.status)|\(.conclusion)|\(.url)"' \
+    2>>"$LOG_FILE")
 
   if [ -z "$NOW" ]; then
-    # No run yet for this exact commit (queued/not-started) — keep polling, don't verdict on stale runs.
+    # No run for this exact commit yet (queued or not created) — keep polling
+    # rather than verdicting on another commit's run.
     sleep 30
     continue
   fi
