@@ -95,12 +95,54 @@ if ! command -v headroom &> /dev/null; then
     uv tool install "headroom-ai[proxy,code,memory]"
 fi
 
-# Retired skills (per ai/skills/REMOVALS.md ledger) must not get a .claude/skills/
-# symlink. Lookup helper used by the two .claude/skills loops below.
+# Retired skills (per ai/skills/REMOVALS.md ledger) must not get a skills symlink.
 _removals_ledger="$HOME/.dotfiles/ai/skills/REMOVALS.md"
 is_retired_skill() {
     [ -f "$_removals_ledger" ] || return 1
     grep -qE "^\| \`$1\` \| retired \|" "$_removals_ledger"
+}
+
+# Every managed skills directory. Used by both the link loops and the removal pass, so a
+# newly-retired skill cannot survive in a directory the removal pass forgot about.
+_managed_skill_dirs() {
+    printf '%s\n' \
+        "$HOME/.dotfiles/.claude/skills" \
+        "$HOME/.claude/skills" \
+        "$HOME/.codex/skills" \
+        "$HOME/.gemini/skills" \
+        "$HOME/.agents/skills"
+}
+
+# Skipping link *creation* is not enough: a skill retired after its link already existed keeps
+# that link forever. `check-skill-drift.sh --prune-stale-links` does not catch it either — it
+# removes only dangling links, and a retired skill's target is still a valid directory. So
+# retirement needs an explicit removal pass.
+#
+# Only ever unlinks symlinks. A real directory is left alone and reported, because tool-managed
+# folders (e.g. ~/.codex/skills/.system) live in these same trees and deleting one would be
+# destructive, not tidy.
+remove_retired_skill_links() {
+    [ -f "$_removals_ledger" ] || return 0
+    local name target dir removed=0
+
+    while IFS= read -r name; do
+        [ -n "$name" ] || continue
+        while IFS= read -r dir; do
+            target="$dir/$name"
+            [ -e "$target" ] || [ -L "$target" ] || continue
+            if [ -L "$target" ]; then
+                rm -f "$target" && {
+                    echo "Removed retired skill link: $target"
+                    removed=$((removed + 1))
+                }
+            else
+                echo "Retired skill '$name' is a real directory at $target — left in place (remove by hand if intended)"
+            fi
+        done < <(_managed_skill_dirs)
+    done < <(sed -nE 's/^\| `([A-Za-z0-9._-]+)` \| retired \|.*/\1/p' "$_removals_ledger")
+
+    [ "$removed" -gt 0 ] && echo "Retired-skill cleanup: removed $removed link(s)"
+    return 0
 }
 
 # Symlink all shared skills from the Unified AI Hub into an agent's user-scoped
@@ -121,6 +163,13 @@ link_skills_from_dir() {
 
         name="$(basename "$skill_dir")"
         target="$target_dir/$name"
+
+        # Without this, every run re-creates retired links via the `ln -sfn` below — the
+        # .claude/skills loops guard for this but this function did not, so ~/.codex/skills
+        # resurrected them on each setup.
+        if is_retired_skill "$name"; then
+            continue
+        fi
 
         if [ -e "$target" ] && [ ! -L "$target" ]; then
             echo "Skipping $target (exists and is not a symlink)"
@@ -243,6 +292,10 @@ if [ -f "$HOME/.dotfiles/scripts/check-skill-drift.sh" ]; then
         "$HOME/.gemini/skills" \
         "$HOME/.cursor/skills" || true
 fi
+
+# Runs AFTER every link pass, so a retired skill cannot be re-created and then survive. Ordering
+# is load-bearing: placed before the link passes it would remove links they immediately restore.
+remove_retired_skill_links
 mkdir -p "$HOME/.gemini/antigravity-cli"
 ln -sfn "$HOME/.dotfiles/.gemini/settings.json" "$HOME/.gemini/antigravity-cli/settings.json"
 
