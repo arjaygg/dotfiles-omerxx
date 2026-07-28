@@ -3,11 +3,17 @@
 ## Current (2026-07-28) — Goal 05: native agent orchestration harness
 
 goal: goals/2026-07-28-05-native-agent-orchestration-harness.md
-status: active
-focus: Step 18 done (A0-A4 tiers + resolver + gate demotion + signed re-acceptance). Needs a PR.
-  Step 18 spawned **Step 19** — pre-action enforcement of the A2 cap in pre-tool-gate-v2.sh, because
-  a Stop hook cannot precede the merge it would guard. Step 19 is NOT started and NOT authorized.
-in flight: `feature/autonomy-ladder-reconcile` (#395) — Step 18, open for review, NOT merged.
+status: complete pending merge of #395
+focus: **Goal 05 is done.** All 18 steps plus both cross-cutting criteria are verified, and every
+  acceptance box carries the evidence for its own check. The closeout audit re-ran all 54 criteria
+  (41 PASS / 8 FAIL / 5 UNCLEAR) and fixed every failure — including a lint baseline that had
+  silently disabled Step 1's own anti-nesting invariant, and an orchestrator that wrote no terminal
+  status on a thrown stage while its comment claimed it did. Five criteria were unsatisfiable as
+  worded and were amended in the plan rather than passed vacuously.
+  Next: merge #395. Then **Step 19** (pre-action A2 enforcement) — NOT started, NOT authorized, and
+  it should be preceded by resolving whether `permissions.ask` prompts at all given
+  `skipDangerousModePermissionPrompt: true` in both settings files.
+in flight: `feature/autonomy-ladder-reconcile` (#395) — Step 18 + closeout, CI green, NOT merged.
   Record `<branch> (#PR)` here at branch-create time, before any work. Three
   near-duplications on 2026-07-28 (#383/#385, #392, #387/#389) happened because this file carried
   only *merged* state, so a parallel session's open branch was invisible.
