@@ -998,9 +998,12 @@ globs subsumes its knowledge base. Prefer the general mechanism over reopening t
 
 # Appendix B — Open decisions
 
-1. **Spec path** (Step 3) — per-worker `plans/specs/<label>.md` vs single `plans/spec.md`. Blocks
-   Step 3; recommended: per-worker, required for concurrent workers.
-2. **`/tech-lead`** (Step 8) — re-enable and retrofit, or retire. Blocks Step 9's ledger entry.
+1. ~~**Spec path** (Step 3) — per-worker `plans/specs/<label>.md` vs single `plans/spec.md`.~~
+   **Decided 2026-07-28: per-worker `plans/specs/<label>.md`** (required for concurrent workers).
+   Implemented in Step 3.
+2. ~~**`/tech-lead`** (Step 8) — re-enable and retrofit, or retire.~~ **Decided 2026-07-28: retire.**
+   The skill stays disabled (both `skillOverrides` entries unchanged); no spec-handoff/gate retrofit.
+   Step 9's ledger entry for `tech-lead` records `retired` with this decision as rationale.
 3. **Autonomy flags vs ladder** (Step 18) — the repo currently runs all five pipeline flags on with
    no eval tiers built. Accepted as deliberate risk; Step 18 either closes the gap or re-accepts it
    in writing.
