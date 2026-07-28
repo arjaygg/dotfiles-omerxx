@@ -77,6 +77,15 @@ case "$GIT_DIR" in
     *) GIT_DIR="$REPO_ROOT/$GIT_DIR" ;;
 esac
 DURABLE_STATE="$GIT_DIR/pipeline-state.json"
+
+# Autonomy demotion markers go in the SHARED git dir, not $GIT_DIR. From a linked
+# worktree `--git-dir` returns .git/worktrees/<name>, and since every non-trivial
+# change in this repo is made in a worktree (stack create -> .trees/), per-worktree
+# markers would mean creating a branch silently launders every demotion. Markers gate
+# authorization, so they must be repo-wide.
+# (pipeline-state.json above keeps using $GIT_DIR: it is audit convenience that
+# "does not gate anything itself", so its per-worktree scope is harmless.)
+GIT_COMMON=$(cd "$REPO_ROOT" && cd "$(git rev-parse --git-common-dir 2>/dev/null || echo .git)" && pwd 2>/dev/null || echo "$GIT_DIR")
 mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
 
 log_decision() {
@@ -90,6 +99,78 @@ log_decision() {
         '{branch:$branch, sha:$sha, signal:$signal, decision:$decision, updated_at:$ts}' \
         > "$DURABLE_STATE" 2>/dev/null || true
 }
+
+# --- autonomy demotion writer (plan Part VIII, Step 18) ---------------------------
+# Part VIII requires demotion to be mechanical: any `blocked` outcome, failed pressure
+# case, Definition-of-Done miss, or `followup_review_recommended: true` drops a leg one
+# tier until re-earned. This is where that stops being something an agent remembers and
+# becomes a marker on disk that scripts/ai/autonomy-tier.sh reads.
+#
+# Feed: .claude/pipeline-log.jsonl -- the shared audit trail this hook already appends
+# to, and the one ai/skills/auto-ship/SKILL.md routes its per-leg terminal statuses
+# into rather than creating a second log.
+#
+# ATTRIBUTION IS EXPLICIT, NEVER INFERRED. A demotion is written only for an entry that
+# names its own `stage`. orchestrate.js's halt payload has no stage field -- its
+# `label` is a spec label, and most of its `blocked` emitters are orchestrator
+# infrastructure (a worker returning null, schema-invalid retries, an intent_gap
+# finding). Guessing a leg from those would demote a leg the failure never touched, so
+# stage-less entries are non-demoting BY CONSTRUCTION rather than by heuristic.
+#
+# REFUSALS ARE NOT DEFECTS. A leg that stopped because it lacked authorization must not
+# demote: otherwise an unattended run ratchets its own tier down every time it
+# correctly stops to ask, and only a human-committed eval report can heal it -- so the
+# leg would decay to A0 through normal, correct operation.
+#
+# The watermark matters. pipeline-log.jsonl is append-only, so without it a marker that
+# a human removed after committing evidence would be recreated from the same old entry
+# on the very next Stop. Only entries newer than the watermark are ever acted on, which
+# is what makes healing permanent.
+DEMOTABLE_STAGES="auto_commit auto_push auto_pr auto_ship auto_clean"
+NON_DEFECT_RE='needs_confirmation|awaiting_confirmation|refus|declin|degrade|not_authorized|unauthorized|permission'
+
+write_demotions() {
+    [ -f "$LOG_FILE" ] || return 0
+    command -v jq >/dev/null 2>&1 || return 0
+
+    local wmfile="$GIT_COMMON/autonomy-demote-watermark"
+    local wm=""
+    if [ -f "$wmfile" ]; then
+        wm=$(tr -d '\n' < "$wmfile" 2>/dev/null || printf '')
+    fi
+
+    local newest="$wm"
+    local line stage ts cond marker
+
+    while IFS= read -r line; do
+        [ -n "$line" ] || continue
+        stage=$(printf '%s' "$line" | jq -r 'select(.status == "blocked") | .stage // empty' 2>/dev/null || printf '')
+        [ -n "$stage" ] || continue
+        case " $DEMOTABLE_STAGES " in *" $stage "*) : ;; *) continue ;; esac
+
+        ts=$(printf '%s' "$line" | jq -r '.ts // empty' 2>/dev/null || printf '')
+        [ -n "$ts" ] || continue
+        if [ -n "$wm" ] && ! [ "$ts" \> "$wm" ]; then continue; fi
+        if [ "$ts" \> "$newest" ]; then newest="$ts"; fi
+
+        cond=$(printf '%s' "$line" | jq -r '.condition // .reason // ""' 2>/dev/null || printf '')
+        if printf '%s' "$cond" | grep -qiE "$NON_DEFECT_RE"; then continue; fi
+
+        marker="$GIT_COMMON/autonomy-demoted-$stage"
+        [ -f "$marker" ] && continue
+        jq -nc --arg s "$stage" --arg t "$ts" --arg c "$cond" --arg w "$NOW" '{stage:$s, demoted_at:$w, trigger_ts:$t, condition:$c, heal:"commit a green evals/reports/<stage>.json then rm this file"}' > "$marker" 2>/dev/null || true
+        echo "GIT-PIPELINE-GATE: demoted ${stage} one tier -- ${cond} (marker: ${marker})" >&2
+    done < "$LOG_FILE"
+
+    if [ -n "$newest" ]; then
+        printf '%s\n' "$newest" > "$wmfile" 2>/dev/null || true
+    fi
+    return 0
+}
+
+# Runs before the signal branching below: a leg can be `blocked` in the log even when
+# there is no due signal right now.
+write_demotions || true
 
 if [ "$SIGNAL" = "none" ]; then
     log_decision "allow"

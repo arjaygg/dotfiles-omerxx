@@ -178,8 +178,21 @@ degrade-to-confirm, a D3a identity failure, and `split_needed`.
 
 The definition lives in `plans/2026-07-27-native-agent-orchestration.md` §15 and is implemented
 in `.claude/workflows/orchestrate.js` (`halt()`). Do not restate the rules here — reuse them.
-The minimum payload is `status` (`done`|`blocked`), the blocking condition in one line, and the
-artifact path.
+The minimum payload is `status` (`done`|`blocked`), the blocking condition in one line, the
+artifact path, and **`stage`** — the leg the status belongs to
+(`auto_commit`/`auto_push`/`auto_pr`/`auto_ship`/`auto_clean`).
+
+`stage` is what makes autonomy demotion possible (plan Part VIII, Step 18).
+`git-pipeline-gate.sh` writes a demotion marker only for an entry that names its own stage,
+because a stage-less `blocked` cannot be attributed to a leg without guessing — and guessing
+would demote a leg the failure never touched. An entry without `stage` is therefore silently
+non-demoting: omitting it does not fail loudly, it just means the ladder never reacts.
+
+Word the condition accurately, because it decides whether the leg is demoted. A stop for
+*missing authorization* — a refusal, a degrade-to-confirm, a D3a identity failure — must read
+as such; those are matched as non-defects and never demote, precisely so that an unattended
+run does not ratchet its own tier down every time it correctly stops to ask. Only genuine
+defects should read like defects.
 
 Where it goes: the existing audit trail, `.claude/pipeline-log.jsonl`. Do not create a second
 log — the status is one more entry in the file this skill already appends to, so a resumed run
