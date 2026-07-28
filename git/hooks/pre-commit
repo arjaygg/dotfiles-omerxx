@@ -10,4 +10,5 @@ bash "$DIR/protect-main.sh"      || exit 1
 bash "$DIR/detect-private-key.sh" || exit 1
 bash "$DIR/check-large-files.sh"  || exit 1
 bash "$DIR/check-atomicity.sh"    || exit 1
+python3 "$HOME/.dotfiles/scripts/validate_skills.py" || exit 1
 python3 "$HOME/.dotfiles/scripts/run_evals.py"    || exit 1
