@@ -73,6 +73,7 @@ mkdir -p ~/.windsurf
 stow .
 
 # Specific tool setup (for things Stow might need help with or additional setup)
+ln -sfn "$HOME/.dotfiles/.codex/AGENTS.md" "$HOME/.codex/AGENTS.md"
 
 # Cursor config symlinks (explicit — ~/.cursor is a real dir, config items linked from dotfiles)
 # Runtime state (projects, plans, plugins, extensions, etc.) lives in the real dir only.
@@ -94,6 +95,30 @@ fi
 # Install headroom-ai context compression tool (idempotent)
 if ! command -v headroom &> /dev/null; then
     uv tool install "headroom-ai[proxy,code,memory]"
+fi
+
+# One persistent provider proxy; normal client sessions must not register the
+# Headroom MCP server (each registration creates a disposable Docker container).
+if command -v headroom &> /dev/null; then
+    export HEADROOM_CONTEXT_TOOL=lean-ctx
+    export HEADROOM_DISABLE_KOMPRESS=1
+    export HEADROOM_EXCLUDE_TOOLS="bash,codebase_search,ctx_call,ctx_compose,ctx_expand,ctx_glob,ctx_read,ctx_search,ctx_session,ctx_shell,ctx_tree,exec_command,glob,grep,grep_search,list_directory,list_files,listdirectory,listfiles,mcp__lean-ctx__ctx_call,mcp__lean-ctx__ctx_compose,mcp__lean-ctx__ctx_expand,mcp__lean-ctx__ctx_glob,mcp__lean-ctx__ctx_read,mcp__lean-ctx__ctx_search,mcp__lean-ctx__ctx_session,mcp__lean-ctx__ctx_shell,mcp__lean-ctx__ctx_tree,mcp__lean-ctx__shell,mcp__lean_ctx__ctx_call,mcp__lean_ctx__ctx_compose,mcp__lean_ctx__ctx_expand,mcp__lean_ctx__ctx_glob,mcp__lean_ctx__ctx_read,mcp__lean_ctx__ctx_search,mcp__lean_ctx__ctx_session,mcp__lean_ctx__ctx_shell,mcp__lean_ctx__ctx_tree,mcp__lean_ctx__shell,mcp__pctx__execute_typescript,mcp__pctx__get_function_details,mcp__pctx__list_functions,read,read_file,read_many_files,read_text_file,readfile,run_command,run_shell_command,search,search_file_content,search_files,semantic_search,shell,shell_command,view,view_file"
+    export HEADROOM_NO_SUBSCRIPTION_TRACKING=1
+    if [ -f "$HOME/.headroom/ccr_store.db" ]; then
+        python3 "$HOME/.dotfiles/scripts/headroom_hardening.py" \
+            audit-ccr "$HOME/.headroom/ccr_store.db" --delete-invalid
+    fi
+    if headroom install status >/dev/null 2>&1; then
+        headroom install restart --profile default
+    else
+        headroom install apply --preset persistent-docker --profile default --port 8787
+    fi
+    python3 "$HOME/.dotfiles/scripts/headroom_hardening.py" \
+        containers --stop-orphans >/dev/null 2>&1 || true
+    if [ -f "$HOME/.codex/config.toml" ]; then
+        python3 "$HOME/.dotfiles/scripts/headroom_hardening.py" \
+            clean-codex "$HOME/.codex/config.toml" --write
+    fi
 fi
 
 # Retired skills (per ai/skills/REMOVALS.md ledger) must not get a skills symlink.

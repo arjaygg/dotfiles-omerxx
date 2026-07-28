@@ -122,6 +122,8 @@ carapace _carapace nushell | save --force ~/.cache/carapace/init.nu
 $env.EDITOR = "nvim"
 $env.HEADROOM_CONTEXT_TOOL = "lean-ctx"
 $env.HEADROOM_NO_SUBSCRIPTION_TRACKING = "1"
+$env.HEADROOM_DISABLE_KOMPRESS = "1"
+$env.HEADROOM_EXCLUDE_TOOLS = "bash,codebase_search,ctx_call,ctx_compose,ctx_expand,ctx_glob,ctx_read,ctx_search,ctx_session,ctx_shell,ctx_tree,exec_command,glob,grep,grep_search,list_directory,list_files,listdirectory,listfiles,mcp__lean-ctx__ctx_call,mcp__lean-ctx__ctx_compose,mcp__lean-ctx__ctx_expand,mcp__lean-ctx__ctx_glob,mcp__lean-ctx__ctx_read,mcp__lean-ctx__ctx_search,mcp__lean-ctx__ctx_session,mcp__lean-ctx__ctx_shell,mcp__lean-ctx__ctx_tree,mcp__lean-ctx__shell,mcp__lean_ctx__ctx_call,mcp__lean_ctx__ctx_compose,mcp__lean_ctx__ctx_expand,mcp__lean_ctx__ctx_glob,mcp__lean_ctx__ctx_read,mcp__lean_ctx__ctx_search,mcp__lean_ctx__ctx_session,mcp__lean_ctx__ctx_shell,mcp__lean_ctx__ctx_tree,mcp__lean_ctx__shell,mcp__pctx__execute_typescript,mcp__pctx__get_function_details,mcp__pctx__list_functions,read,read_file,read_many_files,read_text_file,readfile,run_command,run_shell_command,search,search_file_content,search_files,semantic_search,shell,shell_command,view,view_file"
 $env.REF_API_KEY = "ref-e12567ea1d5b4c4bb0c8"
 
 # Supermemory (local memory engine — non-secret vars only)
