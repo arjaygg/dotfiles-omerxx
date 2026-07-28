@@ -509,3 +509,19 @@ proven in a live running session. Decision: accept the step as done with these
 caveats documented rather than block the goal on a fresh-session re-verification
 that wasn't available synchronously. Follow-up: re-verify in a new session before
 treating Step 5 as fully closed for autonomy-ladder purposes.
+
+## 2026-07-28 — Goal 05: defer the `.claude/references` worktree gap
+
+Found while preparing the Step 14 worktree: `.claude/references` is a `setup.sh`-generated,
+untracked symlink created only at `$HOME/.dotfiles/.claude/references`, so no worktree has it.
+Three skills reference that path for the standing Definition of Done and would miss it.
+
+Decision: do **not** fix it inside Step 14. Step 14's acceptance criterion is "the acceptance
+stage reads the DoD or logs its absence", which is satisfiable by resolving the tracked
+`ai/references/` path — and fixing setup.sh plus three skill files inside Step 14 is exactly the
+drive-by scope creep the frozen-spec convention exists to prevent.
+
+Fix separately, choosing one: (a) have `setup.sh` create the link per worktree, or (b) point the
+three skills at `ai/references/definition-of-done.md` directly and treat `.claude/references` as
+a convenience alias. (b) is the smaller change and removes the dependency on setup having run;
+(a) keeps one canonical path for every client. Tracked as an unchecked item in plans/progress.md.
