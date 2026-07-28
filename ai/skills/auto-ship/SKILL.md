@@ -111,6 +111,18 @@ is what makes it safe to run unattended.
 - **Single-branch ship only.** If the dependency graph has more than one
   stacked branch to merge, stop and confirm — multi-branch atomic
   `stack-ship` always confirms, regardless of flags.
+- **Never pass `--yes` to `stack-ship.sh`.** That flag bypasses the merge
+  confirmation, and **that confirmation IS the A2 checkpoint** for an
+  irreversible action. Part VIII caps `auto_ship` at A2 = "human approves at
+  planned checkpoints", so bypassing it unattended would put this leg above
+  its own cap — which no flag combination may do. `--yes` exists only for a
+  run a human has already authorised out-of-band, and it demands `--reason`
+  and records `confirmed_by`/`bypass_reason` in `.stack-ship/log.jsonl` so a
+  bypass is never anonymous.
+  Consequence to accept, not work around: with no TTY, `stack-ship.sh` now
+  **exits 1** rather than hanging on an unanswerable prompt. That is the
+  correct outcome for this leg — write the terminal status
+  (`needs_confirmation`) and stop. Do not retry with `--yes`.
 - Fire an `osascript` notification on completion (reusing `ci-watch`'s
   fire-and-forget pattern) — Tier-2 actions are the least reversible, so the
   user is pinged even if not watching the session.
