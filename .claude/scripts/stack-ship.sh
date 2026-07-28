@@ -186,8 +186,19 @@ EOF
 )
       echo "$log_entry" >> "$LOG_FILE"
       log_success "Merged $source_branch → $target_branch"
-      if [[ -n "$merge_err" ]]; then
-        log_warning "PR merged, but a post-merge step reported: $merge_err"
+      # The --delete-branch failure described above is expected in this repo's
+      # worktree layout — git refuses to delete a branch checked out elsewhere,
+      # and the default branch is permanently checked out in the primary
+      # worktree. Warning about it on every single merge trains the reader to
+      # ignore this line, so drop the known-benign text and only surface what is
+      # left. `stack clean` removes the branch and worktree afterwards.
+      local unexpected_err
+      unexpected_err=$(printf '%s\n' "$merge_err" \
+        | grep -v "is already used by worktree" \
+        | grep -v "^[[:space:]]*failed to run git:[[:space:]]*$" \
+        | grep -v "^[[:space:]]*$" || true)
+      if [[ -n "$unexpected_err" ]]; then
+        log_warning "PR merged, but a post-merge step reported: $unexpected_err"
       fi
       return 0
     else
