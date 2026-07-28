@@ -296,7 +296,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/axos-agallentes/.cargo/bin/lean-ctx hook read-dedup"
+            "command": "$HOME/.cargo/bin/lean-ctx hook read-dedup"
           }
         ]
       }
@@ -323,7 +323,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|Read|Edit|Write|MultiEdit|Grep|Glob|Agent",
+        "matcher": "Bash|Read|Edit|Write|MultiEdit|Grep|Glob|Agent|Workflow",
         "hooks": [
           {
             "type": "command",
@@ -381,7 +381,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/axos-agallentes/.cargo/bin/lean-ctx hook rewrite"
+            "command": "$HOME/.cargo/bin/lean-ctx hook rewrite"
           }
         ]
       },
@@ -390,7 +390,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/axos-agallentes/.cargo/bin/lean-ctx hook redirect"
+            "command": "$HOME/.cargo/bin/lean-ctx hook redirect"
           }
         ]
       }
@@ -568,7 +568,6 @@
     "enabled": true,
     "mode": "hold"
   },
-  "skipDangerousModePermissionPrompt": true,
   "skipWorkflowUsageWarning": true,
   "preferredNotifChannel": "ghostty",
   "teammateMode": "auto",
