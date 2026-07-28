@@ -606,3 +606,46 @@ is now redundant but harmless.
 
 **Assumptions:** `core.symlinks` is true. Verified empirically on a throwaway worktree created from
 main — `.claude/references` resolved to `definition-of-done.md`.
+
+## 2026-07-28 — Normalize $HOME at commit time instead of fighting `lean-ctx doctor --fix`
+
+**Decision:** Add a pre-commit step (`git/hooks/normalize-settings-paths.sh` +
+`scripts/normalize_home_paths.py`) that rewrites this machine's home directory to `$HOME` in the
+**staged** `.claude/settings.json`, leaving the working copy untouched.
+
+**Why:** `lean-ctx doctor --fix` (also `setup`/`wrap`) re-registers its three Claude Code
+interception hooks — `read-dedup`, `rewrite`, `redirect` — using the absolute path of its own
+binary. `~/.claude/settings.json` symlinks into this tracked repo, so the machine-specific path
+lands in a published file and `test_tracked_settings_have_no_private_environment_context` fails.
+PR #381 sanitized those three lines by hand and the drift returned the same day.
+
+Reproduced directly: `doctor --fix` rewrote exactly those three entries and left a fourth
+`$HOME/.cargo/bin/lean-ctx hook observe` (telemetry, not an interception hook) alone — matching the
+observed drift byte for byte.
+
+**Alternatives rejected:**
+- *Write the entry in a form that survives.* Tested and refuted: `doctor --fix` re-absolutises from
+  `$HOME/...` **and** from a bare `lean-ctx hook <name>`, and re-serialises the whole file. Six
+  other entries in that file do invoke `lean-ctx` bare, which is why this looked promising.
+- *Make the boundary test tolerate the three lean-ctx-managed commands.* Weakens the one guard
+  keeping `/Users/<name>/` out of a public repo.
+- *Normalize the working file.* Would be undone by the next `doctor --fix`, and a perpetually
+  dirty `settings.json` invites accidental commits of unrelated drift.
+
+**Assumptions:** absolute paths work fine at runtime, so only the tracked artifact needs to be
+portable. `git status` will still show `settings.json` as modified after any `doctor --fix` — that
+noise is accepted; the hook guarantees it never reaches a commit.
+
+**Two other `doctor --fix` side effects, found while reproducing — not fixed here:**
+1. It writes `~/.config/lean-ctx/layout.toml` (`mode = "xdg"`, "GL #623"), pinning the install to
+   the XDG four-dir layout. That made a pre-existing 51-byte `~/.config/lean-ctx/config.toml`
+   authoritative and orphaned the real 4135-byte `~/.lean-ctx/config.toml`, dropping
+   `shell_allowlist` — `bash` stopped being permitted mid-session. Repaired by merging the full
+   config into the XDG path, preserving its `extra_roots` key.
+2. It removed `~/.lean-ctx/config.toml` outright during the run.
+   Anyone running `doctor --fix` should snapshot both config paths first.
+
+Also fixed alongside: `ai/skills/lean-ctx/scripts/install.sh` ran `lean-ctx init --global`, which
+`decisions/0004-lean-ctx-pctx-upstream.md` rejects (shell-hook double compression with rtk). Now
+`--agent`. Not the trigger for today's drift — `main()` exits early when lean-ctx is already
+installed — but it would have violated the decision record on a fresh machine.
