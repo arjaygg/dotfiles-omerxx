@@ -596,3 +596,53 @@ Executing `plans/2026-07-07-ai-harness-improvement-proposal.md` per user "go" (P
   this one), because `active-context.md` still named Step 14 as the active focus with a
   worktree "already created" that had in fact been removed. #385 landed first and is the
   authoritative record; this entry adds only what it could not have known.
+
+## 2026-07-28 — Goal 05 Step 15: unattended-safety delta (PR #389, `c87f60c`)
+
+- [x] §23 triage stage. Five categories, tie-breakers, cascade. The stage agent *proposes* a
+      category and severity; the script *enforces* the scope-authority rule, so a `defer`/`reject`
+      routed out-of-scope on `spec_scope`/`plan`/`diff` authority is rerouted to `bad_spec` — or
+      `intent_gap` when the intent is silent. Fixture evidence: `defer`/high/`spec_scope` came
+      back `bad_spec`.
+- [x] §24 loop bounds. All three counters read *in* from spec frontmatter, never initialised —
+      an in-context counter resets at compaction and the loop then runs forever. Fixture:
+      `review_loop_iteration: 6` -> `blocked`, condition `review repair loop exceeded 5
+      iterations (non-convergence)`.
+- [x] §25 follow-up signal. Computed from `patch` findings only. Positive fixture: 2 medium ->
+      score 6, true. Negative fixture: two `high` findings present but both `defer`/`reject` ->
+      score 1, false.
+- [x] §15 HALT on every exit path, with deterministic filenames for the degenerate cases
+      (`<id>-unresolved.md`, `<id>-ambiguous.md`).
+- [x] §20 finding contract moved to `{lens, location, trigger_condition, guard_snippet,
+      potential_consequence}` across `schemas.md`, `FINDING_SCHEMA`, the dry-run fixture, and the
+      tests — one commit, because the test asserts both halves.
+- [x] `auto-ship` reuses the HALT definition rather than restating it; status is one more entry
+      in the existing `.claude/pipeline-log.jsonl`.
+- [x] Nine dry runs, 0 agents spawned. Suite 247/247; orchestrate tests 13 -> 33. One literal
+      subagent call site, unchanged.
+- **Two defects the fixtures caught.** (1) A `done` status whose write failed reported
+  `ok: true` — the exact "indistinguishable from a crash" case §15 exists to prevent, since
+  unattended nobody reads the log line. Now `ok = status === 'done' && terminal.written`, with
+  `terminal_status_written` on the result. (2) `test_every_exit_path_goes_through_halt` failed on
+  a `return acc` inside a `reduce`; the reduce became a plain loop rather than weakening the
+  assertion, so the invariant holds literally.
+- [ ] **Open: the plan's §20 is stale.** It says `schemas.md` requires per-finding `severity` at
+      `:126`/`:139` and that Step 15 removes it. Step 10 already did, so `grep -n severity`
+      passes with zero work. Step 15 substituted the real criterion (the §20 field names were
+      missing) but did not edit the plan. Correct the plan text.
+- [ ] **Open: SIGKILL is not covered in-process and cannot be.** `try/finally` guarantees a
+      status write on a thrown stage; no in-process handler survives a kill signal. Covered from
+      the other side — frontmatter still `running` with no terminal status *is* a crashed run.
+      The plan's "kill a run mid-flight" criterion is met in spirit, not literally; needs a
+      human call on whether that closes it.
+- [ ] **Open: one commit at 873 diff lines** against this repo's 700 max
+      (`.claude-atomic.yaml`); the hook warned and proceeded. Splitting by file would leave a
+      broken commit in history because the test asserts both halves of the contract, and
+      splitting inside a file needs partial staging. Note the Step 15 spec cited 300 as the
+      threshold — the real configured value is 700.
+- [ ] **Open: `stack merge` still errors after a successful merge** when the branch's worktree
+      exists. Reproduced a third time on #389, on a base that already included `4f4fb02`
+      *"fix(stack): resolve the worktree from git, and never force-delete unguarded"* and
+      `ecacd06`, so those fixes do not cover this path. The remote squash-merge succeeds, then
+      the local branch delete fails and the stack update is skipped. Workaround: verify with
+      `gh pr view <n> --json state` and run sync/clean separately.
