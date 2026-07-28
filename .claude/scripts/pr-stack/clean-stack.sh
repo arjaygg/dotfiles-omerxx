@@ -98,12 +98,33 @@ if [ "$CURRENT" = "$BRANCH" ]; then
     git checkout "$DEFAULT_BRANCH" 2>/dev/null || git checkout main 2>/dev/null || true
 fi
 
+# `git branch -d` only accepts a branch whose tip is an ancestor of the default
+# branch. `gh pr merge --rebase` and `--squash` both rewrite the commits, so a
+# fully-shipped branch is never an ancestor and -d always refuses — which made
+# every rebase-merged branch look unmerged and silently skipped the delete.
+# Two rebase/squash-aware fallbacks before giving up:
+#   1. git cherry — every commit has an equivalent patch upstream (rebase; also
+#      survives the default branch advancing afterwards)
+#   2. identical trees — the content matches exactly (squash, while the default
+#      branch has not yet moved past the merge)
+branch_content_landed() {
+    local branch="$1" base="$2"
+    git rev-parse --verify --quiet "$base" >/dev/null 2>&1 || return 1
+    if [ -z "$(git cherry "$base" "$branch" 2>/dev/null | grep '^+')" ]; then
+        return 0
+    fi
+    git diff --quiet "$branch" "$base" 2>/dev/null
+}
+
 if git branch --list "$BRANCH" | grep -q "$BRANCH"; then
     if git branch -d "$BRANCH" 2>/dev/null; then
         print_info "Deleted local branch: $BRANCH"
     elif [ "$FORCE" = true ]; then
         git branch -D "$BRANCH"
         print_info "Deleted local branch: $BRANCH (forced)"
+    elif branch_content_landed "$BRANCH" "$DEFAULT_BRANCH"; then
+        git branch -D "$BRANCH"
+        print_info "Deleted local branch: $BRANCH (rebase/squash-merged into $DEFAULT_BRANCH)"
     else
         print_warning "Branch not fully merged; use --force to delete anyway"
     fi
