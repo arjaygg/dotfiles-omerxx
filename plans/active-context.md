@@ -4,29 +4,31 @@
 
 goal: goals/2026-07-28-05-native-agent-orchestration-harness.md
 status: active
-focus: Step 15 — unattended paths; needs a frozen spec at plans/specs/<label>.md first
+focus: Step 17 (unblocked), then Step 18 (after 15, 16 — both now shipped)
 
-Steps 1-14 and 16 are all shipped; no goal-05 branch is outstanding.
-- Steps 1-9, 13, 16 merged as PRs #361-#373. Step 10 (lensed-review) as #374, plus
-  follow-up #375. Step 11 (customization layer) as #376. Step 12 (generated router) as #377.
-- Step 14 (orchestrator skeleton) merged as #383 -> `14a2ec7`: `.claude/workflows/orchestrate.js`
-  (first entry in that directory) + `scripts/test_orchestrate_workflow.py` (13 static tests).
-  Three phases, one `runStage()` helper so the file holds a single literal subagent call site
-  under SECTION 8's cap of 3. Verified by two dry runs, 0 agents spawned: DoD present ->
-  `ok:true`; DoD absent -> `ok:false, unmet:[...]`. Interactive only.
+Steps 1-16 are all shipped; no goal-05 branch is outstanding.
+- Steps 1-9, 13, 16 merged as PRs #361-#373. Step 10 as #374 (+ follow-up #375), Step 11 as
+  #376, Step 12 as #377.
+- Step 14 (orchestrator skeleton, interactive) merged as #383 -> `14a2ec7`.
+- Step 15 (unattended-safety delta) merged as #389 -> `c87f60c`: §23 triage with the enforced
+  scope-authority rule, §24 counters read from spec frontmatter, §25 computed follow-up signal,
+  §15 HALT on every exit path, §20 finding fields across schemas.md + orchestrate.js + tests,
+  auto-ship reusing the HALT definition. Nine dry runs, 0 agents. Suite 247/247, 33 orchestrate
+  tests. Still one literal subagent call site.
 
-Remaining: 17 (unblocked), 15 (after 14, now unblocked), 18 (after 15, 16).
-Step 15's "no finding-level severity in schemas.md" criterion is already satisfied by Step 10.
-Step 15 owns the next change to `ai/skills/cap/references/schemas.md`.
+Remaining: 17 (unblocked), 18 (unblocked now that 15 and 16 are both in).
+
+Carried forward from Step 15, needs a decision:
+- The plan's §20 says schemas.md requires per-finding `severity` and Step 15 removes it. Step 10
+  already did, so that acceptance criterion passes vacuously. Step 15 substituted the real gap
+  (the §20 field names). The plan text itself is still stale and should be corrected.
+- §15's "kill a run mid-flight" criterion is met for thrown stages via try/finally but cannot be
+  met for SIGKILL in-process. Covered from the other side: frontmatter still `running` with no
+  terminal status is a crashed run. Judge whether that satisfies the plan.
 
 Open, unrelated to goal 05:
-- The ~55-60k static context baseline (PR #381 raised the autocompact threshold but did not
-  shrink the floor); whether that fix holds is still unverified — re-measure compaction
-  frequency from transcript `usage` fields. Measured since: ~75% of the baseline is fixed
-  Claude Code overhead, so trimming the rules chain buys ~2% of a 200k window — not worth it.
+- The ~55-60k static context baseline; whether PR #381's autocompact fix holds is unverified.
 - 21 older PRs (mostly 2026-07-13 drafts) remain unmerged.
-- `stack merge` warns "Charcoal rebase encountered issues (non-fatal)" and synced 0 of 51 PR
-  bases on #383. Harmless for Step 14 (no dependents); unexamined for the other 34 worktrees.
 
 ---
 
