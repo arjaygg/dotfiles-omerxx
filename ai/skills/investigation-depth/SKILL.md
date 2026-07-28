@@ -80,5 +80,5 @@ background workflow watchdogs.
 - [ ] At least two independent sources are named in the final conclusion (evidence: the `Checked: [...]` line lists 2+ sources).
 - [ ] A "Not yet checked" line is present alongside every "Checked" line (evidence: both lines appear together in the response).
 - [ ] For deploy/migration tasks, an artifact check is named beyond the exit code (evidence: named artifact — index, row count, pod health, API response).
-- [ ] Diagnosis-only requests produced no unapproved fix (evidence: fixes are listed as options, not applied, until the user approves).</replace>
+- [ ] Diagnosis-only requests produced no unapproved fix (evidence: fixes are listed as options, not applied, until the user approves).
 
