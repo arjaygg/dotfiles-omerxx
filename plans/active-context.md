@@ -7,7 +7,8 @@ status: active
 focus: Step 18 done (A0-A4 tiers + resolver + gate demotion + signed re-acceptance). Needs a PR.
   Step 18 spawned **Step 19** — pre-action enforcement of the A2 cap in pre-tool-gate-v2.sh, because
   a Stop hook cannot precede the merge it would guard. Step 19 is NOT started and NOT authorized.
-in flight: (none) — record `<branch> (#PR)` here at branch-create time, before any work. Three
+in flight: `feature/autonomy-ladder-reconcile` (#395) — Step 18, open for review, NOT merged.
+  Record `<branch> (#PR)` here at branch-create time, before any work. Three
   near-duplications on 2026-07-28 (#383/#385, #392, #387/#389) happened because this file carried
   only *merged* state, so a parallel session's open branch was invisible.
 plan: plans/2026-07-27-native-agent-orchestration.md — durable design reference for all 18 steps.
