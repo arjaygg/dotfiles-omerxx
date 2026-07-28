@@ -8,6 +8,13 @@
 set -uo pipefail
 
 INPUT=$(cat || true)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONTEXT_GATE="${CONTEXT_FILE_GATE_BIN:-${SCRIPT_DIR}/../../.local/bin/context-file-gate}"
+
+if [[ -x "$CONTEXT_GATE" ]]; then
+    printf '%s' "$INPUT" | "$CONTEXT_GATE" \
+        --client claude --event post_tool_use --json >/dev/null 2>&1 || true
+fi
 
 resolve_lean_ctx() {
     local candidate

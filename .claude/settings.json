@@ -4,7 +4,7 @@
   "alwaysThinkingEnabled": true,
   "autoCompact": true,
   "autoMemory": false,
-  "compactCustomInstructions": "After compaction, immediately re-read plans/session-snapshot.md first if it exists — it is generated fresh from the live transcript and git state at the moment of compaction, so it is more trustworthy than hand-edited files. Fall back to plans/active-context.md only if session-snapshot.md is absent, and treat active-context.md with suspicion if its content conflicts with session-snapshot.md or the verified conversation history — it can carry over stale content from an earlier or unrelated task. Do not waste summary tokens on content already captured in plans/ files (active-context.md, decisions.md, progress.md) — those files persist on disk and will be re-read. Focus the summary on: in-flight tool call results not yet written to disk, ephemeral error messages, and any decisions made verbally that have not been recorded. Always preserve: current branch name, uncommitted file list, active plan file path, and the exact task being worked on at the moment of compaction. Do not re-Read CLAUDE.md, AGENTS.md, or any file they @-import (rules/*.md) after compaction — their content is reloaded automatically as part of the system prompt and a manual re-read wastes tokens on content already in context. Never copy hook advisory text into the summary — exclude [SESSION INIT ...] banners, MANDATORY: graphify-out lines, [STACK HEALTH]/[PLANS HEALTH]/hook: stack-health/hook: plans-health output, and <supermemory-recall>/<supermemory-context> blocks entirely; they are re-injected live by hooks and only compound noise across compaction cycles.",
+  "compactCustomInstructions": "After compaction, immediately re-read plans/session-snapshot.md first if it exists \u2014 it is generated fresh from the live transcript and git state at the moment of compaction, so it is more trustworthy than hand-edited files. Fall back to plans/active-context.md only if session-snapshot.md is absent, and treat active-context.md with suspicion if its content conflicts with session-snapshot.md or the verified conversation history \u2014 it can carry over stale content from an earlier or unrelated task. Do not waste summary tokens on content already captured in plans/ files (active-context.md, decisions.md, progress.md) \u2014 those files persist on disk and will be re-read. Focus the summary on: in-flight tool call results not yet written to disk, ephemeral error messages, and any decisions made verbally that have not been recorded. Always preserve: current branch name, uncommitted file list, active plan file path, and the exact task being worked on at the moment of compaction. Do not re-Read CLAUDE.md, AGENTS.md, or any file they @-import (rules/*.md) after compaction \u2014 their content is reloaded automatically as part of the system prompt and a manual re-read wastes tokens on content already in context. Never copy hook advisory text into the summary \u2014 exclude [SESSION INIT ...] banners, MANDATORY: graphify-out lines, [STACK HEALTH]/[PLANS HEALTH]/hook: stack-health/hook: plans-health output, and <supermemory-recall>/<supermemory-context> blocks entirely; they are re-injected live by hooks and only compound noise across compaction cycles.",
   "effortLevel": "high",
   "enableAllProjectMcpServers": true,
   "enabledPlugins": {
@@ -19,7 +19,12 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_FORK_SUBAGENT": "1",
     "HEADROOM_CONTEXT_TOOL": "lean-ctx",
-    "USE_BUILTIN_RIPGREP": "0"
+    "USE_BUILTIN_RIPGREP": "0",
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:8787",
+    "ENABLE_TOOL_SEARCH": "auto",
+    "HEADROOM_DISABLE_KOMPRESS": "1",
+    "HEADROOM_EXCLUDE_TOOLS": "bash,codebase_search,ctx_call,ctx_compose,ctx_expand,ctx_glob,ctx_read,ctx_search,ctx_session,ctx_shell,ctx_tree,exec_command,glob,grep,grep_search,list_directory,list_files,listdirectory,listfiles,mcp__lean-ctx__ctx_call,mcp__lean-ctx__ctx_compose,mcp__lean-ctx__ctx_expand,mcp__lean-ctx__ctx_glob,mcp__lean-ctx__ctx_read,mcp__lean-ctx__ctx_search,mcp__lean-ctx__ctx_session,mcp__lean-ctx__ctx_shell,mcp__lean-ctx__ctx_tree,mcp__lean-ctx__shell,mcp__lean_ctx__ctx_call,mcp__lean_ctx__ctx_compose,mcp__lean_ctx__ctx_expand,mcp__lean_ctx__ctx_glob,mcp__lean_ctx__ctx_read,mcp__lean_ctx__ctx_search,mcp__lean_ctx__ctx_session,mcp__lean_ctx__ctx_shell,mcp__lean_ctx__ctx_tree,mcp__lean_ctx__shell,mcp__pctx__execute_typescript,mcp__pctx__get_function_details,mcp__pctx__list_functions,read,read_file,read_many_files,read_text_file,readfile,run_command,run_shell_command,search,search_file_content,search_files,semantic_search,shell,shell_command,view,view_file",
+    "HEADROOM_NO_SUBSCRIPTION_TRACKING": "1"
   },
   "extraKnownMarketplaces": {
     "autoresearch": {
@@ -94,29 +99,20 @@
       {
         "hooks": [
           {
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\"",
-            "type": "command"
-          }
-        ],
-        "matcher": ".*"
-      },
-      {
-        "hooks": [
-          {
-            "command": "/Users/agallentes/.local/bin/lean-ctx hook observe",
-            "type": "command"
-          }
-        ],
-        "matcher": ".*"
-      },
-      {
-        "hooks": [
-          {
-            "command": "/Users/agallentes/.local/bin/lean-ctx hook read-dedup",
+            "command": "bash -lc '\"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" hook read-dedup'",
             "type": "command"
           }
         ],
         "matcher": "Read"
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\""
+          }
+        ]
       }
     ],
     "PreCompact": [
@@ -130,22 +126,13 @@
         "matcher": ".*"
       },
       {
+        "matcher": ".*",
         "hooks": [
           {
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\"",
-            "type": "command"
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\""
           }
-        ],
-        "matcher": ".*"
-      },
-      {
-        "hooks": [
-          {
-            "command": "/Users/agallentes/.local/bin/lean-ctx hook observe",
-            "type": "command"
-          }
-        ],
-        "matcher": ".*"
+        ]
       }
     ],
     "PreToolUse": [
@@ -170,15 +157,6 @@
       {
         "hooks": [
           {
-            "command": "bash -lc 'lean-ctx hook redirect'",
-            "type": "command"
-          }
-        ],
-        "matcher": "Read|read|ReadFile|read_file|View|view|Grep|grep|Search|search|ListFiles|list_files|ListDirectory|list_directory"
-      },
-      {
-        "hooks": [
-          {
             "command": "bash \"$HOME/.dotfiles/.claude/hooks/scratchpad-reread-guard.sh\"",
             "type": "command"
           }
@@ -195,42 +173,33 @@
         "matcher": "mcp__claude-in-chrome__.*"
       },
       {
+        "matcher": "Bash|bash",
         "hooks": [
           {
-            "command": "/Users/agallentes/.local/bin/lean-ctx hook rewrite",
-            "type": "command"
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-rewrite.sh\""
           }
-        ],
-        "matcher": "Bash|bash"
+        ]
       },
       {
+        "matcher": "Read|read|ReadFile|read_file|View|view|Grep|grep|Search|search|ListFiles|list_files|ListDirectory|list_directory|Glob|glob",
         "hooks": [
           {
-            "command": "/Users/agallentes/.local/bin/lean-ctx hook redirect",
-            "type": "command"
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-redirect.sh\""
           }
-        ],
-        "matcher": "Read|read|ReadFile|read_file|View|view|Grep|grep|Search|search|ListFiles|list_files|ListDirectory|list_directory|Glob|glob"
+        ]
       }
     ],
     "SessionEnd": [
       {
+        "matcher": ".*",
         "hooks": [
           {
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\"",
-            "type": "command"
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\""
           }
-        ],
-        "matcher": ".*"
-      },
-      {
-        "hooks": [
-          {
-            "command": "/Users/agallentes/.local/bin/lean-ctx hook observe",
-            "type": "command"
-          }
-        ],
-        "matcher": ".*"
+        ]
       }
     ],
     "SessionStart": [
@@ -244,22 +213,13 @@
         "matcher": ".*"
       },
       {
+        "matcher": ".*",
         "hooks": [
           {
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\"",
-            "type": "command"
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\""
           }
-        ],
-        "matcher": ".*"
-      },
-      {
-        "hooks": [
-          {
-            "command": "/Users/agallentes/.local/bin/lean-ctx hook observe",
-            "type": "command"
-          }
-        ],
-        "matcher": ".*"
+        ]
       }
     ],
     "Stop": [
@@ -273,22 +233,13 @@
         "matcher": ".*"
       },
       {
+        "matcher": ".*",
         "hooks": [
           {
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\"",
-            "type": "command"
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\""
           }
-        ],
-        "matcher": ".*"
-      },
-      {
-        "hooks": [
-          {
-            "command": "/Users/agallentes/.local/bin/lean-ctx hook observe",
-            "type": "command"
-          }
-        ],
-        "matcher": ".*"
+        ]
       }
     ],
     "TaskCompleted": [
@@ -325,22 +276,13 @@
         "matcher": ".*"
       },
       {
+        "matcher": ".*",
         "hooks": [
           {
-            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\"",
-            "type": "command"
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lean-ctx-observe.sh\""
           }
-        ],
-        "matcher": ".*"
-      },
-      {
-        "hooks": [
-          {
-            "command": "/Users/agallentes/.local/bin/lean-ctx hook observe",
-            "type": "command"
-          }
-        ],
-        "matcher": ".*"
+        ]
       }
     ],
     "WorktreeCreate": [
@@ -583,7 +525,7 @@
   },
   "skipWorkflowUsageWarning": true,
   "statusLine": {
-    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ %cost% ▸ Cache: %cache_hit% ▸ %time% ▸ %project%%git_status%%task_list_id%'",
+    "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% \u25b8 %percent% (%remaining%) \u25b8 %cost% \u25b8 Cache: %cache_hit% \u25b8 %time% \u25b8 %project%%git_status%%task_list_id%'",
     "type": "command"
   },
   "teammateMode": "auto",

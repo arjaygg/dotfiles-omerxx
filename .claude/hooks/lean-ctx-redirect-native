@@ -1,2 +1,2 @@
 #!/bin/sh
-exec "/Users/agallentes/.local/bin/lean-ctx" hook redirect
+exec "$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh" hook redirect

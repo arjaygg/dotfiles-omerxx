@@ -156,6 +156,24 @@ trap _finalize_metrics EXIT
 # ============================================================
 [[ -z "$TOOL_NAME" ]] && _deny "BLOCKED: hook parse failed (empty TOOL_NAME). Use a Serena MCP tool instead of a native file tool."
 
+# Shared cross-client large-file classifier. Parsing/runtime failures are
+# deliberately fail-open; the consolidated gate's existing security rules
+# below remain independent.
+CONTEXT_GATE="${CONTEXT_FILE_GATE_BIN:-${SCRIPT_DIR}/../../.local/bin/context-file-gate}"
+if [[ -x "$CONTEXT_GATE" ]]; then
+    CONTEXT_RESULT=""
+    if CONTEXT_RESULT=$(printf '%s' "$INPUT" | "$CONTEXT_GATE" \
+        --client claude --event pre_tool_use --json 2>/dev/null); then
+        CONTEXT_DECISION=$(printf '%s' "$CONTEXT_RESULT" | jq -r '.decision // "allow"' 2>/dev/null || echo "allow")
+        CONTEXT_MESSAGE=$(printf '%s' "$CONTEXT_RESULT" | jq -r '.message // ""' 2>/dev/null || echo "")
+        if [[ "$CONTEXT_DECISION" == "deny" ]]; then
+            _deny "$CONTEXT_MESSAGE"
+        elif [[ "$CONTEXT_DECISION" == "warn" && -n "$CONTEXT_MESSAGE" ]]; then
+            printf 'CONTEXT ROUTING WARNING: %s\n' "$CONTEXT_MESSAGE" >&2
+        fi
+    fi
+fi
+
 _INIT_STEPS=$'  1. Call mcp__pctx__list_functions\n  2. Write result to plans/pctx-functions.md\n  3. Call Serena.initialInstructions()'
 
 # ============================================================
@@ -269,15 +287,9 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
         _deny "BLOCKED: ${_fname} is a generated/lock file — no direct-read value. Use LeanCtx.ctxCall({ name: \"ctx_smart_read\" }) or LeanCtx.ctxSearch to search specific entries."
     fi
 
-    # 1b. Large files without limit — tiered by size
-    if [[ -f "$FILE_PATH" && -z "$LIMIT" ]]; then
-        FILE_SIZE=$(stat -f%z "$FILE_PATH" 2>/dev/null || stat -c%s "$FILE_PATH" 2>/dev/null || echo 0)
-        if [[ "$FILE_SIZE" -gt 512000 ]]; then
-            _deny "BLOCKED: $FILE_PATH is $(( FILE_SIZE / 1024 ))KB — use LeanCtx.ctxCall({ name: \"ctx_smart_read\", args: { path: \"$FILE_PATH\" } }) for analysis-only reads."
-        elif [[ "$FILE_SIZE" -gt 102400 ]]; then
-            _deny "BLOCKED: $FILE_PATH is $(( FILE_SIZE / 1024 ))KB. Use Read with limit/offset or Grep to read only the relevant section."
-        fi
-    fi
+    # File-size enforcement is owned exclusively by context-file-gate above.
+    # Do not add a second threshold here: it would turn warning-phase large
+    # reads into hard blocks and would defeat the classifier's fail-open path.
 
     # 1c. .go files without limit — use Serena
     if [[ "$FILE_PATH" == *.go && -z "$LIMIT" ]]; then
@@ -570,25 +582,6 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
     # 2-pre. Declarative rule.* rules from hook-config.yaml (sed -i, awk>file,
     # echo/printf redirects, piped tee — real gaps not caught by 2a-2g below)
     check_bash_cmd_rules "$CMD"
-
-    # N4: input-redirect target size guard. Section 1b already tiers Read
-    # tool_input by size (500KB deny / 100KB advise-toward-limit) — but a Bash
-    # command reading the same oversized file via `< file` redirect bypasses
-    # that guard entirely, since Section 1 only inspects the Read tool. Mirror
-    # the same thresholds here for the redirect-target path. Policy unchanged,
-    # scope corrected: identical limits/messages as 1b, just a second entry
-    # point for the same underlying risk (no existing deny weakened).
-    if [[ "$CMD" =~ \<[[:space:]]*([^[:space:]\<\>\|\&\;]+) ]]; then
-        _REDIRECT_TARGET="${BASH_REMATCH[1]}"
-        if [[ -f "$_REDIRECT_TARGET" ]]; then
-            _REDIRECT_SIZE=$(stat -f%z "$_REDIRECT_TARGET" 2>/dev/null || stat -c%s "$_REDIRECT_TARGET" 2>/dev/null || echo 0)
-            if [[ "$_REDIRECT_SIZE" -gt 512000 ]]; then
-                _deny "BLOCKED: '$_REDIRECT_TARGET' is $(( _REDIRECT_SIZE / 1024 ))KB — reading it via a Bash '<' redirect bypasses the Read tool's size guard. Use LeanCtx.ctxCall({ name: \"ctx_smart_read\", args: { path: \"$_REDIRECT_TARGET\" } }) for analysis-only reads."
-            elif [[ "$_REDIRECT_SIZE" -gt 102400 ]]; then
-                _deny "BLOCKED: '$_REDIRECT_TARGET' is $(( _REDIRECT_SIZE / 1024 ))KB. Use Read with limit/offset or Grep to read only the relevant section instead of a Bash '<' redirect."
-            fi
-        fi
-    fi
 
     # 2a. grep/rg (but not git grep) — no Grep tool exists in this session; use LeanCtx.ctxSearch
     if [[ ( "$CMD" == grep\ * || "$CMD" == rg\ * ) && "$CMD" != *"git grep"* ]]; then
