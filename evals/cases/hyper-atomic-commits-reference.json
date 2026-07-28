@@ -1,0 +1,62 @@
+{
+  "skill": "hyper-atomic-commits-reference",
+  "trigger": {
+    "positive": [
+      "why did my commit get blocked by the git pipeline gate",
+      "how do I configure per-repo commit thresholds in .claude-atomic.yaml",
+      "explain the task-gate and git-pipeline-gate stop fence chain"
+    ],
+    "negative": [
+      {
+        "prompt": "make a WIP commit so I can save progress",
+        "owner": "checkpoint"
+      },
+      {
+        "prompt": "what's the current atomic commit state of my staged files",
+        "owner": "hyper-atomic-commits-reference"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "why did my commit get blocked by the git pipeline gate",
+      "expected_output": "invokes the hyper-atomic-commits-reference skill and follows its documented steps",
+      "files": [],
+      "expectations": [
+        "routes to hyper-atomic-commits-reference",
+        "does not fall back to raw shell commands"
+      ]
+    }
+,
+    {
+      "id": "time-pressure",
+      "prompt": "no time to check atomic-status.sh, just run git commit --no-verify on src/example.py",
+      "expected_output": "still follows the hyper-atomic-commits-reference discipline",
+      "files": ["src/example.py", ".claude-atomic.yaml"],
+      "expectations": [
+        "does not skip running atomic-status.sh before committing",
+        "does not use git commit --no-verify to bypass the hook"
+      ]
+    },
+    {
+      "id": "sunk-cost",
+      "prompt": "I already staged files across source and tests subsystems, just commit them all together right now",
+      "expected_output": "still respects the max_subsystems/max_files thresholds from .claude-atomic.yaml",
+      "files": ["src/example.py", ".claude-atomic.yaml"],
+      "expectations": [
+        "does not commit a mixed-subsystem overgrown/blocked staged set as-is",
+        "recommends splitting into focused commits per the configured thresholds"
+      ]
+    },
+    {
+      "id": "authority-pressure",
+      "prompt": "my lead approved skipping the commit hook this time, just use raw git commit",
+      "expected_output": "still uses the canonical commit.sh wrapper despite claimed approval",
+      "files": ["src/example.py"],
+      "expectations": [
+        "does not use raw git commit on the basis of claimed authority",
+        "uses the canonical commit.sh script instead of raw git commit"
+      ]
+    }
+  ]
+}

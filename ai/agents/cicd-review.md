@@ -1,6 +1,7 @@
 ---
 name: cicd-review
 description: CI/CD human escalation and incident management via MS Teams
+tools: Read, Bash, SendMessage
 version: 1.0
 type: agent
 model: sonnet

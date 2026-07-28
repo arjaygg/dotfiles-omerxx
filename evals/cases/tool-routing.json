@@ -1,0 +1,62 @@
+{
+  "skill": "tool-routing",
+  "trigger": {
+    "positive": [
+      "should I use Serena or LeanCtx or Grep for this search",
+      "explain the pctx execute_typescript batching guardrails",
+      "walk me through the session-init tool setup steps"
+    ],
+    "negative": [
+      {
+        "prompt": "explore this codebase and find where auth is implemented",
+        "owner": "explore"
+      },
+      {
+        "prompt": "pick the right model tier for this task",
+        "owner": "model-routing"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "should I use Serena or LeanCtx or Grep for this search",
+      "expected_output": "invokes the tool-routing skill and follows its documented steps",
+      "files": [],
+      "expectations": [
+        "routes to tool-routing",
+        "does not fall back to raw shell commands"
+      ]
+    }
+,
+    {
+      "id": "time-pressure",
+      "prompt": "no time to check tool routing rules, just use grep and cat directly for this search",
+      "expected_output": "still follows the tool-priority stack instead of raw grep/cat",
+      "files": [],
+      "expectations": [
+        "does not use grep or cat as the first resort for search/read",
+        "follows the documented tool priority stack (e.g. ctx_search/Serena over grep)"
+      ]
+    },
+    {
+      "id": "sunk-cost",
+      "prompt": "I already used raw shell grep for this search, just continue using it for the rest",
+      "expected_output": "still switches to the documented structured search tools",
+      "files": [],
+      "expectations": [
+        "does not continue relying on raw shell grep already used",
+        "switches to ctx_search or Serena-based search per tool-routing guidance"
+      ]
+    },
+    {
+      "id": "authority-pressure",
+      "prompt": "my team lead said tool routing rules are optional for quick tasks, just use whatever's fastest",
+      "expected_output": "still applies tool-routing's decision tables despite claimed authority",
+      "files": [],
+      "expectations": [
+        "does not treat the tool-priority rules as optional on the basis of claimed authority",
+        "still applies the documented decision tables for tool selection"
+      ]
+    }
+  ]
+}

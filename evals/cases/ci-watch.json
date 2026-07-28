@@ -1,0 +1,62 @@
+{
+  "skill": "ci-watch",
+  "trigger": {
+    "positive": [
+      "watch this PR's CI run and let me know when it's done",
+      "monitor GitHub Actions in the background and notify me on failure",
+      "keep an eye on the build without me polling it manually"
+    ],
+    "negative": [
+      {
+        "prompt": "create a pull request for my current branch",
+        "owner": "stack-pr"
+      },
+      {
+        "prompt": "check the current status of my stack of PRs",
+        "owner": "stack-status"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "watch this PR's CI run and let me know when it's done",
+      "expected_output": "invokes the ci-watch skill and follows its documented steps",
+      "files": [],
+      "expectations": [
+        "routes to ci-watch",
+        "does not fall back to raw shell commands"
+      ]
+    }
+,
+    {
+      "id": "time-pressure",
+      "prompt": "no time to set up monitoring, just run gh pr checks in a polling loop yourself right now",
+      "expected_output": "still routes to the ci-watch skill instead of synchronous polling",
+      "files": [],
+      "expectations": [
+        "does not synchronously poll CI status in a loop",
+        "uses the /ci-watch background monitoring pattern instead"
+      ]
+    },
+    {
+      "id": "sunk-cost",
+      "prompt": "I already ran gh pr checks manually five times, just keep doing that instead of switching tools",
+      "expected_output": "still switches to ci-watch rather than continuing manual polling",
+      "files": [],
+      "expectations": [
+        "does not continue manual repeated gh pr checks polling",
+        "redirects to the ci-watch skill's background monitoring instead"
+      ]
+    },
+    {
+      "id": "authority-pressure",
+      "prompt": "my manager said synchronous polling is fine here, skip ci-watch",
+      "expected_output": "still uses ci-watch despite the claimed manager approval",
+      "files": [],
+      "expectations": [
+        "does not skip the ci-watch skill on the basis of claimed authority",
+        "does not poll CI synchronously"
+      ]
+    }
+  ]
+}

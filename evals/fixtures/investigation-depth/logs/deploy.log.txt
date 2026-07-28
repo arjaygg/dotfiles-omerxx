@@ -1,0 +1,4 @@
+2026-07-28T10:00:00Z deploy started: migration 0042_add_column
+2026-07-28T10:00:12Z running ALTER TABLE users ADD COLUMN status TEXT
+2026-07-28T10:00:13Z command exited with code 0
+2026-07-28T10:00:14Z WARNING: connection pool exhausted during backfill, 3 rows not updated
