@@ -37,17 +37,17 @@ Always use tools in this order. Stop at the first that satisfies your need. **Ne
 
 | Task | 1st Priority | 2nd Priority | Avoid |
 |---|---|---|---|
-| **Directory Listing** | `Serena.listDir` | `Glob` | `ls`, `find` |
+| **Directory Listing** | `LeanCtx.ctxTree` / `Glob` | — | `ls`, `find`, `Serena.listDir` |
 | **Explore file structure** | `Serena.getSymbolsOverview` | `Read (limit/offset)` | `cat`, `head`, `tail` |
-| **Find symbol by name** | `Serena.findSymbol` | `Serena.searchForPattern` | `grep`, `rg` |
-| **Pattern/regex search** | `Serena.searchForPattern` (+ `restrict_search_to_code_files: true`) | `Grep tool` | `grep`, `rg` |
-| **Finding Files** | `Serena.findFile` | `Glob` | `find` |
+| **Find symbol by name** | `Serena.findSymbol` | `LeanCtx.ctxSearch` literal fallback | `grep`, `rg` |
+| **Pattern/regex search** | `LeanCtx.ctxSearch` | `Grep tool` | `grep`, `rg`, `Serena.searchForPattern` |
+| **Finding Files** | `LeanCtx.ctxGlob` / `Glob` | — | `find`, `Serena.findFile` |
 | **Project knowledge** | `Serena.readMemory` | Read `.serena/memories/*.md` | re-deriving from source |
-| **Pre-edit impact analysis** | `Serena.findReferencingSymbols` | `searchForPattern` with type name | skipping impact check |
+| **Pre-edit impact analysis** | `Serena.findReferencingSymbols` | `LeanCtx.ctxSearch` with type name | skipping impact check |
 | **Editing Code** | `Serena.replaceSymbolBody` | `Edit tool` | `sed`, `awk` |
 | **Rename symbol** | `Serena.renameSymbol` | Manual multi-file `Edit` | `sed` across files |
 
-> **Exploration order:** When navigating an unfamiliar area, always `getSymbolsOverview` first (file structure), then `findSymbol` (drill into known names), then `searchForPattern` (regex fallback). Never skip to `Read` for analysis.
+> **Exploration order:** When navigating an unfamiliar area, always `getSymbolsOverview` first (file structure), then `findSymbol` (drill into known names), then `LeanCtx.ctxSearch` (regex/text fallback). Never skip to `Read` for analysis.
 
 > **Pre-edit ritual:** Before modifying any symbol, run `findReferencingSymbols` to understand blast radius. This catches breaking changes before they happen.
 
@@ -92,7 +92,6 @@ Common failures seen in session logs are schema-name drift, not pctx runtime ins
 | `get_function_details` tool | `{"functions":["Serena.findSymbol"]}` | `{"function_name":"Serena.findSymbol"}` |
 | `Serena.readMemory` | `{ memory_name: "START_HERE" }` | `{ name: "START_HERE" }` |
 | `Serena.findSymbol` | `{ name_path_pattern: "Symbol", depth: 0 }` | `{ name_path: "Symbol" }` |
-| `Serena.searchForPattern` | `{ substring_pattern: "regex" }` | `{ pattern: "regex" }` |
 | `LeanCtx.ctxSearch` | `{ pattern: "regex", path: "/abs/path" }` | `{ query: "regex" }` |
 | `LeanCtx.ctxRead/ctxTree/ctxCall` | camelCase SDK methods | `ctx_read` / `ctx_tree` / `ctx_call` |
 
@@ -101,10 +100,10 @@ If an `execute_typescript` batch mixes successful results with `.catch(() => ({e
 ---
 
 ## 4. Serena API Convention
-All Serena methods use **camelCase**.
-- `Serena.listDir` (NOT `list_dir`)
+All exposed pctx SDK methods use **camelCase**.
 - `Serena.findSymbol` (NOT `find_symbol`)
-- `Serena.searchForPattern` (NOT `search_for_pattern`)
+- `LeanCtx.ctxSearch` (NOT `ctx_search`)
+- Current `claude-code` Serena does **not** expose `listDir`, `findFile`, or `searchForPattern`; use `LeanCtx.ctxTree`, `LeanCtx.ctxGlob`, or `LeanCtx.ctxSearch`.
 
 ---
 
@@ -112,11 +111,10 @@ All Serena methods use **camelCase**.
 
 `Serena.initialInstructions()` does not cover any of this — these are project-specific quirks, not part of Serena's own manual.
 
-- Always pass `restrict_search_to_code_files: true` to `searchForPattern` — otherwise lock files (`go.sum`, `package-lock.json`) and generated files flood results.
 - `findSymbol` **fails silently** on files inside dot-directories (`.serena/`, `.claude/`, `.cursor/`, `.mcp.json`). Use `Serena.readMemory()` for Serena memories, `Read` for other dot-directory files.
 - If `.serena/memories/` exists, call `Serena.listMemories()` at session start and read `START_HERE` before touching source files.
 - Memory naming: `architecture/<topic>`, `story_<N>_<sprint>/<topic>`, `workflows/<process>`. Don't duplicate to markdown what's already in `.serena/memories/`.
-- gopls LSP timeout (SolidLSP issue #634): call `Serena.restartLanguageServer()` — do not retry the failed call, the server needs to reinitialize first.
+- For regex/text search, use `LeanCtx.ctxSearch({ pattern, path, include?, exclude? })`; scope with `include` / `exclude` to avoid lock-file noise.
 
 ---
 
@@ -154,7 +152,7 @@ Beyond §0/§1 above: the full Qmd-vs-LeanCtx-vs-Serena-vs-Grep decision tables,
 
 Quick digest:
 - **Docs/knowledge lookup:** by concept → `Qmd.query` (`hyde`/`vec` sub-query); by keyword → `Qmd.query` (`lex`). Never Grep/`LeanCtx.ctxSearch` on `docs/**/*.md`.
-- **Code navigation** ("where is X", "what calls Y", "what's in this package") → Serena, never LeanCtx (it has no symbol index).
+- **Code navigation** ("where is X", "what calls Y", "what's in this package") → Serena for exposed symbol operations; LeanCtx for regex/text/tree/file-glob fallback.
 - **Shell output >20 lines** → `LeanCtx.ctxShell`; simple git/mkdir/rm → plain `Bash`.
 - **`WebFetch`** always needs a focused `prompt` param; `WebSearch` is preferred for discovery.
 - **Code health** → `/code-health` skill. **PR/graph queries** → `Graphify` (pctx namespace) or the `graphify` CLI.

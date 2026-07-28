@@ -30,6 +30,7 @@ run_setup_check() {
         bash scripts/check-skill-drift.sh .claude/skills .gemini/skills .cursor/skills
         python3 scripts/hook_config_check.py .claude/settings.json --summary || true
         python3 scripts/skill_reference_check.py --summary || true
+        python3 scripts/pctx_sdk_example_check.py --summary
     )
 }
 

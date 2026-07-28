@@ -21,6 +21,7 @@ SHARED_AUDIT_SUMMARY_COMMANDS = [
     "python3 scripts/hook_config_check.py .claude/settings.json --summary || true",
     "python3 scripts/instruction_budget_check.py --summary",
     "python3 scripts/skill_reference_check.py --summary || true",
+    "python3 scripts/pctx_sdk_example_check.py --summary",
 ]
 
 
@@ -45,6 +46,7 @@ class ClaudeAutoGatesWorkflowTests(unittest.TestCase):
         )
         self.assertIn("python3 scripts/instruction_budget_check.py --summary", text)
         self.assertIn("python3 scripts/skill_reference_check.py --summary || true", text)
+        self.assertIn("python3 scripts/pctx_sdk_example_check.py --summary", text)
 
     def test_setup_check_and_pr_audit_share_summary_commands(self):
         workflow = WORKFLOW.read_text()

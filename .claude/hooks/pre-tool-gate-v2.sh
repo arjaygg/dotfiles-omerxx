@@ -572,38 +572,38 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
     # 2a. grep (but not git grep) — no Grep tool exists in this session; use LeanCtx.ctxSearch
     if [[ ( "$CMD" == grep\ * || "$CMD" == grep\ -* ) && "$CMD" != *"git grep"* ]]; then
         _deny "BLOCKED: Use LeanCtx.ctxSearch instead of 'grep' (no Grep tool exists in this session).
-  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ query: '<pattern>' })
+  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ pattern: '<pattern>', path: '.' })
   Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
     fi
 
-    # N7: dot-directory carve-out for find/ls — Serena.findFile/listDir are documented to fail
-    # silently inside .serena/, .claude/, .cursor/, .mcp.json (tool-priority.md §6, issue #853).
-    # Hard-denying "use Serena instead" is a dead end for exactly these paths, so permit with a
+    # N7: dot-directory carve-out for find/ls — some indexed tools can fail
+    # silently inside .serena/, .claude/, .cursor/, .mcp.json (tool-priority.md §6).
+    # Hard-denying "use indexed tools instead" is a dead end for exactly these paths, so permit with a
     # warning + output cap instead. Does not extend to grep: LeanCtx.ctxSearch has no such
     # limitation, so grep's hard-deny (2a) remains a real, working alternative — policy unchanged.
     _DOTDIR_LIMITATION='\.(serena|claude|cursor)/|\.mcp\.json'
 
-    # 2b. find → no Glob tool exists in this session; use Serena.findFile
+    # 2b. find → use Glob or LeanCtx.ctxGlob
     if [[ "$CMD" == find\ * ]]; then
         if [[ "$CMD" =~ $_DOTDIR_LIMITATION ]]; then
             echo "$INPUT" | jq --arg cmd "$CMD | head -100" '.tool_input.command = $cmd'
-            echo "WARN: 'find' permitted for a dot-directory target — Serena.findFile fails silently inside .serena/.claude/.cursor/.mcp.json (issue #853, see ai/rules/tool-priority.md §6). Output capped to 100 lines via '| head -100'." >&2
+            echo "WARN: 'find' permitted for a dot-directory target. Output capped to 100 lines via '| head -100'." >&2
             exit 0
         fi
-        _deny "BLOCKED: Use Serena.findFile instead of 'find' (no Glob tool exists in this session).
-  Call via: mcp__pctx__execute_typescript with: await Serena.findFile('<filename>')
+        _deny "BLOCKED: Use Glob or LeanCtx.ctxGlob instead of 'find'.
+  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxGlob({ pattern: '**/<filename>', path: '.' })
   Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
     fi
 
-    # 2c. plain ls (not ls -l* for symlink inspection) — no Glob tool exists in this session; use Serena.listDir
+    # 2c. plain ls (not ls -l* for symlink inspection) — use Glob or LeanCtx.ctxTree
     if [[ ( "$CMD" == ls\ * || "$CMD" == "ls" ) && "$CMD" != ls\ -l* ]]; then
         if [[ "$CMD" =~ $_DOTDIR_LIMITATION ]]; then
             echo "$INPUT" | jq --arg cmd "$CMD | head -100" '.tool_input.command = $cmd'
-            echo "WARN: 'ls' permitted for a dot-directory target — Serena.listDir/findFile fail silently inside .serena/.claude/.cursor/.mcp.json (issue #853, see ai/rules/tool-priority.md §6). Output capped to 100 lines via '| head -100'." >&2
+            echo "WARN: 'ls' permitted for a dot-directory target. Output capped to 100 lines via '| head -100'." >&2
             exit 0
         fi
-        _deny "BLOCKED: Use Serena.listDir instead of 'ls' (no Glob tool exists in this session).
-  Call via: mcp__pctx__execute_typescript with: await Serena.listDir('<path>')
+        _deny "BLOCKED: Use Glob or LeanCtx.ctxTree instead of 'ls'.
+  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxTree({ path: '<path>' })
   Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
     fi
 
@@ -660,7 +660,7 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
         fi
         _deny "BLOCKED: Piped '$PIPE_CMD' is not allowed after a command.
   Use the Read tool with a limit parameter, jq for JSON output, or LeanCtx.ctxSearch for text search.
-  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ query: '<pattern>' })"
+  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ pattern: '<pattern>', path: '.' })"
     fi
 fi
 
@@ -854,17 +854,17 @@ if [[ "$TOOL_NAME" == "Grep" && -n "$PATTERN" ]]; then
     fi
     # General pattern — LeanCtx.ctxSearch is a direct drop-in
     _MSG="$_SERENA_PREFIX: Use LeanCtx.ctxSearch instead of Grep — it's gitignore-aware, session-cached, and token-efficient.
-  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ query: '${PATTERN}' })"
+  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ pattern: '${PATTERN}', path: '.' })"
     [[ "$_SERENA_LEVEL" == "block" ]] && _deny "$_MSG"
     echo "$_MSG" >&2
     exit 0
 fi
 
-# 6b. Glob: specific filename → suggest Serena.findFile
+# 6b. Glob: specific filename → suggest direct Glob/LeanCtx pattern
 if [[ "$TOOL_NAME" == "Glob" && -n "$PATTERN" ]]; then
     if [[ "$PATTERN" =~ /[a-zA-Z0-9_-]+\.[a-zA-Z]+$ && ! "$PATTERN" =~ \*\.[a-zA-Z]+$ ]]; then
         FILENAME="${PATTERN##*/}"
-        echo "HINT: For finding '$FILENAME', use Serena.findFile('$FILENAME') or LeanCtx.ctxTree for directory listings." >&2
+        echo "HINT: For finding '$FILENAME', use Glob('**/$FILENAME') or LeanCtx.ctxGlob({ pattern: '**/$FILENAME', path: '.' })." >&2
         exit 0
     fi
 fi

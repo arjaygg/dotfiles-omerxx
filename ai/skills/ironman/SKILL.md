@@ -185,9 +185,10 @@ Then use Serena for specific lookups as you implement.
 ```typescript
 // Batch these parallel reads
 const [testFiles, symbolOverview] = await Promise.all([
-  Serena.searchForPattern("func Test", {
-    glob: "**/*_test.go",
-    restrict_search_to_code_files: true
+  LeanCtx.ctxSearch({
+    pattern: "func Test",
+    path: ".",
+    include: "**/*_test.go"
   }),
   Serena.getSymbolsOverview("<target-package>")
 ]);
@@ -230,10 +231,11 @@ Before implementing, understand how similar things are done in this codebase:
 
 ```typescript
 // Find existing similar functionality
-const similarFuncs = await Serena.searchForPattern(
-  "func.*Return.*error|interface.*Reader",
-  { glob: "**/*.go", restrict_search_to_code_files: true }
-);
+const similarFuncs = await LeanCtx.ctxSearch({
+  pattern: "func.*Return.*error|interface.*Reader",
+  path: ".",
+  include: "**/*.go"
+});
 ```
 
 #### 2b — Study Existing Patterns
@@ -246,10 +248,11 @@ For Go:
 
 ```typescript
 // Understand error handling pattern
-const errorPatterns = await Serena.searchForPattern(
-  "type.*Error|var Err|return.*Error",
-  { glob: "pkg/errs/*.go" }
-);
+const errorPatterns = await LeanCtx.ctxSearch({
+  pattern: "type.*Error|var Err|return.*Error",
+  path: ".",
+  include: "pkg/errs/*.go"
+});
 ```
 
 ---
@@ -607,4 +610,3 @@ Typical workflow orchestrated by Cap:
 - `/fury` — writes the failing tests you implement against
 - `/hawk` — code review after implementation
 - `/cap` — orchestrates the full workflow (Stark → Fury → Ironman → Hawk)
-

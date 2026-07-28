@@ -64,7 +64,7 @@ if $HAS_SERENA; then
     fi
     _MEM_HINT=""
     if [[ "$_MEM_COUNT" -gt 0 ]]; then
-        _MEM_HINT="  - Serena.readMemory({ name: \"START_HERE\" }) — load project memories ($_MEM_COUNT available)"
+        _MEM_HINT="  - Serena.readMemory({ memory_name: \"START_HERE\" }) — load project memories ($_MEM_COUNT available)"
     fi
 
     _SESSION_MSG="$(cat <<EOT

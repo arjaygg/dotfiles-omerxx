@@ -42,4 +42,4 @@ The primitives are linked granularly from this directory into the agent-specific
 - **Developer Guidelines**: Git worktree management, parallel development patterns
 - **Context Management**: Session artifacts, compaction rules
 
-**Verification:** Start a new Cursor session to activate the updated rule set. The sophisticated tool priority stack (Serena.listDir, execute_typescript batching, etc.) will be enforced automatically.
+**Verification:** Start a new Cursor session to activate the updated rule set. The tool priority stack (Serena symbol tools, LeanCtx file/search tools, execute_typescript batching, etc.) will be enforced automatically.

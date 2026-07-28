@@ -157,8 +157,9 @@ First detect the project language by checking root-level files:
 // Batch these calls in parallel
 const [fileOverview, existingPatterns, dependencies] = await Promise.all([
   Serena.getSymbolsOverview("<target-package>"),
-  Serena.searchForPattern("pattern|interface|factory|protocol|abstract", { 
-    restrict_search_to_code_files: true  // works for Go, Python, TypeScript
+  LeanCtx.ctxSearch({
+    pattern: "pattern|interface|factory|protocol|abstract",
+    path: "."
   }),
   Serena.findReferencingSymbols("<ExistingComponent>")
 ]);
@@ -337,4 +338,3 @@ For any interface or public API change:
 ## Related Skills
 
 After the plan is approved, invoke `/fury` to write failing tests, then `/dev` to implement.
-

@@ -3,9 +3,10 @@
 ## Tool Priority (for AI agents — most important)
 Use tools in this order. Stop at the first that works. Never Bash for file ops.
 
-1. Serena (LSP-backed, gitignore-aware): listDir, searchForPattern, findSymbol, getSymbolsOverview
-2. Native Claude Code tools: Grep tool (ripgrep), Glob, Read with limit/offset, Edit
-3. Bash — ONLY for system commands with no dedicated tool (git, brew, stow, curl, etc.)
+1. Serena (LSP-backed symbols): findSymbol, findReferencingSymbols, getSymbolsOverview, readMemory
+2. LeanCtx: ctxSearch, ctxGlob, ctxTree, ctxRead for text/file/tree access
+3. Native Claude Code tools: Grep tool (ripgrep), Glob, Read with limit/offset, Edit
+4. Bash — ONLY for system commands with no dedicated tool (git, brew, stow, curl, etc.)
 
 NEVER: Bash cat/grep/find/ls for project file operations.
 
@@ -35,5 +36,6 @@ Before any tool call accessing the project:
 - 2+ Read/Grep/Glob ops (independent) → fire in parallel (single message)
 
 ## Serena API Convention
-All methods use camelCase: listDir, searchForPattern, findSymbol, getSymbolsOverview,
-listMemories, initialInstructions, writeMemory, readMemory
+All exposed pctx SDK methods use camelCase: findSymbol, findReferencingSymbols,
+getSymbolsOverview, listMemories, initialInstructions, writeMemory, readMemory.
+Current pctx Serena does not expose listDir, findFile, or searchForPattern.

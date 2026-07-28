@@ -19,13 +19,13 @@ This is the detailed reference behind `ai/rules/tool-priority.md` §7's quick di
 
 | Task | 1st Priority | 2nd Priority | Avoid |
 |---|---|---|---|
-| **"Where is X defined?"** | `Serena.findSymbol` | `Serena.searchForPattern` | `LeanCtx.ctxSearch` |
-| **"What calls Y?"** | `Serena.findReferencingSymbols` | `Serena.searchForPattern` | `LeanCtx.ctxSearch` |
-| **"What's in this package?"** | `Serena.getSymbolsOverview` | `Serena.listDir` | `LeanCtx.ctxTree` |
+| **"Where is X defined?"** | `Serena.findSymbol` | `LeanCtx.ctxSearch` literal fallback | raw grep/rg |
+| **"What calls Y?"** | `Serena.findReferencingSymbols` | `LeanCtx.ctxSearch` literal fallback | raw grep/rg |
+| **"What's in this package?"** | `Serena.getSymbolsOverview` | `LeanCtx.ctxTree` / `Glob` | `ls` |
 | **"Show me how X is used broadly"** | `Repomix --compress --include "pkg/X/**"` | `Serena.findReferencingSymbols` | `LeanCtx.ctxRead` on every file |
 | **Text pattern across non-code files** | `LeanCtx.ctxSearch` | `Grep tool` | — |
 
-**Rule:** lean-ctx is a file-access layer (read, compress, cache). It has no symbol index. For any task phrased as navigation ("where", "what calls", "what's in"), Serena is the correct first call. LeanCtx is correct for text patterns and file reads — not code structure exploration.
+**Rule:** Serena is the first call for exposed symbol operations (`findSymbol`, `findReferencingSymbols`, `getSymbolsOverview`). Current pctx Serena does not expose `searchForPattern`, `findFile`, or `listDir`; use LeanCtx for regex/text/tree/file-glob operations.
 
 ## Code/PR Graph Tooling (Graphify — two real interfaces)
 
@@ -115,11 +115,11 @@ Both operate on the same project-local `graphify-out/graph.json`:
 | Violation | Correct replacement |
 |---|---|
 | `Grep(pattern: "WorkerPool")` — PascalCase lookup | `Serena.findSymbol("WorkerPool")` |
-| `Grep(pattern: "func New")` — symbol definition search | `Serena.findSymbol("New*")` or `Serena.searchForPattern` |
+| `Grep(pattern: "func New")` — symbol definition search | `Serena.findSymbol("New*")` or `LeanCtx.ctxSearch` |
 | `Read("pkg/worker/pool.go")` without limit — whole file read | `Serena.getSymbolsOverview("pkg/worker/pool.go")`, then Read with limit/offset |
 | Multiple sequential `Serena.*` calls (no batch) | `mcp__pctx__execute_typescript` with `Promise.all()` |
 | Starting session with Grep/Read before Serena init | Call `mcp__pctx__list_functions` → write `plans/pctx-functions.md` → `Serena.initialInstructions()` |
-| `Bash(grep ...)` or `Bash(rg ...)` | Blocked by `permissions.deny`; use `Grep` tool or `Serena.searchForPattern` |
+| `Bash(grep ...)` or `Bash(rg ...)` | Blocked by `permissions.deny`; use `LeanCtx.ctxSearch` or `Grep` tool |
 | `Bash(cat file)` / `head -N` / `tail -n +N` / `sed`/`awk` on limits | Blocked; use `Read` with `limit`/`offset`, or `Edit` |
 | `Bash(find . -name ...)` | Blocked; use `Glob` |
 | `Bash(ls dir/)` | Use `Glob("dir/*")` |
@@ -131,4 +131,4 @@ Both operate on the same project-local `graphify-out/graph.json`:
 | `Read(large_file)` for analysis (no edit intent) | `LeanCtx.ctxCall({name: "ctx_smart_read", ...})` or `ctxRead(mode: "signatures")` |
 | Multiple `Read` calls in sequence | `LeanCtx.ctxCall({name: "ctx_multi_read", ...})` |
 
-If you find yourself reaching for Grep, ask: **"Is this a symbol lookup or a pattern search?"** Symbol lookup (known name) → `Serena.findSymbol`. Structural pattern → `Serena.searchForPattern`. Text pattern, non-code → `Grep tool` is acceptable. Finding a file → `Serena.findFile` or `Glob`.
+If you find yourself reaching for Grep, ask: **"Is this a symbol lookup or a pattern search?"** Symbol lookup (known name) → `Serena.findSymbol`. Structural/text pattern → `LeanCtx.ctxSearch`. Finding a file → `LeanCtx.ctxGlob` or `Glob`.

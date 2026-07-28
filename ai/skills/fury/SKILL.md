@@ -223,7 +223,7 @@ Discover existing test patterns:
 const [overview, existingTests] = await Promise.all([
   Serena.getSymbolsOverview("<target-file>"),
   // Finds test functions across Go, Python, and TypeScript
-  Serena.searchForPattern("func Test|def test_|it\\(|describe\\(", { restrict_search_to_code_files: true }),
+  LeanCtx.ctxSearch({ pattern: "func Test|def test_|it\\(|describe\\(", path: ".", include: "**/*test*" }),
 ]);
 ```
 
