@@ -5,7 +5,7 @@
   "servers": [
     {
       "name": "serena",
-      "command": "serena",
+      "command": "serena_wrapper.sh",
       "args": [
         "--context",
         "claude-code",
@@ -17,18 +17,27 @@
     {
       "name": "qmd",
       "command": "qmd",
-      "args": ["mcp"]
+      "args": [
+        "mcp"
+      ]
     },
     {
       "name": "lean-ctx",
-      "command": "lean-ctx",
-      "args": ["mcp", "--stdio"],
-      "env": {"LEAN_CTX_CACHE_TTL": "300"}
+      "command": "bash",
+      "args": [
+        "-c",
+        "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"
+      ],
+      "env": {
+        "LEAN_CTX_CACHE_TTL": "300"
+      }
     },
     {
       "name": "repomix",
       "command": "repomix",
-      "args": ["--mcp"]
+      "args": [
+        "--mcp"
+      ]
     },
     {
       "name": "graphify",
@@ -43,7 +52,17 @@
     "colors": true
   },
   "telemetry": {
-    "traces": {"enabled": false, "sampling": {"strategy": "always", "rate": 1.0}, "exporters": []},
-    "metrics": {"enabled": false, "exporters": []}
+    "traces": {
+      "enabled": false,
+      "sampling": {
+        "strategy": "always",
+        "rate": 1.0
+      },
+      "exporters": []
+    },
+    "metrics": {
+      "enabled": false,
+      "exporters": []
+    }
   }
 }

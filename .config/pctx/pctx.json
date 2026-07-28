@@ -5,7 +5,7 @@
   "servers": [
     {
       "name": "serena",
-      "command": "/Users/axos-agallentes/.dotfiles/.local/bin/serena_wrapper.sh",
+      "command": "serena_wrapper.sh",
       "args": [
         "--context",
         "claude-code",
@@ -16,20 +16,17 @@
     },
     {
       "name": "qmd",
-      "command": "/opt/homebrew/bin/qmd",
+      "command": "qmd",
       "args": [
         "mcp"
-      ],
-      "env": {
-        "PATH": "/opt/homebrew/bin:/Users/axos-agallentes/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-      }
+      ]
     },
     {
       "name": "lean-ctx",
-      "command": "/Users/axos-agallentes/.cargo/bin/lean-ctx",
+      "command": "bash",
       "args": [
-        "mcp",
-        "--stdio"
+        "-c",
+        "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"
       ],
       "env": {
         "LEAN_CTX_CACHE_TTL": "300"
@@ -37,14 +34,14 @@
     },
     {
       "name": "repomix",
-      "command": "/Users/axos-agallentes/homebrew/bin/repomix",
+      "command": "repomix",
       "args": [
         "--mcp"
       ]
     },
     {
       "name": "graphify",
-      "command": "/Users/axos-agallentes/.local/bin/graphify-mcp-conditional",
+      "command": "graphify-mcp-conditional",
       "args": []
     }
   ],
