@@ -5,9 +5,17 @@
 set -euo pipefail
 trap 'echo "HOOK CRASH (session-init.sh line $LINENO): $BASH_COMMAND"; exit 0' ERR
 
+# Emit the SessionStart payload. Three encoders, tried in order, so the hook degrades
+# gracefully on a host missing jq, python3, or both — it must never emit malformed JSON.
 emit_hook_context() {
     local msg="$1"
-    python3 - "$msg" <<'PYEOF'
+    if command -v jq >/dev/null 2>&1; then
+        jq -n --arg msg "$msg" \
+            '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $msg}}'
+        return 0
+    fi
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - "$msg" <<'PYEOF'
 import json, sys
 msg = sys.argv[1]
 print(json.dumps({
@@ -17,6 +25,35 @@ print(json.dumps({
     }
 }))
 PYEOF
+        return 0
+    fi
+    # Last resort: escape the five characters JSON forbids raw in a string.
+    local escaped="$msg"
+    escaped="${escaped//\\/\\\\}"
+    escaped="${escaped//\"/\\\"}"
+    escaped="${escaped//$'\t'/\\t}"
+    escaped="${escaped//$'\r'/\\r}"
+    escaped="${escaped//$'\n'/\\n}"
+    printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' \
+        "$escaped"
+}
+
+# One-line-per-phase digest of the generated router, built from the manifest with awk so it
+# needs neither jq nor python3. Empty output if the manifest is absent.
+router_digest() {
+    # Resolve relative to this hook: <repo>/.claude/hooks/session-init.sh -> <repo>.
+    local hook_dir repo manifest
+    hook_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    repo="$(cd "$hook_dir/../.." && pwd)"
+    manifest="$repo/ai/skills/manifest.csv"
+    [[ -r "$manifest" ]] || manifest="$HOME/.dotfiles/ai/skills/manifest.csv"
+    [[ -r "$manifest" ]] || return 0
+    awk -F, 'NR>1 && $1 != "" { order[$2] = order[$2] " " $1 }
+        END {
+            n = split("orient diagnose plan implement review ship operate", phases, " ")
+            for (i = 1; i <= n; i++)
+                if (phases[i] in order) printf "  %s:%s\n", phases[i], order[phases[i]]
+        }' "$manifest"
 }
 
 # Write session-start timestamp to a per-user temp file
@@ -104,6 +141,22 @@ fi
 
 # Update tmux window name with Claude session context
 "$HOME/.dotfiles/tmux/scripts/claude-tmux-bridge.sh" session-start >/dev/null 2>&1 &
+
+# Inject the skill router once per session. The marker file is keyed to this session's
+# start timestamp, so a new session re-injects and a re-fired hook within one session does not.
+_ROUTER_MARKER="${TMPDIR:-/tmp}/.claude-router-injected-$(id -u)-$(cat "$TIMESTAMP_FILE" 2>/dev/null || echo 0)"
+if [[ ! -e "$_ROUTER_MARKER" ]]; then
+    _ROUTER="$(router_digest)"
+    if [[ -n "$_ROUTER" ]]; then
+        : > "$_ROUTER_MARKER" 2>/dev/null || true
+        _SESSION_MSG="${_SESSION_MSG}
+
+skill router (generated from ai/skills/manifest.csv; full table: ai/skills/using-my-skills/SKILL.md)
+${_ROUTER}
+core behaviors (non-negotiable): surface assumptions; stop on confusion; push back with numbers;
+enforce simplicity; hold scope; verify with evidence."
+    fi
+fi
 
 if [[ -n "${_DUPLICATE_WARN:-}" ]]; then
     _SESSION_MSG="${_DUPLICATE_WARN}
