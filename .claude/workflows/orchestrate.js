@@ -165,6 +165,9 @@ function fixtureFor(stage, opts) {
       })),
     }
   }
+  if (stage === 'mark_running') {
+    return f.mark_running || { written: true, path: opts.specPath }
+  }
   if (stage === 'halt') {
     return f.halt || { written: true, path: opts.haltPath }
   }
@@ -320,6 +323,34 @@ async function halt(status, condition, ctx, extra) {
   }
 }
 
+// §15: the SIGKILL detector needs a producer. No in-process handler can catch SIGKILL, so a
+// killed run has to be recognised from the other side — a spec whose frontmatter still says
+// `running` with no terminal status did not finish. That only works if something actually
+// writes `running`. Nothing did: plans/specs/TEMPLATE.md ships `status: draft` and this script
+// never updated it, so an in-flight run was indistinguishable from a never-started one and the
+// documented detector had no producer at all.
+async function markRunning(specPath, ctx) {
+  const written = await runStage(
+    'mark_running',
+    `Set \`status: running\` in the frontmatter of ${specPath}, leaving every other ` +
+      `frontmatter key and the entire body byte-identical. Do not edit any other file.`,
+    {
+      ...ctx.stageOpts,
+      specPath,
+      label: `mark_running:${ctx.label}`,
+      phase: 'Implement',
+      schema: STATUS_SCHEMA,
+    },
+  )
+  if (!(written && written.written)) {
+    log(
+      `MARK RUNNING FAILED for ${specPath} — from here on a kill cannot be told apart from a ` +
+        `run that never started`,
+    )
+  }
+  return Boolean(written && written.written)
+}
+
 // ------------------------------------------------------------------------ run
 
 const dryRun = Boolean(args && args.dryRun)
@@ -348,10 +379,14 @@ if (specResolution !== 'ok') {
   log(`spec resolution '${specResolution}' — terminal status goes to ${haltPath}`)
 }
 
-// try/finally guarantees a terminal write on a thrown stage too. It cannot cover SIGKILL:
-// no in-process handler can. That case is covered from the other side — a spec whose
-// frontmatter still says `running` with no terminal status is a crashed run, and the next
-// run treats it as one.
+// A thrown stage is an exit path too, and §15 admits no exit without a terminal status. The
+// write lives in `catch`, NOT in `finally`: `finally` cannot tell "returned normally without
+// writing" apart from "threw", and the condition has to name the error. (An earlier version of
+// this comment claimed try/finally already guaranteed the write on a throw — it did not; the
+// `finally` only logged, so a thrown stage left no artifact at all.)
+// SIGKILL is still uncoverable in-process; markRunning() above is what makes the other-side
+// detector real — a spec whose frontmatter says `running` with no terminal status is a crashed
+// run, and the next run treats it as one.
 let result
 try {
   if (specResolution !== 'ok') {
@@ -374,6 +409,16 @@ try {
   } else {
     result = await main()
   }
+} catch (err) {
+  if (!terminal.written) {
+    try {
+      await halt('blocked', `run threw before completing: ${(err && err.message) || String(err)}`, ctx)
+    } catch (haltErr) {
+      // Never let the recovery write mask the original failure.
+      log(`HALT WRITE THREW while handling a stage error: ${(haltErr && haltErr.message) || String(haltErr)}`)
+    }
+  }
+  throw err
 } finally {
   if (!terminal.written) {
     log(`NO TERMINAL STATUS WRITTEN for ${haltPath} — this run is indistinguishable from a crash`)
@@ -387,6 +432,11 @@ async function main() {
 
   // ------------------------------------------------------------- Implement
   phase('Implement')
+
+  // Before any work: stamp `status: running` so a SIGKILL from here on is detectable. Only on
+  // this path — the bound-exceeded and bad-spec-path branches above halt without ever starting,
+  // so marking them running would invent an in-flight run that never was.
+  await markRunning(specPath, ctx)
 
   const impl = await runStage(
     'implement',

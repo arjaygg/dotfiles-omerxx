@@ -252,9 +252,49 @@ class OrchestrateWorkflowTests(unittest.TestCase):
             line = body[match.start() : body.index("\n", match.start())].strip()
             self.assertIn("halt(", line, f"exit path bypasses HALT: {line}")
 
-    def test_a_thrown_stage_still_reports_a_missing_status(self):
-        self.assertIn("} finally {", self.code)
+    def test_a_thrown_stage_actually_writes_a_terminal_status(self):
+        """Regression: the previous version of this test asserted only that `} finally {` and
+        the NO-TERMINAL-STATUS log line existed. Both were present while the `finally` block
+        merely *logged* — so a thrown stage left no artifact at all, and the source comment
+        claiming try/finally guaranteed the write was false. Assert the write, not the shape.
+        """
+        self.assertIn("} catch (err) {", self.code, "no catch block: a throw cannot be handled")
+
+        start = self.code.index("} catch (err) {")
+        end = self.code.index("} finally {", start)
+        catch_body = self.code[start:end]
+
+        self.assertIn("halt(", catch_body,
+                      "catch block must WRITE a terminal status, not just log about its absence")
+        self.assertIn("throw err", catch_body,
+                      "the original failure must still propagate — never swallowed by recovery")
+        # The recovery write must not be able to mask the original error.
+        self.assertIn("HALT WRITE THREW", catch_body)
+        # `finally` stays as the last-resort log.
         self.assertIn("NO TERMINAL STATUS WRITTEN", self.text)
+
+    def test_the_false_try_finally_guarantee_is_not_reinstated(self):
+        self.assertNotIn(
+            "try/finally guarantees a terminal write",
+            self.text,
+            "this claim was false: the finally block only logged. Do not restore it.",
+        )
+
+    def test_the_sigkill_detector_has_a_producer(self):
+        """§15 documents killed runs being detected by a spec still marked `running` with no
+        terminal status. Nothing ever wrote `running` — TEMPLATE.md ships `status: draft` — so
+        the detector had no producer and an in-flight run looked like a never-started one.
+        """
+        self.assertIn("async function markRunning(", self.code)
+        self.assertIn("status: running", self.text,
+                      "markRunning must actually set `status: running`")
+        # Called on the healthy path only: the bound-exceeded / bad-spec branches halt without
+        # ever starting, so marking those `running` would invent an in-flight run.
+        main_start = self.code.index("async function main() {")
+        self.assertIn("await markRunning(specPath, ctx)", self.code[main_start:])
+        # Dry runs must not spawn a subagent for it.
+        self.assertIn("stage === 'mark_running'", self.code,
+                      "mark_running needs a dry-run fixture branch")
 
     # ------------------------------------------------------------------- auto-ship
 
