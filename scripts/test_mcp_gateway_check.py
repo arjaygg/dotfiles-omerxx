@@ -102,7 +102,7 @@ class McpGatewayCheckTests(unittest.TestCase):
             [(result.rule, result.path, result.status) for result in results],
         )
 
-    def test_agy_direct_lean_ctx_is_reported(self):
+    def test_direct_lean_ctx_is_approved_for_focused_exposure(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             write_valid_gateway_tree(root)
@@ -113,7 +113,7 @@ class McpGatewayCheckTests(unittest.TestCase):
 
             results = check_mcp_gateway(root)
 
-        self.assertIn(
+        self.assertNotIn(
             ("client-unapproved-server", ".gemini/config/mcp_config.json", "fail"),
             [(result.rule, result.path, result.status) for result in results],
         )
@@ -151,7 +151,7 @@ class McpGatewayCheckTests(unittest.TestCase):
 
         self.assertFalse([result for result in results if result.status == "fail"])
 
-    def test_current_agy_configs_use_the_legacy_discovery_shim(self):
+    def test_current_gemini_configs_use_direct_pctx_and_focused_leanctx(self):
         root = Path(__file__).resolve().parents[1]
         for relative in [
             ".gemini/mcp.json",
@@ -161,12 +161,12 @@ class McpGatewayCheckTests(unittest.TestCase):
             config = json.loads((root / relative).read_text(encoding="utf-8"))
             pctx = config["mcpServers"]["pctx"]
 
-            self.assertTrue(str(pctx["command"]).endswith("agy-mcp-legacy-shim.py"))
-            backend = pctx["args"][pctx["args"].index("--") + 1 :]
-            self.assertEqual(Path(str(backend[0])).name, "pctx")
-            self.assertIn("mcp", backend)
-            self.assertIn("start", backend)
-            self.assertNotIn("lean-ctx", config["mcpServers"])
+            invocation = " ".join([str(pctx["command"]), *map(str, pctx["args"])])
+            self.assertIn("pctx", invocation)
+            self.assertIn("mcp", invocation)
+            self.assertIn("start", invocation)
+            if relative != ".gemini/config/mcp_config.json":
+                self.assertIn("lean-ctx", config["mcpServers"])
 
 
 if __name__ == "__main__":

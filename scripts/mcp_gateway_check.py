@@ -15,11 +15,11 @@ from typing import Any, Sequence
 
 EXPECTED_PCTX_BACKENDS = {"serena", "qmd", "lean-ctx", "repomix", "graphify"}
 CLIENT_JSON_CONFIGS = {
-    ".mcp.json": {"pctx"},
-    ".cursor/mcp.json": {"pctx"},
-    ".gemini/mcp.json": {"pctx"},
-    ".gemini/settings.json": {"pctx"},
-    ".gemini/config/mcp_config.json": {"pctx", "notebooklm", "chrome-devtools"},
+    ".mcp.json": {"pctx", "lean-ctx"},
+    ".cursor/mcp.json": {"pctx", "lean-ctx"},
+    ".gemini/mcp.json": {"pctx", "lean-ctx"},
+    ".gemini/settings.json": {"pctx", "lean-ctx"},
+    ".gemini/config/mcp_config.json": {"pctx", "lean-ctx", "notebooklm", "chrome-devtools"},
     ".windsurf/mcp_config.json": {"pctx", "lean-ctx"},
 }
 
@@ -86,8 +86,14 @@ def _has_pctx_stdio(config: object) -> bool:
     pctx = _pctx_entry(config)
     command = str(pctx.get("command", ""))
     args = pctx.get("args", [])
+    joined = " ".join(str(arg) for arg in args) if isinstance(args, list) else ""
     return (
-        command.endswith("pctx") and isinstance(args, list) and "mcp" in args and "start" in args
+        (
+            command.endswith("pctx")
+            or (Path(command).name == "bash" and "pctx" in joined)
+        )
+        and "mcp" in joined
+        and "start" in joined
     ) or _uses_agy_legacy_shim(config)
 
 
@@ -147,9 +153,14 @@ def _check_codex(root: Path) -> list[GatewayResult]:
     pctx = servers.get("pctx", {}) if isinstance(servers, dict) else {}
     args = pctx.get("args", []) if isinstance(pctx, dict) else []
     command = str(pctx.get("command", "")) if isinstance(pctx, dict) else ""
+    joined = " ".join(str(arg) for arg in args) if isinstance(args, list) else ""
     results.append(
         _ok("codex-pctx-stdio", relative)
-        if command.endswith("pctx") and isinstance(args, list) and "mcp" in args and "start" in args
+        if (
+            (command.endswith("pctx") or (Path(command).name == "bash" and "pctx" in joined))
+            and "mcp" in joined
+            and "start" in joined
+        )
         else _fail("codex-pctx-stdio", relative, "pctx does not invoke `pctx mcp start`")
     )
     for server in sorted(names - {"pctx", "lean-ctx"}):
