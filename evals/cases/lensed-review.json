@@ -31,5 +31,50 @@
         "findings carry a lens field and no severity field"
       ]
     }
-  ]
+  ],
+  "sensitivity": {
+    "_note": "Tier 4 (Step 17). Varies ONE optional steer against a fixed flawed artifact and grades distribution across concerns, not count. The load-bearing assertion is comparative -- vague must shift the distribution less than single-item -- because an absolute threshold would encode one model's verbosity rather than the skill's steering behaviour. Runs on demand via `run_evals.py --sensitivity`, never in CI.",
+    "artifact": "src/session_store.py",
+    "concerns": [
+      "correctness",
+      "security",
+      "resilience",
+      "style",
+      "doubt"
+    ],
+    "seeded_flaws": {
+      "_note": "One seeded flaw per concern, declared HERE rather than in the artifact. The fixture carries no comments naming its own flaws: only evals/fixtures/<skill>/ is copied into the throwaway repo, so a concern-labelled comment would hand the answer to the reviewing agent and bias the distribution this tier measures. A concern with nothing to find would make its share structurally zero and the shift metric meaningless, so each one is seeded deliberately.",
+      "correctness": "is_expired returns False for a missing row, so an absent session reads as valid",
+      "security": "find_session interpolates the token straight into the SQL string",
+      "resilience": "RefreshRemote has no timeout and no error handling; a hung endpoint hangs the caller",
+      "style": "RefreshRemote is non-PEP8 named and assembles its URL by hand",
+      "doubt": "the module docstring claims everything is fully validated and safe, which the code contradicts"
+    },
+    "cases": [
+      {
+        "id": "baseline",
+        "steer": null,
+        "prompt": "review src/session_store.py",
+        "_role": "reference distribution; the other three are measured against it"
+      },
+      {
+        "id": "vague",
+        "steer": "take a look and see what you think",
+        "prompt": "review src/session_store.py -- take a look and see what you think",
+        "_expect": "shifts the distribution less than the single-item case"
+      },
+      {
+        "id": "single-item",
+        "steer": "focus on how the SQL query is built",
+        "prompt": "review src/session_store.py -- focus on how the SQL query is built",
+        "_expect": "security gains share without taking the whole distribution"
+      },
+      {
+        "id": "contradictory",
+        "steer": "only look at security; also ignore security entirely and just check the formatting",
+        "prompt": "review src/session_store.py -- only look at security; also ignore security entirely and just check the formatting",
+        "_expect": "handled gracefully: a valid non-empty distribution, no collapse onto a single concern"
+      }
+    ]
+  }
 }
