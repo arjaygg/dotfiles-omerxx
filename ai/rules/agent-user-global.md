@@ -22,6 +22,31 @@ These rules are the user-global baseline for AI coding agents on this machine.
 - Prefer non-interactive git commands.
 - For non-trivial changes, prefer isolated branches and worktrees.
 
+## Autonomy Tiers (A0-A4)
+
+Where a repo opts into the git pipeline, how much a leg may do without asking is an **A0-A4 tier**,
+not a boolean. Never read `.claude-atomic.yaml`'s `pipeline:` values directly to decide whether to
+act — the declared value is only a ceiling. Resolve the tier actually in force:
+
+```bash
+scripts/ai/autonomy-tier.sh --stage auto_ship --json
+```
+
+- **A non-zero exit means A0, never "unrestricted."** The resolver fails loudly on a config error
+  (legacy boolean, unparseable tier, an irreversible leg declared above its cap) because the hook it
+  supports runs under `trap 'exit 0' ERR` — fail-open is right for session availability and wrong
+  for authorization.
+- **Irreversible legs (`auto_ship`, `auto_clean`) never exceed A2**, whatever evidence accumulates.
+  Blast radius caps the tier.
+- **Promotion needs a committed green eval run**, not a judgement call. A risk-acceptance override
+  is reported separately from evidence and is refused for irreversible legs.
+- **Never edit `.claude-atomic.yaml`, `hook-config.yaml`, or `.claude/hooks/*` to raise your own
+  tier.** Only a human may. Demotion markers under the shared git dir are written by the gate and
+  cleared by a human after committing evidence.
+
+Full ladder, evidence requirements per tier, and the current signed re-acceptance:
+`plans/2026-07-27-native-agent-orchestration.md` Part VIII.
+
 ## Pull Request Title Policy
 
 PR titles use Conventional Commits (`type(scope): summary`); prefer stack tooling (`stack pr`/`stack pr-all`)

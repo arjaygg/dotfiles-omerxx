@@ -112,8 +112,12 @@ Independent and parallel-safe: **1, 2, 6**. Everything else has a stated predece
   `ai/skills/cap/references/schemas.md` to drop finding-level `severity`.
 - **Step 16 — Tier 3 and pressure cases** *(after 7)* — pending.
 - **Step 17 — Tier 4 input sensitivity** *(after 10, 16)* — pending.
-- **Step 18 — Reconcile the autonomy ladder with config** *(after 15, 16)* — pending. Closes or
-  re-accepts the A4-with-A0-evidence gap in writing.
+- **Step 18 — Reconcile the autonomy ladder with config** *(after 15, 16)* — **done 2026-07-28**.
+  Gap re-accepted in writing, asymmetrically: reversible legs keep A2 on a dated signed override
+  (`expires: 2026-10-31`), irreversible legs are not re-accepted and resolve to A0 under the A2 cap.
+  Two clauses were amended, not faked — pre-action enforcement moved to a new **Step 19** (a Stop
+  hook cannot precede the merge it guards), and tier declaration was scoped to the five pipeline
+  legs rather than every workflow and skill.
 
 ## Acceptance criteria
 
@@ -167,10 +171,16 @@ check. `[ ]` = pending; `[x]` = verified satisfied. **Do not mark a box without 
 - [ ] **Step 17** — `lensed-review` has baseline / vague / single-item / contradictory cases; grading
       reports distribution, not only count; the vague case shifts distribution less than the
       specific case.
-- [ ] **Step 18** — flags expressed as A0-A4 tiers in a machine-writable store; promotion requires a
-      committed green eval run; demotion enforced by the gate on any `blocked`, failed pressure case,
-      DoD miss, or `followup_review_recommended: true`; the gate **asserts** `auto_ship`/`auto_clean`
-      ≤ A2, failing closed; the Part VIII autonomy gap closed or re-accepted in writing.
+- [x] **Step 18** — flags expressed as A0-A4 tiers in a machine-writable store; promotion requires a
+      committed green eval run (`git cat-file -e HEAD:`, since `git ls-files` exits 0 on a merely
+      staged file); demotion written by the gate on a stage-attributed `blocked`, with refusals
+      excluded so an unattended run cannot ratchet itself down; `auto_ship`/`auto_clean` capped at A2
+      by a resolver that refuses rather than clamps; the Part VIII gap re-accepted in writing with an
+      enforced expiry. Verified: 29 tests + 3 subtests across `scripts/test_autonomy_tier.py` and
+      `scripts/test_autonomy_demotion.py`.
+      **Amended:** "the gate asserts ... failing closed" → the Stop hook cannot precede an
+      irreversible action, so pre-action deny is **Step 19**; "every workflow and pipeline stage" →
+      scoped to the five pipeline legs.
 
 Cross-cutting:
 - [ ] No step's artifacts were committed directly to `main` (`git log --first-parent main` shows only
@@ -189,7 +199,11 @@ Cross-cutting:
   `evals/collision-baseline.md`, `ai/skills/REMOVALS.md`, `ai/skills/manifest.csv`,
   `ai/skills/lensed-review/`, `ai/skills/using-my-skills/SKILL.md`,
   `.claude/workflows/orchestrate.js`
-- Edited: `.claude/settings.json` + `ai/config/claude/settings.base.json` (keep byte-identical),
+- Edited: `.claude/settings.json` + `ai/config/claude/settings.base.json` (keep identical **modulo
+  `$HOME` path portability** — verified 2026-07-28 that the two differ by 3 hunks today because base
+  is deliberately de-absolutized, and that `config-integrity.sh` contains zero references to
+  `settings.base`; the real check is the `diff <(jq -S .) <(jq -S .)` command in the plan, not a
+  byte-comparison and not that hook),
   `.claude/hooks/teammate-quality-gate.sh`, `.claude/hooks/session-init.sh`,
   `.claude/hooks/git-pipeline-gate.sh`, `.claude-atomic.yaml`, `setup.sh`,
   `ai/rules/agent-user-global.md`, `ai/skills/cap/` (`SKILL.md`, `references/schemas.md`, step files),

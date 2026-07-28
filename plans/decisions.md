@@ -709,3 +709,38 @@ key was the last member of its object.
 **Assumptions:** `.claude/settings.local.json` stays gitignored and higher-precedence — both are
 already pinned by `test_machine_local_settings_overlay_is_not_tracked`. If a future local-only key
 appears, adding it to `LOCAL_ONLY_KEYS` is the whole change.
+
+## 2026-07-28 — Autonomy ladder vs pipeline flags (Goal 05 Step 18)
+
+**Decision.** Re-accept the missing eval evidence **asymmetrically** rather than uniformly. The
+three reversible legs (`auto_commit`, `auto_push`, `auto_pr`) keep A2 on a dated, signed
+risk-acceptance in `.claude-atomic.yaml`'s `autonomy_override:` block, `expires: 2026-10-31`. The
+two irreversible legs (`auto_ship`, `auto_clean`) are **not** re-accepted: capped at A2, override
+refused, and with zero evidence they resolve to effective A0.
+
+**Why.** `evals/cases/` has no case for any pipeline leg, so evidence is genuinely A0 for all five —
+Part VIII's claim was still exactly true. Demoting all five would have stopped auto-commit/push/pr
+working today for no safety gain on trivially revertible actions; re-accepting all five would have
+granted unattended merge authority on no evidence. Splitting by blast radius is the only option that
+is both honest and non-disruptive.
+
+**Alternatives rejected.**
+- *Uniform demotion to the real evidence tier* — truthful, but breaks the daily workflow to guard
+  actions that are cheap to undo.
+- *Fold risk-acceptance into `evidence_tier`* — would make "promotion requires a committed green
+  eval run" (Part VIII) a false statement about evidence. Kept as a separate `override_tier` term
+  precisely so the gap stays visible in resolver output instead of being laundered into evidence.
+- *`git ls-files --error-unmatch` as the "committed" check* — reproduced in a scratch repo: it exits
+  0 on a merely *staged* file, so `git add` alone would buy a promotion. Uses `git cat-file -e HEAD:`
+  instead, pinned by a test that asserts the naive check would have passed.
+
+**Assumptions.** The expiry is enforced by the resolver, not decorative — past 2026-10-31 the three
+legs fall back to A0 with no further action needed. Discharge the debt by authoring
+`evals/cases/auto-ship.json` and committing a green `evals/reports/<stage>.json`.
+
+**Two plan clauses amended, not faked.** A Stop hook cannot fail closed on an irreversible action
+(`git-pipeline-gate.sh` is Stop-only, and a Stop-hook block means "do not end the session", not
+"deny this tool call" — by the time it runs the merge has happened), so pre-action enforcement moved
+to a new Step 19 on `pre-tool-gate-v2.sh`. And "every workflow and pipeline stage declares its tier"
+was scoped to the five legs; tiering ~75 skills and every workflow is a far larger surface than
+Step 18's declared files can hold.
