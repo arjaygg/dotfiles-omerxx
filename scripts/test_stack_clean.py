@@ -7,6 +7,7 @@ clean-stack.sh warn "Branch not fully merged" and silently skip the delete on
 every single rebase merge.
 """
 
+import re
 import subprocess
 import tempfile
 import unittest
@@ -121,6 +122,65 @@ class CleanStackRewrittenMergeTests(unittest.TestCase):
             "unmerged work must never be deleted without --force",
         )
         self.assertIn("not fully merged", result.stdout)
+
+    def _worktree_repo(self):
+        """A repo with a real worktree, mirroring what `stack create` produces."""
+        repo = self._repo()
+        git(repo, "checkout", "-qb", "docs/some-checkpoint")
+        (repo / "d.txt").write_text("doc\n", encoding="utf-8")
+        git(repo, "add", "d.txt")
+        git(repo, "commit", "-qm", "docs: add d")
+        git(repo, "checkout", "-q", "main")
+        # `stack create` sanitizes an unknown prefix by removing the slash only.
+        trees = repo / ".trees"
+        trees.mkdir(exist_ok=True)
+        git(repo, "worktree", "add", str(trees / "docssome-checkpoint"), "docs/some-checkpoint")
+        return repo
+
+    def test_worktree_is_found_for_a_branch_prefix_outside_the_strip_list(self):
+        """docs/ is not in WINDOW_NAME's prefix list, so a path rebuilt from the
+        branch name pointed at .trees/docs/<name> and the worktree was never
+        removed. Resolution now comes from `git worktree list`."""
+        repo = self._worktree_repo()
+        git(repo, "cherry-pick", "docs/some-checkpoint")
+        git(repo, "commit", "--amend", "-qm", "docs: add d (rebased)")
+
+        result = self._run_clean(repo, "docs/some-checkpoint")
+
+        self.assertNotIn("HOOK CRASH", result.stdout + result.stderr)
+        self.assertFalse(
+            (repo / ".trees/docssome-checkpoint").exists(),
+            f"worktree not removed: {result.stdout}{result.stderr}",
+        )
+        self.assertFalse(self._branch_exists(repo, "docs/some-checkpoint"))
+
+    def test_no_unguarded_force_delete(self):
+        """Regression guard. `git branch -D` fails when the branch is still
+        checked out in a worktree, and this script runs under `set -e` with an
+        ERR trap, so a bare call turns a recoverable condition into an aborted
+        run ("HOOK CRASH ... git branch -D"). Every force-delete must go through
+        force_delete_branch(), which captures the failure and warns.
+
+        Structural rather than behavioural: once worktree resolution is correct
+        the branch is no longer checked out by the time the delete runs, so the
+        crash is unreachable through the normal path — but the guard still has to
+        hold for locked or stale worktrees.
+        """
+        source = (ROOT / ".claude/scripts/pr-stack/clean-stack.sh").read_text(encoding="utf-8")
+        bare = [
+            line.strip()
+            for line in source.splitlines()
+            if re.search(r"^\s*git branch -D\b", line)
+            and "err=$(git branch -D" not in line
+        ]
+
+        self.assertEqual(
+            bare,
+            [],
+            "bare `git branch -D` found; route it through force_delete_branch() so a "
+            "failed delete warns instead of aborting the script",
+        )
+        self.assertIn("force_delete_branch()", source)
 
 
 if __name__ == "__main__":
