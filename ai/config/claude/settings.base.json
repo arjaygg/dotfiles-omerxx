@@ -428,7 +428,6 @@
     ],
     "Stop": [
       {
-        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
@@ -437,7 +436,6 @@
         ]
       },
       {
-        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
@@ -489,7 +487,6 @@
     ],
     "UserPromptSubmit": [
       {
-        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
@@ -499,7 +496,6 @@
         ]
       },
       {
-        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
@@ -510,7 +506,6 @@
     ],
     "WorktreeCreate": [
       {
-        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
@@ -525,7 +520,6 @@
     ],
     "WorktreeRemove": [
       {
-        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
