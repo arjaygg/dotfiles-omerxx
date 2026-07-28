@@ -488,3 +488,24 @@ to what landed on `main` (rebase-merge changes commit SHAs but not content — v
 `git diff <old-sha> <new-sha> -- <file>` returning empty before each worktree removal).
 **Status:** Goal 03 (agentic git pipeline) is now fully complete — all 8 steps done, all
 acceptance criteria checked, no open legs remaining.
+
+## 2026-07-28 — Goal 05 Step 9: ledger built against real state, not stale spec
+
+Step 9's frozen spec cited "71 entries" in .claude/settings.json's skillOverrides
+block; the worker found the real current count is 104 "off" keys. Accepted the
+worker's decision to build ai/skills/REMOVALS.md against the real 104-entry state
+rather than force-fitting the stale spec number — ledger accuracy against live
+config outranks matching a number that had already drifted. Why: the spec is a
+point-in-time snapshot; the goal's Accepts criterion is "every off skill has a
+ledger entry," which only the real count can satisfy.
+
+## 2026-07-28 — Goal 05 Step 5: accepted with open verification caveats
+
+Step 5 (hook matcher cleanup + TeammateIdle/SubagentStop wiring) committed
+(b72b2b4a2ec90ae28ea65a7f5a4580ecf6481fff) with two gaps not closed this session:
+hook_config_check.py still exits 1 on pre-existing, out-of-scope issues unrelated
+to the matcher fix; and SubagentStop firing was only manually simulated, not
+proven in a live running session. Decision: accept the step as done with these
+caveats documented rather than block the goal on a fresh-session re-verification
+that wasn't available synchronously. Follow-up: re-verify in a new session before
+treating Step 5 as fully closed for autonomy-ladder purposes.
