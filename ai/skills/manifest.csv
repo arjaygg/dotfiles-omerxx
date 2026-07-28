@@ -1,0 +1,40 @@
+skill,phase,preceded-by,followed-by,output-location,outputs
+using-my-skills,orient,,explore,inline,phase-to-skill routing decision
+explore,orient,,investigation-depth,inline,codebase map or symbol locations
+tool-routing,orient,,explore,inline,tool selection decision
+lean-ctx,orient,,explore,inline,compressed file/search results
+rtk,orient,,,inline,token-compressed shell output
+kubectl-efficiency,orient,,,inline,cluster query results
+chrome-mcp-efficiency,orient,,,inline,browser automation results
+model-routing,orient,,,inline,model and effort selection
+investigation-depth,diagnose,explore,strange,plans/,root-cause findings
+strange,diagnose,investigation-depth,cap,inline,reproduced failure and fix hypothesis
+goal-authoring,plan,,session-artifacts,goals/,dated goal document
+session-artifacts,plan,goal-authoring,cap,plans/,active-context / decisions / progress
+cap,implement,session-artifacts,lensed-review,inline,implemented feature with tests
+db-admin,implement,explore,lensed-review,inline,schema and query analysis
+hook-authoring,implement,explore,lensed-review,.claude/hooks/,hook script and settings wiring
+lensed-review,review,cap,hyper-atomic-commits-reference,inline,findings in the shared finding contract
+pr-review,review,lensed-review,stack-ship,PR comment,posted review findings
+coach,review,,,inline,usage anti-pattern feedback
+ai-usage-analyst,review,,,inline,adoption and usage dashboard
+hyper-atomic-commits-reference,ship,lensed-review,stack-create,inline,commit-state guidance
+stack-create,ship,hyper-atomic-commits-reference,stack-pr,.trees/,new branch and worktree
+stack-status,ship,,stack-navigate,inline,stack hierarchy
+stack-navigate,ship,stack-status,,inline,branch switch
+stack-doctor,ship,stack-status,stack-sync,inline,stack health report
+stack-sync,ship,stack-doctor,stack-pr,inline,rebased branch
+stack-pr,ship,stack-create,ci-watch,PR,opened pull request
+stack-auto-pr-merge,ship,stack-create,stack-update,PR,branch created reviewed and merged
+stack-pr-all,ship,stack-create,ci-watch,PR,pull requests for the whole stack
+ci-watch,ship,stack-pr,ci-status,plans/ci-status.md,background CI verdict
+ci-status,ship,ci-watch,stack-merge,inline,current CI status
+ci-monitor,ship,stack-pr,stack-merge,inline,streamed CI events and failure class
+stack-merge,ship,ci-status,stack-update,PR,completed merge
+stack-ship,ship,ci-status,stack-update,PR,merged branch and dependents
+stack-update,ship,stack-merge,stack-clean,inline,restacked dependents
+stack-clean,ship,stack-update,,inline,removed branch and worktree
+auto-ship,ship,hyper-atomic-commits-reference,stack-clean,inline,advanced git lifecycle pipeline
+bg-job,operate,,,~/.local/state/bg-job/,detached job handle and logs
+tmux-orchestrator,operate,,,inline,persistent agent sessions
+routines-setup,operate,,,inline,scheduled cloud routine
