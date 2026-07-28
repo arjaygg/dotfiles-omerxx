@@ -9,6 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from lib.manifest_lint import check_manifest  # noqa: E402
 from lib.skill_lint import Issue, lint_repo  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -44,6 +45,14 @@ def main(argv: list[str] | None = None) -> int:
     all_issues = lint_repo(skills_glob, agents_glob, repo_root=args.repo_root)
     baseline = load_baseline(args.baseline)
     new_issues = [issue for issue in all_issues if issue.key() not in baseline]
+
+    # Manifest coverage is not ratcheted: the router is generated from the manifest, so a
+    # manifest that names a missing skill (or omits an enabled one) makes the router wrong.
+    manifest_issues = [
+        Issue(rule, "ai/skills/manifest.csv", message)
+        for rule, message in check_manifest(args.repo_root)
+    ]
+    new_issues.extend(issue for issue in manifest_issues if issue.key() not in baseline)
 
     if args.json:
         print(json.dumps([issue.__dict__ for issue in new_issues], indent=2))
