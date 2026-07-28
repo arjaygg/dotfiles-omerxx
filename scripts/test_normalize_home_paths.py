@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 NORMALIZER = ROOT / "scripts/normalize_home_paths.py"
-HOOK = ROOT / "git/hooks/normalize-settings-paths.sh"
+HOOK = ROOT / "git/hooks/sanitize-staged-settings.sh"
 
 # Split so this file does not trip public_hygiene_check's own
 # absolute-home-path rule, the same way that module splits its org-name pattern.
