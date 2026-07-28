@@ -5,6 +5,7 @@
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_FORK_SUBAGENT": "1",
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "3",
     "USE_BUILTIN_RIPGREP": "0"
   },
   "permissions": {
@@ -329,6 +330,27 @@
         ]
       }
     ],
+    "TeammateIdle": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/teammate-quality-gate.sh\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/teammate-quality-gate.sh\""
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "matcher": ".*",
@@ -365,7 +387,6 @@
     ],
     "TaskCreated": [
       {
-        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
@@ -376,7 +397,6 @@
     ],
     "TaskCompleted": [
       {
-        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
