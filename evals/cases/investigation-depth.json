@@ -1,0 +1,31 @@
+{
+  "skill": "investigation-depth",
+  "trigger": {
+    "positive": [
+      "do a root cause analysis on this flaky test failure",
+      "I need a rigorous debugging session with multi-source verification",
+      "give me a recommendation but show your work first"
+    ],
+    "negative": [
+      {
+        "prompt": "explore the codebase to find the relevant files",
+        "owner": "explore"
+      },
+      {
+        "prompt": "log the decision we just made in decisions.md",
+        "owner": "session-artifacts"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "do a root cause analysis on this flaky test failure",
+      "expected_output": "invokes the investigation-depth skill and follows its documented steps",
+      "files": [],
+      "expectations": [
+        "routes to investigation-depth",
+        "does not fall back to raw shell commands"
+      ]
+    }
+  ]
+}

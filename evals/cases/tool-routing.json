@@ -1,0 +1,31 @@
+{
+  "skill": "tool-routing",
+  "trigger": {
+    "positive": [
+      "should I use Serena or LeanCtx or Grep for this search",
+      "explain the pctx execute_typescript batching guardrails",
+      "walk me through the session-init tool setup steps"
+    ],
+    "negative": [
+      {
+        "prompt": "explore this codebase and find where auth is implemented",
+        "owner": "explore"
+      },
+      {
+        "prompt": "pick the right model tier for this task",
+        "owner": "model-routing"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "should I use Serena or LeanCtx or Grep for this search",
+      "expected_output": "invokes the tool-routing skill and follows its documented steps",
+      "files": [],
+      "expectations": [
+        "routes to tool-routing",
+        "does not fall back to raw shell commands"
+      ]
+    }
+  ]
+}

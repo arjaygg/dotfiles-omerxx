@@ -1,0 +1,31 @@
+{
+  "skill": "checkpoint",
+  "trigger": {
+    "positive": [
+      "save a WIP commit before I hand this off",
+      "checkpoint my progress without finishing the task",
+      "commit what I have now with a standardized message and update progress"
+    ],
+    "negative": [
+      {
+        "prompt": "update the active-context.md pointer file",
+        "owner": "session-artifacts"
+      },
+      {
+        "prompt": "why did the atomic commit hook block my staged files",
+        "owner": "hyper-atomic-commits-reference"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "prompt": "save a WIP commit before I hand this off",
+      "expected_output": "invokes the checkpoint skill and follows its documented steps",
+      "files": [],
+      "expectations": [
+        "routes to checkpoint",
+        "does not fall back to raw shell commands"
+      ]
+    }
+  ]
+}
