@@ -95,6 +95,14 @@ if ! command -v headroom &> /dev/null; then
     uv tool install "headroom-ai[proxy,code,memory]"
 fi
 
+# Retired skills (per ai/skills/REMOVALS.md ledger) must not get a .claude/skills/
+# symlink. Lookup helper used by the two .claude/skills loops below.
+_removals_ledger="$HOME/.dotfiles/ai/skills/REMOVALS.md"
+is_retired_skill() {
+    [ -f "$_removals_ledger" ] || return 1
+    grep -qE "^\| \`$1\` \| retired \|" "$_removals_ledger"
+}
+
 # Symlink all shared skills from the Unified AI Hub into an agent's user-scoped
 # skills directory. Existing real directories are preserved so tool-managed
 # folders like ~/.codex/skills/.system are not overwritten.
@@ -133,6 +141,7 @@ for _skill_dir in "$HOME/.dotfiles/ai/skills"/*/; do
     [ -d "$_skill_dir" ] || continue
     { [ -f "${_skill_dir}SKILL.md" ] || [ -f "${_skill_dir}skill.md" ]; } || continue
     _name="$(basename "${_skill_dir%/}")"
+    is_retired_skill "$_name" && continue
     _target="$HOME/.dotfiles/.claude/skills/$_name"
     if [ -e "$_target" ] && [ ! -L "$_target" ]; then
         echo "Skipping $_target (exists and is not a symlink)"
@@ -161,6 +170,7 @@ for _skill_dir in "$HOME/.dotfiles/ai/skills"/*/; do
     [ -d "$_skill_dir" ] || continue
     { [ -f "${_skill_dir}SKILL.md" ] || [ -f "${_skill_dir}skill.md" ]; } || continue
     _name="$(basename "${_skill_dir%/}")"
+    is_retired_skill "$_name" && continue
     _dest="$HOME/.claude/skills/$_name"
     if [ -e "$_dest" ] && [ ! -L "$_dest" ]; then
         echo "Skipping $_dest (exists and is not a symlink)"
