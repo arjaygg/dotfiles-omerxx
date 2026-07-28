@@ -525,3 +525,84 @@ Fix separately, choosing one: (a) have `setup.sh` create the link per worktree, 
 three skills at `ai/references/definition-of-done.md` directly and treat `.claude/references` as
 a convenience alias. (b) is the smaller change and removes the dependency on setup having run;
 (a) keeps one canonical path for every client. Tracked as an unchecked item in plans/progress.md.
+
+## 2026-07-28 — Raise the autocompact threshold to 88% rather than shrink the context floor first
+
+**Decision:** Set `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` from `70` to `88`.
+
+**Why:** Measured from transcript `usage` fields, the post-compact context floor is 75-81k tokens
+and the static baseline before the first user message is 55-60k. At a 70% trigger on a 200k window
+compaction fired around 125k, leaving ~45k of working headroom — 2-5 turns — so the window refilled
+and compacted again. Session `32c9811d` compacted 10+ times in under an hour. 88% restores ~95k of
+headroom, roughly 2x, and is the one-line change that makes the loop stop.
+
+**Alternatives rejected:** Removing the override entirely (loses the deliberate intent of #179 to
+compact proactively rather than at the hard limit). Attacking the 55-60k baseline first (correct
+long-term, but it is a policy refactor across the CLAUDE.md chain, 75 skills and 12 agent
+descriptions — far more risk and effort for less immediate relief).
+
+**Assumptions:** The effective window is ~200k in the sessions that thrashed. Confirmed: peak
+observed context there was 129k, while a 1M-window session reached 539k. `model: "opus[1m]"` was
+only set on 2026-07-28, after the thrashing sessions ran.
+
+---
+
+## 2026-07-28 — Subagent spawning defaults to fresh, not fork
+
+**Decision:** Invert `ai/rules/agent-user-global.md` § Agent Spawning to fresh-by-default, and gate
+forking behind a three-part test: the answer depends on state that exists only in this conversation
+*and* is not re-derivable from the repo; restating that state would be longer or lossier than
+inheriting it; and the work is one self-contained question.
+
+**Why:** The old text said "prefer a fork (no `subagent_type` in Claude Code)". That is factually
+backwards — omitting `subagent_type` yields a fresh `general-purpose` agent, and only the literal
+`"fork"` forks. Transcripts show 33 of 65 `Agent` spawns omitted the argument, each believing it was
+forking. The rule's stated justification — that fresh agents skip session init and get hook-blocked
+— is obsolete, since the pctx init mandate solves it and is normative in
+`plans/2026-07-27-native-agent-orchestration.md` §5.
+
+**Alternatives rejected:** Changing `CLAUDE_CODE_FORK_SUBAGENT=1` instead. That flag enables the
+fork capability (commit `699ab18`); it does not set the default, so flipping it would remove a
+useful option without fixing the wrong guidance.
+
+**Assumptions:** A fork inherits the parent's full conversation and therefore starts at the parent's
+current context size — so the inheritance is a cost to justify, not a free convenience.
+
+---
+
+## 2026-07-28 — Regenerate settings.base.json from the live file instead of reconciling key by key
+
+**Decision:** Make `ai/config/claude/settings.base.json` a byte-for-byte copy of the sanitized
+tracked `.claude/settings.json`, and sanitize the tracked file (drop
+`skipDangerousModePermissionPrompt: true`, replace three absolute `/Users/...` hook paths with
+`$HOME`, restore `Workflow` to the pre-tool-gate matcher).
+
+**Why:** `test_claude_base_template_matches_sanitized_tracked_settings` asserts the two parse to
+identical JSON, and the Definition of Done names the same invariant. They had drifted across 20+
+keys since `3595f35` promoted the drifted live config, breaking three phase0 boundary tests on main.
+The live file is what actually runs and was deliberately promoted, so it is the source of truth.
+
+**Alternatives rejected:** Reconciling key by key — 20+ keys of judgment calls on settings the
+Coordinator did not author. Merging PR #381 on top of the red CI — the failures predate the branch,
+but green main is the invariant, not "my diff didn't make it worse".
+
+**Assumptions:** `$HOME` expands in exec-form hook commands. Confirmed: the SessionEnd entry already
+used `$HOME/.cargo/bin/lean-ctx hook observe` in that form.
+
+---
+
+## 2026-07-28 — Supersedes: the `.claude/references` worktree gap is closed by tracking the symlink
+
+**Decision:** Track `.claude/references` in git (`6d05822`). This supersedes the 2026-07-28 entry
+above that deferred the fix pending a choice between (a) having `setup.sh` create the link per
+worktree and (b) repointing three skills at `ai/references/` directly.
+
+**Why:** Neither option was needed. A tracked symlink is materialized by git in every checkout and
+every worktree, so the three skills keep one canonical `.claude/` path *and* the dependency on
+`setup.sh` having run disappears — the stated benefits of (a) and (b) at once. `setup.sh:154-158`
+is now redundant but harmless.
+
+**Alternatives rejected:** (a) and (b) as originally framed; see above.
+
+**Assumptions:** `core.symlinks` is true. Verified empirically on a throwaway worktree created from
+main — `.claude/references` resolved to `definition-of-done.md`.

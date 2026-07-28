@@ -494,9 +494,33 @@ Executing `plans/2026-07-07-ai-harness-improvement-proposal.md` per user "go" (P
 - Steps 1-13 and 16 all merged to main (PRs #361-#377); no goal-05 branch outstanding.
 - Step 10 evidence: plans/2026-07-28-step10-acceptance.md. Step 14 spec:
   plans/specs/2026-07-28-step14.md; worktree/branch already created.
-- [ ] **Follow-up: `.claude/references` is never created in a worktree.** `setup.sh:154`
+- [x] **Follow-up: `.claude/references` is never created in a worktree.** `setup.sh:154`
   hardcodes `$HOME/.dotfiles/.claude/references`, so only the main checkout gets the symlink
   even though its target is relative. Three skills read the `.claude/` path and silently miss
   the Definition of Done in any worktree: `ai/skills/stack-ship/SKILL.md:50`,
   `ai/skills/cap/step-04.md:10`, `ai/skills/cap/step-oneshot.md:122`. Pre-existing since
   Step 2 — not caused by, and deliberately not folded into, Step 14.
+  **Closed 2026-07-28 by `6d05822` (PR #381)** — neither option (a) nor (b): the symlink is now
+  tracked in git, so every checkout and worktree materializes it with no `setup.sh` run needed.
+  Verified on a throwaway worktree from main — link resolves to `definition-of-done.md`.
+
+## 2026-07-28 — Autocompact thrashing fixed (PR #381)
+
+- Root cause: `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=70` against a 75-81k post-compact floor left
+  ~45k of working headroom per cycle on a 200k window. Session `32c9811d` compacted 10+ times
+  in under an hour. Threshold raised to 88.
+- [x] Autocompact threshold 70 -> 88 (`.claude/settings.json` + `settings.base.json`)
+- [x] `model-availability-check.sh` accepts the `[1m]` alias suffix (was a false positive every
+      session start)
+- [x] `ai/rules/agent-user-global.md` § Agent Spawning inverted to fresh-by-default; the old text
+      claimed omitting `subagent_type` yields a fork, which is backwards
+- [x] `.claude/references` tracked in git
+- [x] Tracked `settings.json` sanitized for the phase0 boundary: dropped
+      `skipDangerousModePermissionPrompt: true`, three absolute `/Users/...` paths -> `$HOME`,
+      restored `Workflow` to the pre-tool-gate matcher; `settings.base.json` resynced
+- Python suite back to 210/210 (was 207/210 on main since `3595f35`).
+- [ ] **Open: the ~55-60k static baseline.** System prompt + CLAUDE.md chain (32,946 B) + 75
+      skills + 12 agents + ~180 deferred tool names consume ~30% of a 200k window before the
+      first user message. Raising the threshold bought headroom but did not shrink the floor.
+- [ ] **Unverified: whether the fix holds.** The threshold only applies to new sessions; confirm
+      by re-measuring compaction frequency from transcript `usage` fields after a few sessions.
