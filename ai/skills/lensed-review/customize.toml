@@ -1,0 +1,59 @@
+# DO NOT EDIT — overwritten on every update.
+#
+# These are lensed-review's shipped defaults. To change them, create an override file
+# instead; this one is replaced wholesale whenever the skill updates.
+#
+#   .claude/custom/lensed-review.toml       team-wide overrides (commit these)
+#   .claude/custom/lensed-review.user.toml  personal overrides (do not commit)
+#
+# Resolve the merged result with:
+#   python3 scripts/resolve_customization.py lensed-review
+#
+# Merge rules: scalars override; tables deep-merge; arrays of tables keyed by `code` or `id`
+# replace on matching key and append on new; all other arrays append.
+
+#
+# TOML note: top-level keys must precede every table header, or they bind to the preceding
+# table instead. Keep the extension points below at the top for that reason.
+
+# Declarative extension points. Arrays append across layers, so a team file and a user file
+# can each contribute steps without either overwriting the other.
+activation_steps_prepend = []
+activation_steps_append = []
+persistent_facts = []
+
+[output]
+format = "table"
+report_path = ""          # empty = report inline, do not write a file
+include_clean_lenses = false
+
+[review_guidance]
+# A `file:` value loads that file's contents. If it cannot be read, the resolver names the
+# path in its output header and continues — the rest of the config still applies.
+extra = ""
+
+# Per-lens defaults. Keyed by `code`: an override entry with a matching `code` replaces this
+# entry outright; an entry with a new `code` is appended as an additional lens setting.
+[[lens]]
+code = "correctness"
+enabled = true
+
+[[lens]]
+code = "security"
+enabled = true
+
+[[lens]]
+code = "resilience"
+enabled = true
+
+[[lens]]
+code = "style"
+enabled = true
+
+[[lens]]
+code = "doubt"
+enabled = true
+
+[[lens]]
+code = "performance"
+enabled = false           # ships disabled: its `instruction` in lenses.toml is empty
