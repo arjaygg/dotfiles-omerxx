@@ -330,6 +330,27 @@
         ]
       }
     ],
+    "TeammateIdle": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/teammate-quality-gate.sh\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/teammate-quality-gate.sh\""
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "matcher": ".*",
@@ -366,7 +387,6 @@
     ],
     "TaskCreated": [
       {
-        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
@@ -377,7 +397,6 @@
     ],
     "TaskCompleted": [
       {
-        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
