@@ -12,10 +12,10 @@ These rules apply to every project on this machine where `pctx` (and its upstrea
 
 | Intent | WRONG (Bash) | RIGHT (Dedicated Tool) |
 |---|---|---|
-| Read a file | `cat file` | `Read(file_path)` |
-| Read first N lines | `head -N file` | `Read(file_path, limit: N)` |
-| Read from line N onward | `tail -n +N file` | `Read(file_path, offset: N)` |
-| Read lines N to M | `sed -n 'N,Mp'`, `awk 'NR>=N && NR<=M'` | `Read(file_path, offset: N, limit: M-N)` |
+| Understand a file | `cat file` | `ctx_compose`, then `ctx_read(mode="task")` |
+| Quote a file | `cat file` | `ctx_read(mode="reference")` |
+| Read lines N to M | `sed -n 'N,Mp'`, `awk 'NR>=N && NR<=M'` | `ctx_read(mode="lines:N-M")` |
+| Exact/edit-ready read | `cat file` | `ctx_read(mode="raw"|"full"|"anchored")` |
 | Limit any piped output | `cmd \| head -N`, `cmd \| awk 'NR<=N'` | Use the tool's built-in `limit:` param |
 | Limit output from external CLI (kubectl, gh, az, docker, jq, curl) | N/A — no agent-accessible `limit:` param | Pipe to `head -N` is correct; this is NOT an anti-pattern |
 | Search file contents | `grep pattern`, `rg pattern` | `Grep(pattern, path)` |
@@ -38,9 +38,9 @@ Always use tools in this order. Stop at the first that satisfies your need. **Ne
 | Task | 1st Priority | 2nd Priority | Avoid |
 |---|---|---|---|
 | **Directory Listing** | `Glob` | — | `ls`, `find`, `Serena.listDir` (excluded in claude-code context) |
-| **Explore file structure** | `Serena.getSymbolsOverview` | `Read (limit/offset)` | `cat`, `head`, `tail` |
+| **Explore file structure** | `Serena.getSymbolsOverview` | `LeanCtx.ctxCompose` / focused `ctxRead` | `cat`, unscoped full reads |
 | **Find symbol by name** | `Serena.findSymbol` | `LeanCtx.ctxSearch` | `grep`, `rg` |
-| **Pattern/regex search** | `LeanCtx.ctxSearch` | — | `grep`, `rg`, `Grep tool` (hard-blocked), `Serena.searchForPattern` (not exposed in this context) |
+| **Pattern/regex search** | `LeanCtx.ctxSearch` | — | native `grep`/`rg` over large content |
 | **Finding Files** | `Glob` | `LeanCtx.ctxGlob` | `find` |
 | **Project knowledge** | `Serena.readMemory` | Read `.serena/memories/*.md` | re-deriving from source |
 | **Pre-edit impact analysis** | `Serena.findReferencingSymbols` | `LeanCtx.ctxSearch` with type name | skipping impact check |
@@ -51,11 +51,13 @@ Always use tools in this order. Stop at the first that satisfies your need. **Ne
 
 > **Pre-edit ritual:** Before modifying any symbol, run `findReferencingSymbols` to understand blast radius. This catches breaking changes before they happen.
 
+Large-file thresholds, Markdown fidelity rules, and exactness escape hatches are defined once in `context-and-compaction.md`.
+
 ---
 
 ## 2. Batching
 
-Use `mcp__pctx__execute_typescript` when 2+ Serena/LeanCtx/Repomix/Qmd operations are planned, or when output needs filtering before it hits context. Fire independent Read/Grep/Glob calls in parallel instead of sequentially. Full schema guardrails and Code Mode rules → `tool-routing` skill.
+Use `mcp__pctx__execute_typescript` when 2+ Serena/LeanCtx/Repomix/Qmd operations are planned, or when output needs filtering before it hits context. Batch independent `ctx_read`/`ctx_search`/`ctx_tree` calls instead of chaining native tools. Full schema guardrails and Code Mode rules → `tool-routing` skill.
 
 ---
 
@@ -64,7 +66,7 @@ Use `mcp__pctx__execute_typescript` when 2+ Serena/LeanCtx/Repomix/Qmd operation
 All Serena methods use **camelCase** (`findSymbol`, not `find_symbol`; `searchForPattern`, not `search_for_pattern`). `Serena.initialInstructions()` does not cover any of this — these are project-specific quirks, not part of Serena's own manual.
 
 - `searchForPattern` is not exposed in this session's Serena claude-code context (nor are `findFile`/`listDir`) — use `LeanCtx.ctxSearch` for pattern/regex search instead. It has no `restrict_search_to_code_files` flag and handles lock/generated files fine without one.
-- `findSymbol` **fails silently** on files inside dot-directories (`.serena/`, `.claude/`, `.cursor/`, `.mcp.json`). Use `Serena.readMemory()` for Serena memories, `Read` for other dot-directory files.
+- `findSymbol` **fails silently** on files inside dot-directories (`.serena/`, `.claude/`, `.cursor/`, `.mcp.json`). Use `Serena.readMemory()` for Serena memories and focused `ctx_read` for other dot-directory files.
 - Serena memory session-init workflow (`listMemories`/`START_HERE`) and memory-naming conventions: **`tool-routing` skill** (`ai/skills/tool-routing/SKILL.md`).
 
 ---
@@ -106,4 +108,4 @@ Upstream fix (not applied here): the generated wording belongs in
 `github.com/yvgude/lean-ctx`; this table is the local workaround until then.
 
 ---
-*Maintained at: `/Users/axos-agallentes/.dotfiles/ai/rules/tool-priority.md`*
+*Maintained at: `~/.dotfiles/ai/rules/tool-priority.md`*

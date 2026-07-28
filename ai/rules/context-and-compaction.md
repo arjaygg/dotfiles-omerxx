@@ -1,16 +1,35 @@
 # Context & Compaction (User-Scope)
 
-## Behavioral rules
+## Context ownership
 
-- **Artifact-driven state:** Keep current task and decisions in `plans/`. Chat history is ephemeral; compaction is lossless if the model can resume from the plan.
-- **Request scoping:** Prefer concrete prompts (e.g. "fix `src/db.rs` line 42") over broad ones to reduce tokens and keep focus.
-- **Session discipline:** One task per session when practical. After a significant commit or domain change, start a new chat. Use `/compact` at most 1-2 times per session — prefer checkpointing to a plan and starting fresh.
-- **Screenshots:** Prefer file-path references over pasted screenshots in long working sessions — a pasted image is re-carried in context until compaction (311KB observed); paste images into short dedicated sessions instead.
-- **lean-ctx CCP is active and in use** — `LeanCtx.ctxSession(action: "status"/"load")` returns real, persisted cross-session state (50+ sessions under `~/.lean-ctx/sessions/`, spanning months), confirming CCP works today and does not depend on any CLI bootstrap step. Use `ctxSession(action: "load"/"finding")` per the `tool-routing` skill's "Session Context & Continuity" section for cross-session continuity.
-  (Note: `decisions/0004-lean-ctx-pctx-upstream.md` records CCP as "not activated" — that line is stale relative to current behavior and should be revisited separately.)
-  Unrelated to CCP: if the lean-ctx CLI bootstrap is ever re-run, use `lean-ctx init --agent` only — never `--global` — to avoid shell-hook double-compression conflicts with rtk.
+- **LeanCtx exclusively owns file, search, and shell-output compression.**
+- **Headroom owns provider-history optimization only.** It must pass LeanCtx and pctx tool results through unchanged and must never store nested or self-referential CCR content.
+- Recover a local provider-history CCR with `python3 "$HOME/.dotfiles/scripts/headroom_hardening.py" recover-ccr "$HOME/.headroom/ccr_store.db" <hash>`; invalid or recursive entries are refused.
+- Use pctx for batched/deferred SDK calls; expose only LeanCtx's focused compose/read/search/tree/expand tools directly.
 
-> Session artifact definitions and templates (`active-context.md`, `decisions.md`, `progress.md`) live in the **`session-artifacts` skill** (`ai/skills/session-artifacts/SKILL.md`), to avoid duplication.
+## Progressive file disclosure
 
-- **Never re-Read CLAUDE.md-imported files post-compaction:** `CLAUDE.md`, `AGENTS.md`, and anything they `@`-import (`RTK.md`, `rules/*.md`) are reloaded automatically as part of the system prompt on every turn, including immediately after compaction. Re-reading them manually after a compaction event wastes tokens on content already present in context — check whether a fact is already covered by loaded rules before issuing a `Read` for one of these files.
-- **Scratchpad is write-mostly — don't re-read it:** Claude Code's post-compaction rebuild re-injects the 5 most-recently-read files (capped ~50K tokens) verbatim alongside the summary. Files under the session scratchpad directory are ephemeral by design; if one is still in that "last 5" list when compaction fires, it rides along into the new context for free, at the cost of budget that could hold real project files instead. Don't `Read` a scratchpad file back after writing it unless you need its content again in the same step — treat it as write-once, not something to loop back and check.
+Route reads as `ctx_compose → task/reference/lines → full/raw only when necessary`.
+
+| Class | Threshold | Route |
+|---|---|---|
+| Small | ≤16 KB and ≤200 lines | Full read allowed |
+| Medium | >16 KB or >200 lines | Warn; use `task`, `reference`, or selected lines |
+| Large | >128 KB or >1,500 lines | `ctx_compose`, then focused `ctx_read`; warn during rollout and block after promotion |
+| Huge/generated | >512 KB, lockfile, generated artifact, or log dump | Deny native full reads; targeted search/read only |
+
+- `ctx_read(mode="task")` for understanding, `reference` for quotations, and `lines:N-M` for bounded inspection.
+- `full`, `raw`, or `anchored` are exactness escape hatches for governing policy, acceptance criteria, verification, and editing.
+- Markdown retrieval must retain heading ancestry, front matter, tables, lists, cross-section qualifications, and complete fenced code blocks; do not use Markdown `map` or `signatures` until their zero-token benchmark defect is fixed.
+- Code: Serena symbols first, focused LeanCtx reads second. JSON/YAML/TOML: key paths or structural reads. Logs: errors plus bounded context. CSV: schema, samples, aggregates. Lockfiles/generated files: targeted search only. Binary documents: ingestion skills.
+- Post-compression output over 4,000 tokens must return an expandable reference. Cached rereads should return `reference`/cache stubs (≤32 tokens), not retransmit content.
+
+## Session discipline
+
+- Keep current task and decisions in `plans/`; chat history is ephemeral.
+- Prefer concrete request scope, one task per session, and no more than 1–2 compactions before checkpointing and starting fresh.
+- Do not reread imported instruction files after compaction; clients reload them automatically.
+- Treat scratchpads as write-mostly and prefer file-path references to pasted screenshots.
+- `LeanCtx.ctxSession(action: "status"/"load"/"finding")` is the continuity layer; no global shell bootstrap is required.
+
+The executable thresholds and rollout contract live in `ai/context/context-routing.json`; client hooks call the standard-library gate in `ai/context/context_gate.py`.

@@ -780,3 +780,10 @@ existing.
 **Follow-up.** The plan already says shrinking the baseline is the only permitted edit to it. Worth
 adding a strict/prune mode that *fails* when the baseline lists a key that is no longer a live
 violation, so this cannot drift again — otherwise the next fixed violation leaves the same hole.
+## 2026-07-29 — Single-owner context compression and progressive file routing
+
+**Decision.** LeanCtx exclusively owns file/search/shell-output compression; Headroom is reduced to one persistent provider-history proxy and passes LeanCtx/pctx tool results through. Claude Code, Codex, Cursor, and AGY/Antigravity import `ai/rules/context-and-compaction.md` exactly once and use the shared gate in `ai/context/`.
+
+**Why.** Competing transforms produced recursive, unexpandable CCR references and six unhealthy per-session Headroom containers, while contradictory guidance caused native full reads of large files.
+
+**Rollout.** Medium and large reads warn for seven days; huge/generated full reads block now. Promote large reads only below 2% false positives with no dead-end denial. Durable rationale: `decisions/0013-context-routing-ownership.md`.

@@ -64,11 +64,11 @@ Machine-wide defaults live in `ai/rules/` and are loaded through tool-specific a
 
 | File | Scope | Loaded by |
 |---|---|---|
-| `agent-user-global.md` | All agents | Claude, Gemini, Codex |
-| `tool-priority.md` | Claude, Gemini | Claude, Gemini (`@` imports) |
-| `context-and-compaction.md` | Claude only | Claude (`@` import) |
+| `agent-user-global.md` | Supported coding agents | Claude, Codex, Cursor, AGY/Antigravity |
+| `tool-priority.md` | Supported coding agents | The four in-scope client adapters (`@` imports) |
+| `context-and-compaction.md` | Supported coding agents | The four in-scope client adapters (`@` imports, exactly once) |
 
-**Codex note**: Codex loads only `agent-user-global.md` via `model_instructions_file`. Tool priority is a known gap for Codex in non-dotfiles projects.
+Codex installs `.codex/AGENTS.md` as its user adapter in addition to the compact `model_instructions_file`. Windsurf and other coding clients are outside the current hardening scope.
 
 ### Agent Memory
 
@@ -92,7 +92,7 @@ See `decisions/0006-agents-skills-standard-path.md` for rationale.
 
 ### Claude Code
 
-- User-global layer: `.claude/CLAUDE.md` — imports `agent-user-global.md`, `tool-priority.md`, `context-and-compaction.md`, `hyper-atomic-commits.md`, `context-window-discipline.md`
+- User-global layer: `.claude/CLAUDE.md` — imports `agent-user-global.md`, `tool-priority.md`, `context-and-compaction.md`, and `hyper-atomic-commits.md`
 - `qmd-usage.md` and `monitor-patterns.md` were retired (2026-07): both were thin pointers to skills (`qmd-routing`, `monitor-patterns`) with no unique content — their pointer facts were folded into `agent-user-global.md` and `tool-priority.md` directly, and the rule files were deleted rather than wired in.
 - `pctx-session-init.md` was retired the same pass: its "why each step matters" content was merged into `tool-priority.md` §6 (Session Start), which already carried the enforcement note.
 - `kubectl-efficiency.md` was converted to a skill (`ai/skills/kubectl-efficiency/SKILL.md`) since it's invoked situationally (writing kubectl commands), not always-relevant baseline policy.
@@ -105,7 +105,7 @@ See `decisions/0006-agents-skills-standard-path.md` for rationale.
 
 ### Gemini CLI
 
-- User-global layer: `.gemini/GEMINI.md` — imports `agent-user-global.md`, `tool-priority.md`
+- User-global layer: `.gemini/GEMINI.md` — imports `agent-user-global.md`, `tool-priority.md`, and `context-and-compaction.md`
 - Project discovery: `AGENTS.md` via `context.fileName`
 - Enforcement and config: `.gemini/settings.json`, `.gemini/mcp.json`
 
