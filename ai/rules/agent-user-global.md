@@ -71,17 +71,34 @@ share progress across agents (not `TodoWrite`, which is per-agent only). Full pr
 list creation, `CLAUDE_CODE_TASK_LIST_ID` export, polling, and orphaned-list hygiene — is
 in the **`tool-routing` skill** (`ai/skills/tool-routing/SKILL.md`).
 
-## Agent Spawning — Fork vs Fresh
+## Agent Spawning — Fresh by Default, Fork by Exception
 
-When spawning a subagent for research or codebase exploration, **prefer a fork** (no `subagent_type` in Claude Code; equivalent: pass full context explicitly in other tools) over a fresh isolated agent. Forks inherit the parent session's loaded tool context and constraints; fresh agents start cold and will skip session init, falling back to shell primitives that hooks block.
+**Fresh is the default, and omitting `subagent_type` already gives you a fresh agent**
+(`general-purpose`). Only the literal value `"fork"` forks. A fork inherits the parent's entire
+conversation, so it *starts* at the parent's current context size and grows from there — treat that
+inheritance as a cost to justify, never as a convenience.
 
-| Situation | Approach |
-|-----------|----------|
-| Search / explore / find in codebase | Fork — inherit context |
-| Second opinion / independent review | Fresh agent — isolation is the point |
-| Specialized tool set (e.g. `bmm-*`) | Fresh agent + include init mandate in prompt |
+Choose in this order:
 
-**When spawning a fresh agent that touches project files:** always include the pctx init mandate in the prompt (call `Serena.initialInstructions()` + `LeanCtx.ctxCall({name: "ctx_intent", arguments: {...}})` before any file access). Without it, the agent will use `ls`/`grep` via shell and trigger hook blocks.
+1. **`Explore`** — read-only repo research answerable cold. First choice; rule it out before
+   authoring anything custom.
+2. **Fresh** — `general-purpose` or a named agent type. Everything else. Pack what it needs into the
+   prompt; a fresh agent inherits nothing, so context-packing is mandatory, not optional.
+3. **Fork** — `subagent_type: "fork"`, only when **all three** hold:
+   - the answer depends on state that exists only in this conversation (a decision just made, a tool
+     result not yet written to disk, a diff mid-iteration) and is not re-derivable from the repo;
+   - restating that state in a prompt would be longer or lossier than inheriting it;
+   - the work is one self-contained question — a fork cannot re-delegate.
+
+**Never fork** for: an independent review or second opinion (isolation is the point); work needing a
+non-parent model (a fork ignores `model`) or a specialised tool set; work that may spawn its own
+workers; or when the parent context is already large.
+
+**Every fresh agent that touches project files must open its prompt with the pctx init mandate** —
+`Serena.initialInstructions()` + `LeanCtx.ctxCall({name: "ctx_intent", arguments: {...}})` before any
+file access. Without it the agent reaches for `ls`/`grep` and is hard-denied by
+`pre-tool-gate-v2.sh`. Normative statement and the reusable `pctxInit()` block:
+`plans/2026-07-27-native-agent-orchestration.md` §5.
 
 ---
 
