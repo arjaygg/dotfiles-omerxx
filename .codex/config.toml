@@ -1,6 +1,7 @@
 personality = "pragmatic"
 model = "gpt-5.5"
 model_reasoning_effort = "high"
+model_provider = "headroom"
 model_instructions_file = "~/.dotfiles/ai/rules/agent-user-global.md"
 project_doc_fallback_filenames = ["AGENTS.md"]
 [projects."~/git/setup"]
@@ -36,28 +37,16 @@ trust_level = "trusted"
 [projects."~/git"]
 trust_level = "trusted"
 
-[projects."/Users/agallentes"]
-trust_level = "trusted"
 
-[projects."/Users/agallentes/git"]
-trust_level = "trusted"
 
-[projects."/Users/agallentes/.dotfiles"]
-trust_level = "trusted"
 
-[projects."/Users/agallentes/git/auc-conversion"]
-trust_level = "trusted"
 
-[projects."/Users/agallentes/git/auc-deployment-manifest"]
-trust_level = "trusted"
 
-[projects."/Users/agallentes/git/auc-discovery"]
-trust_level = "trusted"
 
 [mcp_servers.pctx]
 type = "stdio"
-command = "pctx"
-args = ["mcp", "start", "--stdio", "-c", "/Users/agallentes/.config/pctx/pctx.json"]
+command = "bash"
+args = ["-c", "exec pctx mcp start --stdio -c \"$HOME/.config/pctx/pctx.json\""]
 startup_timeout_sec = 90
 
 [notice.model_migrations]
@@ -78,62 +67,62 @@ hooks = true
 [marketplaces.openai-bundled]
 last_updated = "2026-04-22T10:12:08Z"
 source_type = "local"
-source = "/Users/agallentes/.codex/.tmp/bundled-marketplaces/openai-bundled"
+source = "~/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
 [[skills.config]]
-path = "/Users/agallentes/.dotfiles/ai/skills/ado-workitem/SKILL.md"
+path = "~/.dotfiles/ai/skills/ado-workitem/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/agallentes/.dotfiles/ai/skills/auc-dev-a/SKILL.md"
+path = "~/.dotfiles/ai/skills/auc-dev-a/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/agallentes/.dotfiles/ai/skills/auc-dev-b/SKILL.md"
+path = "~/.dotfiles/ai/skills/auc-dev-b/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/agallentes/.dotfiles/ai/skills/auc-dev-c/SKILL.md"
+path = "~/.dotfiles/ai/skills/auc-dev-c/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/agallentes/.dotfiles/ai/skills/auc-devintegration-suite/SKILL.md"
+path = "~/.dotfiles/ai/skills/auc-devintegration-suite/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/agallentes/.dotfiles/ai/skills/auc-manifest-review/SKILL.md"
+path = "~/.dotfiles/ai/skills/auc-manifest-review/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/agallentes/.dotfiles/ai/skills/auc-qa/SKILL.md"
+path = "~/.dotfiles/ai/skills/auc-qa/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/agallentes/.dotfiles/ai/skills/auc-sm/SKILL.md"
+path = "~/.dotfiles/ai/skills/auc-sm/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/agallentes/.dotfiles/ai/skills/auc-tech-writer/SKILL.md"
+path = "~/.dotfiles/ai/skills/auc-tech-writer/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/agallentes/.dotfiles/ai/skills/bmad-custom-pr-review/SKILL.md"
+path = "~/.dotfiles/ai/skills/bmad-custom-pr-review/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/agallentes/.codex/skills/.system/plugin-creator/SKILL.md"
+path = "~/.codex/skills/.system/plugin-creator/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/agallentes/.codex/skills/.system/skill-installer/SKILL.md"
+path = "~/.codex/skills/.system/skill-installer/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/agallentes/.codex/skills/.system/skill-creator/SKILL.md"
+path = "~/.codex/skills/.system/skill-creator/SKILL.md"
 enabled = false
 
 [[skills.config]]
-path = "/Users/agallentes/.dotfiles/ai/skills/tech-lead/SKILL.md"
+path = "~/.dotfiles/ai/skills/tech-lead/SKILL.md"
 enabled = false
 
 [tui]
@@ -154,5 +143,29 @@ status_line_use_colors = true
 "gpt-5.5" = 4
 
 [mcp_servers.lean-ctx]
-command = "/Users/agallentes/.local/bin/lean-ctx"
-args = []
+command = "bash"
+args = ["-c", "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"]
+startup_timeout_sec = 90
+enabled_tools = ["ctx_compose", "ctx_read", "ctx_search", "ctx_tree", "ctx_expand"]
+
+[mcp_servers.lean-ctx.tools.ctx_compose]
+approval_mode = "approve"
+
+[mcp_servers.lean-ctx.tools.ctx_read]
+approval_mode = "approve"
+
+[mcp_servers.lean-ctx.tools.ctx_search]
+approval_mode = "approve"
+
+[mcp_servers.lean-ctx.tools.ctx_tree]
+approval_mode = "approve"
+
+[mcp_servers.lean-ctx.tools.ctx_expand]
+approval_mode = "approve"
+
+[model_providers.headroom]
+name = "OpenAI via Headroom proxy"
+base_url = "http://127.0.0.1:8787/v1"
+supports_websockets = true
+requires_openai_auth = true
+env_http_headers = { "X-Headroom-Project" = "HEADROOM_PROJECT" }

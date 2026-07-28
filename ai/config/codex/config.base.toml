@@ -1,6 +1,7 @@
 personality = "pragmatic"
 model = "gpt-5.5"
 model_reasoning_effort = "high"
+model_provider = "headroom"
 model_instructions_file = "~/.dotfiles/ai/rules/agent-user-global.md"
 project_doc_fallback_filenames = ["AGENTS.md"]
 
@@ -9,6 +10,35 @@ type = "stdio"
 command = "pctx"
 args = ["mcp", "start", "--stdio", "-c", "${PCTX_CONFIG}"]
 startup_timeout_sec = 90
+
+[mcp_servers.lean-ctx]
+type = "stdio"
+command = "bash"
+args = ["-c", "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"]
+startup_timeout_sec = 90
+enabled_tools = ["ctx_compose", "ctx_read", "ctx_search", "ctx_tree", "ctx_expand"]
+
+[mcp_servers.lean-ctx.tools.ctx_compose]
+approval_mode = "approve"
+
+[mcp_servers.lean-ctx.tools.ctx_read]
+approval_mode = "approve"
+
+[mcp_servers.lean-ctx.tools.ctx_search]
+approval_mode = "approve"
+
+[mcp_servers.lean-ctx.tools.ctx_tree]
+approval_mode = "approve"
+
+[mcp_servers.lean-ctx.tools.ctx_expand]
+approval_mode = "approve"
+
+[model_providers.headroom]
+name = "OpenAI via Headroom proxy"
+base_url = "http://127.0.0.1:8787/v1"
+supports_websockets = true
+requires_openai_auth = true
+env_http_headers = { "X-Headroom-Project" = "HEADROOM_PROJECT" }
 
 [features]
 unified_exec = true

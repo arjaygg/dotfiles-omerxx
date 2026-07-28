@@ -2,6 +2,13 @@
 set -euo pipefail
 
 INPUT="$(cat || true)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONTEXT_GATE="${CONTEXT_FILE_GATE_BIN:-${SCRIPT_DIR}/../../.local/bin/context-file-gate}"
+
+if [[ -x "$CONTEXT_GATE" ]]; then
+  printf '%s' "$INPUT" | "$CONTEXT_GATE" \
+    --client codex --event post_tool_use --json >/dev/null 2>&1 || true
+fi
 
 if command -v jq >/dev/null 2>&1; then
   EXIT_CODE="$(printf '%s' "$INPUT" | jq -r '.tool_response.exitCode // .tool_response.exit_code // .exitCode // .exit_code // 0' 2>/dev/null || echo 0)"

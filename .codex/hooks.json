@@ -24,7 +24,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "^(Bash|shell_command|exec_command)$",
+        "matcher": "^(Bash|shell_command|exec_command|Read|read_file|read_text_file)$",
         "hooks": [
           {
             "type": "command",
