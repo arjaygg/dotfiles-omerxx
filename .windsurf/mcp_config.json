@@ -1,23 +1,24 @@
 {
   "mcpServers": {
-    "lean-ctx": {
-      "command": "lean-ctx",
-      "env": {
-        "LEAN_CTX_DATA_DIR": "/Users/agallentes/.lean-ctx",
-        "LEAN_CTX_FULL_TOOLS": "1",
-        "RUST_LOG": "error"
-      }
+    "serena": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec \"$HOME/.dotfiles/.local/bin/serena_wrapper.sh\" \"$@\"",
+        "serena",
+        "--context",
+        "claude-code",
+        "--project-from-cwd",
+        "--log-level",
+        "ERROR"
+      ]
     },
     "pctx": {
+      "command": "bash",
       "args": [
-        "mcp",
-        "start",
-        "-q",
-        "--stdio",
         "-c",
-        "/Users/agallentes/.config/pctx/pctx.json"
-      ],
-      "command": "pctx"
+        "exec pctx mcp start -q --stdio -c \"$HOME/.config/pctx/pctx.json\""
+      ]
     }
   }
 }

@@ -8,16 +8,18 @@
       ],
       "env": {}
     },
-    "lean-ctx": {
+    "serena": {
       "command": "bash",
       "args": [
         "-c",
-        "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"
-      ],
-      "env": {
-        "LEAN_CTX_CACHE_TTL": "300",
-        "RUST_LOG": "error"
-      }
+        "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec \"$HOME/.dotfiles/.local/bin/serena_wrapper.sh\" \"$@\"",
+        "serena",
+        "--context",
+        "claude-code",
+        "--project-from-cwd",
+        "--log-level",
+        "ERROR"
+      ]
     }
   }
 }
