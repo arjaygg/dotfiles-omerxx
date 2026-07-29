@@ -53,7 +53,7 @@
       "command": "bash",
       "args": [
         "-c",
-        "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec graphify-mcp-conditional \"$@\"",
+        "exec \"$HOME/.dotfiles/.local/bin/graphify-mcp-conditional\" \"$@\"",
         "pctx-graphify"
       ]
     }

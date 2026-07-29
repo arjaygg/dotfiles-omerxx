@@ -37,6 +37,12 @@ trust_level = "trusted"
 [projects."~/git"]
 trust_level = "trusted"
 
+[projects."/Users/agallentes/git/ai-native"]
+trust_level = "trusted"
+
+[projects."/Users/agallentes/.dotfiles"]
+trust_level = "trusted"
+
 
 
 
@@ -46,7 +52,19 @@ trust_level = "trusted"
 [mcp_servers.pctx]
 type = "stdio"
 command = "bash"
-args = ["-c", "exec pctx mcp start --stdio -c \"$HOME/.config/pctx/pctx.json\""]
+args = ["-c", "exec \"$HOME/.dotfiles/.local/bin/pctx_wrapper.sh\" mcp start --stdio -c \"$HOME/.config/pctx/pctx.json\""]
+startup_timeout_sec = 90
+
+[mcp_servers.notebooklm]
+type = "stdio"
+command = "bash"
+args = ["-c", "exec \"$HOME/.local/bin/notebooklm-mcp\""]
+startup_timeout_sec = 90
+
+[mcp_servers.chrome-devtools]
+type = "stdio"
+command = "npx"
+args = ["-y", "chrome-devtools-mcp@latest", "--chrome-arg=--no-sandbox", "--chrome-arg=--disable-setuid-sandbox"]
 startup_timeout_sec = 90
 
 [notice.model_migrations]
@@ -169,3 +187,4 @@ base_url = "http://127.0.0.1:8787/v1"
 supports_websockets = true
 requires_openai_auth = true
 env_http_headers = { "X-Headroom-Project" = "HEADROOM_PROJECT" }
+

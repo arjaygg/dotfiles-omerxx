@@ -7,8 +7,20 @@ project_doc_fallback_filenames = ["AGENTS.md"]
 
 [mcp_servers.pctx]
 type = "stdio"
-command = "pctx"
-args = ["mcp", "start", "--stdio", "-c", "${PCTX_CONFIG}"]
+command = "bash"
+args = ["-c", "exec \"$HOME/.dotfiles/.local/bin/pctx_wrapper.sh\" mcp start --stdio -c \"$HOME/.config/pctx/pctx.json\""]
+startup_timeout_sec = 90
+
+[mcp_servers.notebooklm]
+type = "stdio"
+command = "bash"
+args = ["-c", "exec \"$HOME/.local/bin/notebooklm-mcp\""]
+startup_timeout_sec = 90
+
+[mcp_servers.chrome-devtools]
+type = "stdio"
+command = "npx"
+args = ["-y", "chrome-devtools-mcp@latest", "--chrome-arg=--no-sandbox", "--chrome-arg=--disable-setuid-sandbox"]
 startup_timeout_sec = 90
 
 [mcp_servers.lean-ctx]

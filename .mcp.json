@@ -4,7 +4,7 @@
       "command": "bash",
       "args": [
         "-c",
-        "exec pctx mcp start --stdio -c \"$HOME/.config/pctx/pctx.json\""
+        "exec \"$HOME/.dotfiles/.local/bin/pctx_wrapper.sh\" mcp start --stdio -c \"$HOME/.config/pctx/pctx.json\""
       ],
       "env": {}
     },

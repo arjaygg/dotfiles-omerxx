@@ -5,8 +5,11 @@
 GRAPH="${1:-${PWD}/graphify-out/graph.json}"
 
 if [ -f "$GRAPH" ]; then
-    exec /Users/axos-agallentes/.local/bin/graphify-mcp "$@"
+    graphify_bin="${GRAPHIFY_BIN:-$HOME/.local/bin/graphify-mcp}"
+    if [ -x "$graphify_bin" ]; then
+        exec "$graphify_bin" "$@"
+    fi
 fi
 
 # No graph found — serve as an empty MCP server (initialize + empty tools/list).
-exec /Users/axos-agallentes/.local/bin/graphify-noop-mcp
+exec "$HOME/.dotfiles/.local/bin/graphify-noop-mcp"
