@@ -42,39 +42,19 @@ def git_mode(rel: str) -> str:
     return r.stdout.split()[0]
 
 
-def tracked(pattern: str) -> list[str]:
-    r = subprocess.run(["git", "ls-files", "-s", "--", pattern],
-                       cwd=str(ROOT), capture_output=True, text=True)
-    out = []
-    for line in r.stdout.splitlines():
-        parts = line.split(maxsplit=3)
-        if len(parts) == 4:
-            out.append((parts[0], parts[3]))
-    return out
-
-
-class HookExecutableBitTests(unittest.TestCase):
-    """Hook scripts are invoked by their runtime, so they must stay executable.
-
-    This is a RULE, not a list, because the list form already failed: the hand-maintained
-    MUST_BE_EXECUTABLE below did not include .cursor/hooks/before-shell-git-commit.sh, so when an
-    editor stripped its bit for the third time in one session the check stayed green. Every tracked
-    hook script is covered now, whether or not anyone remembered to enumerate it.
-    """
-
-    def test_all_hook_scripts_are_executable(self):
-        broken = []
-        for pattern in (".cursor/hooks/*.sh", ".cursor/hooks/*.py",
-                        ".claude/hooks/*.sh", ".claude/hooks/*.py"):
-            for mode, path in tracked(pattern):
-                if mode != "100755":
-                    broken.append(f"{path}: git mode {mode}")
-        self.assertEqual(
-            broken, [],
-            "hook scripts lost their executable bit — an editor that does not preserve mode. "
-            "Restore with: git update-index --chmod=+x <path>\n  " + "\n  ".join(broken),
-        )
-
+# NOT covered here on purpose: whether a *hook* script is executable.
+#
+# An earlier version of this file asserted that every tracked *.sh/*.py under .claude/hooks and
+# .cursor/hooks must be 100755. That rule was wrong twice over, and it flagged five files that were
+# all fine:
+#   - scripts/hook_target_check.py ALREADY enforces the correct, narrower invariant via its
+#     `direct-target-not-executable` rule, and it is a hard CI gate. It reports 0 issues today.
+#   - The right invariant is "executable IF invoked as a bare path". Hooks invoked as
+#     `bash "$HOME/.../x.sh"` (post-tool-analytics, scratchpad-reread-guard) do not need the bit, and
+#     hook-rule-loader.sh is a sourced library whose own docs say `source "$HOME/..."` — demanding
+#     +x there is meaningless.
+# Keep hook executability in hook_target_check.py, which models the distinction. This file covers
+# only entry points a human or script invokes directly.
 
 class ExecutableBitTests(unittest.TestCase):
     def test_entry_points_are_executable_in_git(self):
