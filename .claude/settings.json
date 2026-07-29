@@ -616,6 +616,7 @@
     "mode": "hold"
   },
   "skipWorkflowUsageWarning": true,
+  "workflowSizeGuideline": "small",
   "theme": "dark",
   "preferredNotifChannel": "ghostty",
   "teammateMode": "auto",
