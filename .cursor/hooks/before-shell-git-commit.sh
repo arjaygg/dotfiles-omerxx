@@ -5,16 +5,37 @@
 set -euo pipefail
 
 input="$(cat)"
-read -r command cwd < <(
-  printf '%s' "$input" | /usr/bin/env python3 - <<'PY'
-import json
-import sys
 
-data = json.load(sys.stdin)
-command = data.get("command") or ""
-cwd = data.get("cwd") or ""
-print(command)
-print(cwd)
+# Two bugs lived here, and together they made this gate fail OPEN — it allowed every raw
+# `git commit`, which is the exact opposite of its purpose. Verified by feeding it a payload that
+# should be denied: it raised JSONDecodeError and fell through to the allow at the end.
+#
+# 1. `python3 - <<'PY'` takes the PROGRAM from stdin, so the heredoc overrode the piped JSON and
+#    `json.load(sys.stdin)` was reading the Python source, not the payload (shellcheck SC2259).
+#    The payload now arrives via the environment, leaving stdin free for the program.
+# 2. `read -r command cwd` reads ONE line and splits it on IFS, so `command` got the first word and
+#    `cwd` got the remainder of line 1 — line 2 was never read. Two sequential reads fix that, and
+#    a bare `read -r var` takes the whole line, so commands containing spaces survive intact.
+{
+  read -r command
+  read -r cwd
+} < <(
+  AGENT_HOOK_INPUT="$input" /usr/bin/env python3 <<'PY'
+import json
+import os
+
+try:
+    data = json.loads(os.environ.get("AGENT_HOOK_INPUT") or "{}")
+except json.JSONDecodeError:
+    # Deliberately allow-by-omission, not fail-closed: with no parseable command there is nothing
+    # to match against, so the gate emits blanks and the caller ends at its default `allow`.
+    # Denying on a parse error would block every shell command Cursor runs, which is far worse than
+    # missing one commit. The protocol should never send malformed JSON; if it does, that is a
+    # Cursor bug to fix upstream rather than something to absorb by disabling the shell.
+    data = {}
+
+print(data.get("command") or "")
+print(data.get("cwd") or "")
 PY
 )
 
