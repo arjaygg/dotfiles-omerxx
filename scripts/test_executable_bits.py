@@ -42,6 +42,40 @@ def git_mode(rel: str) -> str:
     return r.stdout.split()[0]
 
 
+def tracked(pattern: str) -> list[str]:
+    r = subprocess.run(["git", "ls-files", "-s", "--", pattern],
+                       cwd=str(ROOT), capture_output=True, text=True)
+    out = []
+    for line in r.stdout.splitlines():
+        parts = line.split(maxsplit=3)
+        if len(parts) == 4:
+            out.append((parts[0], parts[3]))
+    return out
+
+
+class HookExecutableBitTests(unittest.TestCase):
+    """Hook scripts are invoked by their runtime, so they must stay executable.
+
+    This is a RULE, not a list, because the list form already failed: the hand-maintained
+    MUST_BE_EXECUTABLE below did not include .cursor/hooks/before-shell-git-commit.sh, so when an
+    editor stripped its bit for the third time in one session the check stayed green. Every tracked
+    hook script is covered now, whether or not anyone remembered to enumerate it.
+    """
+
+    def test_all_hook_scripts_are_executable(self):
+        broken = []
+        for pattern in (".cursor/hooks/*.sh", ".cursor/hooks/*.py",
+                        ".claude/hooks/*.sh", ".claude/hooks/*.py"):
+            for mode, path in tracked(pattern):
+                if mode != "100755":
+                    broken.append(f"{path}: git mode {mode}")
+        self.assertEqual(
+            broken, [],
+            "hook scripts lost their executable bit — an editor that does not preserve mode. "
+            "Restore with: git update-index --chmod=+x <path>\n  " + "\n  ".join(broken),
+        )
+
+
 class ExecutableBitTests(unittest.TestCase):
     def test_entry_points_are_executable_in_git(self):
         broken = []
