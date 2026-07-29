@@ -18,16 +18,6 @@
       ]
     },
     {
-      "name": "qmd",
-      "command": "bash",
-      "args": [
-        "-c",
-        "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec qmd \"$@\"",
-        "pctx-qmd",
-        "mcp"
-      ]
-    },
-    {
       "name": "lean-ctx",
       "command": "bash",
       "args": [
