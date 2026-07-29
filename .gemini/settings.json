@@ -13,7 +13,7 @@
       {
         "hooks": [
           {
-            "command": "/Users/agallentes/.local/bin/lean-ctx hook observe",
+            "command": "$HOME/.local/bin/lean-ctx hook observe",
             "type": "command"
           }
         ],
@@ -24,7 +24,7 @@
       {
         "hooks": [
           {
-            "command": "/Users/agallentes/.local/bin/lean-ctx hook rewrite",
+            "command": "$HOME/.local/bin/lean-ctx hook rewrite",
             "type": "command"
           }
         ],
@@ -33,7 +33,7 @@
       {
         "hooks": [
           {
-            "command": "/Users/agallentes/.local/bin/lean-ctx hook deny",
+            "command": "$HOME/.local/bin/lean-ctx hook deny",
             "type": "command"
           }
         ],
@@ -42,16 +42,18 @@
     ]
   },
   "mcpServers": {
-    "lean-ctx": {
+    "serena": {
       "args": [
         "-c",
-        "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"
+        "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec \"$HOME/.dotfiles/.local/bin/serena_wrapper.sh\" \"$@\"",
+        "serena",
+        "--context",
+        "claude-code",
+        "--project-from-cwd",
+        "--log-level",
+        "ERROR"
       ],
-      "command": "bash",
-      "env": {
-        "LEAN_CTX_CACHE_TTL": "300",
-        "RUST_LOG": "error"
-      }
+      "command": "bash"
     },
     "pctx": {
       "args": [
