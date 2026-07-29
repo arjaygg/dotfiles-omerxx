@@ -1,3 +1,6 @@
+# shellcheck shell=bash
+# No shebang on purpose: this file is sourced by the catppuccin tmux theme; defines show_claude() and calls get_tmux_option,
+# so it is never executed directly. The directive gives shellcheck the dialect (SC2148).
 show_claude() {
   local index=$1
   local icon="$(get_tmux_option "@catppuccin_claude_icon" "")"
