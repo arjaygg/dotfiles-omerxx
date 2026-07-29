@@ -6,6 +6,7 @@ WORKFLOW = Path(__file__).resolve().parents[1] / ".github/workflows/claude-auto-
 SETUP = Path(__file__).resolve().parents[1] / "setup.sh"
 SHARED_AUDIT_SUMMARY_COMMANDS = [
     "python3 scripts/shell_syntax_check.py --summary",
+    "python3 scripts/shellcheck_gate.py --summary",
     "python3 scripts/syntax_check.py --summary",
     "python3 scripts/guidance_adapter_check.py --summary",
     "python3 scripts/autonomous_skill_check.py --summary",

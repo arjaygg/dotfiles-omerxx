@@ -14,6 +14,7 @@ run_setup_check() {
         bash -n setup.sh
         bash -n scripts/check-skill-drift.sh
         python3 scripts/shell_syntax_check.py --summary || true
+        python3 scripts/shellcheck_gate.py --summary || true
         python3 scripts/syntax_check.py --summary || true
         python3 scripts/guidance_adapter_check.py --summary || true
         python3 scripts/autonomous_skill_check.py --summary || true

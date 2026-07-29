@@ -35,6 +35,21 @@ jobs:
       - name: Summarize shell syntax baseline
         run: python3 scripts/shell_syntax_check.py --summary
 
+      # bash -n above is a SYNTAX parse; it accepts code that is syntactically valid but wrong.
+      # shellcheck is the lint layer, and nothing on main provided it: the only other shellcheck
+      # call is in scripts/ai/validate-changeset.sh, which lints just the staged changeset and is
+      # invoked only by the auto-ship skill, not by CI or git/hooks/pre-commit.
+      # Severity stays at `error` deliberately — the governed set currently carries 113
+      # warning-level findings, so gating on warnings would be red from day one.
+      # This gate found a real defect on its first run: .cursor/hooks/before-shell-git-commit.sh
+      # was failing open and allowing every raw `git commit` (SC2259).
+      - name: Lint shell (shellcheck, error severity)
+        run: |
+          if ! command -v shellcheck >/dev/null 2>&1; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          fi
+          python3 scripts/shellcheck_gate.py --summary
+
       - name: Summarize syntax parse baseline
         run: python3 scripts/syntax_check.py --summary
 
