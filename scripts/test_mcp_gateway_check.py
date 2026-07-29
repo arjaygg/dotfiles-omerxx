@@ -39,7 +39,7 @@ def write_valid_gateway_tree(root: Path) -> None:
             {
                 "mcpServers": {
                     "pctx": client["mcpServers"]["pctx"],
-                    "lean-ctx": {"command": "lean-ctx", "env": {"LEAN_CTX_FULL_TOOLS": "1"}},
+                    "serena": {"command": "serena"},
                 }
             }
         ),
@@ -61,7 +61,6 @@ def write_valid_gateway_tree(root: Path) -> None:
             {
                 "servers": [
                     {"name": "serena", "command": "serena"},
-                    {"name": "qmd", "command": "qmd"},
                     {"name": "lean-ctx", "command": "lean-ctx"},
                     {"name": "repomix", "command": "repomix"},
                     {"name": "graphify", "command": "graphify"},
@@ -102,13 +101,13 @@ class McpGatewayCheckTests(unittest.TestCase):
             [(result.rule, result.path, result.status) for result in results],
         )
 
-    def test_direct_lean_ctx_is_approved_for_focused_exposure(self):
+    def test_direct_serena_is_approved_for_standalone_exposure(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             write_valid_gateway_tree(root)
             path = root / ".gemini/config/mcp_config.json"
             config = json.loads(path.read_text(encoding="utf-8"))
-            config["mcpServers"]["lean-ctx"] = {"command": "lean-ctx"}
+            config["mcpServers"]["serena"] = {"command": "serena"}
             write(path, json.dumps(config))
 
             results = check_mcp_gateway(root)
@@ -151,7 +150,7 @@ class McpGatewayCheckTests(unittest.TestCase):
 
         self.assertFalse([result for result in results if result.status == "fail"])
 
-    def test_current_gemini_configs_use_direct_pctx_and_focused_leanctx(self):
+    def test_current_gemini_configs_use_direct_pctx_and_standalone_serena(self):
         root = Path(__file__).resolve().parents[1]
         for relative in [
             ".gemini/mcp.json",
@@ -166,7 +165,7 @@ class McpGatewayCheckTests(unittest.TestCase):
             self.assertIn("mcp", invocation)
             self.assertIn("start", invocation)
             if relative != ".gemini/config/mcp_config.json":
-                self.assertIn("lean-ctx", config["mcpServers"])
+                self.assertIn("serena", config["mcpServers"])
 
 
 if __name__ == "__main__":
