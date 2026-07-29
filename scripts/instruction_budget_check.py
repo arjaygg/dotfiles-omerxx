@@ -16,6 +16,11 @@ DEFAULT_BUDGETS = {
     "AGENTS.md": 8_000,
     "ai/rules/agent-user-global.md": 13_000,
     "ai/rules/tool-priority.md": 11_000,
+    # Gemini's always-loaded guidance file. Added 2026-07-28: it was the only always-loaded
+    # adapter with no ceiling, and it carries a "## Gemini Added Memories" section that the tool
+    # appends to, so its growth is agent-driven and otherwise unbounded. 1,711 bytes at the time
+    # of writing; 4,000 leaves room for real guidance while still failing on runaway memory.
+    ".gemini/GEMINI.md": 4_000,
 }
 
 
