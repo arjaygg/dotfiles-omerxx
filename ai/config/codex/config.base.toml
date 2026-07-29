@@ -23,27 +23,11 @@ command = "npx"
 args = ["-y", "chrome-devtools-mcp@latest", "--chrome-arg=--no-sandbox", "--chrome-arg=--disable-setuid-sandbox"]
 startup_timeout_sec = 90
 
-[mcp_servers.lean-ctx]
+[mcp_servers.serena]
 type = "stdio"
 command = "bash"
-args = ["-c", "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"]
+args = ["-c", "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec \"$HOME/.dotfiles/.local/bin/serena_wrapper.sh\" \"$@\"", "serena", "--context", "claude-code", "--project-from-cwd", "--log-level", "ERROR"]
 startup_timeout_sec = 90
-enabled_tools = ["ctx_compose", "ctx_read", "ctx_search", "ctx_tree", "ctx_expand"]
-
-[mcp_servers.lean-ctx.tools.ctx_compose]
-approval_mode = "approve"
-
-[mcp_servers.lean-ctx.tools.ctx_read]
-approval_mode = "approve"
-
-[mcp_servers.lean-ctx.tools.ctx_search]
-approval_mode = "approve"
-
-[mcp_servers.lean-ctx.tools.ctx_tree]
-approval_mode = "approve"
-
-[mcp_servers.lean-ctx.tools.ctx_expand]
-approval_mode = "approve"
 
 [model_providers.headroom]
 name = "OpenAI via Headroom proxy"
