@@ -63,9 +63,6 @@ _run "$HOME/.dotfiles/.claude/hooks/session-init-enforcer.sh" || exit $?
 # 2. Session duration guard — exits 1 at 500 turns, writes warnings to stderr
 _run "$HOME/.dotfiles/.claude/hooks/session-duration-guard.sh" || exit $?
 
-# 3. QMD sync — fire-and-forget side effect, no stdin content needed
-_bg "$HOME/.dotfiles/.claude/hooks/qmd-sync.sh"
-
 # 4. Plans health check — outputs additionalContext for missing artifacts
 _run "$HOME/.dotfiles/.claude/hooks/plans-healthcheck.sh"
 
