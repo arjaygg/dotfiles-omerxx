@@ -13,14 +13,14 @@ from pathlib import Path
 from typing import Any, Sequence
 
 
-EXPECTED_PCTX_BACKENDS = {"serena", "qmd", "lean-ctx", "repomix", "graphify"}
+EXPECTED_PCTX_BACKENDS = {"serena", "lean-ctx", "repomix", "graphify"}
 CLIENT_JSON_CONFIGS = {
-    ".mcp.json": {"pctx", "lean-ctx"},
-    ".cursor/mcp.json": {"pctx", "lean-ctx"},
-    ".gemini/mcp.json": {"pctx", "lean-ctx"},
-    ".gemini/settings.json": {"pctx", "lean-ctx"},
-    ".gemini/config/mcp_config.json": {"pctx", "lean-ctx", "notebooklm", "chrome-devtools"},
-    ".windsurf/mcp_config.json": {"pctx", "lean-ctx"},
+    ".mcp.json": {"pctx", "serena"},
+    ".cursor/mcp.json": {"pctx", "serena"},
+    ".gemini/mcp.json": {"pctx", "serena"},
+    ".gemini/settings.json": {"pctx", "serena"},
+    ".gemini/config/mcp_config.json": {"pctx", "serena", "notebooklm", "chrome-devtools"},
+    ".windsurf/mcp_config.json": {"pctx", "serena"},
 }
 
 
@@ -163,9 +163,9 @@ def _check_codex(root: Path) -> list[GatewayResult]:
         )
         else _fail("codex-pctx-stdio", relative, "pctx does not invoke `pctx mcp start`")
     )
-    for server in sorted(names - {"pctx", "lean-ctx"}):
+    for server in sorted(names - {"pctx", "serena"}):
         results.append(_fail("codex-unapproved-server", relative, f"unapproved direct server {server!r}"))
-    for server in sorted(names & {"pctx", "lean-ctx"}):
+    for server in sorted(names & {"pctx", "serena"}):
         results.append(_ok(f"codex-approved-server-{server}", relative))
     return results
 

@@ -15,6 +15,7 @@ OBSOLETE_SHIM = ROOT / "ai" / "bin" / "pctx-mcp-stdio-shim.py"
 HOOKS_CONFIG = ROOT / ".codex" / "hooks.json"
 PRE_TOOL_GUARD = ROOT / ".codex" / "hooks" / "pre-bash-guard.sh"
 LEAN_CTX_WRAPPER = ROOT / ".local" / "bin" / "lean_ctx_wrapper.sh"
+SERENA_WRAPPER = ROOT / ".local" / "bin" / "serena_wrapper.sh"
 FOCUSED_LEAN_CTX_TOOLS = [
     "ctx_compose",
     "ctx_read",
@@ -68,17 +69,17 @@ class CodexPctxStartupTests(unittest.TestCase):
             ["mcp", "start", "--stdio", "-c", "${PCTX_CONFIG}"],
         )
 
-    def test_runtime_and_template_leanctx_launchers_support_both_binary_homes(self):
+    def test_runtime_and_template_serena_launchers_support_both_binary_homes(self):
         for config_path in (TRACKED_CONFIG, PORTABLE_CONFIG):
             config = tomllib.loads(config_path.read_text(encoding="utf-8"))
-            server = config["mcp_servers"]["lean-ctx"]
-            for binary_relative in (".local/bin/lean-ctx", ".cargo/bin/lean-ctx"):
+            server = config["mcp_servers"]["serena"]
+            for binary_relative in (".local/bin/serena", ".cargo/bin/serena"):
                 with self.subTest(config=config_path, binary=binary_relative):
                     with tempfile.TemporaryDirectory() as directory:
                         home = Path(directory)
-                        wrapper = home / ".dotfiles" / ".local" / "bin" / "lean_ctx_wrapper.sh"
+                        wrapper = home / ".dotfiles" / ".local" / "bin" / "serena_wrapper.sh"
                         wrapper.parent.mkdir(parents=True)
-                        wrapper.symlink_to(LEAN_CTX_WRAPPER)
+                        wrapper.symlink_to(SERENA_WRAPPER)
                         fake_binary = home / binary_relative
                         fake_binary.parent.mkdir(parents=True, exist_ok=True)
                         fake_binary.write_text(
@@ -104,7 +105,17 @@ class CodexPctxStartupTests(unittest.TestCase):
                         0,
                         process.stderr.decode(errors="replace"),
                     )
-                    self.assertEqual(json.loads(process.stdout), ["mcp", "--stdio"])
+                    self.assertEqual(
+                        json.loads(process.stdout),
+                        [
+                            "start-mcp-server",
+                            "--context",
+                            "claude-code",
+                            "--project-from-cwd",
+                            "--log-level",
+                            "ERROR",
+                        ],
+                    )
 
     def test_runtime_and_template_expose_only_focused_leanctx_tools(self):
         for config_path in (TRACKED_CONFIG, PORTABLE_CONFIG):
