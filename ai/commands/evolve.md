@@ -6,19 +6,25 @@ command: true
 
 # Evolve Command
 
-## Implementation
+## Status — not currently runnable
 
-Run the instinct CLI using the plugin root path:
+**This command is disabled and its implementation path does not exist.** Both invocations
+previously documented here pointed at
+`continuous-learning-v2/scripts/instinct-cli.py`, and there is no `continuous-learning-v2`
+skill anywhere in this repo or under `~/.claude/skills` — only `ai/skills/continuous-learning/`,
+which ships a `SKILL.md` and no CLI. Any agent that followed those instructions failed.
 
-```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/continuous-learning-v2/scripts/instinct-cli.py" evolve [--generate]
-```
+Corroborating state: `.claude/settings.json` `skillOverrides` sets both `"evolve": "off"` and
+`"continuous-learning": "off"`, and `ai/skills/REMOVALS.md` records `evolve` as
+`disabled-pending` ("Slash command at ai/commands/evolve.md; no ai/skills/evolve directory
+exists to gate").
 
-Or if `CLAUDE_PLUGIN_ROOT` is not set (manual installation):
+Do not restore an invocation here without a CLI that exists. If the instincts/evolve pipeline is
+revived, the missing pieces are: a real CLI, a signal producer feeding it, and flipping the two
+`skillOverrides` entries back on — see the triage note in `plans/` for what was assessed and why
+`scripts/learning_signal.py` was judged an orphan producer.
 
-```bash
-python3 ~/.claude/skills/continuous-learning-v2/scripts/instinct-cli.py evolve [--generate]
-```
+## What it was intended to do
 
 Analyzes instincts and clusters related ones into higher-level structures:
 - **Commands**: When instincts describe user-invoked actions

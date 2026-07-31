@@ -1,3 +1,6 @@
+# shellcheck shell=bash
+# No shebang on purpose: this file is sourced by the sketchybar plugins; sets `icon_result` in the caller's scope,
+# so it is never executed directly. The directive gives shellcheck the dialect (SC2148).
 case "$1" in
 "Brave Browser")
   icon_result=":brave_browser:"

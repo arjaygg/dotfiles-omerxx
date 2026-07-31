@@ -42,6 +42,20 @@ def git_mode(rel: str) -> str:
     return r.stdout.split()[0]
 
 
+# NOT covered here on purpose: whether a *hook* script is executable.
+#
+# An earlier version of this file asserted that every tracked *.sh/*.py under .claude/hooks and
+# .cursor/hooks must be 100755. That rule was wrong twice over, and it flagged five files that were
+# all fine:
+#   - scripts/hook_target_check.py ALREADY enforces the correct, narrower invariant via its
+#     `direct-target-not-executable` rule, and it is a hard CI gate. It reports 0 issues today.
+#   - The right invariant is "executable IF invoked as a bare path". Hooks invoked as
+#     `bash "$HOME/.../x.sh"` (post-tool-analytics, scratchpad-reread-guard) do not need the bit, and
+#     hook-rule-loader.sh is a sourced library whose own docs say `source "$HOME/..."` — demanding
+#     +x there is meaningless.
+# Keep hook executability in hook_target_check.py, which models the distinction. This file covers
+# only entry points a human or script invokes directly.
+
 class ExecutableBitTests(unittest.TestCase):
     def test_entry_points_are_executable_in_git(self):
         broken = []
