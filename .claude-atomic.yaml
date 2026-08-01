@@ -144,6 +144,7 @@ lifecycle:
   enabled: true
   rollout_approved: true
   rollout_approved_by: arjaygg
+  github_actor: arjaygg
 
 pipeline:
   auto_stack: A2
