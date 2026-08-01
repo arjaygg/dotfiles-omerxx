@@ -105,7 +105,6 @@
       "Read(**/pnpm-lock.yaml)",
       "Read(**/composer.lock)",
       "Read(**/Gemfile.lock)",
-      "Read",
       "Grep",
       "Glob"
     ],
@@ -293,11 +292,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc '\"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" hook read-dedup'"
+            "command": "$HOME/.cargo/bin/lean-ctx hook read-dedup"
           },
           {
             "type": "command",
-            "command": "$HOME/.cargo/bin/lean-ctx hook read-dedup"
+            "command": "bash -lc '\"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" hook read-dedup'"
           }
         ]
       },
@@ -589,6 +588,7 @@
     ]
   },
   "worktree": {},
+  "workflowSizeGuideline": "small",
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/claude-statusline/statusline.sh --format '%model% ▸ %percent% (%remaining%) ▸ %cost% ▸ Cache: %cache_hit% ▸ %time% ▸ %project%%git_status%%task_list_id%'"
@@ -608,7 +608,7 @@
     }
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "medium",
+  "effortLevel": "high",
   "advisorModel": "fable",
   "plansDirectory": "./plans",
   "tui": "fullscreen",
@@ -617,7 +617,6 @@
     "mode": "hold"
   },
   "skipWorkflowUsageWarning": true,
-  "workflowSizeGuideline": "small",
   "theme": "dark",
   "preferredNotifChannel": "ghostty",
   "teammateMode": "auto",
