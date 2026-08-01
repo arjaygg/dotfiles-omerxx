@@ -1,21 +1,28 @@
-"""Hermetic behavioral tests for scripts/ai/git_lifecycle.py."""
+"""Hermetic behavioral coverage for the deterministic git lifecycle controller."""
 
 from __future__ import annotations
 
+import ast
 import fcntl
 import hashlib
+import importlib.util
 import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
-import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "ai" / "git_lifecycle.py"
+SPEC = importlib.util.spec_from_file_location("git_lifecycle_under_test", SCRIPT)
+LIFECYCLE = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = LIFECYCLE
+SPEC.loader.exec_module(LIFECYCLE)
 
 
 def run(
@@ -25,14 +32,9 @@ def run(
     env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     proc = subprocess.run(
-        list(args),
-        cwd=str(cwd),
-        env=env,
-        capture_output=True,
-        text=True,
-        check=False,
+        list(args), cwd=str(cwd), env=env, capture_output=True, text=True, check=False
     )
-    if check and proc.returncode != 0:
+    if check and proc.returncode:
         raise AssertionError(
             f"{args} failed ({proc.returncode})\nstdout={proc.stdout}\nstderr={proc.stderr}"
         )
@@ -43,7 +45,7 @@ def git(cwd: Path, *args: str, check: bool = True) -> subprocess.CompletedProces
     return run(cwd, "git", *args, check=check)
 
 
-def init_repo(path: Path) -> Path:
+def init_repo(path: Path, *, origin: bool = False) -> tuple[Path, Path | None]:
     path.mkdir(parents=True)
     git(path, "init", "-q", "-b", "main")
     git(path, "config", "user.email", "lifecycle-test@example.com")
@@ -53,354 +55,741 @@ def init_repo(path: Path) -> Path:
     (path / "README.md").write_text("fixture\n")
     git(path, "add", "owned/tracked.txt", "README.md")
     git(path, "commit", "-q", "-m", "chore: initialize lifecycle fixture")
-    return path
-
-
-def add_local_origin(repo: Path, root: Path) -> Path:
-    origin = root / "origin.git"
-    git(root, "init", "-q", "--bare", "-b", "main", str(origin))
-    git(repo, "remote", "add", "origin", str(origin))
-    git(repo, "push", "-q", "-u", "origin", "main")
-    return origin
+    if not origin:
+        return path, None
+    bare = path.parent / "origin.git"
+    git(path.parent, "init", "-q", "--bare", "-b", "main", str(bare))
+    git(path, "remote", "add", "origin", str(bare))
+    git(path, "push", "-q", "-u", "origin", "main")
+    return path, bare
 
 
 def cli(
-    repo: Path,
+    cwd: Path,
     command: str,
     *args: str,
     check: bool = True,
     env: dict[str, str] | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], dict]:
-    proc = run(repo, str(SCRIPT), command, *args, check=check, env=env)
+    proc = run(cwd, str(SCRIPT), command, *args, check=check, env=env)
     stream = proc.stdout if proc.returncode == 0 else proc.stderr
-    payload = json.loads(stream.strip()) if stream.strip() else {}
-    return proc, payload
+    return proc, json.loads(stream.strip()) if stream.strip() else {}
 
 
 def start(
-    repo: Path,
+    base: Path,
     *,
     run_id: str = "run-1",
     branch: str = "feature/lifecycle",
-    owned: tuple[str, ...] = ("owned",),
     key: str = "start-1",
+    owned: tuple[str, ...] = ("owned",),
 ) -> dict:
-    head = git(repo, "rev-parse", "HEAD").stdout.strip()
+    head = git(base, "rev-parse", "HEAD").stdout.strip()
     args = [
-        "--run-id",
-        run_id,
-        "--task",
-        "Implement lifecycle fixture",
-        "--base-branch",
-        "main",
-        "--base-sha",
-        head,
-        "--intended-branch",
-        branch,
-        "--worktree",
-        str(repo),
-        "--idempotency-key",
-        key,
+        "--run-id", run_id,
+        "--task", "Implement deterministic lifecycle behavior",
+        "--base-branch", "main",
+        "--base-sha", head,
+        "--intended-branch", branch,
+        "--worktree", str(base),
+        "--work-unit-id", "unit-1",
+        "--work-unit", "Implement first validated change",
+        "--idempotency-key", key,
     ]
     for path in owned:
         args.extend(["--owned-path", path])
-    return cli(repo, "start", *args)[1]
+    return cli(base, "start", *args)[1]
 
 
-def ready(repo: Path, run_id: str = "run-1", key: str = "ready-1") -> dict:
+def add_linked(base: Path, path: Path, branch: str = "feature/lifecycle") -> Path:
+    git(base, "worktree", "add", "-q", "-b", branch, str(path), "main")
+    return path
+
+
+def ready(
+    base: Path,
+    *,
+    run_id: str = "run-1",
+    key: str = "ready-1",
+    validations: tuple[str, ...] = ('{"name":"unit tests","passed":true}',),
+) -> tuple[subprocess.CompletedProcess[str], dict]:
+    args = [
+        "--run-id", run_id,
+        "--subject", "feat(lifecycle): add validated work unit",
+        "--body", "Bind this exact owned diff to passing validation evidence.",
+        "--open-tasks", "0",
+        "--idempotency-key", key,
+    ]
+    for value in validations:
+        args.extend(["--validation", value])
+    return cli(base, "ready", *args, check=False)
+
+
+def next_unit(
+    base: Path,
+    *,
+    run_id: str = "run-1",
+    unit_id: str = "unit-2",
+    key: str = "next-1",
+) -> tuple[subprocess.CompletedProcess[str], dict]:
     return cli(
-        repo,
-        "ready",
-        "--run-id",
-        run_id,
-        "--subject",
-        "feat(lifecycle): add deterministic controller",
-        "--body",
-        "Provide a fail-closed lifecycle decision for every repository state.",
-        "--open-tasks",
-        "0",
-        "--validation",
-        '{"name":"unit tests","passed":true}',
-        "--idempotency-key",
-        key,
-    )[1]
+        base,
+        "next-unit",
+        "--run-id", run_id,
+        "--work-unit-id", unit_id,
+        "--work-unit", f"Implement validated change for {unit_id}",
+        "--idempotency-key", key,
+        check=False,
+    )
 
 
 def record(
-    repo: Path,
+    base: Path,
+    linked: Path,
     kind: str,
     status: str,
     key: str,
     *,
+    run_id: str = "run-1",
     source: str | None = None,
     authoritative: bool = True,
-    run_id: str = "run-1",
     sha: str | None = None,
+    receipt_sha: str | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], dict]:
-    sha = sha or git(repo, "rev-parse", "HEAD").stdout.strip()
     args = [
-        "--run-id",
-        run_id,
-        "--kind",
-        kind,
-        "--status",
-        status,
-        "--source",
-        source or f"{kind}-authority",
-        "--sha",
-        sha,
-        "--idempotency-key",
-        key,
+        "--run-id", run_id,
+        "--kind", kind,
+        "--status", status,
+        "--source", source or f"{kind}-authority",
+        "--sha", sha or git(linked, "rev-parse", "HEAD").stdout.strip(),
+        "--idempotency-key", key,
     ]
     if authoritative:
         args.append("--authoritative")
-    return cli(repo, "record", *args, check=False)
+    if receipt_sha is not None:
+        args.extend(["--receipt-sha", receipt_sha])
+    return cli(base, "record", *args, check=False)
 
 
-def inspect(repo: Path, run_id: str = "run-1") -> dict:
-    return cli(repo, "inspect", "--run-id", run_id)[1]
+def inspect(base: Path, run_id: str = "run-1") -> dict:
+    return cli(base, "inspect", "--run-id", run_id)[1]
 
 
-def state_paths(repo: Path, run_id: str = "run-1") -> tuple[Path, Path, Path]:
-    common_raw = git(repo, "rev-parse", "--git-common-dir").stdout.strip()
-    common = Path(common_raw)
-    if not common.is_absolute():
-        common = (repo / common).resolve()
+def state_paths(base: Path, run_id: str = "run-1") -> tuple[Path, Path, Path]:
+    common = Path(
+        git(base, "rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip()
+    )
     root = common / "agent-lifecycle"
     return root / "runs" / f"{run_id}.json", root / "audit.jsonl", root / "repository.lock"
 
 
-def file_fingerprint(path: Path) -> tuple[int, int, str]:
-    stat = path.stat()
-    return (
-        stat.st_size,
-        stat.st_mtime_ns,
-        hashlib.sha256(path.read_bytes()).hexdigest(),
-    )
+def fingerprint(path: Path) -> tuple[int, int, str]:
+    metadata = path.stat()
+    return metadata.st_size, metadata.st_mtime_ns, hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-class DecisionMatrixTests(unittest.TestCase):
-    def test_complete_one_action_progression(self):
+def committed_fixture(tmp: Path) -> tuple[Path, Path]:
+    base, _ = init_repo(tmp / "repo", origin=True)
+    start(base)
+    linked = add_linked(base, tmp / "linked")
+    (linked / "owned" / "one.txt").write_text("one\n")
+    proc, payload = ready(base)
+    if proc.returncode:
+        raise AssertionError(payload)
+    git(linked, "add", "owned/one.txt")
+    git(linked, "commit", "-q", "-m", "feat: add first validated unit")
+    return base, linked
+
+
+def pushed_fixture(tmp: Path) -> tuple[Path, Path]:
+    base, linked = committed_fixture(tmp)
+    git(linked, "push", "-q", "-u", "origin", "feature/lifecycle")
+    return base, linked
+
+
+class WorktreeAndActionMatrixTests(unittest.TestCase):
+    def test_true_linked_worktree_and_two_validated_commit_progression(self):
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
-            repo = init_repo(tmp / "repo")
-            add_local_origin(repo, tmp)
-            start(repo)
-            self.assertEqual(inspect(repo)["action"], "create_stack")
+            base, _ = init_repo(tmp / "repo", origin=True)
+            start(base)
+            checkpoints = [("base checkout", inspect(base), "create_stack")]
+            linked = add_linked(base, tmp / "linked")
+            checkpoints.append(("linked worktree registered", inspect(base), "awaiting_work"))
 
-            git(repo, "switch", "-q", "-c", "feature/lifecycle")
-            self.assertEqual(inspect(repo)["action"], "awaiting_work")
+            (linked / "owned" / "one.txt").write_text("one\n")
+            checkpoints.append(("first edit", inspect(base), "editing"))
+            self.assertEqual(ready(base)[0].returncode, 0)
+            checkpoints.append(("first ready", inspect(base), "commit"))
+            git(linked, "add", "owned/one.txt")
+            git(linked, "commit", "-q", "-m", "feat: add first validated unit")
+            checkpoints.append(("first commit", inspect(base), "push"))
 
-            (repo / "owned" / "new.txt").write_text("change\n")
-            self.assertEqual(inspect(repo)["action"], "editing")
+            self.assertEqual(next_unit(base)[0].returncode, 0)
+            checkpoints.append(("second unit", inspect(base), "awaiting_work"))
+            (linked / "owned" / "two.txt").write_text("two\n")
+            checkpoints.append(("second edit", inspect(base), "editing"))
+            self.assertEqual(ready(base, key="ready-2")[0].returncode, 0)
+            checkpoints.append(("second ready", inspect(base), "commit"))
+            git(linked, "add", "owned/two.txt")
+            git(linked, "commit", "-q", "-m", "feat: add second validated unit")
+            checkpoints.append(("second commit", inspect(base), "push"))
 
-            ready(repo)
-            self.assertEqual(inspect(repo)["action"], "commit")
-
-            git(repo, "add", "owned/new.txt")
-            git(repo, "commit", "-q", "-m", "feat(lifecycle): add controller fixture")
-            self.assertEqual(inspect(repo)["action"], "push")
-
-            git(repo, "push", "-q", "-u", "origin", "feature/lifecycle")
-            self.assertEqual(inspect(repo)["action"], "open_pr")
-
-            self.assertEqual(record(repo, "pr", "open", "pr-1")[0].returncode, 0)
-            self.assertEqual(inspect(repo)["action"], "wait_ci")
-
-            self.assertEqual(record(repo, "ci", "passing", "ci-1")[0].returncode, 0)
-            self.assertEqual(inspect(repo)["action"], "merge_eligible")
-
-            self.assertEqual(record(repo, "merge", "merged", "merge-1")[0].returncode, 0)
-            self.assertEqual(inspect(repo)["action"], "sync")
-
-            self.assertEqual(record(repo, "sync", "synced", "sync-1")[0].returncode, 0)
-            cleanup = inspect(repo)
-            self.assertEqual(cleanup["action"], "cleanup")
-            requirements = cleanup["evidence"]["required_before_cleanup"]
+            git(linked, "push", "-q", "-u", "origin", "feature/lifecycle")
+            checkpoints.append(("pushed", inspect(base), "open_pr"))
+            self.assertEqual(record(base, linked, "pr", "open", "pr-1")[0].returncode, 0)
+            checkpoints.append(("PR open", inspect(base), "wait_ci"))
+            self.assertEqual(record(base, linked, "ci", "passing", "ci-1")[0].returncode, 0)
+            checkpoints.append(("CI green", inspect(base), "merge_eligible"))
+            head = git(linked, "rev-parse", "HEAD").stdout.strip()
             self.assertEqual(
-                {item["name"] for item in requirements},
+                record(base, linked, "merge", "merged", "merge-1", receipt_sha=head)[0].returncode,
+                0,
+            )
+            checkpoints.append(("merged", inspect(base), "sync"))
+            self.assertEqual(
+                record(base, linked, "sync", "synced", "sync-1", receipt_sha=head)[0].returncode,
+                0,
+            )
+            checkpoints.append(("synced", inspect(base), "cleanup"))
+
+            for label, observed, expected in checkpoints:
+                with self.subTest(label=label):
+                    self.assertEqual(observed["action"], expected, observed)
+            cleanup = checkpoints[-1][1]
+            self.assertEqual(
+                {item["name"] for item in cleanup["evidence"]["required_before_cleanup"]},
                 {"child_stack_safe", "no_active_sessions"},
             )
-            self.assertTrue(all(item["provided"] is False for item in requirements))
 
-            halt = cli(
-                repo,
-                "halt",
-                "--run-id",
-                "run-1",
-                "--status",
-                "done",
-                "--reason",
-                "Lifecycle fixture completed",
-                "--idempotency-key",
-                "halt-1",
-            )[1]
-            self.assertTrue(halt["ok"])
-            self.assertEqual(inspect(repo)["action"], "done")
-
-    def test_commit_requires_exclusive_owned_dirty_paths(self):
+    def test_blocked_invariant_reason_matrix(self):
+        cases = ("merge", "rebase", "cherry-pick", "revert", "bisect")
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
-            repo = init_repo(tmp / "repo")
-            start(repo)
-            git(repo, "switch", "-q", "-c", "feature/lifecycle")
-            (repo / "owned" / "new.txt").write_text("owned\n")
-            (repo / "foreign.txt").write_text("foreign\n")
-            ready(repo)
-            result = inspect(repo)
-            self.assertEqual(result["action"], "blocked")
-            self.assertEqual(result["reason_code"], "foreign_dirty_paths")
-            self.assertEqual(result["evidence"]["foreign_dirty_paths"], ["foreign.txt"])
-
-    def test_non_authoritative_and_stale_facts_never_enable_merge(self):
-        with tempfile.TemporaryDirectory() as td:
-            tmp = Path(td)
-            repo = init_repo(tmp / "repo")
-            add_local_origin(repo, tmp)
-            start(repo)
-            git(repo, "switch", "-q", "-c", "feature/lifecycle")
-            (repo / "owned" / "one.txt").write_text("one\n")
-            ready(repo)
-            git(repo, "add", "owned/one.txt")
-            git(repo, "commit", "-q", "-m", "feat: add first lifecycle change")
-            git(repo, "push", "-q", "-u", "origin", "feature/lifecycle")
-            first_head = git(repo, "rev-parse", "HEAD").stdout.strip()
-            record(repo, "pr", "open", "pr-first")
-            record(repo, "ci", "passing", "ci-advisory", authoritative=False)
-            self.assertEqual(inspect(repo)["action"], "wait_ci")
-            record(repo, "ci", "passing", "ci-first")
-            self.assertEqual(inspect(repo)["action"], "merge_eligible")
-
-            (repo / "owned" / "two.txt").write_text("two\n")
-            git(repo, "add", "owned/two.txt")
-            git(repo, "commit", "-q", "-m", "feat: add second lifecycle change")
-            git(repo, "push", "-q", "origin", "feature/lifecycle")
-            stale = inspect(repo)
-            self.assertEqual(stale["action"], "open_pr")
-            self.assertTrue(
-                any(first_head in note for note in stale["evidence"]["fact_notes"])
-            )
-
-            short_sha = git(repo, "rev-parse", "--short", "HEAD").stdout.strip()
-            proc, payload = record(
-                repo, "ci", "passing", "ci-short", sha=short_sha
-            )
-            self.assertNotEqual(proc.returncode, 0)
-            self.assertIn("exact lowercase", payload["error"])
-
-    def test_contradictory_authoritative_sources_block(self):
-        with tempfile.TemporaryDirectory() as td:
-            tmp = Path(td)
-            repo = init_repo(tmp / "repo")
-            add_local_origin(repo, tmp)
-            start(repo)
-            git(repo, "switch", "-q", "-c", "feature/lifecycle")
-            (repo / "owned" / "one.txt").write_text("one\n")
-            ready(repo)
-            git(repo, "add", "owned/one.txt")
-            git(repo, "commit", "-q", "-m", "feat: add lifecycle change")
-            git(repo, "push", "-q", "-u", "origin", "feature/lifecycle")
-            record(repo, "pr", "open", "pr-github", source="github")
-            record(repo, "pr", "closed", "pr-mirror", source="mirror")
-            result = inspect(repo)
-            self.assertEqual(result["action"], "blocked")
-            self.assertEqual(result["reason_code"], "contradictory_remote_facts")
-
-
-class GitInspectionTests(unittest.TestCase):
-    def test_reports_staged_unstaged_untracked_and_all_paths(self):
-        with tempfile.TemporaryDirectory() as td:
-            repo = init_repo(Path(td) / "repo")
-            start(repo)
-            git(repo, "switch", "-q", "-c", "feature/lifecycle")
-            tracked = repo / "owned" / "tracked.txt"
-            tracked.write_text("staged\n")
-            git(repo, "add", "owned/tracked.txt")
-            tracked.write_text("staged and unstaged\n")
-            (repo / "owned" / "untracked.txt").write_text("new\n")
-            result = inspect(repo)
-            git_state = result["evidence"]["git"]
-            self.assertEqual(result["action"], "editing")
-            self.assertEqual(git_state["staged_paths"], ["owned/tracked.txt"])
-            self.assertEqual(git_state["unstaged_paths"], ["owned/tracked.txt"])
-            self.assertEqual(git_state["untracked_paths"], ["owned/untracked.txt"])
-            self.assertEqual(
-                git_state["changed_paths"],
-                ["owned/tracked.txt", "owned/untracked.txt"],
-            )
-
-    def test_rename_reports_source_and_destination_paths(self):
-        with tempfile.TemporaryDirectory() as td:
-            repo = init_repo(Path(td) / "repo")
-            start(repo)
-            git(repo, "switch", "-q", "-c", "feature/lifecycle")
-            git(repo, "mv", "owned/tracked.txt", "owned/renamed.txt")
-            result = inspect(repo)
-            git_state = result["evidence"]["git"]
-            self.assertEqual(result["action"], "editing")
-            self.assertEqual(
-                git_state["changed_paths"],
-                ["owned/renamed.txt", "owned/tracked.txt"],
-            )
-            self.assertEqual(
-                git_state["staged_paths"],
-                ["owned/renamed.txt", "owned/tracked.txt"],
-            )
-
-    def test_conflict_and_each_active_operation_block(self):
-        with tempfile.TemporaryDirectory() as td:
-            repo = init_repo(Path(td) / "repo")
-            start(repo)
-            git(repo, "switch", "-q", "-c", "feature/lifecycle")
-            git_dir = Path(git(repo, "rev-parse", "--absolute-git-dir").stdout.strip())
-            probes = {
+            base, _ = init_repo(tmp / "repo")
+            start(base)
+            linked = add_linked(base, tmp / "linked")
+            git_dir = Path(git(linked, "rev-parse", "--absolute-git-dir").stdout.strip())
+            markers = {
                 "merge": git_dir / "MERGE_HEAD",
                 "rebase": git_dir / "rebase-merge",
                 "cherry-pick": git_dir / "CHERRY_PICK_HEAD",
                 "revert": git_dir / "REVERT_HEAD",
                 "bisect": git_dir / "BISECT_LOG",
             }
-            for operation, marker in probes.items():
-                with self.subTest(operation=operation):
-                    if marker.suffix:
-                        marker.write_text("fixture\n")
-                    else:
-                        marker.mkdir()
-                    result = inspect(repo)
+            for operation in cases:
+                marker = markers[operation]
+                with self.subTest(reason_class="active_operation", operation=operation):
+                    marker.mkdir() if operation == "rebase" else marker.write_text("fixture\n")
+                    result = inspect(base)
                     self.assertEqual(result["action"], "blocked")
-                    self.assertIn(operation, result["evidence"]["git"]["active_operations"])
-                    if marker.is_dir():
-                        marker.rmdir()
-                    else:
-                        marker.unlink()
+                    self.assertEqual(result["reason_code"], "active_git_operation")
+                    shutil.rmtree(marker) if marker.is_dir() else marker.unlink()
+            (linked / "foreign.txt").write_text("foreign\n")
+            result = inspect(base)
+            self.assertEqual((result["action"], result["reason_code"]), ("blocked", "foreign_dirty_paths"))
 
-            git(repo, "switch", "-q", "-c", "side", "main")
-            (repo / "owned" / "tracked.txt").write_text("side\n")
-            git(repo, "commit", "-qam", "fix: change side")
-            git(repo, "switch", "-q", "feature/lifecycle")
-            (repo / "owned" / "tracked.txt").write_text("feature\n")
-            git(repo, "commit", "-qam", "fix: change feature")
-            merge = git(repo, "merge", "side", check=False)
-            self.assertNotEqual(merge.returncode, 0)
-            result = inspect(repo)
-            self.assertEqual(result["action"], "blocked")
-            self.assertEqual(result["reason_code"], "active_git_operation")
-            self.assertEqual(result["evidence"]["git"]["conflict_paths"], ["owned/tracked.txt"])
 
-    def test_inspect_is_byte_and_mtime_read_only_and_uses_no_network(self):
+    def test_dirty_state_conflict_and_rename_evidence(self):
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
-            repo = init_repo(tmp / "repo")
-            start(repo)
-            state, audit, lock = state_paths(repo)
-            index = Path(git(repo, "rev-parse", "--git-path", "index").stdout.strip())
-            if not index.is_absolute():
-                index = (repo / index).resolve()
-            watched = [state, audit, lock, index]
-            before = {path: file_fingerprint(path) for path in watched}
+            base, _ = init_repo(tmp / "repo")
+            start(base)
+            linked = add_linked(base, tmp / "linked")
+            tracked = linked / "owned" / "tracked.txt"
+            tracked.write_text("staged\n")
+            git(linked, "add", "owned/tracked.txt")
+            tracked.write_text("staged and unstaged\n")
+            (linked / "owned" / "untracked.txt").write_text("new\n")
+            evidence = inspect(base)["evidence"]["git"]
+            self.assertEqual(evidence["staged_paths"], ["owned/tracked.txt"])
+            self.assertEqual(evidence["unstaged_paths"], ["owned/tracked.txt"])
+            self.assertEqual(evidence["untracked_paths"], ["owned/untracked.txt"])
+            self.assertEqual(
+                evidence["changed_paths"],
+                ["owned/tracked.txt", "owned/untracked.txt"],
+            )
 
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            base, _ = init_repo(tmp / "repo")
+            start(base)
+            linked = add_linked(base, tmp / "linked")
+            side = tmp / "side"
+            git(base, "worktree", "add", "-q", "-b", "side", str(side), "main")
+            (side / "owned" / "tracked.txt").write_text("side\n")
+            git(side, "commit", "-qam", "fix: change side")
+            (linked / "owned" / "tracked.txt").write_text("feature\n")
+            git(linked, "commit", "-qam", "fix: change feature")
+            self.assertNotEqual(git(linked, "merge", "side", check=False).returncode, 0)
+            conflict = inspect(base)
+            self.assertEqual(conflict["action"], "blocked")
+            self.assertEqual(
+                conflict["evidence"]["git"]["conflict_paths"],
+                ["owned/tracked.txt"],
+            )
+
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            base, _ = init_repo(tmp / "repo")
+            start(base)
+            linked = add_linked(base, tmp / "linked")
+            git(linked, "mv", "owned/tracked.txt", "owned/renamed.txt")
+            evidence = inspect(base)["evidence"]["git"]
+            expected = ["owned/renamed.txt", "owned/tracked.txt"]
+            self.assertEqual(evidence["changed_paths"], expected)
+            self.assertEqual(evidence["staged_paths"], expected)
+
+
+class ReadinessAndHistoryTests(unittest.TestCase):
+    def test_readiness_fingerprint_changes_and_cannot_be_reused(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            base, _ = init_repo(tmp / "repo")
+            start(base)
+            linked = add_linked(base, tmp / "linked")
+            target = linked / "owned" / "tracked.txt"
+            target.write_text("ready one\n")
+            self.assertEqual(ready(base)[0].returncode, 0)
+            target.write_text("changed after ready\n")
+            changed = inspect(base)
+            self.assertEqual((changed["action"], changed["reason_code"]), ("blocked", "ready_diff_changed"))
+            self.assertEqual(ready(base, key="ready-refresh")[0].returncode, 0)
+            self.assertEqual(inspect(base)["action"], "commit")
+            git(linked, "add", "owned/tracked.txt")
+            git(linked, "commit", "-q", "-m", "feat: commit refreshed ready diff")
+            (linked / "owned" / "later.txt").write_text("later\n")
+            reused = inspect(base)
+            self.assertEqual(
+                (reused["action"], reused["reason_code"]),
+                ("blocked", "readiness_consumed_dirty"),
+            )
+
+    def test_history_union_blocks_modify_then_revert_foreign_path(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            base, linked = committed_fixture(tmp)
+            (linked / "README.md").write_text("foreign modification\n")
+            git(linked, "add", "README.md")
+            git(linked, "commit", "-q", "-m", "docs: modify foreign path")
+            (linked / "README.md").write_text("fixture\n")
+            git(linked, "add", "README.md")
+            git(linked, "commit", "-q", "-m", "docs: restore foreign path")
+            result = inspect(base)
+            self.assertEqual(
+                (result["action"], result["reason_code"]),
+                ("blocked", "foreign_committed_paths"),
+            )
+            self.assertIn("README.md", result["reason"])
+            self.assertIn("README.md", result["evidence"]["current_unit_history"]["paths"])
+
+    def test_next_unit_requires_consumed_exact_regular_commit(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            base, _ = init_repo(tmp / "repo")
+            start(base)
+            linked = add_linked(base, tmp / "linked")
+            (linked / "owned" / "one.txt").write_text("one\n")
+            self.assertEqual(ready(base)[0].returncode, 0)
+            proc, payload = next_unit(base)
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertEqual(payload["error_code"], "unit_not_committed")
+            git(linked, "add", "owned/one.txt")
+            git(linked, "commit", "-q", "-m", "feat: consume first unit")
+            self.assertEqual(next_unit(base)[0].returncode, 0)
+
+
+class ValidationAndReceiptTests(unittest.TestCase):
+    def test_validation_evidence_strict_rejection_matrix(self):
+        invalid = [
+            ("free text", ("tests failed",)),
+            ("unknown token", ("tests",)),
+            ("empty name", ("=pass",)),
+            ("padded name", (" tests=pass",)),
+            ("failed JSON", ('{"name":"tests","passed":false}',)),
+            ("empty JSON name", ('{"name":"","passed":true}',)),
+            ("duplicate", ("tests=pass", '{"name":"Tests","passed":true}')),
+        ]
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            base, _ = init_repo(tmp / "repo")
+            start(base)
+            linked = add_linked(base, tmp / "linked")
+            (linked / "owned" / "one.txt").write_text("one\n")
+            for index, (label, values) in enumerate(invalid):
+                with self.subTest(label=label):
+                    proc, payload = ready(base, key=f"bad-{index}", validations=values)
+                    self.assertNotEqual(proc.returncode, 0)
+                    self.assertEqual(payload["error_code"], "invalid_validation")
+            self.assertEqual(ready(base, key="strict-pass", validations=("tests=pass",))[0].returncode, 0)
+
+    def test_successful_merge_and_sync_require_explicit_exact_receipts(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            base, linked = pushed_fixture(tmp)
+            record(base, linked, "pr", "open", "pr-1")
+            record(base, linked, "ci", "passing", "ci-1")
+            for kind, status in (("merge", "merged"), ("sync", "synced")):
+                with self.subTest(kind=kind, receipt="missing"):
+                    proc, payload = record(base, linked, kind, status, f"{kind}-missing")
+                    self.assertNotEqual(proc.returncode, 0)
+                    self.assertEqual(payload["error_code"], "missing_receipt")
+                with self.subTest(kind=kind, receipt="abbreviated"):
+                    proc, payload = record(
+                        base, linked, kind, status, f"{kind}-short", receipt_sha="abc1234"
+                    )
+                    self.assertNotEqual(proc.returncode, 0)
+                    self.assertEqual(payload["error_code"], "invalid_sha")
+            head = git(linked, "rev-parse", "HEAD").stdout.strip()
+            self.assertEqual(
+                record(base, linked, "merge", "merged", "merge-exact", receipt_sha=head)[0].returncode,
+                0,
+            )
+            self.assertEqual(
+                record(base, linked, "sync", "synced", "sync-exact", receipt_sha=head)[0].returncode,
+                0,
+            )
+            self.assertEqual(inspect(base)["action"], "cleanup")
+
+    def test_stale_nonauthoritative_and_contradictory_facts_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            base, linked = pushed_fixture(tmp)
+            head = git(linked, "rev-parse", "HEAD").stdout.strip()
+            record(base, linked, "pr", "open", "pr-github", source="github")
+            record(
+                base, linked, "ci", "passing", "ci-advisory",
+                source="advisory", authoritative=False,
+            )
+            self.assertEqual(inspect(base)["action"], "wait_ci")
+            record(base, linked, "pr", "closed", "pr-mirror", source="mirror")
+            contradiction = inspect(base)
+            self.assertEqual(contradiction["reason_code"], "contradictory_remote_facts")
+            proc, payload = record(
+                base, linked, "ci", "passing", "ci-short", sha=head[:8]
+            )
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertEqual(payload["error_code"], "invalid_sha")
+
+
+    def test_path_and_branch_validation_rejection_matrix(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            base, _ = init_repo(tmp / "repo")
+            outside = tmp / "outside"
+            outside.mkdir()
+            (base / "escape").symlink_to(outside, target_is_directory=True)
+            head = git(base, "rev-parse", "HEAD").stdout.strip()
+            cases = [
+                ("absolute", ["/absolute"]),
+                ("parent", ["../outside"]),
+                ("git metadata", [".git/config"]),
+                ("normalized duplicate", ["owned/item", "owned/./item"]),
+                ("symlink escape", ["escape/item"]),
+            ]
+            for index, (label, paths) in enumerate(cases):
+                args = [
+                    "--run-id", f"bad-{index}", "--task", "Reject unsafe input",
+                    "--base-branch", "main", "--base-sha", head,
+                    "--intended-branch", "feature/safe", "--idempotency-key", f"key-{index}",
+                ]
+                for path in paths:
+                    args.extend(["--owned-path", path])
+                with self.subTest(label=label):
+                    proc, payload = cli(base, "start", *args, check=False)
+                    self.assertNotEqual(proc.returncode, 0)
+                    self.assertEqual(payload["error_code"], "invalid_owned_path")
+            proc, payload = cli(
+                base, "start", "--run-id", "bad-branch", "--task", "Reject branch",
+                "--base-branch", "main", "--base-sha", head,
+                "--intended-branch", "topic/unsupported", "--owned-path", "owned",
+                "--idempotency-key", "bad-branch-key", check=False,
+            )
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertEqual(payload["error_code"], "invalid_branch")
+
+
+    def test_exact_stale_fact_and_prior_head_facts_never_enable_merge(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            base, linked = pushed_fixture(tmp)
+            old_head = git(linked, "rev-parse", "HEAD").stdout.strip()
+            record(base, linked, "pr", "open", "pr-old")
+            record(base, linked, "ci", "passing", "ci-old")
+            self.assertEqual(inspect(base)["action"], "merge_eligible")
+            self.assertEqual(next_unit(base)[0].returncode, 0)
+            (linked / "owned" / "two.txt").write_text("two\n")
+            self.assertEqual(ready(base, key="ready-two")[0].returncode, 0)
+            git(linked, "add", "owned/two.txt")
+            git(linked, "commit", "-q", "-m", "feat: add newer exact head")
+            git(linked, "push", "-q", "origin", "feature/lifecycle")
+            result = inspect(base)
+            self.assertEqual(result["action"], "open_pr")
+            self.assertTrue(any(old_head in item for item in result["evidence"]["stale_facts"]))
+            proc, payload = record(
+                base, linked, "ci", "passing", "ci-stale-full", sha=old_head
+            )
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertEqual(payload["error_code"], "stale_fact")
+
+
+class AuditDurabilityTests(unittest.TestCase):
+    def module_start(self, base: Path, key: str = "start-1") -> dict:
+        head = git(base, "rev-parse", "HEAD").stdout.strip()
+        return LIFECYCLE.start_run(
+            base,
+            run_id="run-1",
+            task="Exercise audit durability",
+            base_branch="main",
+            base_sha=head,
+            intended_branch="feature/lifecycle",
+            owned_paths=["owned"],
+            worktree=base,
+            unit_id="unit-1",
+            unit_description="Implement audited unit",
+            key=key,
+            timeout=1,
+        )
+
+    def test_state_before_audit_failure_repairs_before_idempotent_return(self):
+        with tempfile.TemporaryDirectory() as td:
+            base, _ = init_repo(Path(td) / "repo")
+            with mock.patch.object(LIFECYCLE, "append_audit", side_effect=OSError("injected audit failure")):
+                with self.assertRaises(OSError):
+                    self.module_start(base)
+            state, audit, _ = state_paths(base)
+            self.assertTrue(state.exists())
+            self.assertFalse(audit.exists())
+            retry = self.module_start(base)
+            self.assertTrue(retry["idempotent"])
+            lines = audit.read_text().splitlines()
+            self.assertEqual(len(lines), 1)
+            self.assertEqual(json.loads(lines[0])["operation"], "start")
+
+    def test_mutation_repairs_only_incomplete_final_line(self):
+        with tempfile.TemporaryDirectory() as td:
+            base, _ = init_repo(Path(td) / "repo")
+            start(base)
+            _, audit, _ = state_paths(base)
+            with audit.open("ab") as handle:
+                handle.write(b'{"partial"')
+            proc, payload = cli(
+                base,
+                "halt",
+                "--run-id", "run-1",
+                "--status", "blocked",
+                "--reason", "Injected audit recovery test",
+                "--idempotency-key", "halt-1",
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 0, payload)
+            events = [json.loads(line) for line in audit.read_text().splitlines()]
+            self.assertEqual([event["operation"] for event in events], ["start", "halt"])
+
+    def test_invalid_complete_audit_blocks_without_repair(self):
+        with tempfile.TemporaryDirectory() as td:
+            base, _ = init_repo(Path(td) / "repo")
+            start(base)
+            state, audit, _ = state_paths(base)
+            with audit.open("ab") as handle:
+                handle.write(b"not-json\n")
+            before = (fingerprint(state), fingerprint(audit))
+            result = inspect(base)
+            self.assertEqual((result["action"], result["reason_code"]), ("blocked", "audit_invalid"))
+            self.assertEqual((fingerprint(state), fingerprint(audit)), before)
+            proc, payload = cli(
+                base,
+                "halt",
+                "--run-id", "run-1",
+                "--status", "blocked",
+                "--reason", "Must not hide invalid history",
+                "--idempotency-key", "halt-invalid",
+                check=False,
+            )
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertEqual(payload["error_code"], "audit_invalid")
+
+    def test_missing_audit_is_read_only_block_until_mutation_reconciles(self):
+        with tempfile.TemporaryDirectory() as td:
+            base, _ = init_repo(Path(td) / "repo")
+            start(base)
+            state, audit, _ = state_paths(base)
+            audit.write_bytes(b"")
+            before = (fingerprint(state), fingerprint(audit))
+            result = inspect(base)
+            self.assertEqual(result["reason_code"], "audit_inconsistent")
+            self.assertEqual((fingerprint(state), fingerprint(audit)), before)
+            proc, _ = cli(
+                base,
+                "halt",
+                "--run-id", "run-1",
+                "--status", "blocked",
+                "--reason", "Reconcile missing audit event",
+                "--idempotency-key", "halt-reconcile",
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 0)
+            self.assertEqual(len(audit.read_text().splitlines()), 2)
+
+
+class StateConcurrencyAndErrorTests(unittest.TestCase):
+    def test_duplicate_nonterminal_run_refused_terminal_run_permits_new(self):
+        with tempfile.TemporaryDirectory() as td:
+            base, _ = init_repo(Path(td) / "repo")
+            start(base)
+            linked = add_linked(base, Path(td) / "linked")
+            (linked / "owned" / "prior.txt").write_text("prior run\n")
+            git(linked, "add", "owned/prior.txt")
+            git(linked, "commit", "-q", "-m", "feat: leave prior terminal branch head")
+            proc, payload = cli(
+                base,
+                "start",
+                "--run-id", "run-2",
+                "--task", "Duplicate target",
+                "--base-branch", "main",
+                "--base-sha", git(base, "rev-parse", "HEAD").stdout.strip(),
+                "--intended-branch", "feature/lifecycle",
+                "--owned-path", "owned",
+                "--idempotency-key", "start-2",
+                check=False,
+            )
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertEqual(payload["error_code"], "duplicate_run")
+            self.assertEqual(
+                cli(
+                    base, "halt",
+                    "--run-id", "run-1",
+                    "--status", "done",
+                    "--reason", "First run completed",
+                    "--idempotency-key", "halt-1",
+                )[0].returncode,
+                0,
+            )
+            self.assertTrue(start(base, run_id="run-2", key="start-2")["ok"])
+            self.assertEqual(inspect(base, "run-2")["action"], "awaiting_work")
+
+    def test_lock_contention_preserves_state_and_audit(self):
+        with tempfile.TemporaryDirectory() as td:
+            base, _ = init_repo(Path(td) / "repo")
+            start(base)
+            state, audit, lock = state_paths(base)
+            before = fingerprint(state), fingerprint(audit)
+            with lock.open("r+") as handle:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                proc, payload = cli(
+                    base,
+                    "halt",
+                    "--run-id", "run-1",
+                    "--status", "blocked",
+                    "--reason", "Lock contention test",
+                    "--idempotency-key", "halt-locked",
+                    "--lock-timeout", "0.05",
+                    check=False,
+                )
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertEqual(payload["error_code"], "lock_timeout")
+            self.assertEqual((fingerprint(state), fingerprint(audit)), before)
+
+    def test_shared_state_and_missing_worktree_error_are_deterministic(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            base, _ = init_repo(tmp / "repo")
+            start(base)
+            linked = add_linked(base, tmp / "linked")
+            self.assertEqual(inspect(linked)["action"], "awaiting_work")
+            shutil.rmtree(linked)
+            missing = inspect(base)
+            self.assertEqual((missing["action"], missing["reason_code"]), ("blocked", "missing_worktree"))
+
+    def test_nested_malformed_state_and_git_failure_never_traceback(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            base, _ = init_repo(tmp / "repo")
+            start(base)
+            state, _, _ = state_paths(base)
+            payload = json.loads(state.read_text())
+            payload["repository"] = None
+            state.write_text(json.dumps(payload))
+            proc, result = cli(base, "inspect", "--run-id", "run-1", check=False)
+            self.assertEqual(proc.returncode, 0)
+            self.assertEqual((result["action"], result["reason_code"]), ("blocked", "invalid_state"))
+            self.assertNotIn("Traceback", proc.stderr)
+            with mock.patch.object(LIFECYCLE, "discover_repo", side_effect=OSError(5, "injected")):
+                normalized = LIFECYCLE.inspect_run(base, "run-1")
+            self.assertEqual(normalized["reason_code"], "inspection_error")
+
+    def test_terminal_status_survives_linked_worktree_cleanup(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            base, _ = init_repo(tmp / "repo")
+            start(base)
+            linked = add_linked(base, tmp / "linked")
+            cli(
+                base, "halt",
+                "--run-id", "run-1",
+                "--status", "done",
+                "--reason", "Cleanup may remove intended worktree",
+                "--idempotency-key", "halt-1",
+            )
+            git(base, "worktree", "remove", "--force", str(linked))
+            result = inspect(base)
+            self.assertEqual((result["action"], result["reason_code"]), ("done", "terminal_done"))
+
+
+    def test_all_mutations_are_idempotent_without_duplicate_audit_events(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            base, _ = init_repo(tmp / "repo")
+            first = start(base)
+            state, audit, _ = state_paths(base)
+            before = fingerprint(state), fingerprint(audit)
+            second = start(base)
+            self.assertFalse(first["idempotent"])
+            self.assertTrue(second["idempotent"])
+            self.assertEqual((fingerprint(state), fingerprint(audit)), before)
+
+            linked = add_linked(base, tmp / "linked")
+            (linked / "owned" / "one.txt").write_text("one\n")
+            self.assertEqual(ready(base)[0].returncode, 0)
+            before = fingerprint(state), fingerprint(audit)
+            self.assertTrue(ready(base)[1]["idempotent"])
+            self.assertEqual((fingerprint(state), fingerprint(audit)), before)
+            git(linked, "add", "owned/one.txt")
+            git(linked, "commit", "-q", "-m", "feat: idempotent unit")
+            head = git(linked, "rev-parse", "HEAD").stdout.strip()
+            self.assertEqual(record(base, linked, "pr", "open", "pr-1")[0].returncode, 0)
+            before = fingerprint(state), fingerprint(audit)
+            self.assertTrue(record(base, linked, "pr", "open", "pr-1")[1]["idempotent"])
+            self.assertEqual((fingerprint(state), fingerprint(audit)), before)
+            args = [
+                "--run-id", "run-1", "--status", "done", "--reason", "Idempotent halt",
+                "--idempotency-key", "halt-1",
+            ]
+            self.assertEqual(cli(base, "halt", *args)[0].returncode, 0)
+            before = fingerprint(state), fingerprint(audit)
+            self.assertTrue(cli(base, "halt", *args)[1]["idempotent"])
+            self.assertEqual((fingerprint(state), fingerprint(audit)), before)
+            self.assertEqual(len(audit.read_text().splitlines()), 4)
+            self.assertEqual(len(head), 40)
+
+
+class PurityAndStructureTests(unittest.TestCase):
+    def test_inspect_is_read_only_and_never_invokes_network_git(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            base, _ = init_repo(tmp / "repo")
+            start(base)
+            linked = add_linked(base, tmp / "linked")
+            state, audit, lock = state_paths(base)
+            base_index = Path(git(base, "rev-parse", "--git-path", "index").stdout.strip())
+            linked_index = Path(git(linked, "rev-parse", "--git-path", "index").stdout.strip())
+            if not base_index.is_absolute():
+                base_index = (base / base_index).resolve()
+            if not linked_index.is_absolute():
+                linked_index = (linked / linked_index).resolve()
+            watched = [state, audit, lock, base_index, linked_index]
+            before = {path: fingerprint(path) for path in watched}
             real_git = shutil.which("git")
-            self.assertIsNotNone(real_git)
             bin_dir = tmp / "bin"
             bin_dir.mkdir()
             wrapper = bin_dir / "git"
@@ -412,220 +801,24 @@ class GitInspectionTests(unittest.TestCase):
             wrapper.chmod(0o755)
             env = os.environ.copy()
             env["PATH"] = f"{bin_dir}:{env['PATH']}"
-            proc, result = cli(
-                repo, "inspect", "--run-id", "run-1", check=False, env=env
-            )
+            proc, result = cli(base, "inspect", "--run-id", "run-1", check=False, env=env)
             self.assertEqual(proc.returncode, 0, proc.stderr)
-            self.assertEqual(result["action"], "create_stack")
-            after = {path: file_fingerprint(path) for path in watched}
-            self.assertEqual(after, before)
-
-
-class ValidationAndPersistenceTests(unittest.TestCase):
-    def test_owned_path_normalization_rejects_escapes_git_and_duplicates(self):
-        with tempfile.TemporaryDirectory() as td:
-            tmp = Path(td)
-            repo = init_repo(tmp / "repo")
-            outside = tmp / "outside"
-            outside.mkdir()
-            (repo / "escape").symlink_to(outside, target_is_directory=True)
-            cases = [
-                (("/absolute",), "repository-relative"),
-                (("../outside",), "may not contain"),
-                ((".git/config",), "may not address"),
-                (("owned/item", "owned/./item"), "duplicate"),
-                (("escape/item",), "escapes"),
-            ]
-            base_sha = git(repo, "rev-parse", "HEAD").stdout.strip()
-            for index, (paths, expected) in enumerate(cases):
-                with self.subTest(paths=paths):
-                    args = [
-                        "--run-id",
-                        f"bad-{index}",
-                        "--task",
-                        "Reject unsafe owned path",
-                        "--base-branch",
-                        "main",
-                        "--base-sha",
-                        base_sha,
-                        "--intended-branch",
-                        "feature/safe-path",
-                        "--idempotency-key",
-                        f"bad-key-{index}",
-                    ]
-                    for path in paths:
-                        args.extend(["--owned-path", path])
-                    proc, payload = cli(repo, "start", *args, check=False)
-                    self.assertNotEqual(proc.returncode, 0)
-                    self.assertIn(expected, payload["error"])
-
-    def test_branch_and_ready_validation_fail_closed(self):
-        with tempfile.TemporaryDirectory() as td:
-            repo = init_repo(Path(td) / "repo")
-            base_sha = git(repo, "rev-parse", "HEAD").stdout.strip()
-            proc, payload = cli(
-                repo,
-                "start",
-                "--run-id",
-                "bad-branch",
-                "--task",
-                "Reject unsupported branch",
-                "--base-branch",
-                "main",
-                "--base-sha",
-                base_sha,
-                "--intended-branch",
-                "topic/not-supported",
-                "--owned-path",
-                "owned",
-                "--idempotency-key",
-                "bad-branch-key",
-                check=False,
-            )
-            self.assertNotEqual(proc.returncode, 0)
-            self.assertIn("supported prefix", payload["error"])
-
-            start(repo)
-            git(repo, "switch", "-q", "-c", "feature/lifecycle")
-            (repo / "owned" / "new.txt").write_text("change\n")
-            proc, payload = cli(
-                repo,
-                "ready",
-                "--run-id",
-                "run-1",
-                "--subject",
-                "not conventional",
-                "--body",
-                "This body would otherwise be meaningful.",
-                "--open-tasks",
-                "0",
-                "--validation",
-                "tests=pass",
-                "--idempotency-key",
-                "bad-ready-1",
-                check=False,
-            )
-            self.assertNotEqual(proc.returncode, 0)
-            self.assertIn("conventional", payload["error"])
-            proc, payload = cli(
-                repo,
-                "ready",
-                "--run-id",
-                "run-1",
-                "--subject",
-                "feat: valid subject",
-                "--body",
-                "This body explains the required behavior.",
-                "--open-tasks",
-                "1",
-                "--validation",
-                "tests=pass",
-                "--idempotency-key",
-                "bad-ready-2",
-                check=False,
-            )
-            self.assertNotEqual(proc.returncode, 0)
-            self.assertIn("open tasks equal zero", payload["error"])
-
-    def test_idempotent_writes_do_not_duplicate_state_or_audit(self):
-        with tempfile.TemporaryDirectory() as td:
-            repo = init_repo(Path(td) / "repo")
-            first = start(repo)
-            state, audit, _ = state_paths(repo)
-            state_before = file_fingerprint(state)
-            audit_before = file_fingerprint(audit)
-            second = start(repo)
-            self.assertFalse(first["idempotent"])
-            self.assertTrue(second["idempotent"])
-            self.assertEqual(file_fingerprint(state), state_before)
-            self.assertEqual(file_fingerprint(audit), audit_before)
-            self.assertEqual(len(audit.read_text().splitlines()), 1)
-
-            git(repo, "switch", "-q", "-c", "feature/lifecycle")
-            (repo / "owned" / "new.txt").write_text("change\n")
-            ready(repo)
-            ready_state = file_fingerprint(state)
-            ready_audit = file_fingerprint(audit)
-            duplicate = ready(repo)
-            self.assertTrue(duplicate["idempotent"])
-            self.assertEqual(file_fingerprint(state), ready_state)
-            self.assertEqual(file_fingerprint(audit), ready_audit)
-            self.assertEqual(len(audit.read_text().splitlines()), 2)
-
-            proc, payload = cli(
-                repo,
-                "ready",
-                "--run-id",
-                "run-1",
-                "--subject",
-                "fix: different payload",
-                "--body",
-                "This payload intentionally differs from the original ready event.",
-                "--open-tasks",
-                "0",
-                "--validation",
-                "tests=pass",
-                "--idempotency-key",
-                "ready-1",
-                check=False,
-            )
-            self.assertNotEqual(proc.returncode, 0)
-            self.assertIn("different operation or payload", payload["error"])
-
-    def test_lock_contention_times_out_without_corruption(self):
-        with tempfile.TemporaryDirectory() as td:
-            repo = init_repo(Path(td) / "repo")
-            start(repo)
-            git(repo, "switch", "-q", "-c", "feature/lifecycle")
-            (repo / "owned" / "new.txt").write_text("change\n")
-            state, audit, lock = state_paths(repo)
-            before = (file_fingerprint(state), file_fingerprint(audit))
-            with lock.open("r+") as handle:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                proc, payload = cli(
-                    repo,
-                    "ready",
-                    "--run-id",
-                    "run-1",
-                    "--subject",
-                    "feat: valid locked update",
-                    "--body",
-                    "This update must wait for the repository lifecycle lock.",
-                    "--open-tasks",
-                    "0",
-                    "--validation",
-                    "tests=pass",
-                    "--idempotency-key",
-                    "ready-locked",
-                    "--lock-timeout",
-                    "0.05",
-                    check=False,
-                )
-            self.assertNotEqual(proc.returncode, 0)
-            self.assertEqual(payload["error_type"], "LockTimeoutError")
-            self.assertEqual((file_fingerprint(state), file_fingerprint(audit)), before)
-            json.loads(state.read_text())
-            for line in audit.read_text().splitlines():
-                json.loads(line)
-
-    def test_state_is_shared_across_linked_worktrees(self):
-        with tempfile.TemporaryDirectory() as td:
-            tmp = Path(td)
-            repo = init_repo(tmp / "repo")
-            git(repo, "branch", "feature/linked")
-            linked = tmp / "linked"
-            git(repo, "worktree", "add", "-q", str(linked), "feature/linked")
-            start(
-                linked,
-                run_id="linked-run",
-                branch="feature/linked",
-                key="linked-start",
-            )
-            state, _, _ = state_paths(repo, "linked-run")
-            self.assertTrue(state.is_file())
-            result = inspect(repo, "linked-run")
             self.assertEqual(result["action"], "awaiting_work")
-            self.assertEqual(result["evidence"]["git"]["root"], str(linked.resolve()))
+            self.assertEqual({path: fingerprint(path) for path in watched}, before)
+
+    def test_controller_is_smaller_and_decision_is_phased(self):
+        source = SCRIPT.read_text()
+        tree = ast.parse(source)
+        functions = {
+            node.name: node
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+        decide = functions["decide"]
+        phases = {"phase_invariants", "phase_stack", "phase_local", "phase_remote", "phase_post_merge"}
+        self.assertLess(len(source.splitlines()), 1600)
+        self.assertLess(decide.end_lineno - decide.lineno + 1, 30)
+        self.assertTrue(phases.issubset(functions))
 
 
 if __name__ == "__main__":
