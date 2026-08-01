@@ -1,9 +1,9 @@
 ---
 status: draft
-retry_count: 0
+retry_count: 1
 doubt_cycle_iteration: 0
-review_loop_iteration: 0
-followup_review_recommended: false
+review_loop_iteration: 1
+followup_review_recommended: true
 ---
 
 # Frozen Spec — claude-lifecycle-adapter
@@ -33,6 +33,7 @@ lifecycle run is bound to the Claude session.
 - `scripts/test_autonomy_tier.py`
 - `scripts/test_executable_bits.py`
 - `.claude/scripts/pr-stack/create-stack.sh`
+- `.claude/scripts/pr-stack/create-pr.sh`
 - `scripts/test_lifecycle_safety_foundation.py`
 - `.claude/hooks/lifecycle-hook.sh` (new)
 - `.claude/hooks/stop.sh`
@@ -98,6 +99,37 @@ lifecycle run is bound to the Claude session.
     settings wiring, and shell syntax. No test accesses the network.
 13. All focused lifecycle, hook, autonomy, syntax, JSON, and executable-bit
     tests pass; `git diff --check` passes.
+14. The hook bridge exposes enabled/disabled/error tri-state. Missing, crashing,
+    or nonzero adapter execution in an opted-in repository fails closed; only
+    explicit non-repo/disabled and Stop `lifecycle_bound:false` fall back silently.
+15. A per-run action lock serializes fresh inspect, state reload, action, and
+    post-inspect. Commit performs a post-stage CAS over HEAD, action, ready paths,
+    and ready content fingerprint; duplicate ticks neither duplicate nor demote.
+16. PR/CI facts prove current repository owner, intended head/base branch, exact
+    SHA, and open non-draft state. Passing checks require a second identical PR
+    observation, and command/status inconsistencies record unknown.
+17. Push validates one matching origin fetch/push URL and uses only explicit
+    `--set-upstream origin HEAD:refs/heads/<validated-branch>` without force or
+    inherited refspec behavior.
+18. Stop allows detached CI watching immediately. Merge/sync/cleanup defer with
+    one durable block per run/action/head/session, then allow; editing and
+    unauthorized reversible actions continue blocking.
+19. Watchers use separate spawn and execution locks, require a child-ready
+    handshake, bound default polls, command timeouts, and bounded backoff.
+20. Stack creation supports adapter-required `--strict`; Charcoal tracking
+    failure is nonzero so an untracked stack cannot advance controller state.
+21. Start serializes binding precheck, controller start, and persistence. A new
+    run whose binding cannot persist is durably halted blocked.
+22. Canonical PR creation scopes `GH_TOKEN` only to `gh`; git push relies on its
+    configured credential helper and never receives that token.
+23. Adapter audit append is locked, partial-write safe, no-follow regular-file
+    mode 0600, retry-idempotent, and excludes command/env/token/prompt/path data.
+24. PreToolUse ownership covers NotebookEdit and direct Bash lifecycle mutation
+    bypasses while permitting the adapter and non-mutating test/read commands.
+    Broad MCP parity remains outside this Claude-only branch.
+25. Hermetic tests cover races, CAS mutation, PR churn, bridge/config failure,
+    watcher readiness/budget, strict tracking, push refspec, token isolation,
+    NotebookEdit/Bash bypass, and bounded Stop behavior without network access.
 
 ## Constraints
 
@@ -116,7 +148,22 @@ lifecycle run is bound to the Claude session.
 
 - 2026-08-01: Initial Claude adapter contract created after the shared
   controller passed coordinator verification.
+- 2026-08-01: Review triage added fail-closed bridge, serialized/CAS actions,
+  exact PR/CI and push pinning, bounded Stop/watchers, strict stack creation,
+  atomic binding, hardened audit, and Claude mutation-tool coverage. Canonical
+  `create-pr.sh` entered scope because auto-PR now depends on token isolation.
 
 ## Review Triage Log
 
-- None yet.
+- Accepted: all twelve coordinator findings covering hook bridge failure modes,
+  action races, PR/CI freshness, push pinning, Stop termination, watcher
+  lifetime, strict stack tracking, start/bind atomicity, PR token scope, audit
+  integrity, mutation-tool bypasses, and their post-review regression tests.
+- Deferred: local approval-receipt redesign. The existing tracked human-policy
+  model remains authoritative; replacing it is cross-cutting and not required
+  for these reversible action safeguards.
+- Deferred: broad MCP and cross-tool mutation gating. This branch is the Claude
+  adapter boundary; parity belongs in a later cross-tool branch.
+- Deferred: removal of all worktree configuration copying. That is separate
+  hardening; this branch still requires strict tracking and exact-base creation
+  so copying failure cannot silently advance lifecycle state.
