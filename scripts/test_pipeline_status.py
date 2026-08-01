@@ -149,14 +149,56 @@ class PipelineStatusTests(unittest.TestCase):
             git(repo, "add", "a.py")
             git(repo, "commit", "-q", "-m", "feat: add a")
             git(repo, "push", "-q", "-u", "origin", "feature/six")
+            head_sha = git(repo, "rev-parse", "HEAD").stdout.strip()
             (repo / "plans").mkdir()
             (repo / "plans" / "ci-status.md").write_text(
                 "**PR:** #1 — feature/six\n"
+                f"**SHA:** {head_sha}\n"
                 "**Last checked:** t1 (poll 5/40)\n"
                 "**Status:** SUCCESS\n"
             )
             result = run_pipeline(repo)
             self.assertEqual(result["signal"], "merge_due")
+
+    def test_ci_pending_when_success_status_has_no_sha(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            repo = init_repo(tmp / "repo")
+            add_bare_origin(repo, tmp)
+            git(repo, "checkout", "-q", "-b", "feature/six-missing")
+            (repo / "a.py").write_text("x = 1\n")
+            git(repo, "add", "a.py")
+            git(repo, "commit", "-q", "-m", "feat: add a")
+            git(repo, "push", "-q", "-u", "origin", "feature/six-missing")
+            (repo / "plans").mkdir()
+            (repo / "plans" / "ci-status.md").write_text(
+                "**PR:** #1 — feature/six-missing\n"
+                "**Status:** SUCCESS\n"
+            )
+            result = run_pipeline(repo)
+            self.assertEqual(result["signal"], "ci_pending")
+            self.assertIn("exact current branch/full SHA", result["reason"])
+
+    def test_ci_pending_when_success_status_has_abbreviated_sha(self):
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            repo = init_repo(tmp / "repo")
+            add_bare_origin(repo, tmp)
+            git(repo, "checkout", "-q", "-b", "feature/six-short")
+            (repo / "a.py").write_text("x = 1\n")
+            git(repo, "add", "a.py")
+            git(repo, "commit", "-q", "-m", "feat: add a")
+            git(repo, "push", "-q", "-u", "origin", "feature/six-short")
+            short_sha = git(repo, "rev-parse", "--short", "HEAD").stdout.strip()
+            (repo / "plans").mkdir()
+            (repo / "plans" / "ci-status.md").write_text(
+                "**PR:** #1 — feature/six-short\n"
+                f"**SHA:** {short_sha}\n"
+                "**Status:** SUCCESS\n"
+            )
+            result = run_pipeline(repo)
+            self.assertEqual(result["signal"], "ci_pending")
+            self.assertIn("exact current branch/full SHA", result["reason"])
 
     def test_ci_pending_when_ci_status_branch_is_stale(self):
         with tempfile.TemporaryDirectory() as td:
