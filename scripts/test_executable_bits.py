@@ -31,6 +31,7 @@ MUST_BE_EXECUTABLE = [
     "scripts/ai/validate-changeset.sh",
     "scripts/ai/autonomy-tier.sh",
     "scripts/ai/git_lifecycle.py",
+    "scripts/ai/lifecycle_adapter.py",
 ]
 
 

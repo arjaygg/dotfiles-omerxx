@@ -15,9 +15,10 @@ exec 3>&2
 
 _run() {
     local _script="$1"
+    shift
     [[ -f "$_script" ]] || return 0
     local _out
-    _out="$(printf '%s' "$_INPUT" | bash "$_script" 2>&3)"
+    _out="$(printf '%s' "$_INPUT" | bash "$_script" "$@" 2>&3)"
     local _ctx
     _ctx="$(printf '%s' "$_out" | python3 -c "
 import json, sys
@@ -41,6 +42,7 @@ ${_ctx}"
 
 _run "$SCRIPT_DIR/settings-symlink-guard.sh"
 _run "$SCRIPT_DIR/session-init.sh"
+_run "$SCRIPT_DIR/lifecycle-hook.sh" SessionStart
 _run "$SCRIPT_DIR/supermemory-project-check.sh"
 _run "$SCRIPT_DIR/model-availability-check.sh"
 

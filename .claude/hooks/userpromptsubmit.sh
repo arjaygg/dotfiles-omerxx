@@ -20,8 +20,9 @@ exec 3>&2
 # ─── Helper: run a hook, let stderr through, capture stdout JSON ───────────────
 _run() {
     local _script="$1"
+    shift
     local _out _rc
-    _out=$(echo "$_INPUT" | bash "$_script" 2>&3)
+    _out=$(echo "$_INPUT" | bash "$_script" "$@" 2>&3)
     _rc=$?
     if [[ $_rc -ne 0 ]]; then
         return $_rc
@@ -62,6 +63,9 @@ _run "$HOME/.dotfiles/.claude/hooks/session-init-enforcer.sh" || exit $?
 
 # 2. Session duration guard — exits 1 at 500 turns, writes warnings to stderr
 _run "$HOME/.dotfiles/.claude/hooks/session-duration-guard.sh" || exit $?
+
+# 3. Shared lifecycle status — silent outside explicitly opted-in repositories
+_run "$HOME/.dotfiles/.claude/hooks/lifecycle-hook.sh" UserPromptSubmit
 
 # 4. Plans health check — outputs additionalContext for missing artifacts
 _run "$HOME/.dotfiles/.claude/hooks/plans-healthcheck.sh"

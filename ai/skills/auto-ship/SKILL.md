@@ -1,6 +1,6 @@
 ---
 name: auto-ship
-description: Orchestrates the agentic git lifecycle pipeline (commit → push → PR → CI-wait → ship → sync → clean) under the D3 autonomy-tier flags in .claude-atomic.yaml, gated by git-pipeline-gate.sh's due-signal detection. USE THIS SKILL when git-pipeline-gate.sh's Stop-hook hint names a due signal (commit_due, pr_due, merge_due, sync_due, cleanup_due) and the repo has opted into one or more pipeline autonomy flags, or when the user says "run the pipeline", "auto-ship this", "advance the stack pipeline".
+description: Orchestrates the agentic git lifecycle pipeline (exact-base stack → commit → push → PR → CI-wait → ship → sync → clean) under the D3 autonomy-tier flags in .claude-atomic.yaml, using the shared lifecycle adapter when a Claude session is bound and the legacy gate only as fallback. USE THIS SKILL when git-pipeline-gate.sh's Stop-hook hint names a due signal (commit_due, pr_due, merge_due, sync_due, cleanup_due) and the repo has opted into one or more pipeline autonomy flags, or when the user says "run the pipeline", "auto-ship this", "advance the stack pipeline".
 triggers:
   - "run the pipeline"
   - "auto-ship this"
@@ -17,6 +17,12 @@ version: 1.0
 (a Stop hook) only *detects and nudges* — it never executes a lifecycle leg
 itself. This skill is what actually runs a leg, once the repo has durably
 opted in via `.claude-atomic.yaml`'s `pipeline:` block.
+
+When a Claude session is bound under `<git-common-dir>/agent-lifecycle/sessions/`,
+`scripts/ai/lifecycle_adapter.py tick` exclusively owns exact-base stack creation,
+commit, ordinary push, exact-head PR reconciliation, and detached CI observation.
+The Stop dispatcher skips `git-pipeline-gate.sh` for that bound run. Merge, sync,
+and cleanup remain approval-required and unimplemented in this adapter branch.
 
 **Do not build a new signal detector or validation router here.** Both
 already exist and are reused as-is:
@@ -69,6 +75,16 @@ on its own, because setting the level to `off` mid-run must stop an
 Run only the leg matching the current signal from `pipeline-status.sh
 --json`. Never skip ahead — each leg's own precondition (the signal itself)
 is what makes it safe to run unattended.
+
+### Tier 0 — `create_stack` (flag: `auto_stack`)
+
+- Require effective A2+ from `autonomy-tier.sh`; resolver failure or a lower
+  tier is `approval_required`, never optimistic execution.
+- Invoke only `$HOME/.dotfiles/.claude/scripts/stack create <branch> <base>
+  --base-sha <exact-controller-sha>`. The stack script verifies the full object
+  id is an ancestor of the named base and creates from that immutable commit.
+- A failure audits and writes only `autonomy-demoted-auto_stack`; fresh
+  inspection recovers a worktree created before a crash.
 
 ### Tier 0 — `commit_due` (flag: `auto_commit`)
 
@@ -192,7 +208,7 @@ The definition lives in `plans/2026-07-27-native-agent-orchestration.md` §15 an
 in `.claude/workflows/orchestrate.js` (`halt()`). Do not restate the rules here — reuse them.
 The minimum payload is `status` (`done`|`blocked`), the blocking condition in one line, the
 artifact path, and **`stage`** — the leg the status belongs to
-(`auto_commit`/`auto_push`/`auto_pr`/`auto_ship`/`auto_clean`).
+(`auto_stack`/`auto_commit`/`auto_push`/`auto_pr`/`auto_ship`/`auto_clean`).
 
 `stage` is what makes autonomy demotion possible (plan Part VIII, Step 18).
 `git-pipeline-gate.sh` writes a demotion marker only for an entry that names its own stage,
@@ -256,7 +272,7 @@ log's recorded hashes:
 
 ## Verification
 
-- [ ] The executed leg's config key (`auto_commit`/`auto_push`/`auto_pr`/`auto_ship`/`auto_clean`) is present and enabled in `.claude-atomic.yaml` (evidence: config file content quoted alongside the executed leg).
+- [ ] The executed leg's config key (`auto_stack`/`auto_commit`/`auto_push`/`auto_pr`/`auto_ship`/`auto_clean`) is present and enabled in `.claude-atomic.yaml` (evidence: config file content quoted alongside the executed leg).
 - [ ] Identity was asserted via `gh api user` immediately before any Tier 2 action (evidence: command output timestamp near the ship action).
 - [ ] A dry-run preceded the first-ever execution of a newly-enabled tier (evidence: audit trail entry for the dry-run).
 - [ ] Every entry above A2 has a corresponding explicit user-confirmation record in the audit trail (evidence: audit log line).
