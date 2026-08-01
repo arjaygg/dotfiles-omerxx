@@ -988,3 +988,9 @@ alias claude-codex = bash ~/.dotfiles/.claude/scripts/claude-launch.sh codex
 alias claude-cursor = bash ~/.dotfiles/.claude/scripts/claude-launch.sh cursor
 alias claude-native = bash ~/.dotfiles/.claude/scripts/claude-launch.sh native
 alias claude-router = bash ~/.dotfiles/.claude/scripts/claude-launch.sh router
+
+# Dual-monitor tmux side client (session group)
+def --wrapped tmux-side [...rest] {
+    ^bash ~/.dotfiles/tmux/scripts/tmux-side.sh ...$rest
+}
+
