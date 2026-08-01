@@ -62,6 +62,46 @@ for arg in "$@"; do
     esac
 done
 
+lifecycle_error() {
+    local status="$1"
+    local reason="$2"
+    python3 - "$status" "$reason" <<'PY_ERROR' >&2
+import json, sys
+print(json.dumps({"lifecycle_pr_error": {
+    "exit_status": int(sys.argv[1]), "reason": sys.argv[2][:300],
+}}, separators=(",", ":")))
+PY_ERROR
+}
+
+if [ "$NO_PUSH" = true ]; then
+    EXPECTED_ACTOR="${LIFECYCLE_EXPECTED_ACTOR:-}"
+    EXPECTED_REPOSITORY="${LIFECYCLE_EXPECTED_REPOSITORY:-}"
+    EXPECTED_SHA="${LIFECYCLE_EXPECTED_SHA:-}"
+    EXPECTED_URL="${LIFECYCLE_EXPECTED_URL:-}"
+    EXPECTED_PUSH_URL="${LIFECYCLE_EXPECTED_PUSH_URL:-}"
+    if [ -z "${GH_TOKEN:-}" ] || [ -z "$EXPECTED_ACTOR" ] \
+        || [ -z "$EXPECTED_REPOSITORY" ] || [ -z "$EXPECTED_SHA" ] \
+        || [ -z "$EXPECTED_URL" ] || [ -z "$EXPECTED_PUSH_URL" ]; then
+        lifecycle_error 2 "lifecycle PR credential or pinned identity is missing"
+        exit 2
+    fi
+    FETCH_URLS="$(git remote get-url --all origin 2>/dev/null || true)"
+    PUSH_URLS="$(git remote get-url --push --all origin 2>/dev/null || true)"
+    if [ "$FETCH_URLS" != "$EXPECTED_URL" ] || [ "$PUSH_URLS" != "$EXPECTED_PUSH_URL" ]; then
+        lifecycle_error 2 "origin URL no longer matches the pinned lifecycle contract"
+        exit 2
+    fi
+    TOKEN_ACTOR="$(gh api --hostname github.com /user --jq .login 2>/dev/null || true)"
+    TOKEN_REPOSITORY="$(gh repo view --repo "$EXPECTED_REPOSITORY" --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true)"
+    LOCAL_SHA="$(git rev-parse --verify "$SOURCE_BRANCH^{commit}" 2>/dev/null || true)"
+    if [ "$TOKEN_ACTOR" != "$EXPECTED_ACTOR" ] \
+        || [ "$TOKEN_REPOSITORY" != "$EXPECTED_REPOSITORY" ] \
+        || [ "$LOCAL_SHA" != "$EXPECTED_SHA" ]; then
+        lifecycle_error 2 "GitHub actor, repository, or exact SHA does not match the pinned lifecycle contract"
+        exit 2
+    fi
+fi
+
 # Only interactive push mode needs to register Git's credential helper. The
 # lifecycle --no-push path must not mutate Git configuration or push again.
 if [ "$NO_PUSH" = false ]; then
@@ -191,19 +231,95 @@ GH_ARGS=(
     --title "$TITLE"
     --body "$DESCRIPTION"
 )
+if [ "$NO_PUSH" = true ]; then
+    GH_ARGS+=(--repo "$EXPECTED_REPOSITORY")
+fi
 
 if [ "$DRAFT" = true ]; then
     GH_ARGS+=(--draft)
 fi
 
-set +e
-PR_OUTPUT="$(GH_TOKEN=$(gh_token_for_remote) gh "${GH_ARGS[@]}" 2>&1)"
-EXIT_CODE=$?
-set -e
+if [ -z "${GH_TOKEN:-}" ]; then
+    GH_TOKEN="$(gh_token_for_remote)"
+    export GH_TOKEN
+fi
+PR_CAPTURE="$(python3 - "${GH_ARGS[@]}" <<'PY_GH_CAPTURE'
+import json
+import os
+import re
+import subprocess
+import sys
 
-if [ $EXIT_CODE -eq 0 ]; then
-    print_success "Pull Request created successfully!"
+try:
+    proc = subprocess.run(
+        ["gh", *sys.argv[1:]],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    status = proc.returncode
+    stdout = proc.stdout.strip()[:4096]
+    diagnostic = f"{proc.stderr}\n{proc.stdout}" if status else ""
+except OSError:
+    status = 127
+    stdout = ""
+    diagnostic = "gh execution failed"
+token = os.environ.get("GH_TOKEN", "")
+if token:
+    diagnostic = diagnostic.replace(token, "[REDACTED]")
+diagnostic = re.sub(
+    r"(?i)(token|authorization|password|secret)[=: ]+[^\s]+",
+    r"\1=[REDACTED]",
+    diagnostic,
+)
+diagnostic = re.sub(
+    r"(?:gh[pousr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+)",
+    "[REDACTED]",
+    diagnostic,
+)
+diagnostic = re.sub(r"https://[^/@\s]+@", "https://[REDACTED]@", diagnostic)
+diagnostic = " ".join(diagnostic.split())
+print(json.dumps({
+    "exit_status": status,
+    "stdout": stdout,
+    "diagnostic": (diagnostic or "gh execution failed")[:300],
+}, separators=(",", ":")))
+PY_GH_CAPTURE
+)"
+EXIT_CODE="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["exit_status"])' "$PR_CAPTURE")"
+PR_OUTPUT="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["stdout"], end="")' "$PR_CAPTURE")"
+PR_DIAGNOSTIC="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["diagnostic"], end="")' "$PR_CAPTURE")"
+
+if [ "$EXIT_CODE" -eq 0 ]; then
     PR_URL="$PR_OUTPUT"
+    if [ "$NO_PUSH" = true ]; then
+        PR_JSON="$(gh pr view "$PR_URL" --repo "$EXPECTED_REPOSITORY" \
+            --json author,headRefOid,headRefName,baseRefName,state,isDraft \
+            2>/dev/null || true)"
+        if ! python3 - "$EXPECTED_ACTOR" "$EXPECTED_SHA" "$SOURCE_BRANCH" "$TARGET_BRANCH" "$PR_JSON" <<'PY_VERIFY'
+import json, sys
+try:
+    value = json.loads(sys.argv[5])
+    valid = (
+        value.get("author", {}).get("login") == sys.argv[1]
+        and value.get("headRefOid") == sys.argv[2]
+        and value.get("headRefName") == sys.argv[3]
+        and value.get("baseRefName") == sys.argv[4]
+        and value.get("state") == "OPEN"
+        and value.get("isDraft") is False
+    )
+except Exception:
+    valid = False
+raise SystemExit(0 if valid else 1)
+PY_VERIFY
+        then
+            lifecycle_error 3 "created pull request identity did not match the pinned lifecycle contract"
+            exit 3
+        fi
+    fi
+    print_success "Pull Request created successfully!"
     echo ""
     print_info "URL: $PR_URL"
     echo ""
@@ -217,14 +333,10 @@ if [ $EXIT_CODE -eq 0 ]; then
     echo "  3. After merge, update dependent PRs:"
     echo "     $REPO_ROOT/.claude/scripts/stack update $SOURCE_BRANCH"
 else
-    SAFE_REASON=$(python3 -c '
-import re, sys
-value = sys.stdin.read()
-value = re.sub(r"(?i)(token|authorization|password|secret)[=: ]+[^\s]+", r"\1=[REDACTED]", value)
-value = re.sub(r"https://[^/@\s]+@", "https://[REDACTED]@", value)
-value = " ".join(value.split())
-print((value or "gh execution failed")[:300])
-' <<< "$PR_OUTPUT" 2>/dev/null || printf '%s' "gh execution failed")
+    SAFE_REASON="$PR_DIAGNOSTIC"
+    if [ "$NO_PUSH" = true ]; then
+        lifecycle_error "$EXIT_CODE" "$SAFE_REASON"
+    fi
     print_error "Failed to create Pull Request (exit $EXIT_CODE): $SAFE_REASON"
     exit 1
 fi
