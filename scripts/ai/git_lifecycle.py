@@ -840,11 +840,17 @@ def phase_invariants(ctx: DecisionContext) -> dict[str, Any] | None:
         (view.branch is None, "detached_head", "worktree is detached"),
         (bool(view.operations), "active_git_operation", "a git operation is active"),
         (bool(view.conflicts), "conflicts", "worktree contains unresolved conflicts"),
-        (bool(ctx.foreign_dirty), "foreign_dirty_paths", "dirty paths fall outside ownership"),
     ]
     for failed, code, message in checks:
         if failed:
             return result(ctx, "blocked", code, message)
+    if view.mode == "base" and ctx.owned_dirty:
+        return result(
+            ctx, "blocked", "owned_dirty_on_base",
+            "owned work already started in the base checkout",
+        )
+    if view.mode == "intended" and ctx.foreign_dirty:
+        return result(ctx, "blocked", "foreign_dirty_paths", "dirty paths fall outside ownership")
     if view.mode == "intended" and view.branch != state["intended_branch"]:
         return result(ctx, "blocked", "unexpected_branch", "registered worktree has the wrong branch")
     if view.mode == "intended" and view.branch in TRUNK_BRANCHES:
