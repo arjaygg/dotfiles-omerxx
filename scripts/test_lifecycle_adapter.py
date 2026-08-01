@@ -561,8 +561,8 @@ class ReversibleActionTests(unittest.TestCase):
         decision = adapter.inspect_bound(self.repo_view, "run-1")
         calls = []
 
-        def record(args, cwd, check=True):
-            calls.append(([str(item) for item in args], cwd, check))
+        def record(args, cwd, check=True, **kwargs):
+            calls.append(([str(item) for item in args], cwd, check, kwargs))
             return completed_process(args)
 
         with mock.patch.object(adapter, "run_command", side_effect=record):
@@ -579,6 +579,10 @@ class ReversibleActionTests(unittest.TestCase):
                 "--strict",
             ],
         )
+        stack_env = calls[0][3]["env"]
+        hook_config_index = int(stack_env["GIT_CONFIG_COUNT"]) - 1
+        self.assertEqual(stack_env[f"GIT_CONFIG_KEY_{hook_config_index}"], "core.hooksPath")
+        self.assertEqual(stack_env[f"GIT_CONFIG_VALUE_{hook_config_index}"], "/dev/null")
 
         action = mock.Mock()
         with mock.patch.object(adapter, "resolve_autonomy", return_value=(False, "autonomy_below_a2")):
@@ -592,6 +596,44 @@ class ReversibleActionTests(unittest.TestCase):
         self.assertEqual(value["outcome"], "approval_required")
         action.assert_not_called()
         self.assertFalse((self.repo_view.common_dir / "autonomy-demoted-auto_stack").exists())
+
+    def test_lifecycle_stack_disables_checkout_and_reference_hooks_only_for_action(self):
+        state = adapter.load_run_state(self.repo_view, "run-1")
+        git(self.repo, "remote", "remove", "origin")
+        (self.repo / ".git" / ".graphite_repo_config").write_text("{}\n")
+        hooks = self.repo / ".git" / "hooks"
+        hook_log = Path(self.temp.name) / "stack-hooks.log"
+        descendant_log = Path(self.temp.name) / "stack-descendant.log"
+        hook_source = """#!/usr/bin/env bash
+printf '%s|%s|%s\n' "$(basename "$0")" "${GH_TOKEN:-}" "${LIFECYCLE_GITHUB_TOKEN:-}" >> "$HOOK_LOG"
+(sleep 0.2; printf 'detached\n' >> "$DESCENDANT_LOG") &
+"""
+        for name in ("post-checkout", "reference-transaction"):
+            path = hooks / name
+            path.write_text(hook_source)
+            path.chmod(0o755)
+        bin_dir = Path(self.temp.name) / "bin"
+        bin_dir.mkdir()
+        gt = bin_dir / "gt"
+        gt.write_text("#!/usr/bin/env bash\nexit 0\n")
+        gt.chmod(0o755)
+        action_env = {
+            "PATH": f"{bin_dir}:{os.environ['PATH']}",
+            "HOOK_LOG": str(hook_log),
+            "DESCENDANT_LOG": str(descendant_log),
+        }
+        with mock.patch.dict(os.environ, action_env):
+            adapter.action_create_stack(self.repo_view, state, {})
+            time.sleep(0.4)
+            self.assertFalse(hook_log.exists())
+            self.assertFalse(descendant_log.exists())
+
+            git(self.repo, "checkout", "-q", "-b", "feature/ordinary-hooks")
+            time.sleep(0.4)
+        lines = hook_log.read_text().splitlines()
+        self.assertTrue(any(line.startswith("reference-transaction|") for line in lines))
+        self.assertTrue(any(line.startswith("post-checkout|") for line in lines))
+        self.assertTrue(descendant_log.is_file())
 
     def test_action_reinspects_and_refuses_stale_evidence_without_demotion(self):
         linked = add_linked(self.repo)
@@ -851,6 +893,75 @@ class ReversibleActionTests(unittest.TestCase):
                 self.assertEqual(raised.exception.code, "github_identity_drift")
                 command.assert_not_called()
 
+    def test_lifecycle_push_disables_prepush_and_reference_hooks_without_token_leak(self):
+        linked = add_linked(self.repo)
+        ready_run(self.repo, linked)
+        git(linked, "add", "owned/change.txt")
+        git(linked, "commit", "-q", "-m", "feat(lifecycle): prepare hook-safe push",
+            "-m", "Lifecycle pushes must not execute repository-owned Git hooks.")
+        bare = Path(self.temp.name) / "hook-origin.git"
+        git(Path(self.temp.name), "init", "-q", "--bare", str(bare))
+        github_origin = "https://github.com/owner/repo.git"
+        git(linked, "remote", "set-url", "origin", github_origin)
+        adapter.capture_contract(self.repo_view, "run-1", controller.discover_repo(linked))
+        state = adapter.load_run_state(self.repo_view, "run-1")
+        decision = adapter.inspect_bound(self.repo_view, "run-1")
+        head = adapter.decision_head(decision)
+        credential = "fixture" + "-credential"
+        hook_log = Path(self.temp.name) / "push-hooks.log"
+        descendant_log = Path(self.temp.name) / "push-descendant.log"
+        hooks = self.repo / ".git" / "hooks"
+        hook_source = """#!/usr/bin/env bash
+printf '%s|%s|%s\n' "$(basename "$0")" "${GH_TOKEN:-}" "${LIFECYCLE_GITHUB_TOKEN:-}" >> "$HOOK_LOG"
+(sleep 0.2; printf 'detached\n' >> "$DESCENDANT_LOG") &
+"""
+        for name in ("pre-push", "reference-transaction"):
+            path = hooks / name
+            path.write_text(hook_source)
+            path.chmod(0o755)
+        network_env = {
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": f"url.{bare}.insteadOf",
+            "GIT_CONFIG_VALUE_0": github_origin,
+            "HOOK_LOG": str(hook_log),
+            "DESCENDANT_LOG": str(descendant_log),
+        }
+        original_command = adapter.run_command
+        with (
+            mock.patch.dict(os.environ, network_env),
+            mock.patch.object(
+                adapter, "pinned_github_environment", return_value={"GH_TOKEN": credential}),
+            mock.patch.object(
+                adapter, "repository_identity", return_value=("owner/repo", "owner")),
+            mock.patch.object(adapter, "run_command", wraps=original_command) as command_call,
+        ):
+            adapter.action_push(self.repo_view, state, decision)
+            time.sleep(0.4)
+        self.assertFalse(hook_log.exists())
+        self.assertFalse(descendant_log.exists())
+        push_call = next(
+            call for call in command_call.call_args_list
+            if call.args and call.args[0][:4] == [
+                "git", "-c", "core.hooksPath=/dev/null", "push"]
+        )
+        self.assertEqual(push_call.kwargs["env"]["GH_TOKEN"], "")
+        self.assertEqual(push_call.kwargs["env"]["LIFECYCLE_GITHUB_TOKEN"], credential)
+        self.assertEqual(
+            git(bare, "rev-parse", "refs/heads/feature/lifecycle").stdout.strip(), head)
+
+        ordinary_env = os.environ.copy()
+        ordinary_env.update(network_env)
+        ordinary_env["GH_TOKEN"] = credential
+        ordinary_env["LIFECYCLE_GITHUB_TOKEN"] = credential
+        run(
+            linked, "git", "push", github_origin, f"{head}:refs/heads/ordinary-hooks",
+            env=ordinary_env,
+        )
+        time.sleep(0.4)
+        self.assertTrue(any(
+            line.startswith("pre-push|") for line in hook_log.read_text().splitlines()))
+        self.assertTrue(descendant_log.is_file())
+
     def test_push_is_ordinary_and_open_pr_reuses_or_calls_canonical_stack(self):
         linked = add_linked(self.repo)
         ready_run(self.repo, linked)
@@ -880,10 +991,13 @@ class ReversibleActionTests(unittest.TestCase):
         ):
             adapter.action_push(self.repo_view, state, decision)
         pushes = [call.args[0] for call in command_call.call_args_list
-                  if call.args and call.args[0][:2] == ["git", "push"]]
+                  if call.args and call.args[0][:4] == [
+                      "git", "-c", "core.hooksPath=/dev/null", "push"]]
         expected_head = adapter.decision_head(decision)
-        self.assertEqual(pushes, [["git", "push", github_origin,
-                                  f"{expected_head}:refs/heads/feature/lifecycle"]])
+        self.assertEqual(pushes, [[
+            "git", "-c", "core.hooksPath=/dev/null", "push", github_origin,
+            f"{expected_head}:refs/heads/feature/lifecycle",
+        ]])
         self.assertEqual(
             git(bare, "rev-parse", "refs/heads/feature/lifecycle").stdout.strip(),
             git(linked, "rev-parse", "HEAD").stdout.strip(),
@@ -2107,6 +2221,136 @@ printf '%s\n' '{"decision":"block","reason":"legacy must not run"}'
                             context = value["hookSpecificOutput"]["additionalContext"]
                             self.assertIn("unavailable or invalid", context)
 
+    def test_settings_pretool_command_independently_validates_dispatcher_output(self):
+        settings = json.loads(
+            (ROOT / "ai" / "config" / "claude" / "settings.base.json").read_text()
+        )
+        lifecycle_entry = next(
+            item for item in settings["hooks"]["PreToolUse"]
+            if item["matcher"] == (
+                "Edit|Write|MultiEdit|NotebookEdit|Bash|EnterWorktree|ExitWorktree|"
+                "mcp__pctx__execute_typescript"
+            )
+        )
+        command = lifecycle_entry["hooks"][0]["command"]
+        valid_allow = {
+            "lifecycle_hook": {
+                "schema_version": 1, "processed": True, "event": "PreToolUse",
+                "binding": "unbound",
+            }
+        }
+        valid_deny = {
+            "lifecycle_hook": {
+                "schema_version": 1, "processed": True, "event": "PreToolUse",
+                "binding": "bound", "run_id": "run-1",
+            },
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse", "permissionDecision": "deny",
+                "permissionDecisionReason": "[HARD-BLOCK — DO NOT RETRY] fixture deny",
+            },
+        }
+        invalid_outputs = {
+            "empty": ("#!/usr/bin/env bash\nexit 0\n", None),
+            "exit-7": (
+                "#!/usr/bin/env bash\nprintf '%s\n' '" + json.dumps(valid_allow) + "'\nexit 7\n",
+                None,
+            ),
+            "object": ("#!/usr/bin/env bash\nprintf '%s\n' '{}'\n", None),
+            "malformed": ("#!/usr/bin/env bash\nprintf '%s\n' '{bad'\n", None),
+            "wrong-event": (
+                "#!/usr/bin/env bash\nprintf '%s\n' "
+                "'{\"lifecycle_hook\":{\"schema_version\":1,\"processed\":true,"
+                "\"event\":\"Stop\",\"binding\":\"unbound\"}}'\n",
+                None,
+            ),
+            "missing-run-id": (
+                "#!/usr/bin/env bash\nprintf '%s\n' "
+                "'{\"lifecycle_hook\":{\"schema_version\":1,\"processed\":true,"
+                "\"event\":\"PreToolUse\",\"binding\":\"bound\"}}'\n",
+                None,
+            ),
+            "wrong-binding": (
+                "#!/usr/bin/env bash\nprintf '%s\n' "
+                "'{\"lifecycle_hook\":{\"schema_version\":1,\"processed\":true,"
+                "\"event\":\"PreToolUse\",\"binding\":\"forged\"}}'\n",
+                None,
+            ),
+            "invalid-native": (
+                "#!/usr/bin/env bash\nprintf '%s\n' "
+                "'{\"lifecycle_hook\":{\"schema_version\":1,\"processed\":true,"
+                "\"event\":\"PreToolUse\",\"binding\":\"unbound\"},"
+                "\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\","
+                "\"permissionDecision\":\"allow\","
+                "\"permissionDecisionReason\":\"not a deny\"}}'\n",
+                None,
+            ),
+        }
+        payload = json.dumps({
+            "cwd": "/tmp", "session_id": "settings-test", "tool_name": "Write",
+            "tool_input": {"file_path": "/tmp/x"},
+        })
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            home = root / "home"
+            hooks = home / ".dotfiles" / ".claude" / "hooks"
+            hooks.mkdir(parents=True)
+            dispatcher = hooks / "lifecycle-pretool.sh"
+            env = os.environ.copy()
+            env["HOME"] = str(home)
+
+            for name, (source, _) in invalid_outputs.items():
+                with self.subTest(name=name):
+                    dispatcher.write_text(source)
+                    dispatcher.chmod(0o755)
+                    proc = subprocess.run(
+                        command, shell=True, cwd=str(root), env=env, input=payload,
+                        capture_output=True, text=True, check=False,
+                    )
+                    self.assertEqual(proc.returncode, 0, proc.stderr)
+                    value = json.loads(proc.stdout)
+                    self.assertEqual(
+                        value["hookSpecificOutput"]["permissionDecision"], "deny")
+                    self.assertIn(
+                        "independent settings validation",
+                        value["hookSpecificOutput"]["permissionDecisionReason"],
+                    )
+
+            hook = hooks / "lifecycle-hook.sh"
+            validator = hooks / "lifecycle-envelope.py"
+            hook.write_text("#!/usr/bin/env bash\nprintf '%s\n' '{jointly-corrupt'\n")
+            validator.write_text(
+                "#!/usr/bin/env python3\nimport sys\nsys.stdin.read()\nraise SystemExit(0)\n")
+            dispatcher.write_text(
+                "#!/usr/bin/env bash\n"
+                "output=\"$(bash \"$HOME/.dotfiles/.claude/hooks/lifecycle-hook.sh\")\"\n"
+                "printf '%s' \"$output\" | python3 "
+                "\"$HOME/.dotfiles/.claude/hooks/lifecycle-envelope.py\" >/dev/null\n"
+                "printf '%s\n' \"$output\"\n"
+            )
+            for path in (hook, validator, dispatcher):
+                path.chmod(0o755)
+            corrupt = subprocess.run(
+                command, shell=True, cwd=str(root), env=env, input=payload,
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(corrupt.returncode, 0, corrupt.stderr)
+            self.assertEqual(
+                json.loads(corrupt.stdout)["hookSpecificOutput"]["permissionDecision"],
+                "deny",
+            )
+
+            for expected in (valid_allow, valid_deny):
+                with self.subTest(valid=expected):
+                    dispatcher.write_text(
+                        "#!/usr/bin/env bash\nprintf '%s\n' '" + json.dumps(expected) + "'\n")
+                    dispatcher.chmod(0o755)
+                    proc = subprocess.run(
+                        command, shell=True, cwd=str(root), env=env, input=payload,
+                        capture_output=True, text=True, check=False,
+                    )
+                    self.assertEqual(proc.returncode, 0, proc.stderr)
+                    self.assertEqual(json.loads(proc.stdout), expected)
+
     def test_canonical_settings_and_dispatchers_use_portable_lifecycle_wiring(self):
         settings_path = ROOT / "ai" / "config" / "claude" / "settings.base.json"
         settings = json.loads(settings_path.read_text())
@@ -2116,7 +2360,12 @@ printf '%s\n' '{"decision":"block","reason":"legacy must not run"}'
         self.assertEqual(len(lifecycle_entries), 1)
         command = lifecycle_entries[0]["hooks"][0]["command"]
         self.assertIn('dispatcher="$HOME/.dotfiles/.claude/hooks/lifecycle-pretool.sh"', command)
-        self.assertIn("dispatcher is unavailable; failed closed.", command)
+        self.assertIn("output failed independent settings validation; failed closed.", command)
+        self.assertIn("LIFECYCLE_DISPATCH_RC", command)
+        self.assertIn('/bin/bash "$dispatcher"', command)
+        self.assertIn("/usr/bin/python3 -c", command)
+        self.assertIn("object_pairs_hook=unique", command)
+        self.assertNotIn("lifecycle-envelope.py", command)
         self.assertNotIn("args", lifecycle_entries[0]["hooks"][0])
         self.assertIn('_LIFECYCLE_BRIDGE="$SCRIPT_DIR/lifecycle-hook.sh"',
                       (ROOT / ".claude/hooks/sessionstart.sh").read_text())
