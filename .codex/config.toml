@@ -1,7 +1,6 @@
 personality = "pragmatic"
 model = "gpt-5.5"
 model_reasoning_effort = "high"
-model_provider = "headroom"
 model_instructions_file = "~/.dotfiles/ai/rules/agent-user-global.md"
 project_doc_fallback_filenames = ["AGENTS.md"]
 [projects."~/git/setup"]
@@ -177,11 +176,4 @@ startup_timeout_sec = 90
 [mcp_servers.lean-ctx.env]
 LEAN_CTX_CACHE_TTL = "300"
 RUST_LOG = "error"
-
-[model_providers.headroom]
-name = "OpenAI via Headroom proxy"
-base_url = "http://127.0.0.1:8787/v1"
-supports_websockets = true
-requires_openai_auth = true
-env_http_headers = { "X-Headroom-Project" = "HEADROOM_PROJECT" }
 

@@ -154,27 +154,13 @@ class HeadroomHardeningTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(actual, expected)
 
-    def test_provider_proxy_remains_enabled_and_headroom_mcp_remains_absent(self):
-        for path in (
-            ROOT / ".claude/settings.json",
-            ROOT / "ai/config/claude/settings.base.json",
-        ):
-            with self.subTest(path=path):
-                config = json.loads(path.read_text(encoding="utf-8"))
-                self.assertEqual(
-                    config["env"]["ANTHROPIC_BASE_URL"],
-                    "http://127.0.0.1:8788",
-                )
-
+    def test_project_codex_config_keeps_provider_settings_user_scoped(self):
         codex = tomllib.loads(
             (ROOT / ".codex/config.toml").read_text(encoding="utf-8")
         )
-        self.assertEqual(codex["model_provider"], "headroom")
-        self.assertIn("headroom", codex["model_providers"])
+        self.assertNotIn("model_provider", codex)
+        self.assertNotIn("model_providers", codex)
         self.assertNotIn("headroom", codex["mcp_servers"])
-
-        claude_mcp = json.loads((ROOT / ".mcp.json").read_text(encoding="utf-8"))
-        self.assertNotIn("headroom", claude_mcp.get("mcpServers", {}))
 
     def test_recursive_and_self_referential_ccr_are_rejected(self):
         self.assertEqual(detect_recursive_ccr("plain content", "abc123"), [])

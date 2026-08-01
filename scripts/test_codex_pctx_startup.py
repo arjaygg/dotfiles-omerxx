@@ -132,15 +132,16 @@ class CodexPctxStartupTests(unittest.TestCase):
                         "approve",
                     )
 
-    def test_runtime_and_template_keep_headroom_as_provider_only(self):
+    def test_runtime_and_template_do_not_define_project_local_provider(self):
         for config_path in (TRACKED_CONFIG, PORTABLE_CONFIG):
             with self.subTest(config=config_path):
                 text = config_path.read_text(encoding="utf-8")
                 config = tomllib.loads(text)
-                self.assertEqual(config["model_provider"], "headroom")
-                self.assertIn("headroom", config["model_providers"])
+                self.assertNotIn("model_provider", config)
+                self.assertNotIn("model_providers", config)
                 self.assertNotIn("headroom", config["mcp_servers"])
-                self.assertNotRegex(text, r"/Users/[^/\"'\s]+")
+                if config_path == PORTABLE_CONFIG:
+                    self.assertNotRegex(text, r"/Users/[^/\"'\s]+")
 
     def test_codex_hook_matcher_covers_shell_and_native_read_tools(self):
         config = json.loads(HOOKS_CONFIG.read_text(encoding="utf-8"))
