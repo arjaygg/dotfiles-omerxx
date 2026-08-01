@@ -8,7 +8,7 @@
       ],
       "env": {}
     },
-    "serena": {
+    "serena-fallback": {
       "command": "bash",
       "args": [
         "-c",
