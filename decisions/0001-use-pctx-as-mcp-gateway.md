@@ -21,11 +21,15 @@ The "connect solely to pctx" rule has two recorded exceptions, enforced by
 `scripts/mcp_gateway_check.py`:
 
 - **serena** — approved as a standalone fallback server for clients that need symbolic editing
-  even when the gateway is down (see commits 9868f75, 220ee63).
+  even when the gateway is down (see commits 9868f75, 220ee63). The project-scope
+  `.mcp.json` variant is named `serena-fallback` to avoid a scope conflict (commit c31657f)
+  and is approved under that name.
 - **lean-ctx** — approved as a direct server for Windsurf (matches the portable base template
-  `ai/config/windsurf/mcp_config.base.json`) and for opencode/VS Code exposure, because these
-  clients need the lean-ctx `instructions` payload and native-tool routing that the
+  `ai/config/windsurf/mcp_config.base.json`), Codex, and opencode/VS Code exposure, because
+  these clients need the lean-ctx `instructions` payload and native-tool routing that the
   gateway-aggregated LeanCtx backend does not inject.
+- **notebooklm, chrome-devtools** — approved as direct servers for Codex (parity with the
+  Gemini config approvals); neither is a pctx backend, so the gateway cannot provide them.
 
 All other direct servers remain unapproved; the gateway stays the default path.
 
