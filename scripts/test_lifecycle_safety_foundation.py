@@ -437,13 +437,16 @@ exit 0
         source = CREATE_PR.read_text()
         self.assertIn('git push -u origin "$SOURCE_BRANCH"', source)
         self.assertNotRegex(source, r"GH_TOKEN=.*git push")
-        self.assertRegex(source, r"GH_TOKEN=\$\(gh_token_for_remote\) gh")
+        self.assertIn('if [ -z "${GH_TOKEN:-}" ]; then', source)
+        self.assertIn('GH_TOKEN="$(gh_token_for_remote)"', source)
+        self.assertIn('["gh", *sys.argv[1:]]', source)
 
     def test_create_pr_reports_failed_gh_with_bounded_redacted_reason(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             repo = init_repo(root / "repo")
             git(repo, "branch", "feature/failure")
+            git(repo, "remote", "add", "origin", "https://user@github.com/owner/repo.git")
             (repo / ".git" / ".graphite_repo_config").write_text("{}\n")
             bin_dir = root / "bin"
             bin_dir.mkdir()
@@ -461,6 +464,8 @@ case "${{1:-}} ${{2:-}}" in
   "auth setup-git") exit 0 ;;
   "auth status") printf '✓ Logged in\n'; exit 0 ;;
   "auth token") printf 'fixture-token\n'; exit 0 ;;
+  "api --hostname") printf 'owner\n'; exit 0 ;;
+  "repo view") printf 'owner/repo\n'; exit 0 ;;
 esac
 if [[ "${{1:-}} ${{2:-}}" == "pr create" ]]; then
   printf 'authorization: supersecret %0500d\n' 1 >&2
@@ -470,6 +475,14 @@ exit 0
 """)
             env = os.environ.copy()
             env["PATH"] = f"{bin_dir}:{env['PATH']}"
+            env.update({
+                "GH_TOKEN": "fixture-token",
+                "LIFECYCLE_EXPECTED_ACTOR": "owner",
+                "LIFECYCLE_EXPECTED_REPOSITORY": "owner/repo",
+                "LIFECYCLE_EXPECTED_SHA": git(repo, "rev-parse", "feature/failure").stdout.strip(),
+                "LIFECYCLE_EXPECTED_URL": "https://user@github.com/owner/repo.git",
+                "LIFECYCLE_EXPECTED_PUSH_URL": "https://user@github.com/owner/repo.git",
+            })
             proc = run(
                 repo, str(CREATE_PR), "feature/failure", "main",
                 "feat(test): exercise gh failure", "--no-push",
@@ -484,6 +497,68 @@ exit 0
             gh_calls = gh_log.read_text()
             self.assertIn("pr create", gh_calls)
             self.assertNotIn("auth setup-git", gh_calls)
+
+    def test_create_pr_rejects_result_authored_by_wrong_actor(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            repo = init_repo(root / "repo")
+            git(repo, "branch", "feature/wrong-author")
+            git(repo, "remote", "add", "origin", "https://user@github.com/owner/repo.git")
+            (repo / ".git" / ".graphite_repo_config").write_text("{}\n")
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            write_executable(bin_dir / "gt", """#!/usr/bin/env bash
+case "${1:-} ${2:-}" in
+  "branch info") exit 0 ;;
+  "log --short") exit 0 ;;
+esac
+exit 0
+""")
+            write_executable(bin_dir / "gh", """#!/usr/bin/env python3
+import json
+import os
+import sys
+args = sys.argv[1:]
+if args[:2] == ["auth", "status"]:
+    print("✓ Logged in")
+elif args[:2] == ["api", "--hostname"]:
+    print("owner")
+elif args[:2] == ["repo", "view"]:
+    print("owner/repo")
+elif args[:2] == ["pr", "create"]:
+    print("https://github.com/owner/repo/pull/7")
+elif args[:2] == ["pr", "view"]:
+    print(json.dumps({
+        "author": {"login": "wrong-actor"},
+        "headRefOid": os.environ["EXPECTED_SHA"],
+        "headRefName": "feature/wrong-author",
+        "baseRefName": "main",
+        "state": "OPEN",
+        "isDraft": False,
+    }))
+else:
+    raise SystemExit(1)
+""")
+            sha = git(repo, "rev-parse", "feature/wrong-author").stdout.strip()
+            env = os.environ.copy()
+            env.update({
+                "PATH": f"{bin_dir}:{env['PATH']}",
+                "GH_TOKEN": "fixture-token",
+                "EXPECTED_SHA": sha,
+                "LIFECYCLE_EXPECTED_ACTOR": "owner",
+                "LIFECYCLE_EXPECTED_REPOSITORY": "owner/repo",
+                "LIFECYCLE_EXPECTED_SHA": sha,
+                "LIFECYCLE_EXPECTED_URL": "https://user@github.com/owner/repo.git",
+                "LIFECYCLE_EXPECTED_PUSH_URL": "https://user@github.com/owner/repo.git",
+            })
+            proc = run(
+                repo, str(CREATE_PR), "feature/wrong-author", "main",
+                "feat(test): reject wrong PR author", "--no-push",
+                env=env, check=False,
+            )
+            self.assertEqual(proc.returncode, 3, proc.stdout + proc.stderr)
+            self.assertIn("identity did not match", proc.stderr)
+            self.assertNotIn("fixture-token", proc.stdout + proc.stderr)
 
     def test_create_stack_contains_no_broad_repair_or_secret_copy(self):
         source = CREATE_STACK.read_text()
