@@ -262,6 +262,26 @@ class WorktreeAndActionMatrixTests(unittest.TestCase):
                 {"child_stack_safe", "no_active_sessions"},
             )
 
+    def test_base_dirty_paths_are_scoped_to_run_ownership(self):
+        with tempfile.TemporaryDirectory() as td:
+            base, _ = init_repo(Path(td) / "repo")
+            declared_base = git(base, "rev-parse", "HEAD").stdout.strip()
+            start(base)
+            (base / "unrelated.txt").write_text("unrelated in-progress work\n")
+            allowed = inspect(base)
+            self.assertEqual(allowed["action"], "create_stack")
+            self.assertEqual(allowed["evidence"]["foreign_dirty_paths"], ["unrelated.txt"])
+            self.assertEqual(allowed["evidence"]["git"]["head_sha"], declared_base)
+
+            (base / "owned" / "tracked.txt").write_text("work started on trunk\n")
+            blocked = inspect(base)
+            self.assertEqual(
+                (blocked["action"], blocked["reason_code"]),
+                ("blocked", "owned_dirty_on_base"),
+            )
+            self.assertEqual(blocked["evidence"]["owned_dirty_paths"], ["owned/tracked.txt"])
+            self.assertEqual(blocked["evidence"]["foreign_dirty_paths"], ["unrelated.txt"])
+
     def test_blocked_invariant_reason_matrix(self):
         cases = ("merge", "rebase", "cherry-pick", "revert", "bisect")
         with tempfile.TemporaryDirectory() as td:
