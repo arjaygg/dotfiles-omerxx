@@ -8,6 +8,10 @@ case "$EVENT" in
     *) exit 0 ;;
 esac
 
+unbound() {
+    printf '{"lifecycle_hook":{"schema_version":1,"processed":true,"event":"%s","binding":"unbound"}}\n' "$EVENT"
+}
+
 fail_closed() {
     case "$EVENT" in
         PreToolUse)
@@ -67,6 +71,7 @@ PYMARKER
     exit 0
 }
 if [ "$HAS_GIT_MARKER" = "no" ]; then
+    unbound
     exit 0
 fi
 
@@ -130,7 +135,7 @@ else:
 PYMODE
 )" || MODE="error"
 case "$MODE" in
-    disabled) exit 0 ;;
+    disabled) unbound; exit 0 ;;
     enabled) ;;
     *) fail_closed; exit 0 ;;
 esac
@@ -211,17 +216,20 @@ try:
         else:
             raise ValueError
     elif expected in {"SessionStart", "UserPromptSubmit"}:
-        if set(value) != {"lifecycle_hook", "hookSpecificOutput"}:
-            raise ValueError
-        specific = value["hookSpecificOutput"]
-        if (
-            not isinstance(specific, dict)
-            or set(specific) != {"hookEventName", "additionalContext"}
-            or specific.get("hookEventName") != expected
-            or not isinstance(specific.get("additionalContext"), str)
-            or not specific["additionalContext"]
-        ):
-            raise ValueError
+        if binding == "unbound" and set(value) == {"lifecycle_hook"}:
+            pass
+        else:
+            if set(value) != {"lifecycle_hook", "hookSpecificOutput"}:
+                raise ValueError
+            specific = value["hookSpecificOutput"]
+            if (
+                not isinstance(specific, dict)
+                or set(specific) != {"hookEventName", "additionalContext"}
+                or specific.get("hookEventName") != expected
+                or not isinstance(specific.get("additionalContext"), str)
+                or not specific["additionalContext"]
+            ):
+                raise ValueError
     elif binding == "unbound":
         if set(value) != {"lifecycle_hook"}:
             raise ValueError

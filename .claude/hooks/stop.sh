@@ -49,42 +49,33 @@ fi
 [[ -n "$_TASK_GATE_OUT" ]] && printf '%s\n' "$_TASK_GATE_OUT"
 
 # A validated bound lifecycle envelope supersedes the legacy pipeline gate.
-# Disabled/non-repository and exact unbound Stop produce no bridge output.
-if [[ ! -f "$SCRIPT_DIR/lifecycle-hook.sh" || ! -r "$SCRIPT_DIR/lifecycle-hook.sh" ]]; then
-    printf '%s\n' '{"decision":"block","reason":"Lifecycle Stop bridge is unavailable; failed closed."}'
+# Only an exact rc=0 unbound envelope may fall back to the legacy gate.
+_LIFECYCLE_BRIDGE="$SCRIPT_DIR/lifecycle-hook.sh"
+_LIFECYCLE_VALIDATOR="$SCRIPT_DIR/lifecycle-envelope.py"
+_LIFECYCLE_OUT=""
+_LIFECYCLE_RC=1
+if [[ -f "$_LIFECYCLE_BRIDGE" && -r "$_LIFECYCLE_BRIDGE"     && -f "$_LIFECYCLE_VALIDATOR" && -r "$_LIFECYCLE_VALIDATOR" ]]; then
+    _LIFECYCLE_OUT="$(printf '%s' "$_INPUT" | bash "$_LIFECYCLE_BRIDGE" Stop 2>&3)"
+    _LIFECYCLE_RC=$?
+fi
+_LIFECYCLE_BINDING=""
+if [[ $_LIFECYCLE_RC -eq 0 && -n "$_LIFECYCLE_OUT" ]]; then
+    _LIFECYCLE_BINDING="$(printf '%s' "$_LIFECYCLE_OUT"         | python3 "$_LIFECYCLE_VALIDATOR" Stop 2>/dev/null)"
+fi
+if [[ "$_LIFECYCLE_BINDING" == "bound" ]]; then
+    printf '%s' "$_LIFECYCLE_OUT" | python3 -c '
+import json, sys
+value = json.load(sys.stdin)
+if value.get("decision") == "block":
+    print(json.dumps({"decision": "block", "reason": value["reason"]}, separators=(",", ":")))
+'
     wait
     exit 0
 fi
-_LIFECYCLE_OUT="$(_run "$SCRIPT_DIR/lifecycle-hook.sh" Stop)"
-_rc=$?
-if [[ -n "$_LIFECYCLE_OUT" ]]; then
-    if printf '%s' "$_LIFECYCLE_OUT" | jq -e '
-        (type == "object") and
-        (.lifecycle_hook | type == "object") and
-        ((.lifecycle_hook | keys | sort) == ["binding","event","processed","run_id","schema_version"]) and
-        (.lifecycle_hook.schema_version == 1) and
-        (.lifecycle_hook.processed == true) and
-        (.lifecycle_hook.event == "Stop") and
-        (.lifecycle_hook.binding == "bound") and
-        (.lifecycle_hook.run_id | type == "string" and length > 0) and
-        (
-            ((keys | sort) == ["lifecycle_hook"]) or
-            (
-                ((keys | sort) == ["decision","lifecycle_hook","reason"]) and
-                (.decision == "block") and
-                (.reason | type == "string" and length > 0)
-            )
-        )
-    ' >/dev/null 2>&1; then
-        if _is_block "$_LIFECYCLE_OUT"; then
-            printf '%s' "$_LIFECYCLE_OUT" | jq -c '{decision,reason}'
-        fi
-    else
-        printf '%s
-' '{"decision":"block","reason":"Lifecycle Stop envelope was malformed; failed closed."}'
-    fi
+if [[ "$_LIFECYCLE_BINDING" != "unbound" ]]; then
+    printf '%s\n' '{"decision":"block","reason":"Lifecycle Stop bridge output was unavailable or invalid; failed closed."}'
     wait
-    exit "$_rc"
+    exit 0
 fi
 
 _GIT_GATE_OUT="$(printf '%s' "$_INPUT" | bash "$SCRIPT_DIR/git-pipeline-gate.sh" 2>&3)"

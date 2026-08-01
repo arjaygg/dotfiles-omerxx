@@ -350,11 +350,11 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|mcp__pctx__execute_typescript",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|EnterWorktree|ExitWorktree|mcp__pctx__execute_typescript",
         "hooks": [
           {
             "type": "command",
-            "command": "hook=\"$HOME/.dotfiles/.claude/hooks/lifecycle-hook.sh\"; if [ -f \"$hook\" ] && [ -r \"$hook\" ]; then exec bash \"$hook\" PreToolUse; fi; printf '%s\\n' '{\"lifecycle_hook\":{\"schema_version\":1,\"processed\":true,\"event\":\"PreToolUse\",\"binding\":\"bound\"},\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"[HARD-BLOCK — DO NOT RETRY] Lifecycle hook bridge is unavailable; failed closed.\"}}'"
+            "command": "dispatcher=\"$HOME/.dotfiles/.claude/hooks/lifecycle-pretool.sh\"; if [ -f \"$dispatcher\" ] && [ -r \"$dispatcher\" ]; then exec bash \"$dispatcher\"; fi; printf '%s\\n' '{\"lifecycle_hook\":{\"schema_version\":1,\"processed\":true,\"event\":\"PreToolUse\",\"binding\":\"bound\",\"run_id\":\"outer-fail-closed\"},\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"[HARD-BLOCK — DO NOT RETRY] Lifecycle PreToolUse dispatcher is unavailable; failed closed.\"}}'"
           }
         ]
       },
