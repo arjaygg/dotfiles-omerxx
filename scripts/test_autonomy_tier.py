@@ -55,6 +55,8 @@ def write_config(repo: Path, pipeline: str = BASE_PIPELINE, override: str | None
         # top-level block, so a fully-dedented body would (correctly) parse as
         # top-level keys and be ignored.
         lines = textwrap.dedent(override).strip("\n").splitlines()
+        if not any(line.strip().startswith("decision:") for line in lines):
+            lines.append("decision: hermetic test approval")
         block = "".join(f"  {line.strip()}\n" for line in lines if line.strip())
         body += f"autonomy_override:\n{block}"
     (repo / ".claude-atomic.yaml").write_text(body)
@@ -204,10 +206,9 @@ class AutonomyTierTests(unittest.TestCase):
               signed_off_by: test
             """)
         code, out, err = resolve(self.repo, "auto_commit")
-        self.assertEqual(code, 0, err)
-        self.assertEqual(out["override_tier"], "A0")
-        self.assertIn("EXPIRED", out["override_basis"])
-        self.assertEqual(out["effective"], "A0")
+        self.assertEqual(code, 3)
+        self.assertIsNone(out)
+        self.assertIn("expired", err.lower())
 
     def test_override_refused_for_irreversible_leg(self):
         write_config(self.repo, override="""\
@@ -263,6 +264,32 @@ class AutonomyTierTests(unittest.TestCase):
         self.assertEqual(out["effective"], "A0")
 
     # --- usage / environment ------------------------------------------------------
+    def test_malformed_duplicate_unsigned_and_invalid_basis_overrides_are_rejected(self):
+        valid_override = """autonomy_override:
+  tier: A2
+  basis: risk-accepted
+  stages: auto_commit
+  expires: 2099-01-01
+  signed_off_by: reviewer
+  decision: approved risk basis
+"""
+        cases = {
+            "duplicate-block": f"pipeline:\n{BASE_PIPELINE}pipeline:\n{BASE_PIPELINE}",
+            "duplicate-key": f"pipeline:\n{BASE_PIPELINE}  auto_commit: A2\n",
+            "incomplete": f"pipeline:\n{BASE_PIPELINE}autonomy_override:\n  tier: A2\n",
+            "malformed-expiry": f"pipeline:\n{BASE_PIPELINE}" + valid_override.replace("2099-01-01", "not-a-date"),
+            "unsigned": f"pipeline:\n{BASE_PIPELINE}" + valid_override.replace("reviewer", "!unsigned"),
+            "unknown-stage": f"pipeline:\n{BASE_PIPELINE}" + valid_override.replace("auto_commit", "auto_unknown"),
+            "invalid-basis": f"pipeline:\n{BASE_PIPELINE}" + valid_override.replace("risk-accepted", "self-approved"),
+            "invalid-decision": f"pipeline:\n{BASE_PIPELINE}" + valid_override.replace("approved risk basis", "x"),
+        }
+        for name, config in cases.items():
+            with self.subTest(name=name):
+                (self.repo / ".claude-atomic.yaml").write_text(config)
+                code, output, error = resolve(self.repo, "auto_commit")
+                self.assertEqual(code, 3, f"{name} unexpectedly passed: {error}")
+                self.assertIsNone(output)
+
     def test_unknown_stage_is_rejected(self):
         write_config(self.repo)
         code, _, err = resolve(self.repo, "auto_nope")

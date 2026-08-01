@@ -12,9 +12,6 @@ source "$SCRIPT_DIR/lib/pr-title.sh"
 source "$SCRIPT_DIR/lib/charcoal-compat.sh"
 source "$SCRIPT_DIR/lib/gh-account.sh"
 
-# Silent, parallel-safe credential setup (no global auth switch)
-gh_setup_git
-
 # Functions
 print_usage() {
     echo -e "${BLUE}Usage:${NC}"
@@ -55,13 +52,21 @@ if [ -z "$TARGET_BRANCH" ]; then
 fi
 TITLE="${3:-}"
 DRAFT=false
+NO_PUSH=false
 
-# Check for --draft flag
+# Check lifecycle-safe flags without changing positional branch/title semantics.
 for arg in "$@"; do
-    if [ "$arg" == "--draft" ]; then
-        DRAFT=true
-    fi
+    case "$arg" in
+        --draft) DRAFT=true ;;
+        --no-push) NO_PUSH=true ;;
+    esac
 done
+
+# Only interactive push mode needs to register Git's credential helper. The
+# lifecycle --no-push path must not mutate Git configuration or push again.
+if [ "$NO_PUSH" = false ]; then
+    gh_setup_git
+fi
 
 # Validate prerequisites
 print_info "Detected GitHub repository"
@@ -170,9 +175,14 @@ $STORY_REF
 # Create the PR
 print_info "Creating Pull Request..."
 
-# Push the branch first (gh pr create requires it)
-print_info "Pushing branch to origin..."
-git push -u origin "$SOURCE_BRANCH"
+# Interactive callers retain the historical push. The lifecycle adapter passes
+# --no-push after independently proving the exact remote SHA.
+if [ "$NO_PUSH" = false ]; then
+    print_info "Pushing branch to origin..."
+    git push -u origin "$SOURCE_BRANCH"
+else
+    print_info "Using pre-validated remote branch; no additional push performed."
+fi
 
 GH_ARGS=(
     pr create
@@ -186,8 +196,10 @@ if [ "$DRAFT" = true ]; then
     GH_ARGS+=(--draft)
 fi
 
+set +e
 PR_OUTPUT="$(GH_TOKEN=$(gh_token_for_remote) gh "${GH_ARGS[@]}" 2>&1)"
 EXIT_CODE=$?
+set -e
 
 if [ $EXIT_CODE -eq 0 ]; then
     print_success "Pull Request created successfully!"
@@ -205,7 +217,14 @@ if [ $EXIT_CODE -eq 0 ]; then
     echo "  3. After merge, update dependent PRs:"
     echo "     $REPO_ROOT/.claude/scripts/stack update $SOURCE_BRANCH"
 else
-    print_error "Failed to create Pull Request"
-    echo "$PR_OUTPUT"
+    SAFE_REASON=$(python3 -c '
+import re, sys
+value = sys.stdin.read()
+value = re.sub(r"(?i)(token|authorization|password|secret)[=: ]+[^\s]+", r"\1=[REDACTED]", value)
+value = re.sub(r"https://[^/@\s]+@", "https://[REDACTED]@", value)
+value = " ".join(value.split())
+print((value or "gh execution failed")[:300])
+' <<< "$PR_OUTPUT" 2>/dev/null || printf '%s' "gh execution failed")
+    print_error "Failed to create Pull Request (exit $EXIT_CODE): $SAFE_REASON"
     exit 1
 fi

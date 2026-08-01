@@ -108,6 +108,29 @@ fi
 REPO_ROOT="$(resolve_main_repo_root)"
 cd "$REPO_ROOT"
 
+validate_trees_root() {
+    python3 - "$REPO_ROOT" "$REPO_ROOT/.trees" <<'PY_TREES'
+import os
+import pathlib
+import stat
+import sys
+repo = pathlib.Path(sys.argv[1]).resolve(strict=True)
+trees = pathlib.Path(sys.argv[2])
+try:
+    metadata = os.lstat(trees)
+except OSError:
+    raise SystemExit(1)
+if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
+    raise SystemExit(1)
+try:
+    physical = trees.resolve(strict=True)
+except (OSError, RuntimeError):
+    raise SystemExit(1)
+if physical.parent != repo or physical != repo / ".trees":
+    raise SystemExit(1)
+PY_TREES
+}
+
 print_info "Creating new branch: $NEW_BRANCH"
 print_info "Based on: $BASE_BRANCH"
 print_info "Repository root: $REPO_ROOT"
@@ -165,22 +188,41 @@ WORKTREE_PATH=".trees/$DESCRIPTION"
 
 print_info "Creating worktree at $WORKTREE_PATH..."
 
+if [ -e .trees ] && ! validate_trees_root; then
+    print_error ".trees must be a real non-symlink directory physically beneath $REPO_ROOT"
+    exit 1
+fi
+
 if ! git check-ignore -q -- ".trees/"; then
     print_error ".trees/ must already be ignored before creating a worktree"
     print_info "Add .trees/ to .gitignore in a separate reviewed change, then retry"
     exit 1
 fi
 
-mkdir -p .trees
+if [ ! -e .trees ]; then
+    mkdir -- .trees
+    if ! validate_trees_root; then
+        print_error "new .trees directory failed physical containment validation"
+        exit 1
+    fi
+fi
 
 if [ -d "$WORKTREE_PATH" ]; then
     print_error "Directory $WORKTREE_PATH already exists"
     exit 1
 fi
 
+if ! validate_trees_root; then
+    print_error ".trees changed before worktree creation"
+    exit 1
+fi
 if git worktree add -b "$NEW_BRANCH" "$WORKTREE_PATH" "$BASE_REF"; then
-    WORKTREE_ABS_PATH="$(cd "$WORKTREE_PATH" && pwd)"
-        
+    WORKTREE_ABS_PATH="$(cd "$WORKTREE_PATH" && pwd -P)"
+    if ! validate_trees_root; then
+        print_error ".trees changed before configuration copy"
+        exit 1
+    fi
+
     print_info "Setting up worktree configuration..."
 
     for dir in ".vscode" ".claude" ".serena" ".cursor"; do
