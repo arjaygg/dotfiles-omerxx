@@ -52,6 +52,12 @@ Full ladder, evidence requirements per tier, and the current signed re-acceptanc
 PR titles use Conventional Commits (`type(scope): summary`); prefer stack tooling (`stack pr`/`stack pr-all`)
 so validation is deterministic. Full allowed-types list and validation flow: **`stack-pr` skill**.
 
+## GitHub Personal Account Billing Gate
+
+- Until the user explicitly says the billing issue is resolved, do not create pull requests for GitHub repositories owned by the personal account `arjaygg`.
+- Stop at a local commit/branch by default. While this gate remains active, creating a personal-account PR requires a new explicit override that acknowledges the billing issue.
+- GitHub work and enterprise accounts are unaffected.
+
 ## File And Tool Discipline
 
 - Prefer dedicated tools over shell fallbacks when the client provides them.
