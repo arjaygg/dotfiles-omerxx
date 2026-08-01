@@ -22,8 +22,9 @@ exec 3>&2
 
 _run() {
     local _script="$1"
+    shift
     [[ -f "$_script" ]] || return 0
-    printf '%s' "$_INPUT" | bash "$_script" 2>&3
+    printf '%s' "$_INPUT" | bash "$_script" "$@" 2>&3
 }
 
 _is_block() {
@@ -46,6 +47,18 @@ if _is_block "$_TASK_GATE_OUT"; then
     exit "$_rc"
 fi
 [[ -n "$_TASK_GATE_OUT" ]] && printf '%s\n' "$_TASK_GATE_OUT"
+
+# A bound shared-lifecycle run supersedes the legacy pipeline gate. An unbound
+# session produces no lifecycle output and retains the legacy fallback.
+_LIFECYCLE_OUT="$(_run "$SCRIPT_DIR/lifecycle-hook.sh" Stop)"
+_rc=$?
+if printf '%s' "$_LIFECYCLE_OUT" | jq -e '.lifecycle_bound == true' >/dev/null 2>&1; then
+    if _is_block "$_LIFECYCLE_OUT"; then
+        printf '%s' "$_LIFECYCLE_OUT" | jq -c '{decision,reason}'
+    fi
+    wait
+    exit "$_rc"
+fi
 
 _GIT_GATE_OUT="$(printf '%s' "$_INPUT" | bash "$SCRIPT_DIR/git-pipeline-gate.sh" 2>&3)"
 _rc=$?

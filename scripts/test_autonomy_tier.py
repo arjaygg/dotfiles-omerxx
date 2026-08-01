@@ -21,6 +21,7 @@ from pathlib import Path
 RESOLVER = Path(__file__).resolve().parent / "ai" / "autonomy-tier.sh"
 
 BASE_PIPELINE = """\
+  auto_stack: A2
   auto_commit: A2
   auto_push: A2
   auto_pr: A2
@@ -122,6 +123,19 @@ class AutonomyTierTests(unittest.TestCase):
         code, out, err = resolve(self.repo, "auto_push")
         self.assertEqual(code, 0, err)
         self.assertEqual(out["hard_cap"], "A4")
+
+    def test_auto_stack_is_a_first_class_reversible_stage(self):
+        write_config(self.repo, override="""\
+              tier: A2
+              basis: risk-accepted
+              stages: auto_stack
+              expires: 2099-01-01
+              signed_off_by: test
+            """)
+        code, out, err = resolve(self.repo, "auto_stack")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(out["hard_cap"], "A4")
+        self.assertEqual(out["effective"], "A2")
 
     # --- C3: promotion requires a COMMITTED green eval run -----------------------
     def test_staged_but_uncommitted_report_grants_nothing(self):
@@ -265,9 +279,9 @@ class AutonomyTierTests(unittest.TestCase):
                               cwd=str(self.repo), capture_output=True, text=True)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         rows = json.loads(proc.stdout)
-        self.assertEqual(len(rows), 5)
+        self.assertEqual(len(rows), 6)
         self.assertEqual({r["stage"] for r in rows},
-                         {"auto_commit", "auto_push", "auto_pr", "auto_ship", "auto_clean"})
+                         {"auto_stack", "auto_commit", "auto_push", "auto_pr", "auto_ship", "auto_clean"})
 
 
 if __name__ == "__main__":

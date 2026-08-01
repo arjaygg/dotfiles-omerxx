@@ -97,8 +97,8 @@ validation:
 #
 # EVIDENCE -- promotion requires a committed green eval run, never a judgement call.
 # As of 2026-07-28 no eval case exists for any pipeline leg (evals/cases/ covers 11
-# skills; auto-ship is not among them), so evidence_tier is A0 for all five legs. The
-# three reversible legs run on a dated, signed risk-acceptance instead: see
+# skills; auto-ship is not among them), so evidence_tier is A0 for all six legs. The
+# four reversible legs run on a dated, signed risk-acceptance instead: see
 # plans/decisions.md (2026-07-28) and plan Part VIII. The resolver reports that as
 # override_tier with basis "risk-accepted", deliberately kept OUT of evidence_tier so
 # that "promotion requires an eval run" remains a true statement about evidence_tier.
@@ -110,6 +110,8 @@ validation:
 # autonomy ladder above. A leg's lifecycle tier says when it fires; its A-tier says
 # how much human involvement firing it requires.
 #
+#   auto_stack  -- leg 0: create the intended linked worktree from the controller's
+#                  exact approved base SHA before any owned edit.
 #   auto_commit -- leg 0: commit.sh runs once validate-changeset.sh passes
 #                  on a non-main branch. Committing on `main` is always
 #                  refused outright (stack create first) -- never overridable.
@@ -137,7 +139,12 @@ validation:
 #   - stack-ship's multi-branch atomic merge (single-branch ship only)
 #   - any pipeline-driven edit to .claude-atomic.yaml, hook-config.yaml, or
 #     .claude/hooks/* (no self-escalation of its own tier or gate level)
+# Explicit opt-in for the shared lifecycle controller and Claude adapter.
+lifecycle:
+  enabled: true
+
 pipeline:
+  auto_stack: A2
   auto_commit: A2
   auto_push: A2
   auto_pr: A2
@@ -146,7 +153,7 @@ pipeline:
 
 # Risk-acceptance override (plan Part VIII "Current state vs this ladder"; Step 18).
 #
-# This is the written, dated re-acceptance of running the three REVERSIBLE legs with
+# This is the written, dated re-acceptance of running the four REVERSIBLE legs with
 # no eval evidence behind them. It is what Step 18's Accepts calls "explicitly
 # re-accepted in writing" -- made machine-readable so the gap is visible in
 # `autonomy-tier.sh` output rather than buried in a comment.
@@ -164,7 +171,7 @@ pipeline:
 autonomy_override:
   tier: A2
   basis: risk-accepted
-  stages: auto_commit auto_push auto_pr
+  stages: auto_stack auto_commit auto_push auto_pr
   expires: 2026-10-31
   signed_off_by: arjaygg
   decision: plans/decisions.md 2026-07-28 -- autonomy ladder vs pipeline flags

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # create-stack.sh - Create a new branch in the PR stack
-# Usage: ./create-stack.sh <new-branch-name> [base-branch]
+# Usage: ./create-stack.sh <new-branch-name> [base-branch] [--base-sha <exact-sha>]
 # Always creates a linked worktree under <main-repo>/.trees/ (never nested under another worktree).
 
 set -e
@@ -15,11 +15,12 @@ source "$_CREATE_STACK_DIR/lib/worktree-charcoal.sh"
 # Functions
 print_usage() {
     echo -e "${BLUE}Usage:${NC}"
-    echo "  ./create-stack.sh <new-branch-name> [base-branch]"
+    echo "  ./create-stack.sh <new-branch-name> [base-branch] [--base-sha <exact-sha>]"
     echo ""
     echo -e "${BLUE}Arguments:${NC}"
     echo "  new-branch-name    Name of the new branch to create (required)"
     echo "  base-branch        Branch to base the new branch on (default: main)"
+    echo "  --base-sha SHA     Create from this exact ancestor commit, not a moving branch tip"
     echo ""
     echo -e "${BLUE}Examples:${NC}"
     echo "  ./create-stack.sh feature/new-api main"
@@ -29,6 +30,7 @@ print_usage() {
 # Parse arguments
 NEW_BRANCH=""
 BASE_BRANCH=""
+BASE_SHA=""
 POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -36,6 +38,14 @@ while [[ $# -gt 0 ]]; do
         -h|--help)
             print_usage
             exit 0
+            ;;
+        --base-sha)
+            if [ $# -lt 2 ] || [ -z "$2" ]; then
+                print_error "--base-sha needs an exact commit SHA"
+                exit 1
+            fi
+            BASE_SHA="$2"
+            shift 2
             ;;
         *)
             POSITIONAL_ARGS+=("$1")
@@ -104,6 +114,34 @@ else
     print_warning "No 'origin' remote configured; skipping fetch"
 fi
 
+# Resolve the named base after fetch, then optionally pin creation to a verified
+# exact ancestor. The verified object id remains the creation ref even if the
+# named branch moves before `git worktree add`.
+if git rev-parse "origin/$BASE_BRANCH" >/dev/null 2>&1; then
+    NAMED_BASE_REF="origin/$BASE_BRANCH"
+else
+    NAMED_BASE_REF="$BASE_BRANCH"
+fi
+
+if [ -n "$BASE_SHA" ]; then
+    if [[ ! "$BASE_SHA" =~ ^([0-9a-f]{40}|[0-9a-f]{64})$ ]]; then
+        print_error "--base-sha must be an exact lowercase 40- or 64-character object id"
+        exit 1
+    fi
+    RESOLVED_BASE_SHA=$(git rev-parse --verify "$BASE_SHA^{commit}" 2>/dev/null || true)
+    if [ "$RESOLVED_BASE_SHA" != "$BASE_SHA" ]; then
+        print_error "--base-sha does not name the exact commit object $BASE_SHA"
+        exit 1
+    fi
+    if ! git merge-base --is-ancestor "$BASE_SHA" "$NAMED_BASE_REF"; then
+        print_error "--base-sha is not an ancestor of the named base $BASE_BRANCH"
+        exit 1
+    fi
+    BASE_REF="$BASE_SHA"
+else
+    BASE_REF="$NAMED_BASE_REF"
+fi
+
 # Warn if local base is behind remote (informational only — worktree uses remote tip directly)
 BASE_BEHIND=$(git rev-list --count "$BASE_BRANCH..origin/$BASE_BRANCH" 2>/dev/null || echo "0")
 if [ "$BASE_BEHIND" -gt 0 ]; then
@@ -132,14 +170,6 @@ mkdir -p .trees
 if [ -d "$WORKTREE_PATH" ]; then
     print_error "Directory $WORKTREE_PATH already exists"
     exit 1
-fi
-
-# Use origin/$BASE_BRANCH if available so worktree always starts from the remote tip,
-# avoiding stale local refs when the base branch is currently checked out.
-if git rev-parse "origin/$BASE_BRANCH" >/dev/null 2>&1; then
-    BASE_REF="origin/$BASE_BRANCH"
-else
-    BASE_REF="$BASE_BRANCH"
 fi
 
 if git worktree add -b "$NEW_BRANCH" "$WORKTREE_PATH" "$BASE_REF"; then
