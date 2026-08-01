@@ -47,6 +47,7 @@ def lifecycle_config(enabled: bool = True, stages: str = "auto_stack auto_commit
         f"  enabled: {'true' if enabled else 'false'}",
         "  rollout_approved: true",
         "  rollout_approved_by: lifecycle-test",
+        "  github_actor: owner",
         "pipeline:",
         "  auto_stack: A2",
         "  auto_commit: A2",
@@ -559,6 +560,45 @@ class ReversibleActionTests(unittest.TestCase):
         action.assert_not_called()
         self.assertFalse((self.repo_view.common_dir / "autonomy-demoted-auto_commit").exists())
 
+    def test_policy_actor_is_required_and_contract_ignores_mutable_auth(self):
+        linked = add_linked(self.repo)
+        policy_path = linked / ".claude-atomic.yaml"
+        original = policy_path.read_text()
+        invalid_policies = (
+            original.replace("  github_actor: owner\n", ""),
+            original.replace("  github_actor: owner\n", "  github_actor: wrong actor\n"),
+        )
+        for invalid in invalid_policies:
+            with self.subTest(policy=invalid):
+                policy_path.write_text(invalid)
+                with self.assertRaises(adapter.AdapterError) as raised:
+                    adapter.policy_snapshot(linked)
+                self.assertEqual(raised.exception.code, "invalid_lifecycle_config")
+        policy_path.write_text(original)
+
+        git(linked, "remote", "add", "origin", "https://github.com/owner/repo.git")
+        with mock.patch.dict(
+            os.environ,
+            {"GH_ACTOR": "wrong-active-actor", "GITHUB_ACTOR": "wrong-ci-actor"},
+        ):
+            contract = adapter.capture_contract(
+                self.repo_view, "run-1", controller.discover_repo(linked))
+        self.assertEqual(contract["policy"]["github_actor"], "owner")
+        self.assertEqual(contract["expected_actor"], "owner")
+
+        with (
+            mock.patch.dict(os.environ, {"GH_ACTOR": "", "GITHUB_ACTOR": ""}),
+            mock.patch.object(
+                adapter,
+                "run_command",
+                return_value=completed_process(stdout="wrong-current-actor\n"),
+            ) as current_auth,
+        ):
+            contract = adapter.capture_contract(
+                self.repo_view, "run-1", controller.discover_repo(linked))
+        current_auth.assert_not_called()
+        self.assertEqual(contract["expected_actor"], "owner")
+
     def test_policy_remote_gate_and_sha_drift_fail_closed(self):
         linked = add_linked(self.repo)
         original_policy = (linked / ".claude-atomic.yaml").read_text()
@@ -742,6 +782,28 @@ class ReversibleActionTests(unittest.TestCase):
         self.assertIn("README.md", git(linked, "diff", "--cached", "--name-only").stdout.split())
         self.assertEqual((linked / "README.md").read_text(), "concurrent default-index change\n")
 
+    def test_push_refuses_fresh_actor_or_repository_drift(self):
+        linked = add_linked(self.repo)
+        ready_run(self.repo, linked)
+        git(linked, "add", "owned/change.txt")
+        git(linked, "commit", "-q", "-m", "feat(lifecycle): prepare identity gate",
+            "-m", "Push requires the immutable policy-owned GitHub identity.")
+        git(linked, "remote", "add", "origin", "https://github.com/owner/repo.git")
+        adapter.capture_contract(self.repo_view, "run-1", controller.discover_repo(linked))
+        state = adapter.load_run_state(self.repo_view, "run-1")
+        decision = adapter.inspect_bound(self.repo_view, "run-1")
+
+        for identity in (("other/repo", "owner"), ("owner/repo", "wrong-actor")):
+            with self.subTest(identity=identity):
+                with (
+                    mock.patch.object(adapter, "repository_identity", return_value=identity),
+                    mock.patch.object(adapter, "run_command") as command,
+                ):
+                    with self.assertRaises(adapter.AdapterError) as raised:
+                        adapter.action_push(self.repo_view, state, decision)
+                self.assertEqual(raised.exception.code, "github_identity_drift")
+                command.assert_not_called()
+
     def test_push_is_ordinary_and_open_pr_reuses_or_calls_canonical_stack(self):
         linked = add_linked(self.repo)
         ready_run(self.repo, linked)
@@ -752,8 +814,7 @@ class ReversibleActionTests(unittest.TestCase):
         git(Path(self.temp.name), "init", "-q", "--bare", str(bare))
         github_origin = "https://github.com/owner/repo.git"
         git(linked, "remote", "add", "origin", github_origin)
-        with mock.patch.dict(os.environ, {"GH_ACTOR": "owner"}):
-            adapter.capture_contract(self.repo_view, "run-1", controller.discover_repo(linked))
+        adapter.capture_contract(self.repo_view, "run-1", controller.discover_repo(linked))
         state = adapter.load_run_state(self.repo_view, "run-1")
         decision = adapter.inspect_bound(self.repo_view, "run-1")
         original_command = adapter.run_command
@@ -764,6 +825,8 @@ class ReversibleActionTests(unittest.TestCase):
         }
         with (
             mock.patch.dict(os.environ, network_env),
+            mock.patch.object(
+                adapter, "repository_identity", return_value=("owner/repo", "owner")),
             mock.patch.object(adapter, "run_command", wraps=original_command) as command_call,
         ):
             adapter.action_push(self.repo_view, state, decision)
