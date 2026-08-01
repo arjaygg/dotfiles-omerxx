@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # create-stack.sh - Create a new branch in the PR stack
-# Usage: ./create-stack.sh <new-branch-name> [base-branch] [--base-sha <exact-sha>]
+# Usage: ./create-stack.sh <new-branch-name> [base-branch] [--base-sha <exact-sha>] [--strict]
 # Always creates a linked worktree under <main-repo>/.trees/ (never nested under another worktree).
 
 set -e
@@ -15,12 +15,13 @@ source "$_CREATE_STACK_DIR/lib/worktree-charcoal.sh"
 # Functions
 print_usage() {
     echo -e "${BLUE}Usage:${NC}"
-    echo "  ./create-stack.sh <new-branch-name> [base-branch] [--base-sha <exact-sha>]"
+    echo "  ./create-stack.sh <new-branch-name> [base-branch] [--base-sha <exact-sha>] [--strict]"
     echo ""
     echo -e "${BLUE}Arguments:${NC}"
     echo "  new-branch-name    Name of the new branch to create (required)"
     echo "  base-branch        Branch to base the new branch on (default: main)"
     echo "  --base-sha SHA     Create from this exact ancestor commit, not a moving branch tip"
+    echo "  --strict           Fail if Charcoal cannot track the created branch"
     echo ""
     echo -e "${BLUE}Examples:${NC}"
     echo "  ./create-stack.sh feature/new-api main"
@@ -31,6 +32,7 @@ print_usage() {
 NEW_BRANCH=""
 BASE_BRANCH=""
 BASE_SHA=""
+STRICT=false
 POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -46,6 +48,10 @@ while [[ $# -gt 0 ]]; do
             fi
             BASE_SHA="$2"
             shift 2
+            ;;
+        --strict)
+            STRICT=true
+            shift
             ;;
         *)
             POSITIONAL_ARGS+=("$1")
@@ -234,6 +240,10 @@ print_info "Tracking branch in Charcoal..."
 if ! gt branch track "$NEW_BRANCH" --parent "$BASE_BRANCH" 2>/dev/null; then
     print_warning "Charcoal tracking failed — worktree created but not in stack graph."
     print_info "Fix manually: gt branch track $NEW_BRANCH --parent $BASE_BRANCH"
+    if [ "$STRICT" = true ]; then
+        print_error "Strict stack creation requires successful Charcoal tracking"
+        exit 1
+    fi
 else
     print_success "Stack updated. Run './scripts/stack status' to see your PR stack"
 fi
