@@ -71,6 +71,7 @@ def init_repo(path: Path, *, opted_in: bool = True) -> Path:
     git(path, "init", "-q", "-b", "main")
     git(path, "config", "user.email", "adapter-test@example.com")
     git(path, "config", "user.name", "Adapter Test")
+    git(path, "remote", "add", "origin", "https://user@github.com/owner/repo.git")
     (path / "README.md").write_text("initial\n")
     (path / ".gitignore").write_text(".trees/\n")
     if opted_in:
@@ -379,7 +380,10 @@ class PreWriteAndContextHookTests(unittest.TestCase):
         allowed_commands = (
             "git status", "git diff", "gh pr view 1",
             f"python3 {exact_adapter} status --session-id session-1",
-            "python3 -m unittest scripts.test_lifecycle_adapter",
+            f"{adapter.VALIDATE} --json",
+            "bash -n scripts/ai/commit.sh",
+            "shellcheck scripts/ai/commit.sh",
+            "python3 -m json.tool ai/config/claude/settings.base.json",
         )
         for command in allowed_commands:
             with self.subTest(allowed=command):
@@ -415,6 +419,20 @@ class PreWriteAndContextHookTests(unittest.TestCase):
             "gh pr view 1 --web=true",
             "python3 -m unittest /tmp/evil.py",
             "python3 -m unittest evil",
+            "python3 -m unittest scripts.test_lifecycle_adapter",
+            "python3 -m unittest scripts.test_lifecycle_adapter.HookTests.test_payload",
+            "python3 -m scripts.test_lifecycle_adapter",
+            "python3 scripts/test_lifecycle_adapter.py",
+            "git diff *",
+            "git diff '?'",
+            "git diff [a-z]",
+            "git diff '{--output,/tmp/x}'",
+            "git diff \\*",
+            "git diff ~",
+            "git diff HEAD~1",
+            "git --paginate diff",
+            "git -c core.pager='touch /tmp/payload' diff",
+            "git diff --output=/tmp/payload",
             "alias git='touch /tmp/bypass'",
             "git status > /tmp/status",
             "git status && git add -A",
@@ -424,6 +442,24 @@ class PreWriteAndContextHookTests(unittest.TestCase):
                 result = adapter.hook_pre_write(
                     self.payload("session-1", "Bash", {"command": command}), repo, "session-1")
                 self.assertEqual(result["hookSpecificOutput"]["permissionDecision"], "deny")
+
+        expansion_probes = (
+            "git diff *", "git diff '?'", "git diff [a-z]",
+            "git diff {--output,/tmp/x}", 'git diff "{--output,/tmp/x}"',
+            "git diff \\*", "git diff ~", "git diff HEAD~1",
+        )
+        with mock.patch.object(adapter, "run_command") as external_process:
+            for command in expansion_probes:
+                with self.subTest(expansion=command):
+                    self.assertIsNone(adapter.command_tokens(command))
+                    result = adapter.hook_pre_write(
+                        self.payload("session-1", "Bash", {"command": command}),
+                        repo,
+                        "session-1",
+                    )
+                    self.assertEqual(
+                        result["hookSpecificOutput"]["permissionDecision"], "deny")
+            external_process.assert_not_called()
 
         with mock.patch.dict(os.environ, {"BASH_FUNC_git%%": "() { touch /tmp/bypass; }"}):
             aliased = adapter.hook_pre_write(
@@ -439,6 +475,17 @@ class PreWriteAndContextHookTests(unittest.TestCase):
             "session-1",
         )
         self.assertEqual(pctx["hookSpecificOutput"]["permissionDecision"], "deny")
+        for tool_name in ("EnterWorktree", "ExitWorktree"):
+            with self.subTest(tool_name=tool_name):
+                worktree = adapter.hook_pre_write(
+                    self.payload("session-1", tool_name, {"path": str(self.linked)}),
+                    repo,
+                    "session-1",
+                )
+                self.assertEqual(
+                    worktree["hookSpecificOutput"]["permissionDecision"], "deny")
+                self.assertIn(
+                    "Worktree", worktree["hookSpecificOutput"]["permissionDecisionReason"])
         settings = json.loads((ROOT / "ai/config/claude/settings.base.json").read_text())
         matcher = next(
             item["matcher"] for item in settings["hooks"]["PreToolUse"]
@@ -576,7 +623,6 @@ class ReversibleActionTests(unittest.TestCase):
                 self.assertEqual(raised.exception.code, "invalid_lifecycle_config")
         policy_path.write_text(original)
 
-        git(linked, "remote", "add", "origin", "https://github.com/owner/repo.git")
         with mock.patch.dict(
             os.environ,
             {"GH_ACTOR": "wrong-active-actor", "GITHUB_ACTOR": "wrong-ci-actor"},
@@ -610,11 +656,11 @@ class ReversibleActionTests(unittest.TestCase):
         (linked / ".claude-atomic.yaml").write_text(original_policy)
         bare = Path(self.temp.name) / "drift.git"
         git(Path(self.temp.name), "init", "-q", "--bare", str(bare))
-        git(linked, "remote", "add", "origin", str(bare))
+        git(linked, "remote", "set-url", "origin", str(bare))
         with self.assertRaises(adapter.AdapterError) as remote:
             adapter.tick(namespace(run_id="run-1"), linked)
         self.assertEqual(remote.exception.code, "remote_drift")
-        git(linked, "remote", "remove", "origin")
+        git(linked, "remote", "set-url", "origin", "https://user@github.com/owner/repo.git")
 
         state = adapter.load_run_state(self.repo_view, "run-1")
         with mock.patch.object(adapter, "pipeline_gate_level", return_value="off"):
@@ -788,7 +834,6 @@ class ReversibleActionTests(unittest.TestCase):
         git(linked, "add", "owned/change.txt")
         git(linked, "commit", "-q", "-m", "feat(lifecycle): prepare identity gate",
             "-m", "Push requires the immutable policy-owned GitHub identity.")
-        git(linked, "remote", "add", "origin", "https://github.com/owner/repo.git")
         adapter.capture_contract(self.repo_view, "run-1", controller.discover_repo(linked))
         state = adapter.load_run_state(self.repo_view, "run-1")
         decision = adapter.inspect_bound(self.repo_view, "run-1")
@@ -796,6 +841,8 @@ class ReversibleActionTests(unittest.TestCase):
         for identity in (("other/repo", "owner"), ("owner/repo", "wrong-actor")):
             with self.subTest(identity=identity):
                 with (
+                    mock.patch.object(
+                        adapter, "pinned_github_environment", return_value={"GH_TOKEN": "test-token"}),
                     mock.patch.object(adapter, "repository_identity", return_value=identity),
                     mock.patch.object(adapter, "run_command") as command,
                 ):
@@ -813,7 +860,7 @@ class ReversibleActionTests(unittest.TestCase):
         bare = Path(self.temp.name) / "origin.git"
         git(Path(self.temp.name), "init", "-q", "--bare", str(bare))
         github_origin = "https://github.com/owner/repo.git"
-        git(linked, "remote", "add", "origin", github_origin)
+        git(linked, "remote", "set-url", "origin", github_origin)
         adapter.capture_contract(self.repo_view, "run-1", controller.discover_repo(linked))
         state = adapter.load_run_state(self.repo_view, "run-1")
         decision = adapter.inspect_bound(self.repo_view, "run-1")
@@ -826,6 +873,8 @@ class ReversibleActionTests(unittest.TestCase):
         with (
             mock.patch.dict(os.environ, network_env),
             mock.patch.object(
+                adapter, "pinned_github_environment", return_value={"GH_TOKEN": "test-token"}),
+            mock.patch.object(
                 adapter, "repository_identity", return_value=("owner/repo", "owner")),
             mock.patch.object(adapter, "run_command", wraps=original_command) as command_call,
         ):
@@ -833,7 +882,7 @@ class ReversibleActionTests(unittest.TestCase):
         pushes = [call.args[0] for call in command_call.call_args_list
                   if call.args and call.args[0][:2] == ["git", "push"]]
         expected_head = adapter.decision_head(decision)
-        self.assertEqual(pushes, [["git", "push", "--set-upstream", "origin",
+        self.assertEqual(pushes, [["git", "push", github_origin,
                                   f"{expected_head}:refs/heads/feature/lifecycle"]])
         self.assertEqual(
             git(bare, "rev-parse", "refs/heads/feature/lifecycle").stdout.strip(),
@@ -850,23 +899,40 @@ class ReversibleActionTests(unittest.TestCase):
             "headRefName": "feature/lifecycle",
             "baseRefName": "main",
             "headRepositoryOwner": {"login": "owner"},
+            "author": {"login": "owner"},
             "repository": "owner/repo",
             "url": "https://example.invalid/pr/17",
         }
         with (
+            mock.patch.object(
+                adapter, "pinned_github_environment", return_value={"GH_TOKEN": "test-token"}),
             mock.patch.object(adapter, "query_exact_pr", side_effect=[None, pull_request]),
             mock.patch.object(adapter, "exact_remote_head", return_value=head),
             mock.patch.object(adapter, "run_command", return_value=completed_process()) as command,
         ):
             adapter.action_open_pr(self.repo_view, state, decision)
-        command.assert_called_once_with(
+        self.assertEqual(command.call_count, 1)
+        create_call = command.call_args
+        self.assertEqual(
+            create_call.args[0],
             [adapter.STACK, "pr", "feature/lifecycle", "main",
              "feat(lifecycle): add adapter behavior", "--no-push"],
-            linked.resolve(),
         )
+        self.assertEqual(create_call.args[1], linked.resolve())
+        self.assertFalse(create_call.kwargs["check"])
+        self.assertEqual(create_call.kwargs["env"]["GH_TOKEN"], "test-token")
+        self.assertEqual(create_call.kwargs["env"]["LIFECYCLE_EXPECTED_ACTOR"], "owner")
+        self.assertEqual(create_call.kwargs["env"]["LIFECYCLE_EXPECTED_REPOSITORY"], "owner/repo")
+        self.assertEqual(create_call.kwargs["env"]["LIFECYCLE_EXPECTED_SHA"], head)
+        self.assertEqual(
+            create_call.kwargs["env"]["LIFECYCLE_EXPECTED_URL"], github_origin)
+        self.assertEqual(
+            create_call.kwargs["env"]["LIFECYCLE_EXPECTED_PUSH_URL"], github_origin)
         self.assertEqual(adapter.inspect_bound(self.repo_view, "run-1")["action"], "wait_ci")
 
         with (
+            mock.patch.object(
+                adapter, "pinned_github_environment", return_value={"GH_TOKEN": "test-token"}),
             mock.patch.object(adapter, "query_exact_pr", return_value=pull_request),
             mock.patch.object(adapter, "exact_remote_head", return_value=head),
             mock.patch.object(adapter, "run_command") as command,
@@ -903,6 +969,67 @@ class ReversibleActionTests(unittest.TestCase):
         self.assertNotIn("simulated post-commit crash", audit)
         self.assertNotIn("command", audit)
 
+    def test_pending_action_journal_reconciles_base_exception_before_next_action(self):
+        linked = add_linked(self.repo)
+        ready_run(self.repo, linked)
+        state = adapter.load_run_state(self.repo_view, "run-1")
+        decision = adapter.inspect_bound(self.repo_view, "run-1")
+
+        def commit_then_interrupt(_repo, current_state, _decision):
+            unit = controller.current_unit(current_state)["ready"]
+            git(linked, "add", "owned/change.txt")
+            git(linked, "commit", "-q", "-m", unit["subject"], "-m", unit["body"])
+            raise KeyboardInterrupt
+
+        with mock.patch.object(adapter, "resolve_autonomy", return_value=(True, "authorized")):
+            with self.assertRaises(KeyboardInterrupt):
+                adapter.execute_action(
+                    self.repo_view, "run-1", decision, state, commit_then_interrupt)
+        pending = adapter.load_action_journal(self.repo_view, "run-1")
+        self.assertEqual(pending["status"], "pending")
+        self.assertEqual(pending["audit_status"], "pending")
+
+        reconciled = adapter.tick(namespace(run_id="run-1"), self.repo)
+        self.assertEqual(reconciled["outcome"], "reconciled")
+        self.assertEqual(reconciled["before"]["action"], "push")
+        completed = adapter.load_action_journal(self.repo_view, "run-1")
+        self.assertEqual(completed["result"], "success")
+        self.assertEqual(completed["audit_status"], "complete")
+        audit_path = adapter.adapter_root(self.repo_view.common_dir) / "adapter-audit.jsonl"
+        before = audit_path.read_text()
+        self.assertFalse(adapter.reconcile_action_journal(self.repo_view, "run-1"))
+        self.assertEqual(audit_path.read_text(), before)
+
+    def test_success_audit_failure_blocks_advancement_until_next_tick_reconciles(self):
+        linked = add_linked(self.repo)
+        ready_run(self.repo, linked)
+        state = adapter.load_run_state(self.repo_view, "run-1")
+        decision = adapter.inspect_bound(self.repo_view, "run-1")
+
+        def commit_action(_repo, current_state, _decision):
+            unit = controller.current_unit(current_state)["ready"]
+            git(linked, "add", "owned/change.txt")
+            git(linked, "commit", "-q", "-m", unit["subject"], "-m", unit["body"])
+
+        with (
+            mock.patch.object(adapter, "resolve_autonomy", return_value=(True, "authorized")),
+            mock.patch.object(
+                adapter, "append_adapter_audit", side_effect=[None, OSError("audit unavailable")]),
+        ):
+            with self.assertRaises(adapter.AdapterError) as raised:
+                adapter.execute_action(
+                    self.repo_view, "run-1", decision, state, commit_action)
+        self.assertEqual(raised.exception.code, "action_audit_pending")
+        pending = adapter.load_action_journal(self.repo_view, "run-1")
+        self.assertEqual(pending["status"], "completed")
+        self.assertEqual(pending["result"], "success")
+        self.assertEqual(pending["audit_status"], "pending")
+
+        reconciled = adapter.tick(namespace(run_id="run-1"), self.repo)
+        self.assertEqual(reconciled["outcome"], "reconciled")
+        self.assertEqual(adapter.load_action_journal(
+            self.repo_view, "run-1")["audit_status"], "complete")
+
     def test_demotion_persists_before_best_effort_audit_failure(self):
         state = adapter.load_run_state(self.repo_view, "run-1")
         decision = adapter.inspect_bound(self.repo_view, "run-1")
@@ -915,6 +1042,13 @@ class ReversibleActionTests(unittest.TestCase):
                 self.repo_view, "run-1", decision, state, failing_action)
         self.assertEqual(result["outcome"], "action_failed")
         self.assertTrue((self.repo_view.common_dir / "autonomy-demoted-auto_stack").is_file())
+        pending = adapter.load_action_journal(self.repo_view, "run-1")
+        self.assertEqual(pending["result"], "failure")
+        self.assertEqual(pending["audit_status"], "pending")
+        reconciled = adapter.tick(namespace(run_id="run-1"), self.repo)
+        self.assertEqual(reconciled["outcome"], "reconciled")
+        self.assertEqual(adapter.load_action_journal(
+            self.repo_view, "run-1")["audit_status"], "complete")
 
     def test_merge_sync_cleanup_and_remote_settings_are_never_executed(self):
         source = Path(adapter.__file__).read_text()
@@ -952,6 +1086,114 @@ class ReversibleActionTests(unittest.TestCase):
             command.assert_not_called()
 
 
+class NetworkIdentityHardeningTests(unittest.TestCase):
+    def test_contract_capture_rejects_missing_ambiguous_unrecognized_and_drifted_origins(self):
+        cases = ("missing", "ambiguous", "unrecognized", "drifted")
+        for case in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as td:
+                repo = init_repo(Path(td) / "repo")
+                if case == "missing":
+                    git(repo, "remote", "remove", "origin")
+                elif case == "ambiguous":
+                    git(repo, "remote", "set-url", "--add", "origin",
+                        "https://github.com/owner/other.git")
+                elif case == "unrecognized":
+                    git(repo, "remote", "set-url", "origin", "git@github.com:owner/repo.git")
+                else:
+                    git(repo, "remote", "set-url", "--push", "origin",
+                        "https://github.com/owner/other.git")
+                view = controller.discover_repo(repo)
+                with self.assertRaises(adapter.AdapterError) as raised:
+                    adapter.capture_contract(view, f"run-{case}", view)
+                self.assertIn(raised.exception.code, {
+                    "origin_url_ambiguous", "origin_url_unrecognized", "origin_url_drift"})
+                self.assertFalse(adapter.contract_path(view.common_dir, f"run-{case}").exists())
+
+        with tempfile.TemporaryDirectory() as td:
+            repo = init_repo(Path(td) / "repo")
+            git(repo, "remote", "set-url", "--push", "origin",
+                "https://push-user@github.com/owner/repo.git")
+            view = controller.discover_repo(repo)
+            contract = adapter.capture_contract(view, "run-supported", view)
+            self.assertEqual(contract["github_repository"], "owner/repo")
+            self.assertEqual(contract["github_url"], "https://github.com/owner/repo.git")
+            self.assertEqual(contract["origin"]["fetch"], [
+                "https://user@github.com/owner/repo.git"])
+            self.assertEqual(contract["origin"]["push"], [
+                "https://push-user@github.com/owner/repo.git"])
+
+    def test_start_rejects_invalid_origin_before_run_state_or_contract_persistence(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = init_repo(Path(td) / "repo")
+            git(repo, "remote", "remove", "origin")
+            view = controller.discover_repo(repo)
+            with self.assertRaises(adapter.AdapterError) as raised:
+                start_run(repo)
+            self.assertEqual(raised.exception.code, "origin_url_ambiguous")
+            state_path, _, _ = controller.locations(view.common_dir, "run-1")
+            self.assertFalse(state_path.exists())
+            self.assertFalse(adapter.contract_path(view.common_dir, "run-1").exists())
+
+    def test_pinned_token_is_selected_by_actor_and_verified_without_ambient_auth(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = init_repo(Path(td) / "repo")
+            view = controller.discover_repo(repo)
+            contract = adapter.capture_contract(view, "run-token", view)
+            responses = [
+                completed_process(stdout="github_pat_safe_token\n"),
+                completed_process(stdout="owner\n"),
+            ]
+            with mock.patch.object(adapter, "run_command", side_effect=responses) as command:
+                env = adapter.pinned_github_environment(view, contract)
+            self.assertEqual(env, {"GH_TOKEN": "github_pat_safe_token"})
+            token_call, verify_call = command.call_args_list
+            self.assertEqual(token_call.args[0], [
+                "gh", "auth", "token", "--hostname", "github.com", "--user", "owner"])
+            self.assertEqual(token_call.kwargs["env"]["GH_TOKEN"], "")
+            self.assertEqual(verify_call.args[0], [
+                "gh", "api", "--hostname", "github.com", "/user", "--jq", ".login"])
+            self.assertEqual(verify_call.kwargs["env"]["GH_TOKEN"], "github_pat_safe_token")
+
+            with mock.patch.object(adapter, "run_command", side_effect=[
+                completed_process(stdout="github_pat_wrong_token\n"),
+                completed_process(stdout="wrong-actor\n"),
+            ]):
+                with self.assertRaises(adapter.AdapterError) as raised:
+                    adapter.pinned_github_environment(view, contract)
+            self.assertEqual(raised.exception.code, "github_token_actor_mismatch")
+            self.assertNotIn("github_pat_wrong_token", str(raised.exception))
+
+    def test_create_pr_lifecycle_path_preserves_supplied_token_and_verifies_author(self):
+        source = (ROOT / ".claude" / "scripts" / "pr-stack" / "create-pr.sh").read_text()
+        supplied = source.index('if [ -z "${GH_TOKEN:-}" ]; then')
+        fallback = source.index('GH_TOKEN="$(gh_token_for_remote)"', supplied)
+        capture = source.index('["gh", *sys.argv[1:]]', fallback)
+        self.assertLess(fallback, capture)
+        self.assertIn('gh pr view "$PR_URL" --repo "$EXPECTED_REPOSITORY"', source)
+        self.assertIn('value.get("author", {}).get("login") == sys.argv[1]', source)
+        self.assertIn('GH_ARGS+=(--repo "$EXPECTED_REPOSITORY")', source)
+
+    def test_create_pr_diagnostic_accepts_only_bounded_structured_redaction(self):
+        raw = "authorization=github_pat_secret token=ghp_secret"
+        structured = json.dumps({
+            "lifecycle_pr_error": {"exit_status": 1, "reason": "authorization=[REDACTED]"}})
+        proc = completed_process(returncode=1, stderr=f"{raw}\n{structured}\n")
+        self.assertEqual(
+            adapter.create_pr_diagnostic(proc), "authorization=[REDACTED]")
+        unstructured = completed_process(returncode=1, stderr=raw)
+        self.assertEqual(
+            adapter.create_pr_diagnostic(unstructured),
+            "canonical PR creation failed without a valid diagnostic",
+        )
+        self.assertNotIn("secret", adapter.create_pr_diagnostic(unstructured))
+        forged_secret = completed_process(returncode=1, stderr=json.dumps({
+            "lifecycle_pr_error": {"exit_status": 1, "reason": "ghp_secret"}}))
+        self.assertEqual(
+            adapter.create_pr_diagnostic(forged_secret),
+            "canonical PR creation failed without a valid diagnostic",
+        )
+
+
 class CanonicalCommitWrapperTests(unittest.TestCase):
     def prepare_private_commit(self, root: Path):
         repo = init_repo(root / "repo")
@@ -972,24 +1214,30 @@ class CanonicalCommitWrapperTests(unittest.TestCase):
         })
         return repo, env, parent, tree
 
-    def test_private_wrapper_runs_hooks_and_excludes_concurrent_default_index(self):
+    def test_private_wrapper_disables_mutable_hooks_and_detached_descendants(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             repo, env, parent, tree = self.prepare_private_commit(root)
-            hook = repo / ".git" / "hooks" / "pre-commit"
-            hook.write_text("""#!/usr/bin/env bash
-set -euo pipefail
-printf 'concurrent default index\n' > foreign.txt
-GIT_INDEX_FILE="$PWD/.git/index" git add foreign.txt
-printf 'ran\n' > hook-ran.txt
+            hooks = repo / ".git" / "hooks"
+            (hooks / "pre-commit").write_text("""#!/usr/bin/env bash
+printf 'pre\n' > pre-hook-ran.txt
+(sleep 30) &
+printf '%s\n' "$!" > hook-child.pid
 """)
-            hook.chmod(0o755)
+            (hooks / "post-commit").write_text("""#!/usr/bin/env bash
+printf 'post\n' > post-hook-ran.txt
+""")
+            (hooks / "pre-commit").chmod(0o755)
+            (hooks / "post-commit").chmod(0o755)
             result = run(
                 repo, str(adapter.COMMIT),
                 "-m", "feat(test): private lifecycle commit",
-                "-m", "Preserve exact approved tree and parent evidence.",
+                "-m", "Preserve exact approved tree without mutable repository hooks.",
                 env=env, check=False,
             )
+            child_file = repo / "hook-child.pid"
+            if child_file.exists():
+                os.kill(int(child_file.read_text().strip()), 9)
             self.assertEqual(result.returncode, 0, result.stderr)
             head = git(repo, "rev-parse", "HEAD").stdout.strip()
             self.assertEqual(
@@ -997,33 +1245,58 @@ printf 'ran\n' > hook-ran.txt
             self.assertEqual(git(repo, "show", "-s", "--format=%T", head).stdout.strip(), tree)
             self.assertEqual(
                 git(repo, "show", "--pretty=", "--name-only", head).stdout.split(), ["owned.txt"])
-            self.assertTrue((repo / "hook-ran.txt").is_file())
-            self.assertIn("foreign.txt", git(repo, "diff", "--cached", "--name-only").stdout.split())
+            self.assertFalse((repo / "pre-hook-ran.txt").exists())
+            self.assertFalse((repo / "post-hook-ran.txt").exists())
+            self.assertFalse(child_file.exists())
 
-    def test_private_wrapper_refuses_concurrent_branch_ref_change(self):
+    def test_ordinary_wrapper_preserves_repository_hook_behavior(self):
         with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            repo, env, parent, _ = self.prepare_private_commit(root)
-            hook = repo / ".git" / "hooks" / "pre-commit"
-            hook.write_text("""#!/usr/bin/env bash
-set -euo pipefail
-base_tree=$(git show -s --format=%T "$LIFECYCLE_EXPECTED_PARENT")
-other=$(printf 'concurrent ref update\n' | git commit-tree "$base_tree" -p "$LIFECYCLE_EXPECTED_PARENT")
-git update-ref "$LIFECYCLE_EXPECTED_REF" "$other" "$LIFECYCLE_EXPECTED_PARENT"
-""")
-            hook.chmod(0o755)
+            repo = init_repo(Path(td) / "repo")
+            git(repo, "checkout", "-q", "-b", "feature/ordinary")
+            (repo / "ordinary.txt").write_text("ordinary hook path\n")
+            git(repo, "add", "ordinary.txt")
+            hooks = repo / ".git" / "hooks"
+            (hooks / "pre-commit").write_text(
+                "#!/usr/bin/env bash\nprintf 'pre\n' > ordinary-pre.txt\n")
+            (hooks / "post-commit").write_text(
+                "#!/usr/bin/env bash\nprintf 'post\n' > ordinary-post.txt\n")
+            (hooks / "pre-commit").chmod(0o755)
+            (hooks / "post-commit").chmod(0o755)
             result = run(
                 repo, str(adapter.COMMIT),
-                "-m", "feat(test): private lifecycle commit",
-                "-m", "Reject a branch ref that moved after approval.",
-                env=env, check=False,
+                "-m", "feat(test): ordinary commit",
+                "-m", "Ordinary commits retain repository hook behavior.",
+                check=False,
             )
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("changed", result.stderr.lower())
-            moved = git(repo, "rev-parse", "HEAD").stdout.strip()
-            self.assertNotEqual(moved, parent)
-            self.assertEqual(git(repo, "show", "-s", "--format=%T", moved).stdout.strip(),
-                             git(repo, "show", "-s", "--format=%T", parent).stdout.strip())
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((repo / "ordinary-pre.txt").is_file())
+            self.assertTrue((repo / "ordinary-post.txt").is_file())
+
+    def test_intent_write_replaces_symlink_without_following_lifecycle_hook(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = init_repo(Path(td) / "repo")
+            git(repo, "checkout", "-q", "-b", "feature/intent")
+            hook = repo / ".claude" / "hooks" / "lifecycle-hook.sh"
+            hook.parent.mkdir(parents=True)
+            hook.write_text("protected lifecycle hook\n")
+            intent = repo / ".claude-atomic-intent"
+            intent.symlink_to(hook)
+            git(repo, "add", ".claude/hooks/lifecycle-hook.sh")
+            git(repo, "add", "-f", ".claude-atomic-intent")
+            git(repo, "commit", "-q", "-m", "chore: initialize intent symlink fixture")
+            (repo / "README.md").write_text("intent regression\n")
+            git(repo, "add", "README.md")
+            result = run(
+                repo, str(adapter.COMMIT),
+                "-m", "fix(test): write intent safely",
+                "-m", "Intent metadata must never follow a lifecycle hook symlink.",
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(hook.read_text(), "protected lifecycle hook\n")
+            self.assertFalse(intent.is_symlink())
+            self.assertTrue(intent.is_file())
+            self.assertIn("LAST_COMMIT_HASH=", intent.read_text())
 
 
 class AdapterAuditTests(unittest.TestCase):
@@ -1106,8 +1379,12 @@ class CiAndWatcherTests(unittest.TestCase):
         self.linked = add_linked(self.repo)
         self.repo_view = controller.discover_repo(self.repo)
         self.head = git(self.linked, "rev-parse", "HEAD").stdout.strip()
+        self.credential_patch = mock.patch.object(
+            adapter, "pinned_github_environment", return_value={"GH_TOKEN": "test-token"})
+        self.credential_patch.start()
 
     def tearDown(self):
+        self.credential_patch.stop()
         self.temp.cleanup()
 
     def pull_request(self, **updates):
@@ -1115,7 +1392,7 @@ class CiAndWatcherTests(unittest.TestCase):
             "number": 9, "state": "OPEN", "isDraft": False,
             "headRefOid": self.head, "headRefName": "feature/lifecycle",
             "baseRefName": "main", "headRepositoryOwner": {"login": "owner"},
-            "repository": "owner/repo", "url": "https://example.invalid/pr/9",
+            "author": {"login": "owner"}, "repository": "owner/repo", "url": "https://example.invalid/pr/9",
             "mergeable": "MERGEABLE", "mergeStateStatus": "CLEAN",
         }
         value.update(updates)
@@ -1155,7 +1432,9 @@ class CiAndWatcherTests(unittest.TestCase):
                     adapter, "run_command",
                     return_value=completed_process(returncode=returncode, stdout=json.dumps(checks)),
                 ):
-                    self.assertEqual(adapter.required_checks(self.repo_view, 9)[0], expected)
+                    contract = adapter.load_contract(self.repo_view, "run-1")
+                    self.assertEqual(adapter.required_checks(
+                        self.repo_view, 9, contract, {"GH_TOKEN": "test-token"})[0], expected)
 
         checks = [{"name": "build", "bucket": "pass"}]
         with (
@@ -1183,6 +1462,7 @@ class CiAndWatcherTests(unittest.TestCase):
             "headRefName": "feature/lifecycle",
             "baseRefName": "main",
             "headRepositoryOwner": {"login": "owner"},
+            "author": {"login": "owner"},
             "repository": "owner/repo",
             "url": "https://example.invalid/pr/9",
             "mergeable": "MERGEABLE",
@@ -1200,7 +1480,10 @@ class CiAndWatcherTests(unittest.TestCase):
             result = adapter.reconcile_ci(self.repo_view, "run-1", self.head)
         self.assertEqual(result["status"], "passing")
         self.assertEqual(result["outcome"], "terminal")
-        self.assertIn("--required", command.call_args.args[0])
+        check_args = command.call_args.args[0]
+        self.assertIn("--required", check_args)
+        self.assertIn("--repo", check_args)
+        self.assertEqual(check_args[check_args.index("--repo") + 1], "owner/repo")
 
         with mock.patch.object(adapter, "query_exact_pr") as query:
             stale = adapter.reconcile_ci(self.repo_view, "run-1", "0" * 40)
@@ -1209,15 +1492,20 @@ class CiAndWatcherTests(unittest.TestCase):
 
     def test_pr_identity_rejects_base_owner_and_ignores_other_heads(self):
         state = adapter.load_run_state(self.repo_view, "run-1")
-        for updates in ({"baseRefName": "wrong"}, {"headRepositoryOwner": {"login": "fork"}}):
+        for updates in (
+            {"baseRefName": "wrong"},
+            {"headRepositoryOwner": {"login": "fork"}},
+            {"author": {"login": "wrong-actor"}},
+        ):
             proc = completed_process(stdout=json.dumps([self.pull_request(**updates)]))
             with self.subTest(updates=updates):
                 with self.assertRaises(adapter.AdapterError) as raised:
-                    adapter.parse_prs(proc, state, self.head, "owner/repo", "owner")
+                    adapter.parse_prs(proc, state, self.head, "owner/repo", "owner", "owner")
                 self.assertEqual(raised.exception.code, "pr_identity_mismatch")
         other = completed_process(stdout=json.dumps([
             self.pull_request(headRefOid="0" * len(self.head))]))
-        self.assertEqual(adapter.parse_prs(other, state, self.head, "owner/repo", "owner"), [])
+        self.assertEqual(
+            adapter.parse_prs(other, state, self.head, "owner/repo", "owner", "owner"), [])
 
     def test_open_pr_requires_explicit_non_draft_evidence(self):
         self.assertEqual(adapter.pr_status(self.pull_request(isDraft=False)), "open")
@@ -1365,6 +1653,42 @@ class CiAndWatcherTests(unittest.TestCase):
                 popen.assert_called_once()
 
 
+class WorktreeHookContainmentTests(unittest.TestCase):
+    def invoke(self, repo: Path, name: str):
+        return subprocess.run(
+            [str(ROOT / ".claude" / "hooks" / "worktree-create.sh")],
+            cwd=str(repo),
+            input=json.dumps({"cwd": str(repo), "name": name}),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def test_symlinked_trees_root_is_refused_without_touching_target(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            repo = init_repo(root / "repo")
+            outside = root / "outside"
+            outside.mkdir()
+            (repo / ".trees").symlink_to(outside, target_is_directory=True)
+            result = self.invoke(repo, "feature/escape")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("non-symlink", result.stderr)
+            self.assertEqual(list(outside.iterdir()), [])
+
+    def test_existing_worktree_outside_contained_root_is_not_reused(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            repo = init_repo(root / "repo")
+            (repo / ".trees").mkdir()
+            outside = root / "outside-worktree"
+            git(repo, "worktree", "add", "-q", "-b", "feature/escape", str(outside))
+            result = self.invoke(repo, "feature/escape")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("outside", result.stderr)
+            self.assertNotEqual(result.stdout.strip(), str(outside))
+
+
 class ProcessIsolationTests(unittest.TestCase):
     def assert_pid_exits(self, pid: int) -> None:
         deadline = time.monotonic() + 3
@@ -1403,6 +1727,33 @@ time.sleep(float(sys.argv[2]))
                     self.assertEqual(result.returncode, 0)
                 self.assertTrue(pid_file.is_file())
                 self.assert_pid_exits(int(pid_file.read_text()))
+
+    def test_base_exception_reaps_signal_ignoring_descendant(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            pid_file = root / "base-exception-child.pid"
+            script = """
+import pathlib, signal, subprocess, sys, time
+child = subprocess.Popen(
+    [sys.executable, "-c", "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(30)"],
+    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+)
+pathlib.Path(sys.argv[1]).write_text(str(child.pid))
+time.sleep(30)
+"""
+
+            def interrupted(_proc, *args, **kwargs):
+                deadline = time.monotonic() + 2
+                while not pid_file.exists() and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                raise KeyboardInterrupt
+
+            with mock.patch.object(subprocess.Popen, "communicate", interrupted):
+                with self.assertRaises(KeyboardInterrupt):
+                    adapter.bounded_process(
+                        [sys.executable, "-c", script, str(pid_file)], root, timeout=5)
+            self.assertTrue(pid_file.is_file())
+            self.assert_pid_exits(int(pid_file.read_text()))
 
 
 class StopTerminationTests(unittest.TestCase):
@@ -1542,7 +1893,7 @@ class HookBridgeTests(unittest.TestCase):
             repo, hook, adapter_path, env, payload = self.fixture(
                 Path(td), lifecycle_config(enabled=False))
             disabled = self.invoke(repo, hook, "PreToolUse", env, payload)
-            self.assertEqual(disabled.stdout, "")
+            self.assertEqual(json.loads(disabled.stdout)["lifecycle_hook"]["binding"], "unbound")
             (repo / ".claude-atomic.yaml").write_text(lifecycle_config())
             adapter_path.write_text(
                 'import json\nprint(json.dumps({"lifecycle_hook":{"schema_version":1,"processed":True,"event":"Stop","binding":"unbound"}}))\n'
@@ -1557,6 +1908,7 @@ class HookDispatcherAndSettingsTests(unittest.TestCase):
         hooks = root / "hooks"
         hooks.mkdir()
         shutil.copy2(ROOT / ".claude" / "hooks" / "stop.sh", hooks / "stop.sh")
+        shutil.copy2(ROOT / ".claude" / "hooks" / "lifecycle-envelope.py", hooks / "lifecycle-envelope.py")
         for name in ("session-end.sh", "plan-completion-check.sh", "feedback-capture.sh"):
             (hooks / name).write_text("#!/usr/bin/env bash\nexit 0\n")
         (hooks / "task-gate.sh").write_text(
@@ -1619,21 +1971,23 @@ class HookDispatcherAndSettingsTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            legacy = {"decision": "block", "reason": "legacy fallback"}
+            legacy = {"decision": "block", "reason": "must not run"}
             proc, env = self.run_stop(
                 root,
                 TASK_OUT="",
                 LIFECYCLE_OUT="",
                 GIT_OUT=json.dumps(legacy),
             )
-            self.assertEqual(json.loads(proc.stdout), legacy)
-            self.assertTrue(Path(env["GIT_LOG"]).exists())
+            self.assertIn("invalid", json.loads(proc.stdout)["reason"].lower())
+            self.assertFalse(Path(env["GIT_LOG"]).exists())
 
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             legacy = {"decision": "block", "reason": "explicit unbound fallback"}
+            unbound = {"lifecycle_hook": {
+                "schema_version": 1, "processed": True, "event": "Stop", "binding": "unbound"}}
             proc, env = self.run_stop(
-                root, TASK_OUT="", LIFECYCLE_OUT="",
+                root, TASK_OUT="", LIFECYCLE_OUT=json.dumps(unbound),
                 GIT_OUT=json.dumps(legacy))
             self.assertEqual(json.loads(proc.stdout), legacy)
             self.assertTrue(Path(env["GIT_LOG"]).exists())
@@ -1652,7 +2006,7 @@ class HookDispatcherAndSettingsTests(unittest.TestCase):
                 GIT_OUT=json.dumps({"decision": "block", "reason": "legacy"}),
             )
             self.assertEqual(json.loads(proc.stdout)["decision"], "block")
-            self.assertIn("malformed", json.loads(proc.stdout)["reason"].lower())
+            self.assertIn("invalid", json.loads(proc.stdout)["reason"].lower())
             self.assertFalse(Path(env["GIT_LOG"]).exists())
 
     def test_stop_dispatcher_blocks_when_lifecycle_bridge_is_missing(self):
@@ -1673,18 +2027,99 @@ class HookDispatcherAndSettingsTests(unittest.TestCase):
             self.assertIn("unavailable", output["reason"].lower())
             self.assertFalse(Path(env["GIT_LOG"]).exists())
 
+    def test_all_outer_dispatchers_fail_closed_for_empty_nonzero_object_and_malformed_bridges(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            home = root / "home"
+            hooks = home / ".dotfiles" / ".claude" / "hooks"
+            hooks.mkdir(parents=True)
+            for name in (
+                "lifecycle-pretool.sh", "lifecycle-envelope.py", "sessionstart.sh",
+                "userpromptsubmit.sh", "stop.sh",
+            ):
+                shutil.copy2(ROOT / ".claude" / "hooks" / name, hooks / name)
+            (hooks / "lifecycle-hook.sh").write_text("""#!/usr/bin/env bash
+case "${BRIDGE_MODE:-}" in
+  empty) exit 0 ;;
+  nonzero)
+    printf '{"lifecycle_hook":{"schema_version":1,"processed":true,"event":"%s","binding":"unbound"}}\n' "$1"
+    exit 7
+    ;;
+  object) printf '{}\n' ;;
+  malformed) printf '{bad\n' ;;
+esac
+""")
+            stubs = (
+                "settings-symlink-guard.sh", "session-init.sh", "supermemory-project-check.sh",
+                "model-availability-check.sh", "hook-graduate.sh", "session-init-enforcer.sh",
+                "session-duration-guard.sh", "plans-healthcheck.sh", "prompt-parallelism-hint.sh",
+                "plan-todowrite-reminder.sh", "prompt-capture.sh", "prompt-score-correction.sh",
+                "symbol-intent.sh", "env-preflight.sh", "session-end.sh",
+                "plan-completion-check.sh", "feedback-capture.sh", "task-gate.sh",
+            )
+            for name in stubs:
+                (hooks / name).write_text("#!/usr/bin/env bash\nexit 0\n")
+            (hooks / "git-pipeline-gate.sh").write_text(
+                """#!/usr/bin/env bash
+printf '%s\n' '{"decision":"block","reason":"legacy must not run"}'
+""")
+            tmux = home / ".dotfiles" / "tmux" / "scripts"
+            tmux.mkdir(parents=True)
+            (tmux / "claude-tmux-bridge.sh").write_text("#!/usr/bin/env bash\nexit 0\n")
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            (bin_dir / "lean-ctx").write_text("#!/usr/bin/env bash\nexit 0\n")
+            for path in (*hooks.iterdir(), tmux / "claude-tmux-bridge.sh", bin_dir / "lean-ctx"):
+                path.chmod(0o755)
+
+            payload = json.dumps({
+                "cwd": str(root), "session_id": "outer-session",
+                "tool_name": "Write", "tool_input": {"file_path": str(root / "x")},
+                "prompt": "test", "stop_hook_active": False,
+            })
+            scripts = {
+                "PreToolUse": hooks / "lifecycle-pretool.sh",
+                "SessionStart": hooks / "sessionstart.sh",
+                "UserPromptSubmit": hooks / "userpromptsubmit.sh",
+                "Stop": hooks / "stop.sh",
+            }
+            for mode in ("empty", "nonzero", "object", "malformed"):
+                for event, script in scripts.items():
+                    with self.subTest(mode=mode, event=event):
+                        env = os.environ.copy()
+                        env.update({
+                            "HOME": str(home), "BRIDGE_MODE": mode,
+                            "PATH": f"{bin_dir}:{env['PATH']}",
+                        })
+                        proc = subprocess.run(
+                            [str(script)], cwd=str(root), env=env, input=payload,
+                            capture_output=True, text=True, check=False,
+                        )
+                        self.assertEqual(proc.returncode, 0, proc.stderr)
+                        value = json.loads(proc.stdout)
+                        if event == "PreToolUse":
+                            self.assertEqual(
+                                value["hookSpecificOutput"]["permissionDecision"], "deny")
+                        elif event == "Stop":
+                            self.assertEqual(value["decision"], "block")
+                            self.assertIn("invalid", value["reason"].lower())
+                        else:
+                            context = value["hookSpecificOutput"]["additionalContext"]
+                            self.assertIn("unavailable or invalid", context)
+
     def test_canonical_settings_and_dispatchers_use_portable_lifecycle_wiring(self):
         settings_path = ROOT / "ai" / "config" / "claude" / "settings.base.json"
         settings = json.loads(settings_path.read_text())
         entries = settings["hooks"]["PreToolUse"]
         lifecycle_entries = [item for item in entries
-                             if item["matcher"] == "Edit|Write|MultiEdit|NotebookEdit|Bash|mcp__pctx__execute_typescript"]
+                             if item["matcher"] == "Edit|Write|MultiEdit|NotebookEdit|Bash|EnterWorktree|ExitWorktree|mcp__pctx__execute_typescript"]
         self.assertEqual(len(lifecycle_entries), 1)
         command = lifecycle_entries[0]["hooks"][0]["command"]
-        self.assertIn('hook="$HOME/.dotfiles/.claude/hooks/lifecycle-hook.sh"', command)
-        self.assertIn("Lifecycle hook bridge is unavailable; failed closed.", command)
+        self.assertIn('dispatcher="$HOME/.dotfiles/.claude/hooks/lifecycle-pretool.sh"', command)
+        self.assertIn("dispatcher is unavailable; failed closed.", command)
         self.assertNotIn("args", lifecycle_entries[0]["hooks"][0])
-        self.assertIn("lifecycle-hook.sh\" SessionStart", (ROOT / ".claude/hooks/sessionstart.sh").read_text())
+        self.assertIn('_LIFECYCLE_BRIDGE="$SCRIPT_DIR/lifecycle-hook.sh"',
+                      (ROOT / ".claude/hooks/sessionstart.sh").read_text())
         self.assertIn(
             '_LIFECYCLE_BRIDGE="$HOME/.dotfiles/.claude/hooks/lifecycle-hook.sh"',
             (ROOT / ".claude/hooks/userpromptsubmit.sh").read_text(),

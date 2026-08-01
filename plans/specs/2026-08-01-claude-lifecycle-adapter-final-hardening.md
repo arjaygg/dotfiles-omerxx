@@ -1,6 +1,6 @@
 ---
 status: frozen
-review_round: 2
+review_round: 3
 ---
 
 # Frozen Spec — Claude lifecycle adapter final hardening
@@ -20,6 +20,8 @@ an explicit allowlist, but deny unknown Bash and mutation-capable pctx execution
 - `scripts/ai/commit.sh`
 - `scripts/ai/autonomy-tier.sh`
 - `.claude/hooks/lifecycle-hook.sh`
+- `.claude/hooks/lifecycle-envelope.py`
+- `.claude/hooks/lifecycle-pretool.sh`
 - `.claude/hooks/stop.sh`
 - `.claude/hooks/sessionstart.sh`
 - `.claude/hooks/userpromptsubmit.sh`
@@ -27,6 +29,7 @@ an explicit allowlist, but deny unknown Bash and mutation-capable pctx execution
 - `.claude-atomic.yaml`
 - `.claude/scripts/pr-stack/create-stack.sh`
 - `.claude/scripts/pr-stack/create-pr.sh`
+- `.claude/hooks/worktree-create.sh`
 - focused lifecycle, hook, wrapper, and policy tests
 - lifecycle policy docs/spec review log
 
@@ -61,21 +64,25 @@ an explicit allowlist, but deny unknown Bash and mutation-capable pctx execution
    origin fetch/push identity, normalized GitHub repository, expected actor, and
    rollout approval under the git common directory. Actions resolve autonomy
    from that immutable snapshot, reject policy/remote drift, and honor the live
-   `git-pipeline-gate` off switch.
+   `git-pipeline-gate` off switch. The origin must be one equal normalized HTTPS
+   fetch/push URL, and the expected actor is read only from human-owned policy.
 7. Push verifies fresh action evidence and the pinned remote, uses a bounded
    noninteractive process group, and sends
    `<inspected-sha>:refs/heads/<validated-branch>`. PR creation verifies that
-   exact remote SHA and approved actor/repository, never pushes again, and only
-   records an open non-draft exact PR.
+   exact remote SHA and approved actor/repository with a token selected for that
+   actor, never pushes again, and only records an actor-owned open non-draft
+   exact PR.
 8. Commit builds an immutable private index/tree from the approved paths,
    validates that exact index, creates the approved commit tree and expected
    parent, and updates the intended branch with an expected-parent CAS. A
-   concurrent default-index/ref mutation cannot enter the commit. Hooks and
-   canonical message/intent behavior remain enforced, and crash recovery leaves
-   a deterministic reconcilable state.
+   concurrent default-index/ref mutation cannot enter the commit. Mutable
+   repository Git hooks are disabled only for lifecycle private commits;
+   adapter-owned message/intent behavior remains enforced, ordinary commits keep
+   normal hook behavior, and crash recovery leaves a deterministic state.
 9. Every external process runs in its own process group with a bounded timeout,
-   noninteractive Git network behavior, TERM/KILL escalation, and reaping. No
-   descendant may continue mutating after timeout or lock release.
+   noninteractive Git network behavior, TERM/KILL escalation, and reaping on
+   timeout, signals, or other `BaseException`. No descendant may continue
+   mutating after timeout or lock release.
 10. A CI watcher marker is not a lease. Only a validated marker plus a currently
     held execution lock is active. Failed, timed-out, dead, malformed, or stale
     markers restart under the spawn lock; Stop blocks unless watcher readiness or
@@ -84,10 +91,12 @@ an explicit allowlist, but deny unknown Bash and mutation-capable pctx execution
     exit 8 pending results only when JSON agrees. Passing additionally requires
     authoritative complete merge-readiness evidence and a second identical open
     non-draft exact-PR observation; partial/missing evidence stays unknown.
-12. Failure intent/demotion persists before best-effort audit. Audit uses secure
-    no-follow directory traversal, owned single-link regular files, complete
-    JSONL parsing, incomplete-tail repair, parsed-event deduplication, fsync, and
-    redacted diagnostics. Audit failure cannot restore autonomy.
+12. Failure intent/demotion persists before audit. A durable pending/completed
+    action journal is written before execution and reconciled idempotently before
+    any later action can advance. Audit uses secure no-follow directory
+    traversal, owned single-link regular files, complete JSONL parsing,
+    incomplete-tail repair, parsed-event deduplication, fsync, and redacted
+    diagnostics. Audit failure cannot restore autonomy or permit advancement.
 13. `autonomy-tier.sh` rejects duplicate policy blocks/keys and incomplete,
     malformed, expired, unsigned, unknown-stage, or invalid-basis overrides.
 14. `.trees` must be a real non-symlink directory physically contained beneath
@@ -122,3 +131,26 @@ Three independent final reviews agreed that the prior passing test suite did not
 prove the enforcement boundary. This spec accepts their overlapping command,
 bridge, session, policy, watcher, network, commit-CAS, timeout, CI, audit, and
 stack-path findings as release blockers.
+
+## Review Triage Log
+
+- Round 3 (2026-08-02): fixed shell-expansion/option probes, repository-module
+  execution in trusted validation, and outer bridge output trust.
+  Disabled/unbound fallback now requires an explicit validated envelope.
+- Round 3: `.claude-atomic-intent` uses atomic replacement rather than following
+  a destination symlink. `EnterWorktree`/`ExitWorktree` are lifecycle-denied,
+  and the worktree hook independently checks physical `.trees` containment.
+- Round 3: lifecycle private commits no longer execute mutable repository Git
+  hooks. Ordinary `commit.sh` behavior remains hook-compatible.
+- Round 3: contract capture rejects missing, multiple, non-HTTPS, or unequal
+  origin identities before persistence. Mutation credentials are selected with
+  `gh auth token --user` for the policy actor, verified through `/user`, held
+  only in process memory/environment, and shared with pinned HTTPS push or PR
+  creation. PR/check commands name the pinned repository explicitly and verify
+  resulting authorship.
+- Round 3: process-group cleanup covers interrupts and signals; action execution
+  writes a durable reconciliation journal before side effects; PR errors expose
+  only the bounded structured redaction emitted by `create-pr.sh`.
+- Round 3 residual boundary: general MCP sandboxing remains out of scope as
+  stated in Acceptance 2. No listed lifecycle acceptance item requires disabling
+  rollout; `lifecycle.enabled` remains `true`.
