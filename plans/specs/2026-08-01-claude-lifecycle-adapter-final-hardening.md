@@ -1,6 +1,6 @@
 ---
 status: frozen
-review_round: 3
+review_round: 4
 ---
 
 # Frozen Spec — Claude lifecycle adapter final hardening
@@ -134,6 +134,16 @@ stack-path findings as release blockers.
 
 ## Review Triage Log
 
+- Round 4 (2026-08-02): the loaded settings command now captures the
+  `PreToolUse` dispatcher status and output, then applies its own inline strict
+  allow/deny envelope validation. Missing, failed, empty, malformed, duplicate,
+  wrong-event/binding/run-id, and invalid native payloads emit an exit-zero
+  hard deny without trusting the mutable dispatcher validator.
+- Round 4: lifecycle exact-base stack creation disables repository hooks for
+  every child Git process. Exact-SHA push, tracking-ref update, and upstream
+  mutation also disable hooks; the Git credential environment clears `GH_TOKEN`
+  while the process-scoped askpass token remains inaccessible to disabled
+  pre-push/reference hooks. Ordinary non-lifecycle Git hook behavior is unchanged.
 - Round 3 (2026-08-02): fixed shell-expansion/option probes, repository-module
   execution in trusted validation, and outer bridge output trust.
   Disabled/unbound fallback now requires an explicit validated envelope.
