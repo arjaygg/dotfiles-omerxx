@@ -13,20 +13,6 @@ HOOK = ROOT / ".claude/hooks/settings-symlink-guard.sh"
 SETTINGS = ROOT / ".claude/settings.json"
 BASE_TEMPLATE = ROOT / "ai/config/claude/settings.base.json"
 
-LEAN_CTX_BINARY_ABS = str(Path.home() / ".cargo" / "bin" / "lean-ctx")
-LEAN_CTX_BINARY_PORTABLE = "$HOME/.cargo/bin/lean-ctx"
-
-
-def _sanitize_managed_hook_paths(text: str) -> str:
-    """Normalize the lean-ctx daemon's absolute binary path to $HOME form.
-
-    The lean-ctx daemon rewrites its three hook commands in the live settings
-    to the absolute binary path; that is managed tool state, not private
-    context leakage. Every other absolute-home-path finding stays a violation.
-    """
-    return text.replace(LEAN_CTX_BINARY_ABS, LEAN_CTX_BINARY_PORTABLE)
-
-
 class Phase0BoundaryTests(unittest.TestCase):
     def test_tracked_settings_do_not_enable_dangerous_mode_bypass(self):
         # The guarantee is scoped to the distributable base template: fresh
@@ -62,18 +48,14 @@ class Phase0BoundaryTests(unittest.TestCase):
         self.assertEqual(ignored.returncode, 0)
 
     @unittest.skipUnless(SETTINGS.exists(), "runtime settings not generated on this host")
-    def test_claude_base_template_matches_sanitized_runtime_settings(self):
-        # Runtime-drift detector: the live file may gain runtime keys
-        # (skipDangerousModePermissionPrompt) and absolute lean-ctx hook paths;
-        # after sanitizing those it must still equal the base template.
-        sanitized_live = json.loads(
-            _sanitize_managed_hook_paths(SETTINGS.read_text(encoding="utf-8"))
-        )
-        sanitized_live.pop("skipDangerousModePermissionPrompt", None)
-        self.assertEqual(
-            json.loads(BASE_TEMPLATE.read_text(encoding="utf-8")),
-            sanitized_live,
-        )
+    def test_runtime_settings_is_valid_json(self):
+        # Post-0016 the live file is runtime-owned: divergence from the base
+        # template (model choice, skipDangerousModePermissionPrompt, absolute
+        # lean-ctx hook paths) is legitimate state, not drift. The only durable
+        # guarantee is that the file stays parseable.
+        json.loads(SETTINGS.read_text(encoding="utf-8"))
+
+    def test_claude_base_template_is_hygienic(self):
         self.assertEqual(
             scan_text("ai/config/claude/settings.base.json", BASE_TEMPLATE.read_text(encoding="utf-8")),
             [],
