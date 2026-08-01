@@ -117,6 +117,22 @@ class McpGatewayCheckTests(unittest.TestCase):
             [(result.rule, result.path, result.status) for result in results],
         )
 
+    def test_direct_lean_ctx_is_approved_for_windsurf(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            write_valid_gateway_tree(root)
+            path = root / ".windsurf/mcp_config.json"
+            config = json.loads(path.read_text(encoding="utf-8"))
+            config["mcpServers"]["lean-ctx"] = {"command": "lean-ctx"}
+            write(path, json.dumps(config))
+
+            results = check_mcp_gateway(root)
+
+        self.assertNotIn(
+            ("client-unapproved-server", ".windsurf/mcp_config.json", "fail"),
+            [(result.rule, result.path, result.status) for result in results],
+        )
+
     def test_agy_missing_legacy_shim_is_reported(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

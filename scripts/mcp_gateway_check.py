@@ -20,7 +20,7 @@ CLIENT_JSON_CONFIGS = {
     ".gemini/mcp.json": {"pctx", "serena"},
     ".gemini/settings.json": {"pctx", "serena"},
     ".gemini/config/mcp_config.json": {"pctx", "serena", "notebooklm", "chrome-devtools"},
-    ".windsurf/mcp_config.json": {"pctx", "serena"},
+    ".windsurf/mcp_config.json": {"pctx", "serena", "lean-ctx"},
 }
 
 
