@@ -9,6 +9,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -165,6 +167,20 @@ class OptInAndBindingTests(unittest.TestCase):
             self.assertEqual(value["run_id"], "run-1")
             self.assertEqual(value["action"], "awaiting_work")
 
+    def test_new_run_is_halted_when_binding_persistence_fails(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = init_repo(Path(td) / "repo")
+            with mock.patch.object(
+                    adapter, "_write_binding_locked",
+                    side_effect=adapter.AdapterError("simulated", "binding_write_failed")):
+                with self.assertRaises(adapter.AdapterError) as raised:
+                    start_run(repo)
+            self.assertEqual(raised.exception.code, "binding_persist_failed")
+            view = controller.discover_repo(repo)
+            state = adapter.load_run_state(view, "run-1")
+            self.assertEqual(state["terminal"]["status"], "blocked")
+            self.assertEqual(adapter.inspect_bound(view, "run-1")["action"], "blocked")
+
     def test_ready_and_next_unit_are_bound_and_idempotent(self):
         with tempfile.TemporaryDirectory() as td:
             repo = init_repo(Path(td) / "repo")
@@ -267,6 +283,48 @@ class PreWriteAndContextHookTests(unittest.TestCase):
         )
         self.assertIn("state is commit", after_ready["hookSpecificOutput"]["permissionDecisionReason"])
 
+    def test_corrupt_binding_fails_closed_for_write_and_stop(self):
+        repo = controller.discover_repo(self.linked)
+        adapter.binding_path(repo.common_dir, "session-1").write_text("{bad")
+        payload = self.payload(
+            "session-1", "Write", {"file_path": str(self.linked / "owned" / "new.txt")})
+        write_result = adapter.hook(namespace(event="PreToolUse"), self.linked, json.dumps(payload))
+        self.assertEqual(write_result["hookSpecificOutput"]["permissionDecision"], "deny")
+        stop_result = adapter.hook(namespace(event="Stop"), self.linked, json.dumps(payload))
+        self.assertEqual(stop_result["decision"], "block")
+        self.assertTrue(stop_result["lifecycle_bound"])
+
+    def test_notebook_edit_and_direct_bash_mutations_are_gated(self):
+        repo = controller.discover_repo(self.linked)
+        allowed = adapter.hook_pre_write(
+            self.payload("session-1", "NotebookEdit",
+                         {"notebook_path": str(self.linked / "owned" / "notes.ipynb")}),
+            repo, "session-1")
+        self.assertIsNone(allowed)
+        outside = adapter.hook_pre_write(
+            self.payload("session-1", "NotebookEdit",
+                         {"notebook_path": str(self.linked / "notes.ipynb")}),
+            repo, "session-1")
+        self.assertEqual(outside["hookSpecificOutput"]["permissionDecision"], "deny")
+        blocked = (
+            "git add owned/x", "git -C . commit -m x", "git push origin main",
+            "gh pr create --fill", "gh pr edit 1 --title x", "gh pr merge 1",
+            "gh -R owner/repo pr create --fill", "env -u GH_TOKEN git push origin main",
+            "$HOME/.dotfiles/.claude/scripts/stack create feature/x main",
+            "stack pr feature/x", "stack merge 1", "stack clean feature/x", "stack update",
+            "bash -c 'git push origin main'",
+        )
+        for command in blocked:
+            with self.subTest(command=command):
+                value = adapter.hook_pre_write(
+                    self.payload("session-1", "Bash", {"command": command}), repo, "session-1")
+                self.assertEqual(value["hookSpecificOutput"]["permissionDecision"], "deny")
+        for command in ("git status", "git diff", "gh pr view 1", "stack status",
+                        "python3 scripts/ai/lifecycle_adapter.py tick", "python3 -m unittest tests"):
+            with self.subTest(allowed=command):
+                self.assertIsNone(adapter.hook_pre_write(
+                    self.payload("session-1", "Bash", {"command": command}), repo, "session-1"))
+
     def test_prompt_and_session_context_are_concise_and_malformed_input_is_silent(self):
         repo = controller.discover_repo(self.linked)
         for event in ("SessionStart", "UserPromptSubmit"):
@@ -274,7 +332,10 @@ class PreWriteAndContextHookTests(unittest.TestCase):
             specific = value["hookSpecificOutput"]
             self.assertEqual(specific["hookEventName"], event)
             self.assertIn("Lifecycle awaiting_work", specific["additionalContext"])
-        self.assertIsNone(adapter.hook(namespace(event="PreToolUse"), self.repo, "{not-json"))
+        malformed = adapter.hook(namespace(event="PreToolUse"), self.repo, "{not-json")
+        self.assertEqual(malformed["hookSpecificOutput"]["permissionDecision"], "deny")
+        with tempfile.TemporaryDirectory() as td:
+            self.assertIsNone(adapter.hook(namespace(event="PreToolUse"), Path(td), "{not-json"))
 
 
 class ReversibleActionTests(unittest.TestCase):
@@ -307,6 +368,7 @@ class ReversibleActionTests(unittest.TestCase):
                 "main",
                 "--base-sha",
                 state["base"]["sha"],
+                "--strict",
             ],
         )
 
@@ -336,6 +398,52 @@ class ReversibleActionTests(unittest.TestCase):
         self.assertEqual(value["reason_code"], "stale_inspection")
         action.assert_not_called()
         self.assertFalse((self.repo_view.common_dir / "autonomy-demoted-auto_commit").exists())
+
+    def test_concurrent_ticks_serialize_without_duplicate_action_or_demotion(self):
+        linked = add_linked(self.repo)
+        ready_run(self.repo, linked)
+        barrier = threading.Barrier(3)
+        counts = {"commit": 0, "push": 0}
+        count_lock = threading.Lock()
+        results: list[dict] = []
+        errors: list[BaseException] = []
+
+        def commit_once(_repo, state, _decision):
+            with count_lock:
+                counts["commit"] += 1
+            time.sleep(0.1)
+            ready = controller.current_unit(state)["ready"]
+            git(linked, "add", "owned/change.txt")
+            git(linked, "commit", "-q", "-m", ready["subject"], "-m", ready["body"])
+
+        def push_once(_repo, _state, _decision):
+            with count_lock:
+                counts["push"] += 1
+
+        def worker():
+            try:
+                barrier.wait()
+                results.append(adapter.tick(namespace(run_id="run-1"), self.repo))
+            except BaseException as exc:  # pragma: no cover - asserted below
+                errors.append(exc)
+
+        with (
+            mock.patch.object(adapter, "resolve_autonomy", return_value=(True, "authorized")),
+            mock.patch.object(adapter, "action_commit", side_effect=commit_once),
+            mock.patch.object(adapter, "action_push", side_effect=push_once),
+        ):
+            threads = [threading.Thread(target=worker) for _ in range(2)]
+            for thread in threads:
+                thread.start()
+            barrier.wait()
+            for thread in threads:
+                thread.join(5)
+        self.assertFalse(errors)
+        self.assertEqual(len(results), 2)
+        self.assertEqual(counts["commit"], 1)
+        self.assertLessEqual(counts["push"], 1)
+        for stage in adapter.ACTION_STAGES.values():
+            self.assertFalse((self.repo_view.common_dir / f"autonomy-demoted-{stage}").exists())
 
     def test_commit_stages_only_ready_paths_validates_and_uses_wrapper(self):
         linked = add_linked(self.repo)
@@ -368,6 +476,28 @@ class ReversibleActionTests(unittest.TestCase):
         )
         self.assertEqual(adapter.inspect_bound(self.repo_view, "run-1")["action"], "push")
 
+    def test_commit_cas_rejects_post_stage_content_mutation(self):
+        linked = add_linked(self.repo)
+        ready_run(self.repo, linked)
+        state = adapter.load_run_state(self.repo_view, "run-1")
+        decision = adapter.inspect_bound(self.repo_view, "run-1")
+        commit_called = False
+
+        def mutate_after_stage(args, cwd, check=True):
+            nonlocal commit_called
+            if Path(str(args[0])) == adapter.VALIDATE:
+                (linked / "owned" / "change.txt").write_text("mutated after staging\n")
+            if Path(str(args[0])) == adapter.COMMIT:
+                commit_called = True
+            return completed_process(args, stdout='{"passed":true}\n')
+
+        with mock.patch.object(adapter, "run_command", side_effect=mutate_after_stage):
+            with self.assertRaises(adapter.AdapterError) as raised:
+                adapter.action_commit(self.repo_view, state, decision)
+        self.assertEqual(raised.exception.code, "commit_cas_failed")
+        self.assertFalse(commit_called)
+        self.assertEqual(git(linked, "rev-parse", "HEAD").stdout.strip(), state["base"]["sha"])
+
     def test_push_is_ordinary_and_open_pr_reuses_or_calls_canonical_stack(self):
         linked = add_linked(self.repo)
         ready_run(self.repo, linked)
@@ -379,7 +509,13 @@ class ReversibleActionTests(unittest.TestCase):
         git(linked, "remote", "add", "origin", str(bare))
         state = adapter.load_run_state(self.repo_view, "run-1")
         decision = adapter.inspect_bound(self.repo_view, "run-1")
-        adapter.action_push(self.repo_view, state, decision)
+        original_git = controller.git
+        with mock.patch.object(controller, "git", wraps=original_git) as git_call:
+            adapter.action_push(self.repo_view, state, decision)
+        pushes = [call.args[1:] for call in git_call.call_args_list
+                  if len(call.args) > 1 and call.args[1] == "push"]
+        self.assertEqual(pushes, [("push", "--set-upstream", "origin",
+                                  "HEAD:refs/heads/feature/lifecycle")])
         self.assertEqual(
             git(bare, "rev-parse", "refs/heads/feature/lifecycle").stdout.strip(),
             git(linked, "rev-parse", "HEAD").stdout.strip(),
@@ -393,6 +529,9 @@ class ReversibleActionTests(unittest.TestCase):
             "isDraft": False,
             "headRefOid": head,
             "headRefName": "feature/lifecycle",
+            "baseRefName": "main",
+            "headRepositoryOwner": {"login": "owner"},
+            "repository": "owner/repo",
             "url": "https://example.invalid/pr/17",
         }
         with (
@@ -401,7 +540,8 @@ class ReversibleActionTests(unittest.TestCase):
         ):
             adapter.action_open_pr(self.repo_view, state, decision)
         command.assert_called_once_with(
-            [adapter.STACK, "pr", "feature/lifecycle"],
+            [adapter.STACK, "pr", "feature/lifecycle", "main",
+             "feat(lifecycle): add adapter behavior"],
             linked.resolve(),
         )
         self.assertEqual(adapter.inspect_bound(self.repo_view, "run-1")["action"], "wait_ci")
@@ -478,6 +618,44 @@ class ReversibleActionTests(unittest.TestCase):
             command.assert_not_called()
 
 
+class AdapterAuditTests(unittest.TestCase):
+    def test_audit_is_locked_partial_write_safe_mode_0600_and_idempotent(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = init_repo(Path(td) / "repo")
+            view = controller.discover_repo(repo)
+            original_write = os.write
+
+            def short_write(fd, data):
+                return original_write(fd, data[:max(1, min(7, len(data)))])
+
+            with mock.patch.object(os, "write", side_effect=short_write):
+                adapter.append_adapter_audit(view.common_dir, "run-1", "action", "attempt",
+                                             action="commit", stage="auto_commit")
+                adapter.append_adapter_audit(view.common_dir, "run-1", "action", "attempt",
+                                             action="commit", stage="auto_commit")
+            path = adapter.adapter_root(view.common_dir) / "adapter-audit.jsonl"
+            records = [json.loads(line) for line in path.read_text().splitlines()]
+            self.assertEqual(len(records), 1)
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            self.assertTrue(records[0]["event_id"].startswith("adapter:audit:"))
+            serialized = json.dumps(records[0])
+            for forbidden in ("command", "environment", "token", "prompt", "path"):
+                self.assertNotIn(forbidden, serialized.lower())
+
+    def test_audit_refuses_symlink_target(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = init_repo(Path(td) / "repo")
+            view = controller.discover_repo(repo)
+            root = adapter.adapter_root(view.common_dir)
+            root.mkdir(parents=True, exist_ok=True)
+            target = Path(td) / "outside.log"
+            target.write_text("")
+            (root / "adapter-audit.jsonl").symlink_to(target)
+            with self.assertRaises(OSError):
+                adapter.append_adapter_audit(view.common_dir, "run-1", "action", "attempt")
+            self.assertEqual(target.read_text(), "")
+
+
 class CiAndWatcherTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -489,6 +667,16 @@ class CiAndWatcherTests(unittest.TestCase):
 
     def tearDown(self):
         self.temp.cleanup()
+
+    def pull_request(self, **updates):
+        value = {
+            "number": 9, "state": "OPEN", "isDraft": False,
+            "headRefOid": self.head, "headRefName": "feature/lifecycle",
+            "baseRefName": "main", "headRepositoryOwner": {"login": "owner"},
+            "repository": "owner/repo", "url": "https://example.invalid/pr/9",
+        }
+        value.update(updates)
+        return value
 
     def test_required_check_matrix_never_passes_missing_unknown_or_pending(self):
         cases = [
@@ -517,6 +705,9 @@ class CiAndWatcherTests(unittest.TestCase):
             "isDraft": False,
             "headRefOid": self.head,
             "headRefName": "feature/lifecycle",
+            "baseRefName": "main",
+            "headRepositoryOwner": {"login": "owner"},
+            "repository": "owner/repo",
             "url": "https://example.invalid/pr/9",
         }
         checks = [{"name": "required-build", "state": "SUCCESS", "bucket": "pass"}]
@@ -538,8 +729,70 @@ class CiAndWatcherTests(unittest.TestCase):
         self.assertEqual(stale["outcome"], "stale")
         query.assert_not_called()
 
+    def test_pr_identity_rejects_base_owner_and_ignores_other_heads(self):
+        state = adapter.load_run_state(self.repo_view, "run-1")
+        for updates in ({"baseRefName": "wrong"}, {"headRepositoryOwner": {"login": "fork"}}):
+            proc = completed_process(stdout=json.dumps([self.pull_request(**updates)]))
+            with self.subTest(updates=updates):
+                with self.assertRaises(adapter.AdapterError) as raised:
+                    adapter.parse_prs(proc, state, self.head, "owner/repo", "owner")
+                self.assertEqual(raised.exception.code, "pr_identity_mismatch")
+        other = completed_process(stdout=json.dumps([
+            self.pull_request(headRefOid="0" * len(self.head))]))
+        self.assertEqual(adapter.parse_prs(other, state, self.head, "owner/repo", "owner"), [])
+
+    def test_passing_ci_rechecks_pr_and_rejects_state_churn(self):
+        checks = [{"name": "required-build", "bucket": "pass"}]
+        with (
+            mock.patch.object(adapter, "query_exact_pr",
+                              side_effect=[self.pull_request(), self.pull_request(state="CLOSED")]),
+            mock.patch.object(adapter, "run_command",
+                              return_value=completed_process(stdout=json.dumps(checks))),
+        ):
+            result = adapter.reconcile_ci(self.repo_view, "run-1", self.head)
+        self.assertEqual(result["status"], "unknown")
+        self.assertEqual(result["outcome"], "pending")
+        state = adapter.load_run_state(self.repo_view, "run-1")
+        self.assertEqual([fact["status"] for fact in state["facts"] if fact["kind"] == "pr"],
+                         ["open", "closed"])
+
+    def test_nonzero_check_command_can_never_record_passing(self):
+        checks = [{"name": "required-build", "bucket": "pass"}]
+        with (
+            mock.patch.object(adapter, "query_exact_pr", return_value=self.pull_request()),
+            mock.patch.object(adapter, "run_command",
+                              return_value=completed_process(returncode=8, stdout=json.dumps(checks))),
+        ):
+            result = adapter.reconcile_ci(self.repo_view, "run-1", self.head)
+        self.assertEqual(result["status"], "unknown")
+        self.assertTrue(result["degraded"])
+
+    def test_watcher_handshake_failure_and_poll_budget_terminate(self):
+        fake = mock.Mock(pid=4242)
+        fake.poll.return_value = None
+        with (
+            mock.patch.object(subprocess, "Popen", return_value=fake),
+            mock.patch.object(adapter, "child_ready", return_value=False),
+        ):
+            with self.assertRaises(adapter.AdapterError) as raised:
+                adapter.spawn_watcher(self.repo_view, "run-1", self.head)
+        self.assertEqual(raised.exception.code, "watcher_not_ready")
+        fake.terminate.assert_called_once()
+
+        marker, _, _, _ = adapter.watcher_paths(self.repo_view.common_dir, "run-1", self.head)
+        marker.unlink()
+        pending = {"ok": False, "outcome": "pending", "status": "unknown",
+                   "sha": self.head, "degraded": True}
+        args = namespace(run_id="run-1", sha=self.head, once=False, interval=0, max_polls=2)
+        with mock.patch.object(adapter, "safe_reconcile_ci", return_value=pending) as reconcile:
+            result = adapter.watch(args, self.repo)
+        self.assertEqual(result["outcome"], "timeout")
+        self.assertEqual(reconcile.call_count, 2)
+        parsed = adapter.parser().parse_args(["watch", "--run-id", "run-1", "--sha", self.head])
+        self.assertEqual(parsed.max_polls, 80)
+
     def test_one_detached_watcher_per_run_and_sha(self):
-        marker, _ = adapter.watcher_paths(self.repo_view.common_dir, "run-1", self.head)
+        marker, _, _, _ = adapter.watcher_paths(self.repo_view.common_dir, "run-1", self.head)
         marker.parent.mkdir(parents=True)
         controller.atomic_json(
             marker,
@@ -559,11 +812,90 @@ class CiAndWatcherTests(unittest.TestCase):
 
         marker.unlink()
         fake = mock.Mock(pid=424242)
-        with mock.patch.object(subprocess, "Popen", return_value=fake) as popen:
+        with (
+            mock.patch.object(subprocess, "Popen", return_value=fake) as popen,
+            mock.patch.object(adapter, "child_ready", return_value=True),
+        ):
             started = adapter.spawn_watcher(self.repo_view, "run-1", self.head)
         self.assertTrue(started["started"])
         self.assertTrue(popen.call_args.kwargs["start_new_session"])
         self.assertIs(popen.call_args.kwargs["stdout"], subprocess.DEVNULL)
+
+
+class StopTerminationTests(unittest.TestCase):
+    def test_detached_watcher_allows_stop_and_deferred_action_blocks_once(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = init_repo(Path(td) / "repo")
+            start_run(repo)
+            view = controller.discover_repo(repo)
+            head = git(repo, "rev-parse", "HEAD").stdout.strip()
+            watching = {
+                "outcome": "watching", "after": {"action": "wait_ci", "reason": "pending",
+                                                      "evidence": {"git": {"head_sha": head}}},
+            }
+            with mock.patch.object(adapter, "tick", return_value=watching):
+                allowed = adapter.hook_stop(view, "session-1")
+            self.assertEqual(allowed, {"lifecycle_bound": True})
+
+            deferred = {
+                "outcome": "approval_required", "reason_code": "action_deferred",
+                "after": {"action": "merge_eligible", "reason": "deferred",
+                          "evidence": {"git": {"head_sha": head}}},
+            }
+            with mock.patch.object(adapter, "tick", return_value=deferred):
+                first = adapter.hook_stop(view, "session-1")
+                second = adapter.hook_stop(view, "session-1")
+            self.assertEqual(first["decision"], "block")
+            self.assertEqual(second, {"lifecycle_bound": True})
+            notices = list((adapter.adapter_root(view.common_dir) / "stop-notices").glob("*.json"))
+            self.assertEqual(len(notices), 1)
+
+
+class HookBridgeTests(unittest.TestCase):
+    def invoke(self, repo: Path, hook: Path, event: str, env: dict[str, str], payload: str):
+        return subprocess.run([str(hook), event], cwd=str(repo), env=env, input=payload,
+                              capture_output=True, text=True, check=False)
+
+    def fixture(self, root: Path, config: str):
+        repo = init_repo(root / "repo")
+        (repo / ".claude-atomic.yaml").write_text(config)
+        home = root / "home"
+        hook = home / ".dotfiles" / ".claude" / "hooks" / "lifecycle-hook.sh"
+        hook.parent.mkdir(parents=True)
+        shutil.copy2(ROOT / ".claude" / "hooks" / "lifecycle-hook.sh", hook)
+        adapter_path = home / ".dotfiles" / "scripts" / "ai" / "lifecycle_adapter.py"
+        adapter_path.parent.mkdir(parents=True)
+        env = os.environ.copy()
+        env["HOME"] = str(home)
+        payload = json.dumps({"cwd": str(repo), "session_id": "bridge-session",
+                              "tool_name": "Write", "tool_input": {"file_path": str(repo / "README.md")}})
+        return repo, hook, adapter_path, env, payload
+
+    def test_missing_crashing_corrupt_and_malformed_bridge_inputs_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo, hook, adapter_path, env, payload = self.fixture(Path(td), lifecycle_config())
+            missing = self.invoke(repo, hook, "PreToolUse", env, payload)
+            self.assertEqual(json.loads(missing.stdout)["hookSpecificOutput"]["permissionDecision"], "deny")
+            adapter_path.write_text("import sys\nsys.exit(7)\n")
+            crashed = self.invoke(repo, hook, "Stop", env, payload)
+            self.assertEqual(json.loads(crashed.stdout)["decision"], "block")
+            (repo / ".claude-atomic.yaml").write_text("lifecycle: [broken\n")
+            corrupt = self.invoke(repo, hook, "PreToolUse", env, payload)
+            self.assertEqual(json.loads(corrupt.stdout)["hookSpecificOutput"]["permissionDecision"], "deny")
+            (repo / ".claude-atomic.yaml").write_text(lifecycle_config())
+            malformed = self.invoke(repo, hook, "PreToolUse", env, "{bad")
+            self.assertEqual(json.loads(malformed.stdout)["hookSpecificOutput"]["permissionDecision"], "deny")
+
+    def test_disabled_and_explicit_unbound_stop_use_silent_fallback(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo, hook, adapter_path, env, payload = self.fixture(
+                Path(td), lifecycle_config(enabled=False))
+            disabled = self.invoke(repo, hook, "PreToolUse", env, payload)
+            self.assertEqual(disabled.stdout, "")
+            (repo / ".claude-atomic.yaml").write_text(lifecycle_config())
+            adapter_path.write_text('import json\nprint(json.dumps({"lifecycle_bound": False}))\n')
+            unbound = self.invoke(repo, hook, "Stop", env, payload)
+            self.assertEqual(unbound.stdout, "")
 
 
 class HookDispatcherAndSettingsTests(unittest.TestCase):
@@ -642,11 +974,21 @@ class HookDispatcherAndSettingsTests(unittest.TestCase):
             self.assertEqual(json.loads(proc.stdout), legacy)
             self.assertTrue(Path(env["GIT_LOG"]).exists())
 
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            legacy = {"decision": "block", "reason": "explicit unbound fallback"}
+            proc, env = self.run_stop(
+                root, TASK_OUT="", LIFECYCLE_OUT=json.dumps({"lifecycle_bound": False}),
+                GIT_OUT=json.dumps(legacy))
+            self.assertEqual(json.loads(proc.stdout), legacy)
+            self.assertTrue(Path(env["GIT_LOG"]).exists())
+
     def test_canonical_settings_and_dispatchers_use_portable_lifecycle_wiring(self):
         settings_path = ROOT / "ai" / "config" / "claude" / "settings.base.json"
         settings = json.loads(settings_path.read_text())
         entries = settings["hooks"]["PreToolUse"]
-        lifecycle_entries = [item for item in entries if item["matcher"] == "Edit|Write|MultiEdit"]
+        lifecycle_entries = [item for item in entries
+                             if item["matcher"] == "Edit|Write|MultiEdit|NotebookEdit|Bash"]
         self.assertEqual(len(lifecycle_entries), 1)
         command = lifecycle_entries[0]["hooks"][0]["command"]
         self.assertEqual(
