@@ -350,6 +350,9 @@ def policy_snapshot(root: Path) -> dict[str, Any]:
     approver = lifecycle_block.get("rollout_approved_by", "")
     if not ACTOR_RE.fullmatch(approver):
         raise AdapterError("lifecycle rollout approver is invalid", "rollout_not_approved")
+    github_actor = lifecycle_block.get("github_actor", "")
+    if not ACTOR_RE.fullmatch(github_actor):
+        raise AdapterError("lifecycle GitHub actor is invalid", "invalid_lifecycle_config")
     pipeline = blocks.get("pipeline", {})
     override = blocks.get("autonomy_override", {})
     allowed_stages = set(ACTION_STAGES.values())
@@ -380,6 +383,7 @@ def policy_snapshot(root: Path) -> dict[str, Any]:
         "sha256": hashlib.sha256(data).hexdigest(),
         "rollout_approved": True,
         "rollout_approved_by": approver,
+        "github_actor": github_actor,
         "override_signed_off_by": override["signed_off_by"],
         "override_expires": override["expires"],
         "autonomy": autonomy,
@@ -404,30 +408,18 @@ def normalize_github_repository(url: str | None) -> str | None:
         if match:
             return f"{match.group(1)}/{match.group(2)}"
     return None
-def expected_actor(target: lifecycle.Repo, repository: str | None) -> str | None:
-    for name in ("GH_ACTOR", "GITHUB_ACTOR"):
-        value = os.environ.get(name)
-        if value and ACTOR_RE.fullmatch(value):
-            return value
-    if repository is None:
-        return None
-    try:
-        proc = run_command(["gh", "api", "user", "--jq", ".login"], target.root, check=False, timeout=10)
-    except AdapterError:
-        return None
-    value = proc.stdout.strip()
-    return value if proc.returncode == 0 and ACTOR_RE.fullmatch(value) else None
 def capture_contract(repo: lifecycle.Repo, run_id: str, target: lifecycle.Repo) -> dict[str, Any]:
     remotes = remote_urls(target)
     repository = normalize_github_repository(remotes["fetch"][0]) if len(remotes["fetch"]) == 1 else None
+    policy = policy_snapshot(target.root)
     value = {
         "schema_version": ADAPTER_SCHEMA_VERSION,
         "run_id": run_id,
         "captured_at": now(),
-        "policy": policy_snapshot(target.root),
+        "policy": policy,
         "origin": remotes,
         "github_repository": repository,
-        "expected_actor": expected_actor(target, repository),
+        "expected_actor": policy["github_actor"],
     }
     lifecycle.atomic_json(contract_path(repo.common_dir, run_id), value)
     return value
@@ -435,7 +427,13 @@ def load_contract(repo: lifecycle.Repo, run_id: str) -> dict[str, Any]:
     value = read_json(contract_path(repo.common_dir, run_id), "invalid_run_contract")
     if value.get("schema_version") != ADAPTER_SCHEMA_VERSION or value.get("run_id") != run_id:
         raise AdapterError("lifecycle run contract is malformed", "invalid_run_contract")
-    if not isinstance(value.get("policy"), dict) or not isinstance(value.get("origin"), dict):
+    policy = value.get("policy")
+    if (
+        not isinstance(policy, dict)
+        or not isinstance(value.get("origin"), dict)
+        or value.get("expected_actor") != policy.get("github_actor")
+        or not isinstance(value.get("expected_actor"), str)
+    ):
         raise AdapterError("lifecycle run contract is malformed", "invalid_run_contract")
     return value
 def pipeline_gate_level() -> str:
@@ -1115,6 +1113,12 @@ def action_push(repo: lifecycle.Repo, state: dict[str, Any], decision: dict[str,
         or normalize_github_repository(fetch[0]) != repository
     ):
         raise AdapterError("pinned origin fetch/push identity is ambiguous", "origin_url_ambiguous")
+    expected_actor = contract.get("expected_actor")
+    if not isinstance(expected_actor, str):
+        raise AdapterError("run lacks pinned GitHub repository or actor", "github_identity_unpinned")
+    current_repository, current_actor = repository_identity(target)
+    if current_repository != repository or current_actor != expected_actor:
+        raise AdapterError("GitHub repository or actor drifted after run start", "github_identity_drift")
     run_command(
         ["git", "push", "--set-upstream", "origin", f"{head}:refs/heads/{branch}"],
         target.root,
