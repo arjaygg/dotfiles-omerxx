@@ -40,6 +40,8 @@ decision-matrix tests.
    - `ready`: mark the work unit semantically complete only with a conventional
      subject, meaningful body, zero open tasks, and one or more passing
      validation evidence entries.
+   - `next-unit`: consume one exact committed ready unit and append a new work
+     unit bound to the current HEAD.
    - `record`: record PR/CI/merge/sync facts with their source and exact SHA.
    - `inspect`: perform no writes and emit one JSON action plus reason/evidence.
    - `halt`: append a durable `done` or `blocked` terminal status.
@@ -67,7 +69,8 @@ decision-matrix tests.
    receipt, and proof that the worktree is clean. Child-stack and active-session
    enforcement are deferred to the execution adapter and must be surfaced as
    required evidence, not assumed.
-8. Re-running `start`, `ready`, `record`, or `halt` with the same idempotency key
+8. Re-running `start`, `ready`, `next-unit`, `record`, or `halt` with the same
+   idempotency key
    produces no duplicate transition or audit event. Concurrent writers cannot
    corrupt state.
 9. Tests use temporary git repositories and cover the complete decision matrix,
@@ -109,3 +112,7 @@ decision-matrix tests.
 - 2026-08-01: Corrective implementation verified with the focused lifecycle
   suites, inspect p95 below 500 ms, a materially smaller controller, and a
   six-line/CC3 phased `decide` function.
+- 2026-08-01: Final coordinator disposition accepted: unrelated base-worktree
+  dirt remains visible evidence but does not prevent isolated stack creation;
+  owned work started on trunk blocks, and intended-worktree ownership remains
+  strict.
