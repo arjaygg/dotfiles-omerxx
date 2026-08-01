@@ -39,17 +39,33 @@ class Phase0BoundaryTests(unittest.TestCase):
 
         self.assertIsNot(settings.get("skipDangerousModePermissionPrompt"), True)
 
-    def test_tracked_settings_have_no_private_environment_context(self):
-        findings = scan_text(
-            ".claude/settings.json",
-            _sanitize_managed_hook_paths(SETTINGS.read_text(encoding="utf-8")),
+    def test_runtime_settings_file_is_untracked_and_ignored(self):
+        # decisions/0016: .claude/settings.json is a runtime-managed projection
+        # (lean-ctx daemon + Claude Code rewrite it), generated from the base
+        # template on fresh machines — it must never be committed.
+        tracked = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", ".claude/settings.json"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        ignored = subprocess.run(
+            ["git", "check-ignore", ".claude/settings.json"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
         )
 
-        self.assertEqual(findings, [])
+        self.assertNotEqual(tracked.returncode, 0)
+        self.assertEqual(ignored.returncode, 0)
 
-    def test_claude_base_template_matches_sanitized_tracked_settings(self):
-        # skipDangerousModePermissionPrompt is live-runtime state (see the
-        # dangerous-mode test above), excluded from the parity comparison.
+    @unittest.skipUnless(SETTINGS.exists(), "runtime settings not generated on this host")
+    def test_claude_base_template_matches_sanitized_runtime_settings(self):
+        # Runtime-drift detector: the live file may gain runtime keys
+        # (skipDangerousModePermissionPrompt) and absolute lean-ctx hook paths;
+        # after sanitizing those it must still equal the base template.
         sanitized_live = json.loads(
             _sanitize_managed_hook_paths(SETTINGS.read_text(encoding="utf-8"))
         )

@@ -19,7 +19,7 @@ run_setup_check() {
         python3 scripts/autonomous_skill_check.py --summary || true
         python3 scripts/mcp_gateway_check.py --summary || true
         python3 scripts/hook_fixture_runner.py .claude/hooks/pre-tool-gate-v2.sh scripts/fixtures/pretool-gate-v2.json --summary || true
-        python3 scripts/hook_target_check.py .claude/settings.json --summary || true
+        [ -f .claude/settings.json ] && python3 scripts/hook_target_check.py .claude/settings.json --summary || true
         python3 scripts/hook_output_schema_check.py .claude/hooks --summary || true
         python3 scripts/self_modification_check.py --summary || true
         python3 scripts/config_inventory.py --summary || true
@@ -32,7 +32,7 @@ run_setup_check() {
         # those are the two dirs setup.sh promises full 1:1 ai/skills/ coverage for.
         # .cursor/skills and .gemini/skills link a deliberately partial subset.
         bash scripts/check-skill-drift.sh --check-coverage ai/skills .claude/skills "$HOME/.claude/skills" || true
-        python3 scripts/hook_config_check.py .claude/settings.json --summary || true
+        [ -f .claude/settings.json ] && python3 scripts/hook_config_check.py .claude/settings.json --summary || true
         python3 scripts/skill_reference_check.py --summary || true
         python3 scripts/pctx_sdk_example_check.py --summary
     )
@@ -74,6 +74,25 @@ stow .
 
 # Specific tool setup (for things Stow might need help with or additional setup)
 ln -sfn "$HOME/.dotfiles/.codex/AGENTS.md" "$HOME/.codex/AGENTS.md"
+
+# Claude Code runtime settings: untracked, runtime-managed projection
+# (decisions/0016). Bootstrap from the base template (+ machine overlay when
+# present) on fresh machines only — never regenerate over an existing live
+# file, which the lean-ctx daemon and Claude Code legitimately rewrite.
+if [ ! -f "$HOME/.dotfiles/.claude/settings.json" ]; then
+    _claude_overlay="$HOME/.config/dotfiles-ai/claude.overlay.json"
+    if [ -f "$_claude_overlay" ]; then
+        python3 "$HOME/.dotfiles/scripts/config_generate.py" \
+            "$HOME/.dotfiles/ai/config/claude/settings.base.json" \
+            --overlay "$_claude_overlay" \
+            --write "$HOME/.dotfiles/.claude/settings.json"
+    else
+        python3 "$HOME/.dotfiles/scripts/config_generate.py" \
+            "$HOME/.dotfiles/ai/config/claude/settings.base.json" \
+            --write "$HOME/.dotfiles/.claude/settings.json"
+    fi
+fi
+ln -sfn "$HOME/.dotfiles/.claude/settings.json" "$HOME/.claude/settings.json"
 
 # Cursor config symlinks (explicit — ~/.cursor is a real dir, config items linked from dotfiles)
 # Runtime state (projects, plans, plugins, extensions, etc.) lives in the real dir only.

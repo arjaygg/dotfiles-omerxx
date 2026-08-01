@@ -45,6 +45,10 @@ ai/skills/coach/coach-persona.ts
 !.config/pctx/
 .config/dotfiles-ai/
 .claude/settings.local.json
+# Runtime-managed projection, generated from ai/config/claude/settings.base.json
+# (decisions/0016) — the lean-ctx daemon and Claude Code rewrite it with
+# machine-local paths/state, so it is untracked.
+.claude/settings.json
 .mcp.json
 .mcp.local.json
 

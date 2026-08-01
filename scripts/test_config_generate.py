@@ -15,6 +15,7 @@ from scripts.config_generate import (
     compare_proposal,
     deep_merge,
     expand_placeholders,
+    write_proposal,
 )
 
 
@@ -207,6 +208,38 @@ class ConfigGenerateTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), {"path": "/tmp/pctx.json"})
+
+    def test_write_proposal_bootstraps_runtime_file_atomically(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = root / "base.json"
+            overlay = root / "overlay.json"
+            target = root / "nested" / "runtime.json"
+            base.write_text('{"model": "portable", "nested": {"a": 1}}\n', encoding="utf-8")
+            overlay.write_text('{"nested": {"b": 2}}\n', encoding="utf-8")
+
+            write_proposal(base, overlay, target)
+
+            self.assertEqual(
+                json.loads(target.read_text(encoding="utf-8")),
+                {"model": "portable", "nested": {"a": 1, "b": 2}},
+            )
+            self.assertEqual(os.stat(target).st_mode & 0o777, 0o600)
+            self.assertEqual(os.listdir(root / "nested"), ["runtime.json"])
+
+    def test_write_proposal_rejects_private_or_secret_input(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = root / "base.json"
+            target = root / "runtime.json"
+            base.write_text(
+                '{"token": "ghp_abcdefghijklmnopqrstuvwxyz0123456789"}\n',
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(TemplateValidationError):
+                write_proposal(base, None, target)
+            self.assertFalse(target.exists())
 
     def test_compare_proposal_reports_paths_and_hashes_without_content(self):
         with tempfile.TemporaryDirectory() as directory:

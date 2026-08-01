@@ -9,8 +9,10 @@ import datetime as dt
 import hashlib
 import json
 import math
+import os
 import re
 import sys
+import tempfile
 import tomllib
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -619,6 +621,36 @@ def compare_proposal(
     )
 
 
+def write_proposal(
+    base_path: Path,
+    overlay_path: Path | None,
+    target_path: Path,
+    variables: dict[str, str] | None = None,
+) -> None:
+    """Bootstrap a runtime file from base+overlay with an atomic, mode-600 write.
+
+    Scope (decisions/0016): generation only happens when explicitly invoked
+    (setup.sh fresh-machine bootstrap). The runtime owns the file afterwards;
+    this never runs automatically against an existing live file.
+    """
+    rendered = build_proposal(base_path, overlay_path, variables)
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(
+        dir=target_path.parent, prefix=f".{target_path.name}.", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(rendered)
+        os.chmod(tmp_name, 0o600)
+        os.replace(tmp_name, target_path)
+    except BaseException:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
+
+
 def _parse_variables(values: list[str]) -> dict[str, str]:
     variables: dict[str, str] = {}
     for value in values:
@@ -633,12 +665,20 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("base", type=Path)
     parser.add_argument("--overlay", type=Path)
-    parser.add_argument("--compare-against", type=Path)
+    action = parser.add_mutually_exclusive_group()
+    action.add_argument("--compare-against", type=Path)
+    action.add_argument(
+        "--write",
+        type=Path,
+        help="write the rendered proposal to this runtime path (bootstrap only)",
+    )
     parser.add_argument("--set", action="append", default=[], metavar="NAME=VALUE")
     args = parser.parse_args(argv)
     try:
         variables = _parse_variables(args.set)
-        if args.compare_against:
+        if args.write:
+            write_proposal(args.base, args.overlay, args.write, variables)
+        elif args.compare_against:
             print(
                 json.dumps(
                     asdict(
