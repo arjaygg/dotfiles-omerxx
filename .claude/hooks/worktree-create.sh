@@ -54,6 +54,56 @@ if [ -z "$CWD" ]; then
     CWD="$(pwd)"
 fi
 
+
+REPO_ROOT="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null)" || {
+    echo "worktree-create.sh: cwd is not a git repository" >&2
+    exit 1
+}
+REPO_ROOT="$(cd "$REPO_ROOT" && pwd -P)"
+CWD_PHYSICAL="$(cd "$CWD" 2>/dev/null && pwd -P)" || exit 1
+if [ "$CWD_PHYSICAL" != "$REPO_ROOT" ]; then
+    echo "worktree-create.sh: cwd must be the physical repository root" >&2
+    exit 1
+fi
+CWD="$REPO_ROOT"
+
+
+validate_trees_root() {
+    python3 - "$REPO_ROOT" "$REPO_ROOT/.trees" <<'PY_TREES'
+import os
+import pathlib
+import stat
+import sys
+repo = pathlib.Path(sys.argv[1]).resolve(strict=True)
+trees = pathlib.Path(sys.argv[2])
+try:
+    metadata = os.lstat(trees)
+except OSError:
+    raise SystemExit(1)
+if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
+    raise SystemExit(1)
+try:
+    physical = trees.resolve(strict=True)
+except (OSError, RuntimeError):
+    raise SystemExit(1)
+raise SystemExit(0 if physical == repo / ".trees" and physical.parent == repo else 1)
+PY_TREES
+}
+
+validate_worktree_path() {
+    python3 - "$REPO_ROOT/.trees" "$1" <<'PY_WORKTREE'
+import pathlib
+import sys
+try:
+    trees = pathlib.Path(sys.argv[1]).resolve(strict=True)
+    target = pathlib.Path(sys.argv[2]).resolve(strict=True)
+    target.relative_to(trees)
+except (OSError, RuntimeError, ValueError):
+    raise SystemExit(1)
+raise SystemExit(0 if target != trees else 1)
+PY_WORKTREE
+}
+
 # ── Name sanitization (mirrors create-stack.sh logic) ────────────────────────
 # Strip standard branch type prefixes, lowercase, spaces→hyphens, strip
 # special chars, collapse hyphens, trim leading/trailing hyphens.
@@ -80,6 +130,29 @@ derive_branch_name() {
 
 SANITIZED="$(sanitize_name "$NAME")"
 BRANCH_NAME="$(derive_branch_name "$NAME")"
+if [[ ! "$SANITIZED" =~ ^[a-z0-9][a-z0-9.-]*$ ]] || [[ "$SANITIZED" == *".."* ]]; then
+    echo "worktree-create.sh: sanitized worktree name is unsafe" >&2
+    exit 1
+fi
+if ! git -C "$CWD" check-ref-format --branch "$BRANCH_NAME" >/dev/null 2>&1; then
+    echo "worktree-create.sh: derived branch name is invalid" >&2
+    exit 1
+fi
+if [ -L "$CWD/.trees" ]; then
+    echo "worktree-create.sh: .trees must be a real non-symlink directory" >&2
+    exit 1
+fi
+if [ ! -e "$CWD/.trees" ]; then
+    mkdir -- "$CWD/.trees"
+fi
+if ! validate_trees_root; then
+    echo "worktree-create.sh: .trees failed physical containment validation" >&2
+    exit 1
+fi
+if ! git -C "$CWD" check-ignore -q -- ".trees/"; then
+    echo "worktree-create.sh: .trees/ must already be ignored" >&2
+    exit 1
+fi
 WORKTREE_PATH="$CWD/.trees/$SANITIZED"
 
 echo "worktree-create.sh: name='$NAME' → sanitized='$SANITIZED' branch='$BRANCH_NAME'" >&2
@@ -87,15 +160,13 @@ echo "worktree-create.sh: target worktree path: $WORKTREE_PATH" >&2
 
 # ── Reuse existing worktree if already created by stack create ────────────────
 if [ -d "$WORKTREE_PATH" ]; then
+    if ! validate_worktree_path "$WORKTREE_PATH"; then
+        echo "worktree-create.sh: existing target escapes the contained .trees root" >&2
+        exit 1
+    fi
     echo "worktree-create.sh: reusing existing worktree at $WORKTREE_PATH" >&2
     echo "$WORKTREE_PATH"
     exit 0
-fi
-
-# ── Ensure we're in a git repo ───────────────────────────────────────────────
-if ! git -C "$CWD" rev-parse --git-dir &>/dev/null; then
-    echo "worktree-create.sh: $CWD is not a git repository" >&2
-    exit 1
 fi
 
 # ── Determine trunk branch ───────────────────────────────────────────────────
@@ -124,19 +195,20 @@ if [ "$BRANCH_EXISTS" = true ]; then
                 if ($2 == "refs/heads/" branch) { print path; exit }
             }')"
     if [ -n "$EXISTING_WT" ]; then
+        if ! validate_worktree_path "$EXISTING_WT"; then
+            echo "worktree-create.sh: existing worktree is outside the contained .trees root" >&2
+            exit 1
+        fi
         echo "worktree-create.sh: branch '$BRANCH_NAME' already checked out at $EXISTING_WT" >&2
         echo "$EXISTING_WT"
         exit 0
     fi
 fi
 
-# ── Ensure .trees/ exists ────────────────────────────────────────────────────
-mkdir -p "$CWD/.trees"
-
-# ── Add .trees/ to .gitignore if missing ─────────────────────────────────────
-if ! grep -q "^\.trees/" "$CWD/.gitignore" 2>/dev/null; then
-    echo ".trees/" >> "$CWD/.gitignore"
-    echo "worktree-create.sh: added .trees/ to .gitignore" >&2
+# Revalidate immediately before the mutating worktree operation.
+if ! validate_trees_root; then
+    echo "worktree-create.sh: .trees changed before worktree creation" >&2
+    exit 1
 fi
 
 # ── Create the worktree ───────────────────────────────────────────────────────
@@ -148,6 +220,11 @@ else
     git -C "$CWD" worktree add -b "$BRANCH_NAME" "$WORKTREE_PATH" "$TRUNK"
 fi
 
+if ! validate_trees_root || ! validate_worktree_path "$WORKTREE_PATH"; then
+    echo "worktree-create.sh: created worktree failed physical containment validation" >&2
+    exit 1
+fi
+
 # ── Track in Charcoal if available ───────────────────────────────────────────
 if command -v gt &>/dev/null; then
     PARENT_BRANCH="$TRUNK"
@@ -157,6 +234,10 @@ if command -v gt &>/dev/null; then
 fi
 
 # ── Copy configs using worktree-charcoal.sh helpers ──────────────────────────
+if ! validate_trees_root || ! validate_worktree_path "$WORKTREE_PATH"; then
+    echo "worktree-create.sh: worktree changed before configuration copy" >&2
+    exit 1
+fi
 if [ -f "$LIB_DIR/validation.sh" ] && [ -f "$LIB_DIR/worktree-charcoal.sh" ]; then
     # shellcheck disable=SC1090
     source "$LIB_DIR/validation.sh"
