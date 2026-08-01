@@ -8,6 +8,10 @@ followup_review_recommended: false
 
 # Frozen Spec — codex-context-hardening
 
+> **Superseded (2026-08-01):** acceptance item "Codex retains the Headroom provider proxy" no
+> longer holds — Codex connects direct per `decisions/0015-headroom-per-session-wrapper.md`.
+> All other acceptance items remain valid.
+
 <intent-contract>
 Audit and finish the Codex portion of the shared large-file/context hardening already in progress. Work only in the listed Codex-owned files. The Coordinator must be able to verify fail-open payload parsing, warn/deny enforcement, portable pctx/LeanCtx launchers, focused direct tools, and persistent Headroom provider configuration without a Headroom MCP server.
 </intent-contract>

@@ -1,6 +1,6 @@
 # 0013 — LeanCtx owns content compression; Headroom owns provider history
 
-**Status:** Accepted  
+**Status:** Accepted — §2 partially superseded by `0015-headroom-per-session-wrapper.md` for Codex (2026-08-01)  
 **Date:** 2026-07-29
 
 ## Context
