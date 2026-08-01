@@ -1,5 +1,14 @@
 # Active Decisions Log
 
+
+## 2026-08-01 — Routed Headroom around the pctx port collision
+
+**Decision:** Point hclaude, Claude setup defaults, and the persistent-install command at port 8788; port 8787 belongs to pctx. Scope ANTHROPIC_API_KEY empty inside hclaude so Claude Code uses subscribed auth, and default Claude to the verified sonnet alias.
+
+**Why:** hcy at 8787 sent Anthropic traffic to pctx (404 /livez), while the actual Headroom process at 8788 was v0.24.0. Replaced it with a healthy v0.33.0 proxy and validated hcy print mode from /tmp.
+
+**Follow-up:** headroom install apply cannot persist the proxy on this host: Docker is unavailable, and the Python-service installer requires a missing ~/.bashrc. The running proxy is managed by the current terminal until that installer defect is resolved.
+
 ## 2026-07-17 — PR #334 CI fix: sync settings.base.json, then merge main and re-sync
 
 **Decision:** Merged PR #334 (`chore/chrome-mcp-rules-cleanup`) into `main` via `gh pr merge --admin` after independently confirming the true CI conclusion was `success` (run `29547965083`, headSha `65fe7ba`), despite the `ci-watch` background poller reporting FAILED.
