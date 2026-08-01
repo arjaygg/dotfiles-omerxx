@@ -163,7 +163,7 @@ class HeadroomHardeningTests(unittest.TestCase):
                 config = json.loads(path.read_text(encoding="utf-8"))
                 self.assertEqual(
                     config["env"]["ANTHROPIC_BASE_URL"],
-                    "http://127.0.0.1:8787",
+                    "http://127.0.0.1:8788",
                 )
 
         codex = tomllib.loads(
