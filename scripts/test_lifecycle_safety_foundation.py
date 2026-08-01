@@ -1,10 +1,14 @@
 "Behavioral coverage for lifecycle safety foundation entrypoints."
 
+import errno
 import json
 import os
+import pty
+import select
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -180,23 +184,54 @@ class StackShipSafetyTests(unittest.TestCase):
                 git(repo, "commit", "-q", "-m", f"feat: add {name}")
             git(repo, "checkout", "-q", "feature/root")
             env["GH_FAIL_BRANCH"] = "feature/dep-a"
-            expect = shutil.which("expect")
-            self.assertIsNotNone(expect, "expect is required for the interactive safety test")
-            driver = Path(td) / "confirm.exp"
-            driver.write_text(
-                'set timeout 15\n'
-                'log_user 0\n'
-                f'spawn -noecho {STACK_SHIP} --branch feature/root\n'
-                'expect {\n'
-                '  "Continue? (y/n) " { send -- "y\r" }\n'
-                '  timeout { exit 124 }\n'
-                '}\n'
-                'expect eof\n'
-                'set result [wait]\n'
-                'exit [lindex $result 3]\n'
+            master_fd, slave_fd = pty.openpty()
+            proc = subprocess.Popen(
+                [str(STACK_SHIP), "--branch", "feature/root"],
+                cwd=str(repo),
+                env=env,
+                stdin=slave_fd,
+                stdout=slave_fd,
+                stderr=slave_fd,
+                close_fds=True,
             )
-            proc = run(repo, expect, str(driver), env=env, check=False)
-            self.assertNotEqual(proc.returncode, 0, proc.stdout)
+            os.close(slave_fd)
+            output = bytearray()
+            confirmation_sent = False
+            deadline = time.monotonic() + 15
+            try:
+                while True:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        proc.kill()
+                        proc.wait()
+                        self.fail(f"stack-ship timed out: {output.decode(errors='replace')}")
+                    ready, _, _ = select.select(
+                        [master_fd], [], [], min(remaining, 0.25)
+                    )
+                    if ready:
+                        try:
+                            chunk = os.read(master_fd, 4096)
+                        except OSError as exc:
+                            if exc.errno == errno.EIO:
+                                break
+                            raise
+                        if not chunk:
+                            break
+                        output.extend(chunk)
+                        if (
+                            not confirmation_sent
+                            and b"Continue? (y/n)" in output
+                        ):
+                            os.write(master_fd, b"y\n")
+                            confirmation_sent = True
+                    if proc.poll() is not None and not ready:
+                        break
+            finally:
+                os.close(master_fd)
+            returncode = proc.wait(timeout=5)
+            transcript = output.decode(errors="replace")
+            self.assertTrue(confirmation_sent, transcript)
+            self.assertNotEqual(returncode, 0, transcript)
             calls = [line for line in gh_log.read_text().splitlines()
                      if line.startswith("pr merge ")]
             self.assertTrue(any("feature/root" in line for line in calls))
