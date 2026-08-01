@@ -347,6 +347,21 @@ exit 0
             self.assertFalse((repo / ".trees").exists())
             self.assertFalse((repo / ".gitignore").exists())
 
+    def test_create_stack_rejects_symlinked_trees_root(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            repo, _, env = self.prepare(root, ignored=True)
+            outside = root / "outside-trees"
+            outside.mkdir()
+            (repo / ".trees").symlink_to(outside, target_is_directory=True)
+            proc = run(
+                repo, str(CREATE_STACK), "feature/symlink", "main",
+                env=env, check=False,
+            )
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertIn("non-symlink", proc.stderr)
+            self.assertEqual(list(outside.iterdir()), [])
+
     def test_create_stack_preserves_local_files_and_metadata(self):
         with tempfile.TemporaryDirectory() as td:
             repo, gt_log, env = self.prepare(Path(td), ignored=True)
@@ -423,6 +438,52 @@ exit 0
         self.assertIn('git push -u origin "$SOURCE_BRANCH"', source)
         self.assertNotRegex(source, r"GH_TOKEN=.*git push")
         self.assertRegex(source, r"GH_TOKEN=\$\(gh_token_for_remote\) gh")
+
+    def test_create_pr_reports_failed_gh_with_bounded_redacted_reason(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            repo = init_repo(root / "repo")
+            git(repo, "branch", "feature/failure")
+            (repo / ".git" / ".graphite_repo_config").write_text("{}\n")
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            gh_log = root / "gh.log"
+            write_executable(bin_dir / "gt", """#!/usr/bin/env bash
+case "${1:-} ${2:-}" in
+  "branch info") exit 0 ;;
+  "log --short") exit 0 ;;
+esac
+exit 0
+""")
+            write_executable(bin_dir / "gh", f"""#!/usr/bin/env bash
+printf '%s\n' "$*" >> "{gh_log}"
+case "${{1:-}} ${{2:-}}" in
+  "auth setup-git") exit 0 ;;
+  "auth status") printf '✓ Logged in\n'; exit 0 ;;
+  "auth token") printf 'fixture-token\n'; exit 0 ;;
+esac
+if [[ "${{1:-}} ${{2:-}}" == "pr create" ]]; then
+  printf 'authorization: supersecret %0500d\n' 1 >&2
+  exit 7
+fi
+exit 0
+""")
+            env = os.environ.copy()
+            env["PATH"] = f"{bin_dir}:{env['PATH']}"
+            proc = run(
+                repo, str(CREATE_PR), "feature/failure", "main",
+                "feat(test): exercise gh failure", "--no-push",
+                env=env, check=False,
+            )
+            diagnostic = proc.stdout + proc.stderr
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("exit 7", diagnostic)
+            self.assertIn("[REDACTED]", diagnostic)
+            self.assertNotIn("supersecret", diagnostic)
+            self.assertLess(len(diagnostic), 1200)
+            gh_calls = gh_log.read_text()
+            self.assertIn("pr create", gh_calls)
+            self.assertNotIn("auth setup-git", gh_calls)
 
     def test_create_stack_contains_no_broad_repair_or_secret_copy(self):
         source = CREATE_STACK.read_text()

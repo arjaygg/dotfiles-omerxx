@@ -142,6 +142,8 @@ validation:
 # Explicit opt-in for the shared lifecycle controller and Claude adapter.
 lifecycle:
   enabled: true
+  rollout_approved: true
+  rollout_approved_by: arjaygg
 
 pipeline:
   auto_stack: A2
