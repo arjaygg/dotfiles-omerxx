@@ -18,6 +18,7 @@ STACK_SHIP_COMPAT = ROOT / "scripts" / "stack-ship.sh"
 CHECKPOINT = ROOT / "scripts" / "ai" / "checkpoint.sh"
 TASK_GATE = ROOT / ".claude" / "hooks" / "task-gate.sh"
 CREATE_STACK = ROOT / ".claude" / "scripts" / "pr-stack" / "create-stack.sh"
+CREATE_PR = ROOT / ".claude" / "scripts" / "pr-stack" / "create-pr.sh"
 CURSOR_GUARD = ROOT / ".cursor" / "hooks" / "before-shell-git-commit.sh"
 CURSOR_HOOKS = ROOT / ".cursor" / "hooks.json"
 CI_WATCH = ROOT / "ai" / "skills" / "ci-watch" / "SKILL.md"
@@ -317,7 +318,7 @@ git diff --cached --name-only > "{staged_log}"
 
 
 class CreateStackSafetyTests(unittest.TestCase):
-    def prepare(self, tmp: Path, ignored: bool):
+    def prepare(self, tmp: Path, ignored: bool, gt_exit: int = 0):
         repo = init_repo(tmp / "repo")
         if ignored:
             (repo / ".gitignore").write_text(".trees/\n.env\n")
@@ -329,6 +330,7 @@ class CreateStackSafetyTests(unittest.TestCase):
         gt_log = tmp / "gt.log"
         write_executable(bin_dir / "gt", f'''#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "{gt_log}"
+if [[ "$1 $2" == "branch track" ]]; then exit {gt_exit}; fi
 exit 0
 ''')
         env = os.environ.copy()
@@ -405,6 +407,22 @@ exit 0
             self.assertNotEqual(proc.returncode, 0)
             self.assertIn("Initial commit creation is not supported", proc.stderr)
             self.assertFalse((repo / ".trees").exists())
+
+    def test_create_stack_strict_mode_fails_when_charcoal_tracking_fails(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo, _, env = self.prepare(Path(td), ignored=True, gt_exit=9)
+            head = git(repo, "rev-parse", "HEAD").stdout.strip()
+            proc = run(repo, str(CREATE_STACK), "feature/strict", "main",
+                       "--base-sha", head, "--strict", env=env, check=False)
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertIn("Strict stack creation requires", proc.stderr)
+            self.assertTrue((repo / ".trees" / "strict").is_dir())
+
+    def test_create_pr_scopes_token_only_to_gh_not_git_push(self):
+        source = CREATE_PR.read_text()
+        self.assertIn('git push -u origin "$SOURCE_BRANCH"', source)
+        self.assertNotRegex(source, r"GH_TOKEN=.*git push")
+        self.assertRegex(source, r"GH_TOKEN=\$\(gh_token_for_remote\) gh")
 
     def test_create_stack_contains_no_broad_repair_or_secret_copy(self):
         source = CREATE_STACK.read_text()
