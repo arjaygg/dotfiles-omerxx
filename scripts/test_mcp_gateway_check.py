@@ -82,14 +82,14 @@ class McpGatewayCheckTests(unittest.TestCase):
         summary = summarize_results(results)
         self.assertEqual(summary["by_status"], {"ok": summary["total"]})
 
-    def test_direct_stale_client_server_is_reported(self):
+    def test_rogue_direct_client_server_is_reported(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             write_valid_gateway_tree(root)
             cursor = {
                 "mcpServers": {
                     "pctx": {"command": "pctx", "args": ["mcp", "start", "--stdio"]},
-                    "sequential-thinking": {"command": "npx"},
+                    "rogue-server": {"command": "rogue"},
                 }
             }
             write(root / ".cursor/mcp.json", json.dumps(cursor))
@@ -114,6 +114,64 @@ class McpGatewayCheckTests(unittest.TestCase):
 
         self.assertNotIn(
             ("client-unapproved-server", ".gemini/config/mcp_config.json", "fail"),
+            [(result.rule, result.path, result.status) for result in results],
+        )
+
+    def test_claude_serena_fallback_is_approved(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            write_valid_gateway_tree(root)
+            path = root / ".mcp.json"
+            config = json.loads(path.read_text(encoding="utf-8"))
+            config["mcpServers"]["serena-fallback"] = {"command": "serena"}
+            write(path, json.dumps(config))
+
+            results = check_mcp_gateway(root)
+
+        self.assertIn(
+            ("client-approved-server-serena-fallback", ".mcp.json", "ok"),
+            [(result.rule, result.path, result.status) for result in results],
+        )
+
+    def test_codex_runtime_direct_exceptions_are_approved(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            write_valid_gateway_tree(root)
+            codex = root / ".codex/config.toml"
+            write(
+                codex,
+                codex.read_text(encoding="utf-8")
+                + "\n"
+                + "\n".join(
+                    f'[mcp_servers.{server}]\ncommand = "{server}"'
+                    for server in ("notebooklm", "chrome-devtools", "serena", "lean-ctx")
+                ),
+            )
+
+            results = check_mcp_gateway(root)
+
+        codex_failures = [
+            result
+            for result in results
+            if result.path == ".codex/config.toml" and result.status == "fail"
+        ]
+        self.assertFalse(codex_failures)
+
+    def test_codex_rogue_direct_server_is_reported(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            write_valid_gateway_tree(root)
+            codex = root / ".codex/config.toml"
+            write(
+                codex,
+                codex.read_text(encoding="utf-8")
+                + '\n[mcp_servers.rogue-server]\ncommand = "rogue"\n',
+            )
+
+            results = check_mcp_gateway(root)
+
+        self.assertIn(
+            ("codex-unapproved-server", ".codex/config.toml", "fail"),
             [(result.rule, result.path, result.status) for result in results],
         )
 
