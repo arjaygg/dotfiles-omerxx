@@ -95,7 +95,17 @@ decision-matrix tests.
 
 - 2026-08-01: Initial controller contract created from the approved lifecycle
   plan and the verified safety-foundation branch.
+- 2026-08-01: Corrective review scope added: registered linked-worktree
+  transitions, repeatable fingerprint-bound work units, per-commit ownership
+  history, strict validation evidence, durable audit reconciliation, explicit
+  receipts, duplicate-run refusal, normalized failures, and a phased decision
+  engine.
 
 ## Review Triage Log
 
-- None yet.
+- 2026-08-01: Coordinator and independent review rejected the first draft.
+  Accepted all ten findings for corrective implementation without weakening
+  tests or expanding the frozen four-file scope.
+- 2026-08-01: Corrective implementation verified with the focused lifecycle
+  suites, inspect p95 below 500 ms, a materially smaller controller, and a
+  six-line/CC3 phased `decide` function.
