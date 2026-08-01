@@ -1,5 +1,22 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "opencode/kimi-k2.5",
   "autoupdate": true,
+  "mcp": {
+    "lean-ctx": {
+      "command": [
+        "bash",
+        "-c",
+        "exec \"$HOME/.cargo/bin/lean-ctx\""
+      ],
+      "enabled": true,
+      "type": "local"
+    }
+  },
+  "model": "opencode/kimi-k2.5",
+  "permission": {
+    "bash": "deny",
+    "glob": "deny",
+    "grep": "deny",
+    "read": "deny"
+  }
 }

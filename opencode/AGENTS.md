@@ -1,27 +1,14 @@
 # lean-ctx — Context Engineering Layer
-<!-- lean-ctx-rules-v10 -->
 
-## Mode Selection
-- Editing the file? → `full` first, then `diff` for re-reads
-- Context only? → `map` or `signatures`
-- Large file? → `aggressive` or `entropy`
-- Specific lines? → `lines:N-M`
-- Unsure? → `auto`
-
-Anti-pattern: NEVER use `full` for files you won't edit — use `map` or `signatures`.
-
-## File Editing
-Use native Edit/Write/StrReplace — unchanged. lean-ctx replaces READ only.
-If Edit requires Read and Read is unavailable, use `ctx_edit(path, old_string, new_string)`.
-NEVER loop on Edit failures — switch to ctx_edit immediately.
-
-Fallback only if a lean-ctx tool is unavailable: use native equivalents.
-<!-- /lean-ctx -->
+Native bash/glob/grep/read are denied in `opencode.json` — ctx_* tools are the
+only read/search/shell path; there is no native fallback. File editing stays on
+native Edit/Write/StrReplace.
 
 <!-- lean-ctx-rules -->
 <!-- version: 8 -->
 
-lean-ctx shadow mode: native file/search/shell calls auto-route to ctx_* — no tool-mapping needed.
+lean-ctx shadow mode: native read/search/shell calls auto-route to ctx_* — no tool-mapping needed.
+File editing → native Edit/StrReplace (lean-ctx only handles reads).
 Exclusive tools (no native trigger): ctx_compose (understand code, call first), ctx_search(action=symbol) (exact symbol), ctx_search(action=semantic) (by meaning), ctx_callgraph (callers), ctx_knowledge / ctx_session (memory).
 <!-- lean-ctx-compression -->
 OUTPUT STYLE: dense
