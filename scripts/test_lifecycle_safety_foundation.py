@@ -362,6 +362,41 @@ exit 0
             self.assertEqual(gt_log.read_text().splitlines(),
                              ["branch track feature/new --parent main"])
 
+    def test_create_stack_uses_verified_exact_ancestor_when_base_moves(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo, _, env = self.prepare(Path(td), ignored=True)
+            exact_base = git(repo, "rev-parse", "HEAD").stdout.strip()
+            (repo / "later.txt").write_text("branch moved\n")
+            git(repo, "add", "later.txt")
+            git(repo, "commit", "-q", "-m", "chore: move named base")
+
+            proc = run(repo, str(CREATE_STACK), "feature/pinned", "main",
+                       "--base-sha", exact_base, env=env, check=False)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertEqual(git(repo / ".trees" / "pinned", "rev-parse", "HEAD").stdout.strip(),
+                             exact_base)
+
+    def test_create_stack_refuses_non_exact_or_non_ancestor_base_sha(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo, _, env = self.prepare(Path(td), ignored=True)
+            head = git(repo, "rev-parse", "HEAD").stdout.strip()
+            abbreviated = run(repo, str(CREATE_STACK), "feature/short", "main",
+                              "--base-sha", head[:12], env=env, check=False)
+            self.assertNotEqual(abbreviated.returncode, 0)
+            self.assertIn("exact lowercase", abbreviated.stderr)
+
+            git(repo, "checkout", "-q", "--orphan", "unrelated")
+            git(repo, "rm", "-q", "-rf", ".")
+            (repo / "orphan.txt").write_text("unrelated\n")
+            git(repo, "add", "orphan.txt")
+            git(repo, "commit", "-q", "-m", "chore: unrelated")
+            unrelated = git(repo, "rev-parse", "HEAD").stdout.strip()
+            git(repo, "checkout", "-q", "main")
+            rejected = run(repo, str(CREATE_STACK), "feature/unrelated", "main",
+                           "--base-sha", unrelated, env=env, check=False)
+            self.assertNotEqual(rejected.returncode, 0)
+            self.assertIn("not an ancestor", rejected.stderr)
+
     def test_create_stack_rejects_legacy_initial_commit_argument(self):
         with tempfile.TemporaryDirectory() as td:
             repo, _, env = self.prepare(Path(td), ignored=True)
