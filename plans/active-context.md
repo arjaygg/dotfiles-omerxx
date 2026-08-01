@@ -22,7 +22,10 @@ next candidates:
     `skipDangerousModePermissionPrompt: true` in live settings + settings.local.json may defeat
     `permissions.ask` as an A2 checkpoint. Resolve before Step 19 relies on it.
   - #349 (regenerates at session init — likely closeable) and the 19-draft 2026-07-13 cluster.
-  - 89 stale merged branch refs — safe to delete.
+  - Wave-2 branch triage: 14 no-PR branches with unlanded work remain (13 .trees worktrees),
+    incl. agent-cost-review skill, ccusage-statusline-cost, ancient karpathy-skills-support,
+    phase2-portable-generation (94 dirty files). Wave-1 cleanup done 2026-08-01: 36 merged/stale
+    branches + 5 remote refs + 26 worktrees removed after blob-level content verification.
 
 ## Historical (2026-07-28) — Goal 05 closeout notes
 
