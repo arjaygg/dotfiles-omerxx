@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Claude Code adapter for the shared deterministic git lifecycle controller."""
 from __future__ import annotations
-import argparse, fcntl, hashlib, json, os, re, shlex, shutil, signal, stat, subprocess, sys, tempfile, time
+import argparse, fcntl, hashlib, json, os, re, shlex, shutil, signal, stat, subprocess, sys, tempfile, threading, time
+import contextlib
 import datetime as dt
+import urllib.parse
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Sequence
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -19,6 +21,12 @@ HOOK_CONFIG = ROOT / ".claude" / "hooks" / "hook-config.yaml"
 HARD_BLOCK = "[HARD-BLOCK — DO NOT RETRY]"
 ACTION_STAGES = {"create_stack": "auto_stack", "commit": "auto_commit",
                  "push": "auto_push", "open_pr": "auto_pr"}
+ACTION_SUCCESSORS = {
+    "create_stack": frozenset({"editing", "awaiting_work"}),
+    "commit": frozenset({"push"}),
+    "push": frozenset({"open_pr"}),
+    "open_pr": frozenset({"wait_ci"}),
+}
 EDITING_ACTIONS = frozenset({"editing", "awaiting_work"})
 PROHIBITED_ACTIONS = frozenset({"merge_eligible", "sync", "cleanup"})
 SUCCESS_CHECK_STATES = frozenset({"pass", "passed", "success", "successful", "completed"})
@@ -60,6 +68,12 @@ class AdapterError(RuntimeError):
     def __init__(self, message: str, code: str = "adapter_error"):
         super().__init__(message)
         self.code = code
+
+
+class ProcessSignal(BaseException):
+    def __init__(self, signum: int):
+        super().__init__(signum)
+        self.signum = signum
 def now() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 def stable_key(prefix: str, payload: Any) -> str:
@@ -150,12 +164,40 @@ def bounded_process(
         )
     except OSError as exc:
         raise AdapterError("external process could not be started", "action_command_start_failed") from exc
+
+    previous_handlers: dict[int, Any] = {}
+    if threading.current_thread() is threading.main_thread():
+        def interrupt(signum: int, _frame: Any) -> None:
+            raise ProcessSignal(signum)
+        for signum in (signal.SIGHUP, signal.SIGTERM):
+            previous_handlers[signum] = signal.getsignal(signum)
+            signal.signal(signum, interrupt)
     try:
-        stdout, stderr = proc.communicate(input=input_data, timeout=bounded_timeout)
-    except subprocess.TimeoutExpired as exc:
-        terminate_process_group(proc)
-        proc.communicate()
-        raise AdapterError("external process timed out", "action_command_timeout") from exc
+        try:
+            stdout, stderr = proc.communicate(input=input_data, timeout=bounded_timeout)
+        except subprocess.TimeoutExpired as exc:
+            terminate_process_group(proc)
+            for stream in (proc.stdin, proc.stdout, proc.stderr):
+                if stream is not None:
+                    try:
+                        stream.close()
+                    except OSError:
+                        pass
+            raise AdapterError("external process timed out", "action_command_timeout") from exc
+        except BaseException:
+            terminate_process_group(proc)
+            for stream in (proc.stdin, proc.stdout, proc.stderr):
+                if stream is not None:
+                    try:
+                        stream.close()
+                    except OSError:
+                        pass
+            raise
+    except ProcessSignal as exc:
+        raise SystemExit(128 + exc.signum) from None
+    finally:
+        for signum, handler in previous_handlers.items():
+            signal.signal(signum, handler)
     terminate_lingering_processes(proc.pid)
     result = subprocess.CompletedProcess(values, proc.returncode, stdout, stderr)
     if check and result.returncode:
@@ -395,23 +437,63 @@ def remote_urls(target: lifecycle.Repo) -> dict[str, list[str]]:
         proc = lifecycle.git(target.root, *args, check=False)
         result[name] = sorted(line.strip() for line in proc.stdout.splitlines() if line.strip()) if proc.returncode == 0 else []
     return result
-def normalize_github_repository(url: str | None) -> str | None:
-    if not url:
+def normalize_github_https_url(url: str | None) -> tuple[str, str] | None:
+    if not isinstance(url, str) or not url:
         return None
-    patterns = (
-        r"https://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$",
-        r"git@github\.com:([^/]+)/([^/]+?)(?:\.git)?$",
-        r"ssh://git@github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$",
-    )
-    for pattern in patterns:
-        match = re.fullmatch(pattern, url)
-        if match:
-            return f"{match.group(1)}/{match.group(2)}"
-    return None
+    try:
+        parsed = urllib.parse.urlsplit(url)
+        port = parsed.port
+    except (ValueError, UnicodeError):
+        return None
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname != "github.com"
+        or port is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        return None
+    if parsed.username is not None and not re.fullmatch(r"[A-Za-z0-9._-]+", parsed.username):
+        return None
+    parts = parsed.path.strip("/").split("/")
+    if len(parts) != 2:
+        return None
+    owner, name = parts
+    if name.endswith(".git"):
+        name = name[:-4]
+    component = re.compile(r"[A-Za-z0-9_.-]+\Z")
+    if not component.fullmatch(owner) or not component.fullmatch(name):
+        return None
+    repository = f"{owner}/{name}"
+    return repository, f"https://github.com/{repository}.git"
+
+
+def normalize_github_repository(url: str | None) -> str | None:
+    normalized = normalize_github_https_url(url)
+    return normalized[0] if normalized else None
+
+
+def strict_origin_identity(remotes: dict[str, list[str]]) -> tuple[str, str]:
+    fetch, push = remotes.get("fetch"), remotes.get("push")
+    if not isinstance(fetch, list) or not isinstance(push, list) or len(fetch) != 1 or len(push) != 1:
+        raise AdapterError("origin must have exactly one HTTPS fetch and push URL", "origin_url_ambiguous")
+    fetch_identity = normalize_github_https_url(fetch[0])
+    push_identity = normalize_github_https_url(push[0])
+    if fetch_identity is None or push_identity is None:
+        raise AdapterError("origin is not a recognized GitHub HTTPS URL", "origin_url_unrecognized")
+    if (
+        fetch_identity[0].casefold() != push_identity[0].casefold()
+        or fetch_identity[1].casefold() != push_identity[1].casefold()
+    ):
+        raise AdapterError("origin fetch and push identities differ", "origin_url_drift")
+    return fetch_identity
+
+
 def capture_contract(repo: lifecycle.Repo, run_id: str, target: lifecycle.Repo) -> dict[str, Any]:
-    remotes = remote_urls(target)
-    repository = normalize_github_repository(remotes["fetch"][0]) if len(remotes["fetch"]) == 1 else None
     policy = policy_snapshot(target.root)
+    remotes = remote_urls(target)
+    repository, github_url = strict_origin_identity(remotes)
     value = {
         "schema_version": ADAPTER_SCHEMA_VERSION,
         "run_id": run_id,
@@ -419,10 +501,12 @@ def capture_contract(repo: lifecycle.Repo, run_id: str, target: lifecycle.Repo) 
         "policy": policy,
         "origin": remotes,
         "github_repository": repository,
+        "github_url": github_url,
         "expected_actor": policy["github_actor"],
     }
     lifecycle.atomic_json(contract_path(repo.common_dir, run_id), value)
     return value
+
 def load_contract(repo: lifecycle.Repo, run_id: str) -> dict[str, Any]:
     value = read_json(contract_path(repo.common_dir, run_id), "invalid_run_contract")
     if value.get("schema_version") != ADAPTER_SCHEMA_VERSION or value.get("run_id") != run_id:
@@ -433,8 +517,19 @@ def load_contract(repo: lifecycle.Repo, run_id: str) -> dict[str, Any]:
         or not isinstance(value.get("origin"), dict)
         or value.get("expected_actor") != policy.get("github_actor")
         or not isinstance(value.get("expected_actor"), str)
+        or not isinstance(value.get("github_repository"), str)
+        or not isinstance(value.get("github_url"), str)
     ):
         raise AdapterError("lifecycle run contract is malformed", "invalid_run_contract")
+    try:
+        repository, github_url = strict_origin_identity(value["origin"])
+    except AdapterError as exc:
+        raise AdapterError("lifecycle run contract has invalid origin identity", "invalid_run_contract") from exc
+    if (
+        repository.casefold() != value["github_repository"].casefold()
+        or github_url.casefold() != value["github_url"].casefold()
+    ):
+        raise AdapterError("lifecycle run contract identity is inconsistent", "invalid_run_contract")
     return value
 def pipeline_gate_level() -> str:
     try:
@@ -741,7 +836,11 @@ def start(args: argparse.Namespace, cwd: Path) -> dict[str, Any]:
     repo, session_id = require_opt_in(cwd), effective_session(args.session_id)
     normalized_owned = lifecycle.normalize_paths(args.owned_paths, repo.root)
     validate_owned_paths(normalized_owned, repo.root)
-    policy_snapshot(repo.root)
+    preflight_target = lifecycle.discover_repo(args.worktree) if args.worktree else repo
+    if preflight_target.common_dir != repo.common_dir:
+        raise AdapterError("requested worktree belongs to another repository", "worktree_repository_mismatch")
+    policy_snapshot(preflight_target.root)
+    strict_origin_identity(remote_urls(preflight_target))
     payload = {
         "task": args.task, "base_branch": args.base_branch, "base_sha": args.base_sha,
         "intended_branch": args.intended_branch, "owned_paths": normalized_owned,
@@ -775,7 +874,8 @@ def start(args: argparse.Namespace, cwd: Path) -> dict[str, Any]:
                 contract_file.unlink(missing_ok=True)
             code = exc.code if isinstance(exc, AdapterError) and exc.code in {
                 "invalid_lifecycle_config", "rollout_not_approved", "policy_drift",
-                "control_plane_owned", "invalid_run_contract",
+                "control_plane_owned", "invalid_run_contract", "origin_url_ambiguous",
+                "origin_url_unrecognized", "origin_url_drift",
             } else "binding_persist_failed"
             raise AdapterError("Claude lifecycle start could not persist its immutable binding", code) from exc
     if not result.get("idempotent"):
@@ -1084,10 +1184,68 @@ def action_commit(repo: lifecycle.Repo, state: dict[str, Any], decision: dict[st
             reconcile_default_index(target, default_index, index_path)
     finally:
         index_path.unlink(missing_ok=True)
-def exact_remote_head(target: lifecycle.Repo, repository: str, branch: str) -> str | None:
+def pinned_github_environment(target: lifecycle.Repo, contract: dict[str, Any]) -> dict[str, str]:
+    actor = contract.get("expected_actor")
+    if not isinstance(actor, str) or not ACTOR_RE.fullmatch(actor):
+        raise AdapterError("run lacks a pinned GitHub actor", "github_identity_unpinned")
+    token_proc = run_command(
+        ["gh", "auth", "token", "--hostname", "github.com", "--user", actor],
+        target.root,
+        check=False,
+        env={"GH_TOKEN": "", "GITHUB_TOKEN": "", "GH_ENTERPRISE_TOKEN": "", "GITHUB_ENTERPRISE_TOKEN": ""},
+    )
+    token = token_proc.stdout.strip()
+    if (
+        token_proc.returncode
+        or not token
+        or len(token) > 4096
+        or re.fullmatch(r"[A-Za-z0-9_.-]+", token) is None
+    ):
+        raise AdapterError("pinned GitHub credential is unavailable", "github_token_unavailable")
+    env = {"GH_TOKEN": token}
+    actor_proc = run_command(
+        ["gh", "api", "--hostname", "github.com", "/user", "--jq", ".login"],
+        target.root,
+        check=False,
+        env=env,
+    )
+    if actor_proc.returncode or actor_proc.stdout.strip() != actor:
+        raise AdapterError("pinned GitHub credential belongs to another actor", "github_token_actor_mismatch")
+    return env
+
+
+@contextlib.contextmanager
+def github_askpass_environment(
+    credential_env: dict[str, str], actor: str,
+) -> Any:
+    with tempfile.TemporaryDirectory(prefix="claude-lifecycle-github-") as directory:
+        askpass = Path(directory) / "askpass.sh"
+        askpass.write_text(
+            "#!/bin/sh\n"
+            "case \"$1\" in\n"
+            "  *sername*) printf '%s\\n' \"$LIFECYCLE_GITHUB_ACTOR\" ;;\n"
+            "  *assword*) printf '%s\\n' \"$LIFECYCLE_GITHUB_TOKEN\" ;;\n"
+            "  *) exit 1 ;;\n"
+            "esac\n",
+            encoding="utf-8",
+        )
+        askpass.chmod(0o700)
+        yield {
+            **credential_env,
+            "GIT_ASKPASS": str(askpass),
+            "GIT_TERMINAL_PROMPT": "0",
+            "LIFECYCLE_GITHUB_ACTOR": actor,
+            "LIFECYCLE_GITHUB_TOKEN": credential_env["GH_TOKEN"],
+        }
+
+
+def exact_remote_head(
+    target: lifecycle.Repo, repository: str, branch: str,
+    *, env: dict[str, str] | None = None,
+) -> str | None:
     proc = run_command(
         ["git", "ls-remote", "--heads", repository, f"refs/heads/{branch}"],
-        target.root, check=False,
+        target.root, check=False, env=env,
     )
     if proc.returncode:
         raise AdapterError("remote branch inspection failed", "remote_inspection_failed")
@@ -1097,6 +1255,40 @@ def exact_remote_head(target: lifecycle.Repo, repository: str, branch: str) -> s
     if len(rows) != 1 or len(rows[0]) != 2 or rows[0][1] != f"refs/heads/{branch}" or not OID_RE.fullmatch(rows[0][0]):
         raise AdapterError("remote branch inspection is ambiguous", "remote_inspection_failed")
     return rows[0][0]
+
+
+def repository_identity(
+    target: lifecycle.Repo, expected_repository: str, env: dict[str, str],
+) -> tuple[str, str]:
+    repo_proc = run_command(
+        ["gh", "repo", "view", "--repo", expected_repository, "--json", "nameWithOwner"],
+        target.root,
+        check=False,
+        env=env,
+    )
+    actor_proc = run_command(
+        ["gh", "api", "--hostname", "github.com", "/user", "--jq", ".login"],
+        target.root,
+        check=False,
+        env=env,
+    )
+    try:
+        value = json.loads(repo_proc.stdout)
+        name = value["nameWithOwner"]
+    except (json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise AdapterError("GitHub repository inspection returned malformed data", "repo_data_malformed") from exc
+    actor = actor_proc.stdout.strip()
+    if (
+        repo_proc.returncode
+        or actor_proc.returncode
+        or not isinstance(name, str)
+        or name.count("/") != 1
+        or not ACTOR_RE.fullmatch(actor)
+    ):
+        raise AdapterError("GitHub repository or actor identity is unavailable", "repo_inspection_failed")
+    return name, actor
+
+
 def action_push(repo: lifecycle.Repo, state: dict[str, Any], decision: dict[str, Any]) -> None:
     target, branch = action_target(repo, state), state["intended_branch"]
     lifecycle.validate_branch(target, branch, intended=True)
@@ -1104,49 +1296,50 @@ def action_push(repo: lifecycle.Repo, state: dict[str, Any], decision: dict[str,
     if head is None or lifecycle.exact_head(target) != head or decision["evidence"]["git"]["branch"] != branch:
         raise AdapterError("refusing to push stale action evidence", "stale_push_evidence")
     contract = load_contract(repo, state["run_id"])
-    fetch, push = contract["origin"].get("fetch"), contract["origin"].get("push")
-    repository = contract.get("github_repository")
-    if (
-        not isinstance(fetch, list) or not isinstance(push, list)
-        or len(fetch) != 1 or fetch != push
-        or not isinstance(repository, str)
-        or normalize_github_repository(fetch[0]) != repository
-    ):
-        raise AdapterError("pinned origin fetch/push identity is ambiguous", "origin_url_ambiguous")
-    expected_actor = contract.get("expected_actor")
-    if not isinstance(expected_actor, str):
-        raise AdapterError("run lacks pinned GitHub repository or actor", "github_identity_unpinned")
-    current_repository, current_actor = repository_identity(target)
-    if current_repository != repository or current_actor != expected_actor:
+    repository = contract["github_repository"]
+    actor = contract["expected_actor"]
+    pinned_url = contract["origin"]["fetch"][0]
+    credential_env = pinned_github_environment(target, contract)
+    current_repository, current_actor = repository_identity(target, repository, credential_env)
+    if current_repository.casefold() != repository.casefold() or current_actor != actor:
         raise AdapterError("GitHub repository or actor drifted after run start", "github_identity_drift")
-    run_command(
-        ["git", "push", "--set-upstream", "origin", f"{head}:refs/heads/{branch}"],
-        target.root,
-    )
-    if exact_remote_head(target, "origin", branch) != head:
-        raise AdapterError("pushed remote SHA does not match inspected SHA", "remote_sha_mismatch")
+    with github_askpass_environment(credential_env, actor) as git_env:
+        run_command(
+            ["git", "push", pinned_url, f"{head}:refs/heads/{branch}"],
+            target.root,
+            env=git_env,
+        )
+        if exact_remote_head(target, pinned_url, branch, env=git_env) != head:
+            raise AdapterError("pushed remote SHA does not match inspected SHA", "remote_sha_mismatch")
+    tracking_ref = f"refs/remotes/origin/{branch}"
+    prior = lifecycle.git(target.root, "rev-parse", "--verify", tracking_ref, check=False)
+    prior_oid = prior.stdout.strip() if prior.returncode == 0 else "0" * len(head)
+    update_args = [
+        "git", "update-ref", "-m", "lifecycle verified push",
+        tracking_ref, head, prior_oid,
+    ]
+    run_command(update_args, target.root)
     run_command(
         ["git", "branch", "--set-upstream-to", f"origin/{branch}", branch],
-        target.root, env={"GIT_TERMINAL_PROMPT": "0"},
+        target.root,
+        env={"GIT_TERMINAL_PROMPT": "0"},
     )
-def repository_identity(target: lifecycle.Repo) -> tuple[str, str]:
-    repo_proc = run_command(["gh", "repo", "view", "--json", "nameWithOwner"], target.root, check=False)
-    actor_proc = run_command(["gh", "api", "user", "--jq", ".login"], target.root, check=False)
-    try:
-        value = json.loads(repo_proc.stdout)
-        name = value["nameWithOwner"]
-    except (json.JSONDecodeError, KeyError, TypeError) as exc:
-        raise AdapterError("GitHub repository inspection returned malformed data", "repo_data_malformed") from exc
-    actor = actor_proc.stdout.strip()
-    if (repo_proc.returncode or actor_proc.returncode or not isinstance(name, str)
-            or name.count("/") != 1 or not ACTOR_RE.fullmatch(actor)):
-        raise AdapterError("GitHub repository or actor identity is unavailable", "repo_inspection_failed")
-    return name, actor
+
+
 def pr_owner(value: dict[str, Any]) -> str | None:
     owner = value.get("headRepositoryOwner")
     return owner.get("login") if isinstance(owner, dict) else owner if isinstance(owner, str) else None
-def parse_prs(proc: subprocess.CompletedProcess[str], state: dict[str, Any], head: str,
-              repository: str, owner: str) -> list[dict[str, Any]]:
+
+
+def pr_author(value: dict[str, Any]) -> str | None:
+    author = value.get("author")
+    return author.get("login") if isinstance(author, dict) else author if isinstance(author, str) else None
+
+
+def parse_prs(
+    proc: subprocess.CompletedProcess[str], state: dict[str, Any], head: str,
+    repository: str, owner: str, actor: str,
+) -> list[dict[str, Any]]:
     if proc.returncode:
         raise AdapterError("GitHub PR inspection failed", "pr_inspection_failed")
     try:
@@ -1158,31 +1351,36 @@ def parse_prs(proc: subprocess.CompletedProcess[str], state: dict[str, Any], hea
     candidates = [value for value in values if value.get("headRefName") == state["intended_branch"]
                   and value.get("headRefOid") == head]
     exact = [value for value in candidates if value.get("baseRefName") == state["base"]["branch"]
-             and pr_owner(value) == owner]
+             and pr_owner(value) == owner and pr_author(value) == actor]
     if len(exact) != len(candidates):
-        raise AdapterError("pull request owner or base does not match the controller", "pr_identity_mismatch")
+        raise AdapterError("pull request owner, author, or base is not pinned", "pr_identity_mismatch")
     if len(exact) > 1:
         raise AdapterError("multiple exact-head pull requests are ambiguous", "pr_ambiguous")
     return [{**value, "repository": repository} for value in exact]
+
+
 def query_exact_pr(
     target: lifecycle.Repo, state: dict[str, Any], head: str,
     contract: dict[str, Any] | None = None,
+    credential_env: dict[str, str] | None = None,
 ) -> dict[str, Any] | None:
     contract = contract or load_contract(lifecycle.discover_repo(state["repository"]["start_worktree"]), state["run_id"])
     expected_repo, expected_actor = contract.get("github_repository"), contract.get("expected_actor")
     if not isinstance(expected_repo, str) or not isinstance(expected_actor, str):
         raise AdapterError("run lacks pinned GitHub repository or actor", "github_identity_unpinned")
-    repository, actor = repository_identity(target)
-    if repository != expected_repo or actor != expected_actor:
+    env = credential_env or pinned_github_environment(target, contract)
+    repository, actor = repository_identity(target, expected_repo, env)
+    if repository.casefold() != expected_repo.casefold() or actor != expected_actor:
         raise AdapterError("GitHub repository or actor drifted after run start", "github_identity_drift")
     owner = expected_repo.split("/", 1)[0]
     proc = run_command([
-        "gh", "pr", "list", "--repo", repository, "--head", state["intended_branch"],
+        "gh", "pr", "list", "--repo", expected_repo, "--head", state["intended_branch"],
         "--state", "all", "--limit", "100", "--json",
-        "number,state,isDraft,headRefOid,headRefName,baseRefName,headRepositoryOwner,url,mergeable,mergeStateStatus",
-    ], target.root, check=False)
-    exact = parse_prs(proc, state, head, repository, owner)
+        "number,state,isDraft,headRefOid,headRefName,baseRefName,headRepositoryOwner,author,url,mergeable,mergeStateStatus",
+    ], target.root, check=False, env=env)
+    exact = parse_prs(proc, state, head, expected_repo, owner, expected_actor)
     return exact[0] if exact else None
+
 def pr_status(value: dict[str, Any]) -> str:
     state = value.get("state")
     if state == "OPEN":
@@ -1197,7 +1395,7 @@ def pr_snapshot(value: dict[str, Any]) -> tuple[Any, ...]:
     return tuple(value.get(key) for key in (
         "repository", "number", "state", "isDraft", "headRefOid", "headRefName", "baseRefName",
         "mergeable", "mergeStateStatus",
-    )) + (pr_owner(value),)
+    )) + (pr_owner(value), pr_author(value))
 def record_pr(repo: lifecycle.Repo, run_id: str, head: str, value: dict[str, Any]) -> None:
     number, snapshot = value.get("number"), pr_snapshot(value)
     if not isinstance(number, int) or number <= 0:
@@ -1209,28 +1407,84 @@ def record_pr(repo: lifecycle.Repo, run_id: str, head: str, value: dict[str, Any
         source="github-pr", sha=head, authoritative=True, receipt_sha=None,
         metadata=metadata, key=stable_key("pr-fact", snapshot), timeout=10,
     )
+def create_pr_diagnostic(proc: subprocess.CompletedProcess[str]) -> str:
+    for raw in reversed((proc.stderr or "").splitlines()):
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(value, dict) or set(value) != {"lifecycle_pr_error"}:
+            continue
+        detail = value["lifecycle_pr_error"]
+        if not isinstance(detail, dict) or set(detail) != {"exit_status", "reason"}:
+            continue
+        reason = detail.get("reason")
+        status = detail.get("exit_status")
+        unsafe_token = (
+            isinstance(reason, str)
+            and (
+                re.search(r"(?:gh[pousr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+)", reason) is not None
+                or any(
+                    secret and secret in reason
+                    for secret in (
+                        os.environ.get("GH_TOKEN", ""),
+                        os.environ.get("GITHUB_TOKEN", ""),
+                    )
+                )
+            )
+        )
+        if (
+            isinstance(status, int)
+            and 0 < status < 256
+            and isinstance(reason, str)
+            and 0 < len(reason) <= 300
+            and not unsafe_token
+        ):
+            return reason
+    return "canonical PR creation failed without a valid diagnostic"
+
+
 def action_open_pr(repo: lifecycle.Repo, state: dict[str, Any], decision: dict[str, Any]) -> None:
     target, head = action_target(repo, state), decision_head(decision)
     if head is None or lifecycle.exact_head(target) != head:
         raise AdapterError("controller did not provide a fresh exact HEAD", "missing_head")
     contract = load_contract(repo, state["run_id"])
-    if exact_remote_head(target, "origin", state["intended_branch"]) != head:
-        raise AdapterError("remote branch does not match approved HEAD", "remote_sha_mismatch")
-    pull_request = query_exact_pr(target, state, head, contract)
-    if pull_request is None:
-        ready = lifecycle.current_unit(state).get("ready")
-        if not isinstance(ready, dict) or not isinstance(ready.get("subject"), str):
-            raise AdapterError("conventional PR title evidence is missing", "ready_evidence_missing")
-        run_command([
-            STACK, "pr", state["intended_branch"], state["base"]["branch"],
-            ready["subject"], "--no-push",
-        ], target.root)
-        if exact_remote_head(target, "origin", state["intended_branch"]) != head:
-            raise AdapterError("canonical PR creation changed remote SHA", "remote_sha_mismatch")
-        pull_request = query_exact_pr(target, state, head, contract)
-    if pull_request is None or pr_status(pull_request) != "open":
-        raise AdapterError("canonical PR creation produced no open non-draft exact PR", "pr_exact_head_missing")
+    repository = contract["github_repository"]
+    actor = contract["expected_actor"]
+    pinned_url = contract["origin"]["fetch"][0]
+    credential_env = pinned_github_environment(target, contract)
+    with github_askpass_environment(credential_env, actor) as git_env:
+        if exact_remote_head(target, pinned_url, state["intended_branch"], env=git_env) != head:
+            raise AdapterError("remote branch does not match approved HEAD", "remote_sha_mismatch")
+        pull_request = query_exact_pr(target, state, head, contract, credential_env)
+        if pull_request is None:
+            ready = lifecycle.current_unit(state).get("ready")
+            if not isinstance(ready, dict) or not isinstance(ready.get("subject"), str):
+                raise AdapterError("conventional PR title evidence is missing", "ready_evidence_missing")
+            create_env = {
+                **credential_env,
+                "LIFECYCLE_EXPECTED_ACTOR": actor,
+                "LIFECYCLE_EXPECTED_REPOSITORY": repository,
+                "LIFECYCLE_EXPECTED_SHA": head,
+                "LIFECYCLE_EXPECTED_URL": pinned_url,
+                "LIFECYCLE_EXPECTED_PUSH_URL": contract["origin"]["push"][0],
+            }
+            proc = run_command([
+                STACK, "pr", state["intended_branch"], state["base"]["branch"],
+                ready["subject"], "--no-push",
+            ], target.root, check=False, env=create_env)
+            if proc.returncode:
+                raise AdapterError(
+                    f"canonical PR creation failed: {create_pr_diagnostic(proc)}",
+                    "pr_creation_failed",
+                )
+            if exact_remote_head(target, pinned_url, state["intended_branch"], env=git_env) != head:
+                raise AdapterError("canonical PR creation changed remote SHA", "remote_sha_mismatch")
+            pull_request = query_exact_pr(target, state, head, contract, credential_env)
+    if pull_request is None or pr_status(pull_request) != "open" or pr_author(pull_request) != actor:
+        raise AdapterError("canonical PR creation produced no actor-owned open exact PR", "pr_exact_head_missing")
     record_pr(repo, state["run_id"], head, pull_request)
+
 def demote_stage(common_dir: Path, stage: str, run_id: str) -> None:
     if stage not in ACTION_STAGES.values():
         raise AdapterError("invalid demotion stage", "invalid_stage")
@@ -1250,6 +1504,120 @@ def decision_token(decision: dict[str, Any]) -> tuple[Any, ...]:
     evidence = decision.get("evidence", {})
     return (decision.get("action"), decision_head(decision), evidence.get("run_revision"),
             tuple(evidence.get("owned_dirty_paths", [])))
+def action_journal_path(common_dir: Path, run_id: str) -> Path:
+    lifecycle.validate_name(run_id, lifecycle.RUN_ID_RE, "run id")
+    return adapter_root(common_dir) / "action-journals" / f"{hashlib.sha256(run_id.encode()).hexdigest()}.json"
+
+
+def write_action_journal(repo: lifecycle.Repo, value: dict[str, Any]) -> None:
+    lifecycle.atomic_json(action_journal_path(repo.common_dir, value["run_id"]), value)
+
+
+def load_action_journal(repo: lifecycle.Repo, run_id: str) -> dict[str, Any] | None:
+    path = action_journal_path(repo.common_dir, run_id)
+    if not path.exists():
+        return None
+    value = read_json(path, "invalid_action_journal")
+    required = {
+        "schema_version": int, "run_id": str, "action": str, "stage": str,
+        "head_sha": (str, type(None)), "status": str, "result": (str, type(None)),
+        "reason_code": (str, type(None)), "audit_status": str,
+        "created_at": str, "updated_at": str,
+    }
+    if (
+        any(not isinstance(value.get(key), kind) for key, kind in required.items())
+        or value.get("schema_version") != ADAPTER_SCHEMA_VERSION
+        or value.get("run_id") != run_id
+        or value.get("action") not in ACTION_STAGES
+        or value.get("stage") != ACTION_STAGES.get(value.get("action"))
+        or value.get("status") not in {"pending", "completed"}
+        or value.get("result") not in {None, "success", "failure"}
+        or value.get("audit_status") not in {"pending", "complete"}
+        or (value.get("status") == "pending" and value.get("result") is not None)
+        or (value.get("status") == "completed" and value.get("result") is None)
+    ):
+        raise AdapterError("action reconciliation journal is malformed", "invalid_action_journal")
+    return value
+
+
+def begin_action_journal(
+    repo: lifecycle.Repo, run_id: str, decision: dict[str, Any], stage: str,
+) -> dict[str, Any]:
+    current = load_action_journal(repo, run_id)
+    if current is not None and current["audit_status"] != "complete":
+        raise AdapterError("prior action audit reconciliation is pending", "action_audit_pending")
+    timestamp = now()
+    value = {
+        "schema_version": ADAPTER_SCHEMA_VERSION,
+        "run_id": run_id,
+        "action": decision["action"],
+        "stage": stage,
+        "head_sha": decision_head(decision),
+        "status": "pending",
+        "result": None,
+        "reason_code": None,
+        "audit_status": "pending",
+        "created_at": timestamp,
+        "updated_at": timestamp,
+    }
+    write_action_journal(repo, value)
+    return value
+
+
+def complete_action_journal(
+    repo: lifecycle.Repo, journal: dict[str, Any], result: str,
+    reason_code: str | None = None,
+) -> dict[str, Any]:
+    value = {
+        **journal,
+        "status": "completed",
+        "result": result,
+        "reason_code": reason_code,
+        "audit_status": "pending",
+        "updated_at": now(),
+    }
+    write_action_journal(repo, value)
+    return value
+
+
+def audit_action_journal(repo: lifecycle.Repo, journal: dict[str, Any]) -> dict[str, Any]:
+    try:
+        append_adapter_audit(
+            repo.common_dir,
+            journal["run_id"],
+            "action",
+            journal["result"],
+            action=journal["action"],
+            stage=journal["stage"],
+            reason_code=journal["reason_code"],
+            head_sha=journal["head_sha"],
+        )
+    except Exception as exc:
+        raise AdapterError(
+            "action completed but durable audit reconciliation is pending",
+            "action_audit_pending",
+        ) from exc
+    value = {**journal, "audit_status": "complete", "updated_at": now()}
+    write_action_journal(repo, value)
+    return value
+
+
+def reconcile_action_journal(repo: lifecycle.Repo, run_id: str) -> bool:
+    journal = load_action_journal(repo, run_id)
+    if journal is None or journal["audit_status"] == "complete":
+        return False
+    if journal["status"] == "pending":
+        current = inspect_bound(repo, run_id)
+        succeeded = current.get("action") in ACTION_SUCCESSORS[journal["action"]]
+        if succeeded:
+            journal = complete_action_journal(repo, journal, "success")
+        else:
+            demote_stage(repo.common_dir, journal["stage"], run_id)
+            journal = complete_action_journal(
+                repo, journal, "failure", "action_interrupted",
+            )
+    audit_action_journal(repo, journal)
+    return True
 def execute_action(repo: lifecycle.Repo, run_id: str, decision: dict[str, Any], state: dict[str, Any],
     action_fn: Callable[[lifecycle.Repo, dict[str, Any], dict[str, Any]], None]) -> dict[str, Any]:
     stage = ACTION_STAGES[decision["action"]]
@@ -1287,16 +1655,18 @@ def execute_action(repo: lifecycle.Repo, run_id: str, decision: dict[str, Any], 
             stage=stage, reason_code=code, head_sha=decision_head(decision),
         )
         return adapter_result(run_id, "blocked", decision, ok=False, reason_code=code)
+    journal = begin_action_journal(repo, run_id, decision, stage)
     action_audit(repo, run_id, decision, "attempt", stage=stage)
     try:
         action_fn(repo, state, decision)
     except Exception as exc:
         code = exc.code if isinstance(exc, (AdapterError, lifecycle.LifecycleError)) else "action_failed"
         demote_stage(repo.common_dir, stage, run_id)
-        best_effort_audit(
-            repo.common_dir, run_id, "action", "failure", action=decision["action"],
-            stage=stage, reason_code=code, head_sha=decision_head(decision),
-        )
+        journal = complete_action_journal(repo, journal, "failure", code)
+        try:
+            audit_action_journal(repo, journal)
+        except AdapterError:
+            pass
         after = inspect_bound(repo, run_id)
         if decision["action"] == "create_stack" and after.get("action") != "create_stack":
             lifecycle.halt_run(
@@ -1309,7 +1679,8 @@ def execute_action(repo: lifecycle.Repo, run_id: str, decision: dict[str, Any], 
             run_id, "action_failed", decision, after=after,
             ok=False, stage=stage, reason_code=code,
         )
-    action_audit(repo, run_id, decision, "success", stage=stage)
+    journal = complete_action_journal(repo, journal, "success")
+    audit_action_journal(repo, journal)
     return adapter_result(run_id, "advanced", decision, after=inspect_bound(repo, run_id), stage=stage)
 def watcher_paths(common_dir: Path, run_id: str, sha: str) -> tuple[Path, Path, Path, Path]:
     safe_run = hashlib.sha256(run_id.encode()).hexdigest()
@@ -1442,6 +1813,9 @@ def spawn_watcher(repo: lifecycle.Repo, run_id: str, sha: str) -> dict[str, Any]
         fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
 def tick_locked(repo: lifecycle.Repo, run_id: str) -> dict[str, Any]:
+    if reconcile_action_journal(repo, run_id):
+        decision = inspect_bound(repo, run_id)
+        return adapter_result(run_id, "reconciled", decision)
     decision, state = inspect_bound(repo, run_id), load_run_state(repo, run_id)
     action = decision["action"]
     action_fn = {
@@ -1507,10 +1881,18 @@ def classify_required_checks(value: Any) -> tuple[str, dict[str, Any]]:
     if "pending" in states:
         return "pending", metadata
     return "passing", metadata
-def required_checks(target: lifecycle.Repo, number: int) -> tuple[str, dict[str, Any]]:
+def required_checks(
+    target: lifecycle.Repo, number: int, contract: dict[str, Any],
+    credential_env: dict[str, str] | None = None,
+) -> tuple[str, dict[str, Any]]:
+    repository = contract.get("github_repository")
+    if not isinstance(repository, str):
+        raise AdapterError("run lacks a pinned GitHub repository", "github_identity_unpinned")
+    env = credential_env or pinned_github_environment(target, contract)
     proc = run_command([
-        "gh", "pr", "checks", str(number), "--required", "--json", "name,state,bucket",
-    ], target.root, check=False)
+        "gh", "pr", "checks", str(number), "--repo", repository,
+        "--required", "--json", "name,state,bucket",
+    ], target.root, check=False, env=env)
     try:
         checks = json.loads(proc.stdout)
     except json.JSONDecodeError:
@@ -1566,7 +1948,7 @@ def reconcile_ci(repo: lifecycle.Repo, run_id: str, expected_sha: str) -> dict[s
     state = load_run_state(repo, run_id)
     target = action_target(repo, state)
     try:
-        verify_contract(repo, state, target)
+        contract = verify_contract(repo, state, target)
     except Exception as exc:
         code = exc.code if isinstance(exc, (AdapterError, lifecycle.LifecycleError)) else "action_preflight_failed"
         metadata = {"required_count": 0, "check_names": [], "reason_code": code}
@@ -1583,7 +1965,7 @@ def reconcile_ci(repo: lifecycle.Repo, run_id: str, expected_sha: str) -> dict[s
         record_pr(repo, run_id, expected_sha, pull_request)
         number = pull_request.get("number")
         if isinstance(number, int) and number > 0 and pr_status(pull_request) == "open":
-            check_status, metadata = required_checks(target, number)
+            check_status, metadata = required_checks(target, number, contract)
         if check_status == "passing":
             if not merge_readiness_complete(pull_request, state, expected_sha):
                 check_status, metadata = "unknown", {
@@ -1744,7 +2126,7 @@ def validate_hook_payload(event: str, payload: dict[str, Any]) -> str:
 def command_tokens(command: Any) -> list[str] | None:
     if not isinstance(command, str) or not command or command != command.strip():
         return None
-    if any(character in command for character in "\n\r;&|<>`$#"):
+    if any(character in command for character in "\n\r;&|<>`$#*?[]{}~\\()!"):
         return None
     try:
         tokens = shlex.split(command, posix=True)
@@ -1817,11 +2199,6 @@ def trusted_validation(tokens: list[str], target: lifecycle.Repo) -> bool:
         return all(token.endswith((".sh", ".bash")) and not token.startswith("-") for token in tokens[2:])
     if executable == "shellcheck" and len(tokens) >= 2:
         return all(not token.startswith("-") or token in {"-x", "--external-sources"} for token in tokens[1:])
-    if executable in {"python", "python3"} and len(tokens) >= 4 and tokens[1:3] == ["-m", "unittest"]:
-        return all(
-            re.fullmatch(r"scripts\.test_[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)*", token) is not None
-            for token in tokens[3:]
-        )
     if executable in {"python", "python3"} and len(tokens) == 4 and tokens[1:3] == ["-m", "json.tool"]:
         return True
     return False
@@ -1906,6 +2283,9 @@ def hook_pre_write(payload: dict[str, Any], repo: lifecycle.Repo, session_id: st
     if tool_name == "mcp__pctx__execute_typescript":
         audit_hook(repo, run_id, "deny", "pctx_execution_denied", decision)
         return deny("Mutation-capable pctx TypeScript execution is disabled while lifecycle control is enabled.", run_id=run_id)
+    if tool_name in {"EnterWorktree", "ExitWorktree"}:
+        audit_hook(repo, run_id, "deny", "worktree_tool_denied", decision)
+        return deny("Worktree entry and exit are disabled while lifecycle control owns the run.", run_id=run_id)
     if tool_name == "Bash":
         return bash_gate(payload, repo, target, state, run_id, session_id, decision)
     if tool_name not in {"Edit", "Write", "MultiEdit", "NotebookEdit"}:
