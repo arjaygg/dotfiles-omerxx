@@ -66,11 +66,26 @@ _run "$HOME/.dotfiles/.claude/hooks/session-duration-guard.sh" || exit $?
 
 # 3. Shared lifecycle status — silent outside explicitly opted-in repositories
 _LIFECYCLE_BRIDGE="$HOME/.dotfiles/.claude/hooks/lifecycle-hook.sh"
-if [[ -f "$_LIFECYCLE_BRIDGE" && -r "$_LIFECYCLE_BRIDGE" ]]; then
-    _run "$_LIFECYCLE_BRIDGE" UserPromptSubmit
+_LIFECYCLE_VALIDATOR="$HOME/.dotfiles/.claude/hooks/lifecycle-envelope.py"
+_LIFECYCLE_OUT=""
+_LIFECYCLE_RC=1
+if [[ -f "$_LIFECYCLE_BRIDGE" && -r "$_LIFECYCLE_BRIDGE"     && -f "$_LIFECYCLE_VALIDATOR" && -r "$_LIFECYCLE_VALIDATOR" ]]; then
+    _LIFECYCLE_OUT="$(printf '%s' "$_INPUT" | bash "$_LIFECYCLE_BRIDGE" UserPromptSubmit 2>&3)"
+    _LIFECYCLE_RC=$?
+fi
+if [[ $_LIFECYCLE_RC -eq 0 && -n "$_LIFECYCLE_OUT" ]]     && printf '%s' "$_LIFECYCLE_OUT" | python3 "$_LIFECYCLE_VALIDATOR" UserPromptSubmit >/dev/null 2>&1; then
+    _LIFECYCLE_CTX="$(printf '%s' "$_LIFECYCLE_OUT" | python3 -c '
+import json, sys
+value = json.load(sys.stdin)
+print(value.get("hookSpecificOutput", {}).get("additionalContext", ""), end="")
+' 2>/dev/null || true)"
+    if [[ -n "$_LIFECYCLE_CTX" ]]; then
+        [[ -n "$_COMBINED_CTX" ]] && _COMBINED_CTX+=$'\n'
+        _COMBINED_CTX+="$_LIFECYCLE_CTX"
+    fi
 else
     [[ -n "$_COMBINED_CTX" ]] && _COMBINED_CTX+=$'\n'
-    _COMBINED_CTX+="Lifecycle bridge is unavailable; lifecycle mutation remains fail-closed."
+    _COMBINED_CTX+="Lifecycle bridge output was unavailable or invalid; lifecycle mutation remains fail-closed."
 fi
 
 # 4. Plans health check — outputs additionalContext for missing artifacts
