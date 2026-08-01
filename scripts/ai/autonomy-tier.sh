@@ -96,6 +96,97 @@ GIT_COMMON=$(cd "$REPO_ROOT" && cd "$(git rev-parse --git-common-dir)" && pwd) \
 
 ATOMIC_YAML="$REPO_ROOT/.claude-atomic.yaml"
 [ -f "$ATOMIC_YAML" ] || die "$ATOMIC_YAML not found" 4
+[ ! -L "$ATOMIC_YAML" ] || die "$ATOMIC_YAML must not be a symlink" 3
+
+# Validate the human-owned policy before reading any authorization value. The
+# scalar subset used here is intentionally strict: duplicate blocks/keys and an
+# incomplete or malformed override are authorization errors, never defaults.
+POLICY_ERROR=""
+POLICY_RC=0
+POLICY_ERROR=$(python3 - "$ATOMIC_YAML" <<'PY_POLICY' 2>&1
+import datetime as dt
+import re
+import sys
+
+path = sys.argv[1]
+try:
+    lines = open(path, encoding="utf-8").read().splitlines()
+except (OSError, UnicodeError) as exc:
+    print(f"policy is unreadable: {type(exc).__name__}")
+    raise SystemExit(3)
+
+relevant = {"pipeline", "autonomy_override"}
+blocks = {}
+current = None
+for number, raw in enumerate(lines, 1):
+    clean = raw.split("#", 1)[0].rstrip()
+    if not clean.strip():
+        continue
+    if not clean[0].isspace():
+        match = re.fullmatch(r"([A-Za-z0-9_-]+):\s*", clean)
+        current = match.group(1) if match else None
+        if current in relevant:
+            if current in blocks:
+                print(f"duplicate policy block {current} at line {number}")
+                raise SystemExit(3)
+            blocks[current] = {}
+        continue
+    if current not in relevant:
+        continue
+    match = re.fullmatch(r"  ([A-Za-z0-9_-]+):\s*(.*?)\s*", clean)
+    if not match or not match.group(2):
+        print(f"malformed policy key at line {number}")
+        raise SystemExit(3)
+    key, value = match.groups()
+    if key in blocks[current]:
+        print(f"duplicate policy key {current}.{key} at line {number}")
+        raise SystemExit(3)
+    blocks[current][key] = value.strip("'\"")
+
+stages = {"auto_stack", "auto_commit", "auto_push", "auto_pr", "auto_ship", "auto_clean"}
+for key, value in blocks.get("pipeline", {}).items():
+    if key not in stages:
+        print(f"unknown pipeline stage {key}")
+        raise SystemExit(3)
+    if not re.fullmatch(r"A[0-4]|true|false", value):
+        print(f"unparseable tier {value!r}")
+        raise SystemExit(3)
+
+override = blocks.get("autonomy_override")
+if override is not None:
+    required = {"tier", "basis", "stages", "expires", "signed_off_by", "decision"}
+    if set(override) != required:
+        print("autonomy_override is incomplete or has unknown keys")
+        raise SystemExit(3)
+    if not re.fullmatch(r"A[0-4]", override["tier"]):
+        print("autonomy_override tier is malformed")
+        raise SystemExit(3)
+    if override["basis"] != "risk-accepted":
+        print("autonomy_override basis must be risk-accepted")
+        raise SystemExit(3)
+    listed = override["stages"].split()
+    if not listed or len(listed) != len(set(listed)) or any(item not in stages for item in listed):
+        print("autonomy_override stages are empty, duplicated, or unknown")
+        raise SystemExit(3)
+    try:
+        expiry = dt.date.fromisoformat(override["expires"])
+    except ValueError:
+        print("autonomy_override expiry is malformed")
+        raise SystemExit(3)
+    if expiry < dt.datetime.now(dt.timezone.utc).date():
+        print("autonomy_override is expired")
+        raise SystemExit(3)
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._@/-]{0,127}", override["signed_off_by"]):
+        print("autonomy_override is unsigned")
+        raise SystemExit(3)
+    if len(override["decision"].strip()) < 3:
+        print("autonomy_override decision basis is incomplete")
+        raise SystemExit(3)
+PY_POLICY
+) || POLICY_RC=$?
+if [ "$POLICY_RC" -ne 0 ]; then
+    die "${POLICY_ERROR:-policy validation failed}" 3
+fi
 
 # --- args ------------------------------------------------------------------------
 STAGE=""; AS_JSON=0; DO_ALL=0

@@ -48,13 +48,40 @@ if _is_block "$_TASK_GATE_OUT"; then
 fi
 [[ -n "$_TASK_GATE_OUT" ]] && printf '%s\n' "$_TASK_GATE_OUT"
 
-# A bound shared-lifecycle run supersedes the legacy pipeline gate. An unbound
-# session produces no lifecycle output and retains the legacy fallback.
+# A validated bound lifecycle envelope supersedes the legacy pipeline gate.
+# Disabled/non-repository and exact unbound Stop produce no bridge output.
+if [[ ! -f "$SCRIPT_DIR/lifecycle-hook.sh" || ! -r "$SCRIPT_DIR/lifecycle-hook.sh" ]]; then
+    printf '%s\n' '{"decision":"block","reason":"Lifecycle Stop bridge is unavailable; failed closed."}'
+    wait
+    exit 0
+fi
 _LIFECYCLE_OUT="$(_run "$SCRIPT_DIR/lifecycle-hook.sh" Stop)"
 _rc=$?
-if printf '%s' "$_LIFECYCLE_OUT" | jq -e '.lifecycle_bound == true' >/dev/null 2>&1; then
-    if _is_block "$_LIFECYCLE_OUT"; then
-        printf '%s' "$_LIFECYCLE_OUT" | jq -c '{decision,reason}'
+if [[ -n "$_LIFECYCLE_OUT" ]]; then
+    if printf '%s' "$_LIFECYCLE_OUT" | jq -e '
+        (type == "object") and
+        (.lifecycle_hook | type == "object") and
+        ((.lifecycle_hook | keys | sort) == ["binding","event","processed","run_id","schema_version"]) and
+        (.lifecycle_hook.schema_version == 1) and
+        (.lifecycle_hook.processed == true) and
+        (.lifecycle_hook.event == "Stop") and
+        (.lifecycle_hook.binding == "bound") and
+        (.lifecycle_hook.run_id | type == "string" and length > 0) and
+        (
+            ((keys | sort) == ["lifecycle_hook"]) or
+            (
+                ((keys | sort) == ["decision","lifecycle_hook","reason"]) and
+                (.decision == "block") and
+                (.reason | type == "string" and length > 0)
+            )
+        )
+    ' >/dev/null 2>&1; then
+        if _is_block "$_LIFECYCLE_OUT"; then
+            printf '%s' "$_LIFECYCLE_OUT" | jq -c '{decision,reason}'
+        fi
+    else
+        printf '%s
+' '{"decision":"block","reason":"Lifecycle Stop envelope was malformed; failed closed."}'
     fi
     wait
     exit "$_rc"

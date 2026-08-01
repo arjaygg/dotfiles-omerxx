@@ -42,7 +42,12 @@ ${_ctx}"
 
 _run "$SCRIPT_DIR/settings-symlink-guard.sh"
 _run "$SCRIPT_DIR/session-init.sh"
-_run "$SCRIPT_DIR/lifecycle-hook.sh" SessionStart
+if [[ -f "$SCRIPT_DIR/lifecycle-hook.sh" && -r "$SCRIPT_DIR/lifecycle-hook.sh" ]]; then
+    _run "$SCRIPT_DIR/lifecycle-hook.sh" SessionStart
+else
+    [[ -n "$_COMBINED_CTX" ]] && _COMBINED_CTX+=$'\n'
+    _COMBINED_CTX+="Lifecycle bridge is unavailable; lifecycle mutation remains fail-closed."
+fi
 _run "$SCRIPT_DIR/supermemory-project-check.sh"
 _run "$SCRIPT_DIR/model-availability-check.sh"
 
