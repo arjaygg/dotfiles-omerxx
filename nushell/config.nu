@@ -965,7 +965,8 @@ use ~/projects/nu_scripts/aliases/docker/docker-aliases.nu *
 # Headroom context compression — bake required env vars so they're set regardless of shell state
 def --wrapped hclaude [...rest] {
     with-env {
-        ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+        ANTHROPIC_BASE_URL: "http://127.0.0.1:8788",
+        ANTHROPIC_API_KEY: "",
         ENABLE_TOOL_SEARCH: "auto",
         HEADROOM_NO_SUBSCRIPTION_TRACKING: "1",
         HEADROOM_CONTEXT_TOOL: "lean-ctx",

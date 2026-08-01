@@ -111,7 +111,7 @@ if command -v headroom &> /dev/null; then
     if headroom install status >/dev/null 2>&1; then
         headroom install restart --profile default
     else
-        headroom install apply --preset persistent-docker --profile default --port 8787
+        headroom install apply --preset persistent-docker --profile default --port 8788
     fi
     python3 "$HOME/.dotfiles/scripts/headroom_hardening.py" \
         containers --stop-orphans >/dev/null 2>&1 || true
