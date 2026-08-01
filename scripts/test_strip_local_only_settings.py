@@ -1,20 +1,19 @@
-"""Tests for stripping machine-local-only keys out of staged .claude/settings.json.
+"""Tests for stripping machine-local-only keys out of Claude settings JSON.
 
 `skipDangerousModePermissionPrompt: true` is a deliberate local default here — it
-lives in the gitignored `.claude/settings.local.json`, which takes precedence — but
-Claude Code also writes it into `~/.claude/settings.json`, a symlink into this repo.
-Removing it from the staged blob is therefore lossless at runtime.
+lives in the gitignored `.claude/settings.local.json`, which takes precedence —
+and Claude Code also writes it into the untracked runtime settings file
+(decisions/0016). This helper was the engine of the retired
+sanitize-staged-settings pre-commit hook and is kept as a standalone utility.
 """
 
 import json
 import subprocess
-import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 STRIPPER = ROOT / "scripts/strip_local_only_settings.py"
-HOOK = ROOT / "git/hooks/sanitize-staged-settings.sh"
 
 KEY = "skipDangerousModePermissionPrompt"
 
@@ -99,44 +98,6 @@ class StripTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertEqual(result.stdout, "")
         self.assertIn("not valid JSON", result.stderr)
-
-
-class HookIntegrationTests(unittest.TestCase):
-    def test_index_is_cleaned_and_working_copy_keeps_the_local_default(self):
-        directory = tempfile.TemporaryDirectory()
-        self.addCleanup(directory.cleanup)
-        repo = Path(directory.name)
-        for args in (
-            ["init", "-q", "-b", "main", "."],
-            ["config", "user.email", "t@t.t"],
-            ["config", "user.name", "t"],
-        ):
-            subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
-
-        target = repo / ".claude/settings.json"
-        target.parent.mkdir(parents=True)
-        target.write_text(MID_OBJECT, encoding="utf-8")
-        subprocess.run(
-            ["git", "add", ".claude/settings.json"], cwd=repo, check=True, capture_output=True
-        )
-
-        result = subprocess.run(
-            ["bash", str(HOOK)], cwd=repo, capture_output=True, text=True, check=False
-        )
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-        staged = subprocess.run(
-            ["git", "show", ":.claude/settings.json"],
-            cwd=repo,
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout
-        self.assertNotIn(KEY, staged)
-
-        # The whole point: the local default survives in the working copy.
-        self.assertIn(KEY, target.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

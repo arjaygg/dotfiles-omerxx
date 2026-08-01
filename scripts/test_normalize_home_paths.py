@@ -1,22 +1,17 @@
-"""Tests for the staged-settings home-path normaliser.
+"""Tests for the home-path normaliser utility.
 
-Context: `lean-ctx doctor --fix` rewrites three hook entries in
-`.claude/settings.json` with the absolute path of its own binary, and
-`~/.claude/settings.json` symlinks into this tracked repo. Verified empirically
-that the rewrite happens from `$HOME/...` and from a bare `lean-ctx hook ...`
-alike, so the entry cannot be written in a form that survives. The commit is
-normalised instead.
+`lean-ctx doctor --fix` rewrites hook entries with the absolute path of its own
+binary; this helper rewrites them back to `$HOME` form. It was the engine of the
+retired sanitize-staged-settings pre-commit hook — `.claude/settings.json` is
+untracked since decisions/0016 — and is kept as a standalone utility.
 """
 
-import json
 import subprocess
-import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 NORMALIZER = ROOT / "scripts/normalize_home_paths.py"
-HOOK = ROOT / "git/hooks/sanitize-staged-settings.sh"
 
 # Split so this file does not trip public_hygiene_check's own
 # absolute-home-path rule, the same way that module splits its org-name pattern.
@@ -73,68 +68,6 @@ class NormalizeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("manual review", result.stderr)
         self.assertEqual(result.stdout, "")
-
-
-class PreCommitHookTests(unittest.TestCase):
-    """End-to-end: the hook must fix the index and leave the working tree alone."""
-
-    def _repo(self) -> Path:
-        directory = tempfile.TemporaryDirectory()
-        self.addCleanup(directory.cleanup)
-        repo = Path(directory.name)
-        for args in (
-            ["init", "-q", "-b", "main", "."],
-            ["config", "user.email", "t@t.t"],
-            ["config", "user.name", "t"],
-        ):
-            subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
-        return repo
-
-    def test_hook_normalises_the_index_but_not_the_working_tree(self):
-        repo = self._repo()
-        home = str(Path.home())
-        polluted = json.dumps(
-            {"hooks": {"PostToolUse": [{"command": f"{home}/.cargo/bin/lean-ctx hook rewrite"}]}},
-            indent=2,
-        )
-        target = repo / ".claude/settings.json"
-        target.parent.mkdir(parents=True)
-        target.write_text(polluted, encoding="utf-8")
-        subprocess.run(
-            ["git", "add", ".claude/settings.json"], cwd=repo, check=True, capture_output=True
-        )
-
-        result = subprocess.run(
-            ["bash", str(HOOK)], cwd=repo, capture_output=True, text=True, check=False
-        )
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-        staged = subprocess.run(
-            ["git", "show", ":.claude/settings.json"],
-            cwd=repo,
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout
-        self.assertIn("$HOME/.cargo/bin/lean-ctx hook rewrite", staged)
-        self.assertNotIn(home, staged)
-
-        # The working copy keeps what lean-ctx wrote — the point of normalising
-        # the index instead of the file.
-        self.assertIn(home, target.read_text(encoding="utf-8"))
-
-    def test_hook_is_a_noop_when_settings_is_not_staged(self):
-        repo = self._repo()
-        (repo / "other.txt").write_text("x\n", encoding="utf-8")
-        subprocess.run(["git", "add", "other.txt"], cwd=repo, check=True, capture_output=True)
-
-        result = subprocess.run(
-            ["bash", str(HOOK)], cwd=repo, capture_output=True, text=True, check=False
-        )
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(result.stdout.strip(), "")
 
 
 if __name__ == "__main__":
