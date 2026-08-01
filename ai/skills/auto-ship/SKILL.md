@@ -19,10 +19,12 @@ itself. This skill is what actually runs a leg, once the repo has durably
 opted in via `.claude-atomic.yaml`'s `pipeline:` block.
 
 When a Claude session is bound under `<git-common-dir>/agent-lifecycle/sessions/`,
-`scripts/ai/lifecycle_adapter.py tick` exclusively owns exact-base stack creation,
-commit, ordinary push, exact-head PR reconciliation, and detached CI observation.
-The Stop dispatcher skips `git-pipeline-gate.sh` for that bound run. Merge, sync,
-and cleanup remain approval-required and unimplemented in this adapter branch.
+`scripts/ai/lifecycle_adapter.py tick` exclusively owns strict exact-base stack
+creation, CAS-protected commit, pinned explicit-ref push, exact-owner/head/base PR
+reconciliation, and bounded detached CI observation. The Stop dispatcher skips
+`git-pipeline-gate.sh` for that bound run. A detached watcher allows Stop; each
+deferred merge/sync/cleanup tuple blocks once, then leaves a durable notice and
+allows Stop. Those irreversible actions remain unimplemented in this branch.
 
 **Do not build a new signal detector or validation router here.** Both
 already exist and are reused as-is:
@@ -81,10 +83,11 @@ is what makes it safe to run unattended.
 - Require effective A2+ from `autonomy-tier.sh`; resolver failure or a lower
   tier is `approval_required`, never optimistic execution.
 - Invoke only `$HOME/.dotfiles/.claude/scripts/stack create <branch> <base>
-  --base-sha <exact-controller-sha>`. The stack script verifies the full object
-  id is an ancestor of the named base and creates from that immutable commit.
-- A failure audits and writes only `autonomy-demoted-auto_stack`; fresh
-  inspection recovers a worktree created before a crash.
+  --base-sha <exact-controller-sha> --strict`. The stack script verifies the full
+  object id is an ancestor of the named base and creates from that immutable
+  commit. Strict mode requires successful Charcoal tracking.
+- A failure audits and writes only `autonomy-demoted-auto_stack`; if a worktree
+  appeared without tracking, the run is durably halted blocked.
 
 ### Tier 0 — `commit_due` (flag: `auto_commit`)
 
@@ -102,18 +105,18 @@ is what makes it safe to run unattended.
 
 ### Tier 1 — `pr_due` (flags: `auto_push`, `auto_pr`)
 
-- Push the branch (idempotent — push only if local is ahead of the tracked
-  remote ref, per D6 point 4; never force-push here).
-- Open/update the PR via the `stack-pr` skill (`ai/skills/stack-pr/SKILL.md`):
-  ```bash
-  $HOME/.dotfiles/.claude/scripts/stack pr "$(git branch --show-current)"
-  ```
-- Immediately start a background `Monitor` watching `plans/ci-status.md` for
-  this branch+SHA's entry to flip to green/red (D4a) — in the same turn that
-  opens the PR. `git-pipeline-gate.sh` never polls; this Monitor is the only
-  bridge for the CI wait, and it may span a session boundary.
-- `ci_pending` itself is always advisory-only, on every gate level — there is
-  nothing actionable to do besides wait.
+- Validate one matching origin fetch/push URL, then push only explicit
+  `HEAD:refs/heads/<intended-branch>` with `--set-upstream`; never force or
+  inherit a configured refspec.
+- Open/update the PR through canonical `stack pr` with explicit controller base
+  and conventional ready title. Reuse only a PR matching the current repository
+  owner, intended branch, exact HEAD, and exact base.
+- For a bound lifecycle run, start one detached watcher per run/exact SHA. It
+  handshakes before detachment, uses timed commands and bounded backoff, and
+  defaults to 80 polls. Hooks never wait for it.
+- Passing CI requires nonempty required checks plus an identical second
+  open/non-draft exact PR observation after check retrieval. Missing, stale,
+  malformed, or command-inconsistent evidence remains unknown.
 
 ### Tier 2 — `merge_due` (flag: `auto_ship`)
 
