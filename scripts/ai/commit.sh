@@ -65,16 +65,6 @@ if ! grep -qi "Co-authored-by:.*AI" "$MSG_FILE"; then
     printf '\nCo-authored-by: AI Agent <ai@local>\n' >> "$MSG_FILE"
 fi
 
-run_commit_hook() {
-    local name="$1"
-    shift
-    local hook
-    hook=$(git rev-parse --git-path "hooks/$name" 2>/dev/null || true)
-    if [[ -n "$hook" && -x "$hook" ]]; then
-        "$hook" "$@"
-    fi
-}
-
 validate_message_file() {
     local final_subject final_body
     final_subject=$(python3 - "$MSG_FILE" <<'PYMSG'
@@ -120,28 +110,21 @@ if [[ "${LIFECYCLE_COMMIT_MODE:-}" == "private-v1" ]]; then
     CURRENT_PARENT=$(git rev-parse --verify "$EXPECTED_REF^{commit}" 2>/dev/null || true)
     CURRENT_TREE=$(git write-tree 2>/dev/null || true)
     if [[ "$CURRENT_REF" != "$EXPECTED_REF" || "$CURRENT_PARENT" != "$EXPECTED_PARENT" || "$CURRENT_TREE" != "$EXPECTED_TREE" ]]; then
-        echo "⛔ Lifecycle private-commit evidence changed before hooks." >&2
+        echo "⛔ Lifecycle private-commit evidence changed before commit." >&2
         exit 1
     fi
-    run_commit_hook pre-commit
-    if [[ "$(git write-tree 2>/dev/null || true)" != "$EXPECTED_TREE" ]] \
-        || [[ "$(git rev-parse --verify "$EXPECTED_REF^{commit}" 2>/dev/null || true)" != "$EXPECTED_PARENT" ]]; then
-        echo "⛔ Commit hook changed the approved tree or expected parent." >&2
-        exit 1
-    fi
-    run_commit_hook prepare-commit-msg "$MSG_FILE" message
-    run_commit_hook commit-msg "$MSG_FILE"
+    # Lifecycle mode uses adapter-owned validation, message evidence, and CAS.
+    # Repository hooks are mutable project code and must never execute here.
     validate_message_file
-    COMMIT_OID=$(git commit-tree "$EXPECTED_TREE" -p "$EXPECTED_PARENT" < "$MSG_FILE")
+    COMMIT_OID=$(git -c core.hooksPath=/dev/null commit-tree "$EXPECTED_TREE" -p "$EXPECTED_PARENT" < "$MSG_FILE")
     if [[ ! "$COMMIT_OID" =~ ^([0-9a-f]{40}|[0-9a-f]{64})$ ]]; then
         echo "⛔ Object creation did not return an exact object id." >&2
         exit 1
     fi
-    if ! git update-ref -m "lifecycle approved commit" "$EXPECTED_REF" "$COMMIT_OID" "$EXPECTED_PARENT"; then
+    if ! git -c core.hooksPath=/dev/null update-ref -m "lifecycle approved commit" "$EXPECTED_REF" "$COMMIT_OID" "$EXPECTED_PARENT"; then
         echo "⛔ Branch changed concurrently; lifecycle commit CAS refused." >&2
         exit 1
     fi
-    run_commit_hook post-commit
 else
     git commit -F "$MSG_FILE"
 fi
@@ -153,10 +136,42 @@ if [[ -n "$_REPO_ROOT" ]]; then
     _COMMIT_TYPE=$(echo "$SUBJECT" | sed -n 's/^\([a-z]*\).*/\1/p')
     _COMMIT_SCOPE=$(echo "$SUBJECT" | sed -n 's/^[a-z]*(\([^)]*\)).*/\1/p')
     _COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-    cat > "$_INTENT_FILE" <<INTENT
-LAST_COMMIT_TYPE=$_COMMIT_TYPE
-LAST_COMMIT_SCOPE=$_COMMIT_SCOPE
-LAST_COMMIT_HASH=$_COMMIT_HASH
-LAST_COMMIT_TIME=$(date '+%s')
-INTENT
+    _COMMIT_TIME=$(date '+%s')
+    python3 - "$_INTENT_FILE" "$_COMMIT_TYPE" "$_COMMIT_SCOPE" "$_COMMIT_HASH" "$_COMMIT_TIME" <<'PYINTENT'
+import os
+import pathlib
+import tempfile
+import sys
+
+path = pathlib.Path(sys.argv[1])
+payload = (
+    f"LAST_COMMIT_TYPE={sys.argv[2]}\n"
+    f"LAST_COMMIT_SCOPE={sys.argv[3]}\n"
+    f"LAST_COMMIT_HASH={sys.argv[4]}\n"
+    f"LAST_COMMIT_TIME={sys.argv[5]}\n"
+).encode()
+fd, temporary = tempfile.mkstemp(prefix=".claude-atomic-intent.", dir=path.parent)
+try:
+    os.fchmod(fd, 0o600)
+    with os.fdopen(fd, "wb", closefd=True) as stream:
+        stream.write(payload)
+        stream.flush()
+        os.fsync(stream.fileno())
+    os.replace(temporary, path)
+    directory = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+except BaseException:
+    try:
+        os.close(fd)
+    except OSError:
+        pass
+    try:
+        os.unlink(temporary)
+    except FileNotFoundError:
+        pass
+    raise
+PYINTENT
 fi
