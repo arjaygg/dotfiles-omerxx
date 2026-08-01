@@ -1,41 +1,42 @@
 # Active Context
 
-## Current (2026-07-28) — Goal 05: native agent orchestration harness
+## Current (2026-08-01) — Config-sync session: 0015 + 0016 shipped
 
-goal: goals/2026-07-28-05-native-agent-orchestration-harness.md
-status: complete pending merge of #395
-focus: **Goal 05 is done.** All 18 steps plus both cross-cutting criteria are verified, and every
-  acceptance box carries the evidence for its own check. The closeout audit re-ran all 54 criteria
-  (41 PASS / 8 FAIL / 5 UNCLEAR) and fixed every failure — including a lint baseline that had
-  silently disabled Step 1's own anti-nesting invariant, and an orchestrator that wrote no terminal
-  status on a thrown stage while its comment claimed it did. Five criteria were unsatisfiable as
-  worded and were amended in the plan rather than passed vacuously.
-  Next: merge #395. Then **Step 19** (pre-action A2 enforcement) — NOT started, NOT authorized, and
-  it should be preceded by resolving whether `permissions.ask` prompts at all given
-  `skipDangerousModePermissionPrompt: true` in both settings files.
-in flight: `feature/autonomy-ladder-reconcile` (#395) — Step 18 + closeout, CI green, NOT merged.
-  Record `<branch> (#PR)` here at branch-create time, before any work. Three
-  near-duplications on 2026-07-28 (#383/#385, #392, #387/#389) happened because this file carried
-  only *merged* state, so a parallel session's open branch was invisible.
+status: goal 05 closed (#395 merged 2026-07-28). No open goal; this session was dotfiles
+  config-sync and hygiene work.
+focus: Shipped today (all ff-merged to main, pushed):
+  - **0015** — Codex Headroom provider removed from tracked configs; Codex connects direct.
+    0013 §2 superseded (persistent proxy premise was dead: no Docker, no hcodex, port 8787
+    unserved). Headroom 0.33 runs per-session for Claude only via `hclaude`.
+  - **0016** — `.claude/settings.json` untracked (runtime-managed projection). Source of truth =
+    `ai/config/claude/settings.base.json`; `setup.sh` bootstraps via `config_generate --write`.
+    The perpetual settings-churn loop is structurally dead.
+  - Config-sync batch (9 commits): lean-ctx client guidance, codex user-prompt hook aggregator
+    (+10 tests), windsurf/opencode portable configs, gateway approvals, VS Code tool fix.
+  - Housekeeping: retired sanitize-staged-settings pre-commit hook (dead after 0016); tmux-side
+    dual-monitor script committed.
+verification: full sweep green — setup.sh --check exit 0, all config-adjacent suites OK.
+in flight: nothing. Working tree clean.
+next candidates:
+  - Step 19 (pre-action A2 enforcement) — still not started, not authorized. Blocker stands:
+    `skipDangerousModePermissionPrompt: true` in live settings + settings.local.json may defeat
+    `permissions.ask` as an A2 checkpoint. Resolve before Step 19 relies on it.
+  - #349 (regenerates at session init — likely closeable) and the 19-draft 2026-07-13 cluster.
+  - 89 stale merged branch refs — safe to delete.
+
+## Historical (2026-07-28) — Goal 05 closeout notes
+
 plan: plans/2026-07-27-native-agent-orchestration.md — durable design reference for all 18 steps.
-
-Steps 1-17 shipped as PRs #361-#392. Step 18 is committed on
-`feature/autonomy-ladder-reconcile` (`a553f11`, `9cadf12`, + docs) and needs a PR. Per-step detail
-and evidence live in plans/progress.md, not here. **Remaining: open the Step 18 PR, then Step 19.**
+Steps 1-18 shipped as PRs #361-#395. Per-step detail and evidence live in plans/progress.md.
 
 Live consequence of Step 18 to carry forward: `auto_ship`/`auto_clean` now *resolve* to effective
 A0 (no eval evidence exists for any pipeline leg, and the A2 cap applies). Nothing consults the
 resolver yet, so behaviour is unchanged today — Step 19 turns that into enforcement and will stop
-unattended merges. Also: `skipDangerousModePermissionPrompt: true` is set in both live settings and
-`settings.local.json`, which may defeat `permissions.ask` as an A2 checkpoint — resolve before
-Step 19 relies on it.
+unattended merges.
 
-Correction (same day, self-caught): an earlier note here claimed `.claude/settings.json` and
-`settings.base.json` are not byte-identical and that nothing enforces it. **Both wrong.** As
-committed they ARE identical, and `scripts/test_portable_config_templates.py` enforces it. The
-3-hunk diff came from comparing the *dirty working copy* on `main`, which this machine absolutizes
-from `$HOME` and which `sanitize-staged-settings.sh` strips at commit time. Always compare
-committed state (`git show HEAD:<path>`) for this invariant.
+Superseded note: the 2026-07-28 paragraph about `.claude/settings.json` vs `settings.base.json`
+byte-parity (enforced via sanitize-staged-settings.sh) is obsolete — the file is untracked and
+the hook retired per decisions/0016.
 
 Carried forward from Step 15, still needs a decision:
 - The plan's §20 says schemas.md requires per-finding `severity` and Step 15 removes it. Step 10
@@ -46,6 +47,3 @@ Carried forward from Step 15, still needs a decision:
 Open, unrelated to goal 05:
 - The ~55-60k static context baseline is ~75% fixed Claude Code overhead — measured, judged not
   worth trimming. Whether #381's autocompact fix holds is unverified (needs elapsed sessions).
-- #349 (regenerates at session init — likely closeable) and the 19-draft 2026-07-13 cluster: one
-  stalled workstream, a batch decision rather than 19 reviews.
-- 89 stale merged branch refs (rebase-merge artifact, content is on main) — safe to delete.
