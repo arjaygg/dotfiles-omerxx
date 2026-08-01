@@ -36,11 +36,9 @@ trust_level = "trusted"
 [projects."~/git"]
 trust_level = "trusted"
 
-[projects."/Users/agallentes/git/ai-native"]
+[projects."~/git/ai-native"]
 trust_level = "trusted"
 
-[projects."/Users/agallentes/.dotfiles"]
-trust_level = "trusted"
 
 
 
@@ -172,6 +170,22 @@ startup_timeout_sec = 90
 command = "bash"
 args = ["-c", "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"]
 startup_timeout_sec = 90
+enabled_tools = ["ctx_compose", "ctx_read", "ctx_search", "ctx_tree", "ctx_expand"]
+
+[mcp_servers.lean-ctx.tools.ctx_compose]
+approval_mode = "approve"
+
+[mcp_servers.lean-ctx.tools.ctx_read]
+approval_mode = "approve"
+
+[mcp_servers.lean-ctx.tools.ctx_search]
+approval_mode = "approve"
+
+[mcp_servers.lean-ctx.tools.ctx_tree]
+approval_mode = "approve"
+
+[mcp_servers.lean-ctx.tools.ctx_expand]
+approval_mode = "approve"
 
 [mcp_servers.lean-ctx.env]
 LEAN_CTX_CACHE_TTL = "300"

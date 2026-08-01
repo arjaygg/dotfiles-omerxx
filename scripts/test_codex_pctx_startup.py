@@ -16,6 +16,7 @@ HOOKS_CONFIG = ROOT / ".codex" / "hooks.json"
 PRE_TOOL_GUARD = ROOT / ".codex" / "hooks" / "pre-bash-guard.sh"
 LEAN_CTX_WRAPPER = ROOT / ".local" / "bin" / "lean_ctx_wrapper.sh"
 SERENA_WRAPPER = ROOT / ".local" / "bin" / "serena_wrapper.sh"
+PCTX_WRAPPER = ROOT / ".local" / "bin" / "pctx_wrapper.sh"
 FOCUSED_LEAN_CTX_TOOLS = [
     "ctx_compose",
     "ctx_read",
@@ -49,15 +50,20 @@ class CodexPctxStartupTests(unittest.TestCase):
             check=False,
         )
 
-    def test_tracked_codex_config_uses_portable_pctx_jsonl_transport(self):
+    def test_tracked_codex_config_uses_pctx_wrapper_contract(self):
         config = tomllib.loads(TRACKED_CONFIG.read_text(encoding="utf-8"))
 
         server = config["mcp_servers"]["pctx"]
-        invocation = " ".join([server["command"], *server["args"]])
+        self.assertEqual(server["type"], "stdio")
         self.assertEqual(server["command"], "bash")
-        self.assertIn("pctx mcp start", invocation)
-        self.assertIn("$HOME/.config/pctx/pctx.json", invocation)
-        self.assertNotIn("pctx-mcp-stdio-shim", invocation)
+        self.assertEqual(
+            server["args"],
+            [
+                "-c",
+                'exec "$HOME/.dotfiles/.local/bin/pctx_wrapper.sh" mcp start --stdio -c "$HOME/.config/pctx/pctx.json"',
+            ],
+        )
+        self.assertNotIn("pctx-mcp-stdio-shim", " ".join(server["args"]))
 
     def test_portable_codex_config_uses_pctx_jsonl_transport_directly(self):
         config = tomllib.loads(PORTABLE_CONFIG.read_text(encoding="utf-8"))
@@ -117,20 +123,33 @@ class CodexPctxStartupTests(unittest.TestCase):
                         ],
                     )
 
-    def test_runtime_and_template_expose_only_focused_leanctx_tools(self):
-        for config_path in (TRACKED_CONFIG, PORTABLE_CONFIG):
+    def test_runtime_and_template_have_distinct_expected_server_sets(self):
+        expected_by_config = {
+            TRACKED_CONFIG: {
+                "pctx",
+                "notebooklm",
+                "chrome-devtools",
+                "serena",
+                "lean-ctx",
+            },
+            PORTABLE_CONFIG: {"pctx", "notebooklm", "chrome-devtools", "serena"},
+        }
+        for config_path, expected in expected_by_config.items():
             with self.subTest(config=config_path):
                 config = tomllib.loads(config_path.read_text(encoding="utf-8"))
-                servers = config["mcp_servers"]
-                self.assertEqual(set(servers), {"pctx", "lean-ctx"})
-                lean_ctx = servers["lean-ctx"]
-                self.assertEqual(lean_ctx["enabled_tools"], FOCUSED_LEAN_CTX_TOOLS)
-                self.assertEqual(set(lean_ctx["tools"]), set(FOCUSED_LEAN_CTX_TOOLS))
-                for tool in FOCUSED_LEAN_CTX_TOOLS:
-                    self.assertEqual(
-                        lean_ctx["tools"][tool]["approval_mode"],
-                        "approve",
-                    )
+                self.assertEqual(set(config["mcp_servers"]), expected)
+
+    def test_runtime_standalone_lean_ctx_exposes_only_focused_tools(self):
+        runtime = tomllib.loads(TRACKED_CONFIG.read_text(encoding="utf-8"))
+        lean_ctx = runtime["mcp_servers"]["lean-ctx"]
+
+        self.assertEqual(lean_ctx["enabled_tools"], FOCUSED_LEAN_CTX_TOOLS)
+        self.assertEqual(set(lean_ctx["tools"]), set(FOCUSED_LEAN_CTX_TOOLS))
+        for tool in FOCUSED_LEAN_CTX_TOOLS:
+            self.assertEqual(lean_ctx["tools"][tool]["approval_mode"], "approve")
+
+        portable = tomllib.loads(PORTABLE_CONFIG.read_text(encoding="utf-8"))
+        self.assertNotIn("lean-ctx", portable["mcp_servers"])
 
     def test_runtime_and_template_do_not_define_project_local_provider(self):
         for config_path in (TRACKED_CONFIG, PORTABLE_CONFIG):
@@ -140,8 +159,18 @@ class CodexPctxStartupTests(unittest.TestCase):
                 self.assertNotIn("model_provider", config)
                 self.assertNotIn("model_providers", config)
                 self.assertNotIn("headroom", config["mcp_servers"])
-                if config_path == PORTABLE_CONFIG:
-                    self.assertNotRegex(text, r"/Users/[^/\"'\s]+")
+
+    def test_portable_template_rejects_absolute_home_paths(self):
+        text = PORTABLE_CONFIG.read_text(encoding="utf-8")
+
+        self.assertNotRegex(text, r"/Users/[^/\"'\s]+")
+
+    def test_tracked_config_rejects_stale_absolute_project_paths(self):
+        text = TRACKED_CONFIG.read_text(encoding="utf-8")
+
+        self.assertIn('[projects."~/git/ai-native"]', text)
+        self.assertEqual(text.count('[projects."~/.dotfiles"]'), 1)
+        self.assertNotRegex(text, r'\[projects\."/Users/[^"]+"\]')
 
     def test_codex_hook_matcher_covers_shell_and_native_read_tools(self):
         config = json.loads(HOOKS_CONFIG.read_text(encoding="utf-8"))
@@ -228,7 +257,12 @@ class CodexPctxStartupTests(unittest.TestCase):
         }
 
         with tempfile.TemporaryDirectory() as directory:
-            fake_pctx = Path(directory) / "pctx"
+            home = Path(directory)
+            wrapper = home / ".dotfiles" / ".local" / "bin" / "pctx_wrapper.sh"
+            wrapper.parent.mkdir(parents=True)
+            wrapper.symlink_to(PCTX_WRAPPER)
+            fake_pctx = home / ".local" / "bin" / "pctx"
+            fake_pctx.parent.mkdir(parents=True)
             fake_pctx.write_text(
                 "#!/usr/bin/env python3\n"
                 "import json, sys\n"
@@ -239,8 +273,7 @@ class CodexPctxStartupTests(unittest.TestCase):
             )
             fake_pctx.chmod(0o755)
             env = os.environ.copy()
-            env["PATH"] = f"{directory}{os.pathsep}{env.get('PATH', '')}"
-            env["HOME"] = directory
+            env["HOME"] = str(home)
 
             process = subprocess.run(
                 [server["command"], *server["args"]],
