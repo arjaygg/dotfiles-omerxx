@@ -1,6 +1,6 @@
 #!/bin/bash
-# stack-ship: Fully automated stack branch merge pipeline
-# Phase 1: Core merge algorithm with validation and logging
+# stack-ship: Confirmation-gated stack branch merge pipeline
+# Validates exact PR state, head, and checks before server-side auto-merge.
 
 set -euo pipefail
 
@@ -85,25 +85,56 @@ validate_preconditions() {
 
   log_info "Validating preconditions..."
 
-  # Check not on main
   if [[ "$branch" == "main" ]]; then
     log_error "Cannot merge main branch — safety check"
-    exit 1
+    return 1
   fi
 
-  # Check PR exists
-  if ! gh pr view "$branch" >/dev/null 2>&1; then
-    log_error "No GitHub PR found for branch: $branch"
-    exit 1
-  fi
-  log_success "PR exists for $branch"
-
-  # Check branch exists locally
-  if ! git rev-parse --verify "$branch" >/dev/null 2>&1; then
+  if ! git rev-parse --verify "refs/heads/$branch" >/dev/null 2>&1; then
     log_error "Local branch not found: $branch"
-    exit 1
+    return 1
   fi
-  log_success "Local branch exists: $branch"
+
+  local local_head
+  local_head=$(git rev-parse "refs/heads/$branch")
+
+  local pr_json
+  if ! pr_json=$(gh pr view "$branch" \
+    --json state,isDraft,mergeable,mergeStateStatus,headRefOid,baseRefName 2>/dev/null); then
+    log_error "No GitHub PR found for branch: $branch"
+    return 1
+  fi
+  if ! printf '%s' "$pr_json" | jq -e 'type == "object"' >/dev/null 2>&1; then
+    log_error "Could not verify PR metadata for $branch"
+    return 1
+  fi
+
+  local pr_state is_draft mergeable merge_state pr_head
+  pr_state=$(printf '%s' "$pr_json" | jq -r '.state // "UNKNOWN"')
+  is_draft=$(printf '%s' "$pr_json" | jq -r 'if has("isDraft") then .isDraft else true end')
+  mergeable=$(printf '%s' "$pr_json" | jq -r '.mergeable // "UNKNOWN"')
+  merge_state=$(printf '%s' "$pr_json" | jq -r '.mergeStateStatus // "UNKNOWN"')
+  pr_head=$(printf '%s' "$pr_json" | jq -r '.headRefOid // ""')
+
+  if [[ "$pr_state" != "OPEN" ]]; then
+    log_error "PR for $branch is not open (state: $pr_state)"
+    return 1
+  fi
+  if [[ "$is_draft" != "false" ]]; then
+    log_error "PR for $branch is a draft"
+    return 1
+  fi
+  if [[ "$mergeable" != "MERGEABLE" || "$merge_state" == "DIRTY" ]]; then
+    log_error "PR for $branch is conflicting or has unknown mergeability (mergeable: $mergeable, state: $merge_state)"
+    return 1
+  fi
+  if [[ -z "$pr_head" || "$pr_head" != "$local_head" ]]; then
+    log_error "PR head for $branch does not exactly match local branch head"
+    log_error "PR: ${pr_head:-missing}; local: $local_head"
+    return 1
+  fi
+
+  log_success "PR metadata and exact head OID verified for $branch"
 }
 
 # Build dependency graph
@@ -143,28 +174,55 @@ build_graph() {
   echo "$dependents"
 }
 
-# Check CI status
+# Check required and reported PR checks. Every unrecognized state fails closed.
 check_ci_status() {
   local branch="$1"
 
-  log_info "Checking CI status for $branch..."
+  log_info "Checking required and reported checks for $branch..."
 
-  local status=$(gh run list --branch "$branch" --limit 1 --json conclusion --jq '.[0].conclusion' 2>/dev/null || echo "unknown")
+  local required_json required_rc
+  required_rc=0
+  required_json=$(gh pr checks "$branch" --required --json name,bucket,state 2>/dev/null) || required_rc=$?
+  if ! printf '%s' "$required_json" | jq -e 'type == "array"' >/dev/null 2>&1; then
+    log_error "Required-check status is unknown for $branch (gh exit: $required_rc)"
+    return 1
+  fi
+  if [[ "$(printf '%s' "$required_json" | jq 'length')" -eq 0 ]]; then
+    log_error "No required checks were reported for $branch"
+    return 1
+  fi
 
-  case "$status" in
-    success)
-      log_success "CI is green"
-      return 0
-      ;;
-    failure)
-      log_warning "CI is red — proceeding anyway"
-      return 0
-      ;;
-    *)
-      log_warning "CI status unknown (could not fetch)"
-      return 0
-      ;;
-  esac
+  local checks_json checks_rc
+  checks_rc=0
+  checks_json=$(gh pr checks "$branch" --json name,bucket,state 2>/dev/null) || checks_rc=$?
+  if ! printf '%s' "$checks_json" | jq -e 'type == "array" and length > 0' >/dev/null 2>&1; then
+    log_error "Check status is unknown for $branch (gh exit: $checks_rc)"
+    return 1
+  fi
+
+  local check_name check_state
+  while IFS=$'\t' read -r check_name check_state; do
+    [[ -z "$check_name" ]] && check_name="unnamed check"
+    check_state=$(printf '%s' "$check_state" | tr '[:upper:]' '[:lower:]')
+    case "$check_state" in
+      pass|success)
+        ;;
+      pending|queued|in_progress|expected|waiting|requested)
+        log_error "Check is pending for $branch: $check_name ($check_state)"
+        return 1
+        ;;
+      fail|failure|error|cancel|cancelled|timed_out|action_required|startup_failure|stale|skipping|skipped|neutral)
+        log_error "Check failed for $branch: $check_name ($check_state)"
+        return 1
+        ;;
+      *)
+        log_error "Check status is unknown for $branch: $check_name (${check_state:-missing})"
+        return 1
+        ;;
+    esac
+  done < <(printf '%s' "$checks_json" | jq -r '.[] | [(.name // "unnamed check"), (.bucket // .state // "")] | @tsv')
+
+  log_success "All required and reported checks passed for $branch"
 }
 
 # Merge a single branch
@@ -174,28 +232,28 @@ merge_branch() {
 
   log_info "Merging $source_branch → $target_branch..."
 
-  local hash_before=$(git rev-parse "$source_branch")
+  local hash_before
+  hash_before=$(git rev-parse "refs/heads/$source_branch")
 
   if [[ $DRY_RUN -eq 0 ]]; then
-    # Attempt merge via gh pr merge. --delete-branch conflicts with the
-    # worktree-based workflow (git refuses to delete a branch checked out
-    # in a worktree), so gh can exit non-zero here even though the PR
-    # merge on GitHub already succeeded. Don't trust the exit code alone —
-    # verify the real PR state afterward.
     local merge_err
-    merge_err=$(gh pr merge "$source_branch" --rebase --delete-branch --auto 2>&1 >/dev/null) || true
+    if ! merge_err=$(gh pr merge "$source_branch" \
+      --rebase --auto --match-head-commit "$hash_before" 2>&1); then
+      log_error "Merge request failed for $source_branch — no dependent branch will be processed"
+      [[ -n "$merge_err" ]] && log_error "$merge_err"
+      return 1
+    fi
 
     local pr_state
     pr_state=$(gh pr view "$source_branch" --json state -q .state 2>/dev/null || echo "UNKNOWN")
 
     if [[ "$pr_state" == "MERGED" ]]; then
-      local hash_after=$(git rev-parse "$target_branch" 2>/dev/null || echo "$hash_before")
+      local hash_after
+      hash_after=$(git rev-parse "$target_branch" 2>/dev/null || echo "$hash_before")
 
-      # Log success
       mkdir -p "$LOG_DIR"
-      local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-      # confirmed_by / bypass_reason make an A2-checkpoint bypass attributable after the fact. A
-      # merge that skipped the prompt must never be indistinguishable from one a human approved.
+      local timestamp
+      timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
       local confirmed_by="prompt"
       local bypass_reason=""
       if [[ "$ASSUME_YES" == "1" ]]; then
@@ -207,35 +265,22 @@ merge_branch() {
         --arg ts "$timestamp" --arg branch "$source_branch" --arg into "$target_branch" \
         --arg hb "$hash_before" --arg ha "$hash_after" --arg actor "${USER:-unknown}" \
         --arg confirmed_by "$confirmed_by" --arg bypass_reason "$bypass_reason" \
-        '{timestamp:$ts, operation:"merge", branch:$branch, merged_into:$into, hash_before:$hb, hash_after:$ha, status:"success", actor:$actor, confirmed_by:$confirmed_by, bypass_reason:$bypass_reason}' \
-        2>/dev/null) || log_entry="{\"timestamp\": \"$timestamp\", \"operation\": \"merge\", \"branch\": \"$source_branch\", \"merged_into\": \"$target_branch\", \"hash_before\": \"$hash_before\", \"hash_after\": \"$hash_after\", \"status\": \"success\", \"actor\": \"$USER\", \"confirmed_by\": \"$confirmed_by\", \"bypass_reason\": \"$bypass_reason\"}"
+        '{timestamp:$ts, operation:"merge", branch:$branch, merged_into:$into, hash_before:$hb, hash_after:$ha, status:"success", actor:$actor, confirmed_by:$confirmed_by, bypass_reason:$bypass_reason}')
       echo "$log_entry" >> "$LOG_FILE"
       log_success "Merged $source_branch → $target_branch"
-      # The --delete-branch failure described above is expected in this repo's
-      # worktree layout — git refuses to delete a branch checked out elsewhere,
-      # and the default branch is permanently checked out in the primary
-      # worktree. Warning about it on every single merge trains the reader to
-      # ignore this line, so drop the known-benign text and only surface what is
-      # left. `stack clean` removes the branch and worktree afterwards.
-      local unexpected_err
-      unexpected_err=$(printf '%s\n' "$merge_err" \
-        | grep -v "is already used by worktree" \
-        | grep -v "^[[:space:]]*failed to run git:[[:space:]]*$" \
-        | grep -v "^[[:space:]]*$" || true)
-      if [[ -n "$unexpected_err" ]]; then
-        log_warning "PR merged, but a post-merge step reported: $unexpected_err"
-      fi
       return 0
-    else
-      log_error "Merge failed for $source_branch (PR state: $pr_state) — manual intervention needed"
-      [[ -n "$merge_err" ]] && log_error "$merge_err"
-      return 1
+    elif [[ "$pr_state" == "OPEN" ]]; then
+      log_success "Server auto-merge enabled for $source_branch; waiting for GitHub to merge it"
+      return 2
     fi
-  else
-    # Dry-run: just print
-    log_info "[dry-run] Would merge $source_branch → $target_branch"
-    return 0
+
+    log_error "Merge failed for $source_branch (PR state: $pr_state) — manual intervention needed"
+    [[ -n "$merge_err" ]] && log_error "$merge_err"
+    return 1
   fi
+
+  log_info "[dry-run] Would merge $source_branch → $target_branch"
+  return 0
 }
 
 # Update PR base
@@ -274,7 +319,7 @@ main() {
   echo ""
 
   # Validate
-  validate_preconditions "$TARGET_BRANCH"
+  validate_preconditions "$TARGET_BRANCH" || exit 1
   echo ""
 
   # Build graph
@@ -287,6 +332,12 @@ main() {
   parent=$(printf '%s\n' "$graph_output" | sed -n '1p')
   local dependents
   dependents=$(printf '%s\n' "$graph_output" | sed -n '2,$p' | grep -v '^$' || echo "")
+
+  if [[ -n "$dependents" && "$ASSUME_YES" == "1" && "$DRY_RUN" -eq 0 ]]; then
+    log_error "Multi-branch shipment requires the interactive confirmation checkpoint"
+    log_error "Refusing unattended stack shipment; run without --yes from a TTY"
+    exit 1
+  fi
 
   # Print plan
   if [[ -n "$dependents" ]]; then
@@ -304,7 +355,7 @@ main() {
   echo ""
 
   # Check CI
-  check_ci_status "$TARGET_BRANCH"
+  check_ci_status "$TARGET_BRANCH" || exit 1
   echo ""
 
   # Merge plan
@@ -358,23 +409,47 @@ main() {
   echo ""
 
   # Merge main branch
-  if merge_branch "$TARGET_BRANCH" "$parent"; then
-    log_success "Successfully merged $TARGET_BRANCH → $parent"
-  else
-    log_error "Merge failed — see above for details"
-    exit 1
-  fi
+  local merge_rc
+  merge_rc=0
+  merge_branch "$TARGET_BRANCH" "$parent" || merge_rc=$?
+  case "$merge_rc" in
+    0)
+      log_success "Successfully merged $TARGET_BRANCH → $parent"
+      ;;
+    2)
+      log_success "Auto-merge is queued for $TARGET_BRANCH; no dependent branch was processed"
+      exit 0
+      ;;
+    *)
+      log_error "Merge failed — see above for details"
+      exit 1
+      ;;
+  esac
 
-  # Merge dependents (if any)
+  # Merge dependents (interactive multi-branch runs only).
   if [[ -n "$dependents" ]]; then
-    echo "$dependents" | while read -r dep; do
+    while IFS= read -r dep; do
       [[ -z "$dep" ]] && continue
-      if merge_branch "$dep" "$TARGET_BRANCH"; then
-        update_pr_base "$dep" "$TARGET_BRANCH"
-      else
-        log_warning "Merge of $dep failed — continuing with others"
-      fi
-    done
+      validate_preconditions "$dep" || exit 1
+      check_ci_status "$dep" || exit 1
+
+      local dependent_rc
+      dependent_rc=0
+      merge_branch "$dep" "$TARGET_BRANCH" || dependent_rc=$?
+      case "$dependent_rc" in
+        0)
+          update_pr_base "$dep" "$TARGET_BRANCH" || exit 1
+          ;;
+        2)
+          log_warning "Auto-merge is queued for $dep; stopping before the next dependent"
+          exit 0
+          ;;
+        *)
+          log_error "Merge of $dep failed — stopping the stack immediately"
+          exit 1
+          ;;
+      esac
+    done <<< "$dependents"
   fi
 
   echo ""
