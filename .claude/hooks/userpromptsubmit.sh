@@ -65,7 +65,13 @@ _run "$HOME/.dotfiles/.claude/hooks/session-init-enforcer.sh" || exit $?
 _run "$HOME/.dotfiles/.claude/hooks/session-duration-guard.sh" || exit $?
 
 # 3. Shared lifecycle status — silent outside explicitly opted-in repositories
-_run "$HOME/.dotfiles/.claude/hooks/lifecycle-hook.sh" UserPromptSubmit
+_LIFECYCLE_BRIDGE="$HOME/.dotfiles/.claude/hooks/lifecycle-hook.sh"
+if [[ -f "$_LIFECYCLE_BRIDGE" && -r "$_LIFECYCLE_BRIDGE" ]]; then
+    _run "$_LIFECYCLE_BRIDGE" UserPromptSubmit
+else
+    [[ -n "$_COMBINED_CTX" ]] && _COMBINED_CTX+=$'\n'
+    _COMBINED_CTX+="Lifecycle bridge is unavailable; lifecycle mutation remains fail-closed."
+fi
 
 # 4. Plans health check — outputs additionalContext for missing artifacts
 _run "$HOME/.dotfiles/.claude/hooks/plans-healthcheck.sh"

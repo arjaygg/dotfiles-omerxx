@@ -1245,6 +1245,44 @@ def ready_run(
     return mutate(cwd, run_id, "ready", key, payload, update, timeout)
 
 
+def recover_edit_run(
+    cwd: Path | str, *, run_id: str, reason: str, key: str, timeout: float,
+) -> dict[str, Any]:
+    reason = reason.strip()
+    if len(reason) < 10:
+        raise LifecycleError("recovery reason must meaningfully explain the failed validation", "invalid_recovery")
+    payload = {"reason": reason}
+
+    def update(state: dict[str, Any], timestamp: str, identifier: str, invocation: Repo) -> None:
+        if state["terminal"] is not None:
+            raise LifecycleError("terminal run cannot recover editing", "terminal_run")
+        repo, mode = target_repo(state, invocation)
+        if mode != "intended":
+            raise LifecycleError("intended linked worktree is not registered", "missing_worktree")
+        ctx = context(state, inspect_git(repo, mode, state))
+        blocked = phase_invariants(ctx) or local_ancestry(ctx)
+        if blocked:
+            raise LifecycleError(blocked["reason"], blocked["reason_code"])
+        unit = ctx.unit
+        ready = unit.get("ready")
+        if unit.get("status") != "ready" or not isinstance(ready, dict):
+            raise LifecycleError("only a ready uncommitted work unit can recover editing", "invalid_recovery")
+        if ctx.view.head != ready.get("head_sha"):
+            raise LifecycleError("commit recovery cannot cross a HEAD change", "recovery_head_changed")
+        unit.update({
+            "status": "editing",
+            "ready": None,
+            "recovery": {
+                "reason": reason,
+                "timestamp": timestamp,
+                "event_id": identifier,
+                "failed_ready_event_id": ready.get("event_id"),
+            },
+        })
+
+    return mutate(cwd, run_id, "recover-edit", key, payload, update, timeout)
+
+
 def next_unit_run(
     cwd: Path | str, *, run_id: str, unit_id: str,
     description: str, key: str, timeout: float,
@@ -1396,6 +1434,10 @@ def parser() -> argparse.ArgumentParser:
     next_unit.add_argument("--work-unit-id", required=True)
     next_unit.add_argument("--work-unit", "--description", dest="description", required=True)
 
+    recover_edit = commands.add_parser("recover-edit")
+    mutation_args(recover_edit)
+    recover_edit.add_argument("--reason", required=True)
+
     record = commands.add_parser("record")
     mutation_args(record)
     record.add_argument("--kind", "--fact", dest="kind", required=True)
@@ -1434,6 +1476,10 @@ def dispatch(args: argparse.Namespace, cwd: Path) -> dict[str, Any]:
         return next_unit_run(
             cwd, run_id=args.run_id, unit_id=args.work_unit_id,
             description=args.description, **common,
+        )
+    if args.command == "recover-edit":
+        return recover_edit_run(
+            cwd, run_id=args.run_id, reason=args.reason, **common,
         )
     if args.command == "record":
         return record_run(
