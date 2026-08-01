@@ -1,6 +1,22 @@
 # Active Decisions Log
 
 
+## 2026-08-01 — Codex Headroom removal shipped (0015); live Claude settings untracked (0016)
+
+**Decision:** Shipped the held codex config batch: `model_provider`/headroom provider removed from
+tracked codex configs, pinned by tests, with `decisions/0015` superseding 0013 §2 (Codex connects
+direct; Headroom is per-session for Claude only via `hclaude`). Then untracked
+`.claude/settings.json` entirely (`decisions/0016`): the lean-ctx daemon + Claude runtime rewrite it
+in canonical forms the commit hook sanitizes away, a perpetual dirty loop. Source of truth is now
+`settings.base.json`; `setup.sh` bootstraps the live file via new `config_generate --write`.
+
+**Why:** 0013's persistent-proxy premise was already broken (no Docker, no hcodex, port 8787 dead).
+The settings churn was structural — three writers, three canonical forms, one tracked file.
+
+**Follow-up:** 5 pctx-transport failures in test_codex_pctx_startup.py + 2 in
+test_portable_config_templates.py remain (pre-existing drift: config uses `bash -c exec pctx`,
+template expects direct `pctx`). Foreign tmux WIP still uncommitted.
+
 ## 2026-08-01 — Routed Headroom around the pctx port collision
 
 **Decision:** Point hclaude, Claude setup defaults, and the persistent-install command at port 8788; port 8787 belongs to pctx. Scope ANTHROPIC_API_KEY empty inside hclaude so Claude Code uses subscribed auth, and default Claude to the verified sonnet alias.

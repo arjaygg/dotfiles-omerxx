@@ -42,9 +42,11 @@ mode.
 - `pctx/pctx.base.json` uses executable names resolved by the local `PATH`, rather
   than machine-specific installation paths.
 
-The current `.claude/settings.json` distribution path remains unchanged until a
-separate review approves runtime wiring. This keeps the migration reversible while
-the generated proposal is validated.
+`.claude/settings.json` is untracked as of 2026-08-01
+(`decisions/0016-untracked-runtime-claude-settings.md`): `setup.sh` bootstraps it
+from `claude/settings.base.json` (+ machine overlay) via `config_generate --write`
+on fresh machines, after which the lean-ctx daemon and Claude Code own the live
+file. The base template remains the tracked source of truth.
 
 Example:
 

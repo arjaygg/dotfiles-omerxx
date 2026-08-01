@@ -4,7 +4,9 @@
 
 Completed for the bounded read-only slice. Steps 1-6, 8, and 9 of
 `goals/2026-07-15-02-cross-client-config-portability.md` are done. Step 7 (any live runtime write)
-is intentionally, permanently out of scope for this slice.
+was intentionally out of scope for this slice; `0016-untracked-runtime-claude-settings.md`
+(2026-08-01) later lifted it for one narrow case: explicit setup-time bootstrap of a missing
+runtime file via `config_generate --write`.
 
 ## Decision
 
