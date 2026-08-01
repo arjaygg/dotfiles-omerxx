@@ -41,6 +41,7 @@
 │ Ctrl-A + Ctrl-D     → Detach                                                │
 │ Ctrl-A + Ctrl-X     → Lock server                                           │
 │ Ctrl-A + ?          → Show this cheat sheet                                 │
+│ tmux-side [session] → Second Ghostty view (session group, e.g. manage2)     │
 └──────────────────────────────────────────────────────────────────────────────┘
 
 ┌─ COPY MODE (vi-mode enabled) ───────────────────────────────────────────────┐
