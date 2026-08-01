@@ -133,6 +133,48 @@ class McpGatewayCheckTests(unittest.TestCase):
             [(result.rule, result.path, result.status) for result in results],
         )
 
+    def test_serena_fallback_is_approved_for_root_mcp_json(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            write_valid_gateway_tree(root)
+            path = root / ".mcp.json"
+            config = json.loads(path.read_text(encoding="utf-8"))
+            config["mcpServers"]["serena-fallback"] = {"command": "serena"}
+            write(path, json.dumps(config))
+
+            results = check_mcp_gateway(root)
+
+        self.assertNotIn(
+            ("client-unapproved-server", ".mcp.json", "fail"),
+            [(result.rule, result.path, result.status) for result in results],
+        )
+
+    def test_codex_direct_tool_servers_are_approved(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            write_valid_gateway_tree(root)
+            config = '\n'.join(
+                [
+                    "[mcp_servers.pctx]",
+                    'command = "pctx"',
+                    'args = ["mcp", "start", "--stdio"]',
+                    "[mcp_servers.lean-ctx]",
+                    'command = "lean-ctx"',
+                    "[mcp_servers.notebooklm]",
+                    'command = "notebooklm-mcp"',
+                    "[mcp_servers.chrome-devtools]",
+                    'command = "chrome-devtools-mcp"',
+                ]
+            )
+            write(root / ".codex/config.toml", config)
+
+            results = check_mcp_gateway(root)
+
+        self.assertNotIn(
+            ("codex-unapproved-server", ".codex/config.toml", "fail"),
+            [(result.rule, result.path, result.status) for result in results],
+        )
+
     def test_agy_missing_legacy_shim_is_reported(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

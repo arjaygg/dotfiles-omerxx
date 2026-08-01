@@ -14,8 +14,9 @@ from typing import Any, Sequence
 
 
 EXPECTED_PCTX_BACKENDS = {"serena", "lean-ctx", "repomix", "graphify"}
+CODEX_ALLOWED_SERVERS = {"pctx", "serena", "lean-ctx", "notebooklm", "chrome-devtools"}
 CLIENT_JSON_CONFIGS = {
-    ".mcp.json": {"pctx", "serena"},
+    ".mcp.json": {"pctx", "serena", "serena-fallback"},
     ".cursor/mcp.json": {"pctx", "serena"},
     ".gemini/mcp.json": {"pctx", "serena"},
     ".gemini/settings.json": {"pctx", "serena"},
@@ -163,9 +164,9 @@ def _check_codex(root: Path) -> list[GatewayResult]:
         )
         else _fail("codex-pctx-stdio", relative, "pctx does not invoke `pctx mcp start`")
     )
-    for server in sorted(names - {"pctx", "serena"}):
+    for server in sorted(names - CODEX_ALLOWED_SERVERS):
         results.append(_fail("codex-unapproved-server", relative, f"unapproved direct server {server!r}"))
-    for server in sorted(names & {"pctx", "serena"}):
+    for server in sorted(names & CODEX_ALLOWED_SERVERS):
         results.append(_ok(f"codex-approved-server-{server}", relative))
     return results
 
