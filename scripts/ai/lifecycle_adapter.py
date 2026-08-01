@@ -92,6 +92,23 @@ def process_environment(extra: dict[str, str] | None = None) -> dict[str, str]:
     if extra:
         env.update(extra)
     return env
+def git_hooks_disabled_environment(
+    extra: dict[str, str] | None = None,
+) -> dict[str, str]:
+    env = dict(extra or {})
+    raw_count = env.get("GIT_CONFIG_COUNT", os.environ.get("GIT_CONFIG_COUNT", "0"))
+    if re.fullmatch(r"(?:0|[1-9][0-9]?)", raw_count) is None:
+        raise AdapterError("Git process configuration is malformed", "git_environment_invalid")
+    count = int(raw_count)
+    for index in range(count):
+        key_name = f"GIT_CONFIG_KEY_{index}"
+        value_name = f"GIT_CONFIG_VALUE_{index}"
+        if not env.get(key_name, os.environ.get(key_name, "")) or value_name not in env and value_name not in os.environ:
+            raise AdapterError("Git process configuration is incomplete", "git_environment_invalid")
+    env["GIT_CONFIG_COUNT"] = str(count + 1)
+    env[f"GIT_CONFIG_KEY_{count}"] = "core.hooksPath"
+    env[f"GIT_CONFIG_VALUE_{count}"] = "/dev/null"
+    return env
 
 def process_group_alive(pgid: int) -> bool:
     try:
@@ -1033,8 +1050,12 @@ def action_target(repo: lifecycle.Repo, state: dict[str, Any]) -> lifecycle.Repo
     return target
 def action_create_stack(repo: lifecycle.Repo, state: dict[str, Any], _: dict[str, Any]) -> None:
     start_root = Path(state["repository"]["start_worktree"])
-    run_command([STACK, "create", state["intended_branch"], state["base"]["branch"],
-                 "--base-sha", state["base"]["sha"], "--strict"], start_root)
+    run_command(
+        [STACK, "create", state["intended_branch"], state["base"]["branch"],
+         "--base-sha", state["base"]["sha"], "--strict"],
+        start_root,
+        env=git_hooks_disabled_environment(),
+    )
 def staged_paths(repo: lifecycle.Repo, env: dict[str, str] | None = None) -> list[str]:
     raw = lifecycle.git(repo.root, "diff", "--cached", "--name-status", "-z",
                         "--find-renames", text=False, env=env).stdout
@@ -1231,7 +1252,10 @@ def github_askpass_environment(
         )
         askpass.chmod(0o700)
         yield {
-            **credential_env,
+            "GH_TOKEN": "",
+            "GITHUB_TOKEN": "",
+            "GH_ENTERPRISE_TOKEN": "",
+            "GITHUB_ENTERPRISE_TOKEN": "",
             "GIT_ASKPASS": str(askpass),
             "GIT_TERMINAL_PROMPT": "0",
             "LIFECYCLE_GITHUB_ACTOR": actor,
@@ -1305,7 +1329,8 @@ def action_push(repo: lifecycle.Repo, state: dict[str, Any], decision: dict[str,
         raise AdapterError("GitHub repository or actor drifted after run start", "github_identity_drift")
     with github_askpass_environment(credential_env, actor) as git_env:
         run_command(
-            ["git", "push", pinned_url, f"{head}:refs/heads/{branch}"],
+            ["git", "-c", "core.hooksPath=/dev/null", "push",
+             pinned_url, f"{head}:refs/heads/{branch}"],
             target.root,
             env=git_env,
         )
@@ -1315,12 +1340,13 @@ def action_push(repo: lifecycle.Repo, state: dict[str, Any], decision: dict[str,
     prior = lifecycle.git(target.root, "rev-parse", "--verify", tracking_ref, check=False)
     prior_oid = prior.stdout.strip() if prior.returncode == 0 else "0" * len(head)
     update_args = [
-        "git", "update-ref", "-m", "lifecycle verified push",
-        tracking_ref, head, prior_oid,
+        "git", "-c", "core.hooksPath=/dev/null", "update-ref",
+        "-m", "lifecycle verified push", tracking_ref, head, prior_oid,
     ]
     run_command(update_args, target.root)
     run_command(
-        ["git", "branch", "--set-upstream-to", f"origin/{branch}", branch],
+        ["git", "-c", "core.hooksPath=/dev/null", "branch",
+         "--set-upstream-to", f"origin/{branch}", branch],
         target.root,
         env={"GIT_TERMINAL_PROMPT": "0"},
     )
