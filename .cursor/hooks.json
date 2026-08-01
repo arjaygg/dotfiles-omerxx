@@ -3,6 +3,9 @@
   "hooks": {
     "beforeShellExecution": [
       {
+        "command": "bash \"$HOME/.dotfiles/.cursor/hooks/before-shell-git-commit.sh\""
+      },
+      {
         "command": "bash \"$HOME/.dotfiles/.cursor/hooks/lean-ctx-rewrite.sh\""
       },
       {

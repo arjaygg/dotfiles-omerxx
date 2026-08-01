@@ -5,18 +5,13 @@
 set -euo pipefail
 
 input="$(cat)"
-read -r command cwd < <(
-  printf '%s' "$input" | /usr/bin/env python3 - <<'PY'
-import json
-import sys
-
-data = json.load(sys.stdin)
-command = data.get("command") or ""
-cwd = data.get("cwd") or ""
-print(command)
-print(cwd)
-PY
-)
+if ! command=$(printf '%s' "$input" | jq -r \
+  'if (.command | type) == "string" then .command else "" end' 2>/dev/null); then
+  echo '{"permission":"deny","user_message":"Malformed beforeShellExecution payload."}'
+  exit 0
+fi
+cwd=$(printf '%s' "$input" | jq -r \
+  'if (.cwd | type) == "string" then .cwd else "" end')
 
 if [[ -z "$cwd" ]]; then
   cwd="$(pwd)"

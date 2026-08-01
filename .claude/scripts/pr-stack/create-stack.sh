@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # create-stack.sh - Create a new branch in the PR stack
-# Usage: ./create-stack.sh <new-branch-name> [base-branch] [commit-message]
+# Usage: ./create-stack.sh <new-branch-name> [base-branch]
 # Always creates a linked worktree under <main-repo>/.trees/ (never nested under another worktree).
 
 set -e
@@ -15,12 +15,11 @@ source "$_CREATE_STACK_DIR/lib/worktree-charcoal.sh"
 # Functions
 print_usage() {
     echo -e "${BLUE}Usage:${NC}"
-    echo "  ./create-stack.sh <new-branch-name> [base-branch] [commit-message]"
+    echo "  ./create-stack.sh <new-branch-name> [base-branch]"
     echo ""
     echo -e "${BLUE}Arguments:${NC}"
     echo "  new-branch-name    Name of the new branch to create (required)"
     echo "  base-branch        Branch to base the new branch on (default: main)"
-    echo "  commit-message     Initial commit message (optional)"
     echo ""
     echo -e "${BLUE}Examples:${NC}"
     echo "  ./create-stack.sh feature/new-api main"
@@ -30,7 +29,6 @@ print_usage() {
 # Parse arguments
 NEW_BRANCH=""
 BASE_BRANCH=""
-COMMIT_MESSAGE=""
 POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -55,6 +53,11 @@ if [ $# -lt 1 ]; then
     print_usage
     exit 1
 fi
+if [ $# -gt 2 ]; then
+    print_error "Initial commit creation is not supported; create and commit changes explicitly"
+    print_usage
+    exit 1
+fi
 
 # Determine default branch
 DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
@@ -67,7 +70,6 @@ if [ -n "$CURRENT_BRANCH" ] && [ "$CURRENT_BRANCH" != "$DEFAULT_BRANCH" ]; then
 else
     BASE_BRANCH=${2:-$DEFAULT_BRANCH}
 fi
-COMMIT_MESSAGE=$3
 
 # Validate prerequisites using library functions
 validate_stack_create_prerequisites "$NEW_BRANCH" "$BASE_BRANCH" || exit 1
@@ -119,16 +121,17 @@ WORKTREE_PATH=".trees/$DESCRIPTION"
 
 print_info "Creating worktree at $WORKTREE_PATH..."
 
+if ! git check-ignore -q -- ".trees/"; then
+    print_error ".trees/ must already be ignored before creating a worktree"
+    print_info "Add .trees/ to .gitignore in a separate reviewed change, then retry"
+    exit 1
+fi
+
 mkdir -p .trees
 
 if [ -d "$WORKTREE_PATH" ]; then
     print_error "Directory $WORKTREE_PATH already exists"
     exit 1
-fi
-
-if ! grep -q "^.trees/" .gitignore 2>/dev/null; then
-    echo ".trees/" >> .gitignore
-    print_info "Added .trees/ to .gitignore"
 fi
 
 # Use origin/$BASE_BRANCH if available so worktree always starts from the remote tip,
@@ -143,11 +146,6 @@ if git worktree add -b "$NEW_BRANCH" "$WORKTREE_PATH" "$BASE_REF"; then
     WORKTREE_ABS_PATH="$(cd "$WORKTREE_PATH" && pwd)"
         
     print_info "Setting up worktree configuration..."
-
-    if [ -f .env ] && git check-ignore -q .env 2>/dev/null; then
-        cp .env "$WORKTREE_PATH/.env"
-        print_info "Copied .env (gitignored)"
-    fi
 
     for dir in ".vscode" ".claude" ".serena" ".cursor"; do
         if [ -d "$dir" ]; then
@@ -182,28 +180,6 @@ if git worktree add -b "$NEW_BRANCH" "$WORKTREE_PATH" "$BASE_REF"; then
         print_info "Copied and updated .cursor/mcp.json"
     fi
 
-    if [ -n "$COMMIT_MESSAGE" ]; then
-        print_info "Creating initial commit in worktree..."
-        mkdir -p "$WORKTREE_PATH/.branch-info"
-        cat > "$WORKTREE_PATH/.branch-info/$NEW_BRANCH.md" << EOF
-# Branch: $NEW_BRANCH
-
-## Base Branch
-$BASE_BRANCH
-
-## Created
-$(date)
-
-## Purpose
-$COMMIT_MESSAGE
-
-## Dependencies
-- Based on: $BASE_BRANCH
-EOF
-        (cd "$WORKTREE_PATH" && git add ".branch-info/$NEW_BRANCH.md" && git commit -m "$COMMIT_MESSAGE")
-        print_success "Initial commit created in worktree"
-    fi
-
     echo ""
     echo -e "${GREEN}✅ Created worktree: $WORKTREE_PATH${NC}"
     echo -e "📂 Path: $WORKTREE_ABS_PATH"
@@ -225,22 +201,6 @@ echo ""
 
 # Track in Charcoal (single source of truth for stack relationships)
 print_info "Tracking branch in Charcoal..."
-# Flush stale packed-refs entries (e.g. after a force-push on trunk) so merge-base succeeds
-git pack-refs --all 2>/dev/null || true
-# Remove branch-metadata refs for branches disconnected from trunk (orphaned after force-push)
-TRUNK="${BASE_BRANCH:-main}"
-git for-each-ref --format='%(refname)' refs/branch-metadata/ 2>/dev/null | while IFS= read -r meta_ref; do
-  b="${meta_ref#refs/branch-metadata/}"
-  if git rev-parse --verify "$b" >/dev/null 2>&1; then
-    if ! git merge-base "$TRUNK" "$b" >/dev/null 2>&1; then
-      git update-ref -d "$meta_ref" 2>/dev/null || true
-    fi
-  else
-    git update-ref -d "$meta_ref" 2>/dev/null || true
-  fi
-done
-# Repair any remaining stale refs
-gt repo fix 2>/dev/null || true
 if ! gt branch track "$NEW_BRANCH" --parent "$BASE_BRANCH" 2>/dev/null; then
     print_warning "Charcoal tracking failed — worktree created but not in stack graph."
     print_info "Fix manually: gt branch track $NEW_BRANCH --parent $BASE_BRANCH"

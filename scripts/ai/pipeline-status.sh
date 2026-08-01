@@ -180,8 +180,8 @@ CI_BRANCH=$(grep -m1 '^\*\*PR:\*\*' "$CI_FILE" 2>/dev/null | sed -E 's/.*— *//
 CI_SHA=$(grep -m1 '^\*\*SHA:\*\*' "$CI_FILE" 2>/dev/null | sed -E 's/^\*\*SHA:\*\* *//' | xargs 2>/dev/null || echo "")
 CI_STATUS=$(grep '^\*\*Status:\*\*' "$CI_FILE" 2>/dev/null | tail -1 | sed -E 's/^\*\*Status:\*\* *//' | xargs 2>/dev/null || echo "")
 
-if [[ "$CI_BRANCH" != "$CURRENT_BRANCH" ]] || { [[ -n "$CI_SHA" ]] && [[ "$CI_SHA" != "$HEAD_SHA" ]]; }; then
-    emit "ci_pending" "plans/ci-status.md does not match current branch/commit (stale or mismatched); treating CI as unknown"
+if [[ "$CI_BRANCH" != "$CURRENT_BRANCH" || -z "$CI_SHA" || "$CI_SHA" != "$HEAD_SHA" ]]; then
+    emit "ci_pending" "plans/ci-status.md lacks the exact current branch/full SHA (stale or mismatched); treating CI as unknown"
 fi
 
 case "$CI_STATUS" in
