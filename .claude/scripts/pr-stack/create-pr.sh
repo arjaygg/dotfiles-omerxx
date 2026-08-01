@@ -172,7 +172,7 @@ print_info "Creating Pull Request..."
 
 # Push the branch first (gh pr create requires it)
 print_info "Pushing branch to origin..."
-GH_TOKEN=$(gh_token_for_remote) git push -u origin "$SOURCE_BRANCH"
+git push -u origin "$SOURCE_BRANCH"
 
 GH_ARGS=(
     pr create
