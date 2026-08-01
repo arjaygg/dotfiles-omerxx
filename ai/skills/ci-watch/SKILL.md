@@ -1,6 +1,6 @@
 ---
 name: ci-watch
-description: "Fire-and-forget CI monitor. Uses a background shell poller (zero LLM tokens while running) that watches GitHub Actions and writes status to plans/ci-status.md. Returns within 5 seconds. On green: deploys to DEV and sends a macOS notification. On failure: sends alert. Check status with /ci-status."
+description: "Fire-and-forget CI monitor. Uses a background shell poller (zero LLM tokens while running) that watches GitHub Actions and writes status to plans/ci-status.md. Returns within 5 seconds. On completion: sends a macOS notification. Check status with /ci-status."
 version: 2.0
 triggers:
   - "/ci-watch"
@@ -37,6 +37,7 @@ Write to `plans/ci-status.md`:
 
 **PR:** #<PR_NUMBER> — <BRANCH>
 **Repo:** <REPO>
+**SHA:** <HEAD_SHA>
 **Started:** <timestamp>
 **Status:** WATCHING — background shell poller running
 ```
@@ -110,7 +111,7 @@ while [ "$POLL" -lt "$MAX_POLLS" ]; do
 
 **PR:** #${PR_NUM} — ${BRANCH_NAME}
 **Repo:** ${REPO_SLUG}
-**Commit:** ${HEAD_SHA}
+**SHA:** ${HEAD_SHA}
 **Last checked:** ${TS} (poll ${POLL}/${MAX_POLLS})
 **Run status:** ${RUN_STATUS} | ${RUN_CONCLUSION}
 **URL:** ${RUN_URL}
@@ -118,9 +119,7 @@ STATUSEOF
 
     if [ "$RUN_CONCLUSION" = "success" ]; then
       echo "${TS} [SUCCESS] ${RUN_URL}" >> "$LOG_FILE"
-      # Trigger DEV deploy if workflow exists
-      gh workflow run deploy-dev.yml --repo "${REPO_SLUG}" >/dev/null 2>&1 || true
-      osascript -e "display notification \"CI passed — DEV deploy triggered\" with title \"ci-watch PR #${PR_NUM}\"" 2>/dev/null || true
+      osascript -e "display notification \"CI passed\" with title \"ci-watch PR #${PR_NUM}\"" 2>/dev/null || true
       echo "**Status:** SUCCESS" >> "$STATUS_FILE"
       exit 0
     elif [ "$RUN_CONCLUSION" = "failure" ] || [ "$RUN_CONCLUSION" = "cancelled" ]; then

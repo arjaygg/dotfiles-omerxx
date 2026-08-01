@@ -69,8 +69,7 @@ done
 MSG="${MSG%;}"
 
 if [ "$LEVEL" = "block" ]; then
-    jq -n --arg reason "$MSG" \
-        '{"hookSpecificOutput": {"permissionDecision": "deny", "permissionDecisionReason": $reason}}'
+    jq -n --arg reason "$MSG" '{decision: "block", reason: $reason}'
     exit 0
 else
     echo "$MSG" >&2
