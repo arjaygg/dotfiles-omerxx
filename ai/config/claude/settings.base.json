@@ -350,6 +350,15 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.dotfiles/.claude/hooks/lifecycle-hook.sh\" PreToolUse"
+          }
+        ]
+      },
+      {
         "matcher": "Bash|Read|Edit|Write|MultiEdit|Grep|Glob|Agent|Workflow",
         "hooks": [
           {

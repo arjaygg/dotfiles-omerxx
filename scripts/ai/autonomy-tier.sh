@@ -40,7 +40,7 @@
 
 set -euo pipefail
 
-STAGES="auto_commit auto_push auto_pr auto_ship auto_clean"
+STAGES="auto_stack auto_commit auto_push auto_pr auto_ship auto_clean"
 
 # Irreversible legs. Part VIII: "Irreversible actions never exceed A2 regardless of
 # evidence ... Blast radius caps the tier." This table is an invariant, not a tunable
