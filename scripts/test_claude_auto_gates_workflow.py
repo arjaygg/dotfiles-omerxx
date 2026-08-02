@@ -11,14 +11,14 @@ SHARED_AUDIT_SUMMARY_COMMANDS = [
     "python3 scripts/autonomous_skill_check.py --summary",
     "python3 scripts/mcp_gateway_check.py --summary",
     "python3 scripts/hook_fixture_runner.py .claude/hooks/pre-tool-gate-v2.sh scripts/fixtures/pretool-gate-v2.json --summary",
-    "python3 scripts/hook_target_check.py .claude/settings.json --summary",
+    "python3 scripts/hook_target_check.py ai/config/claude/settings.base.json --summary",
     "python3 scripts/hook_output_schema_check.py .claude/hooks --summary || true",
     "python3 scripts/self_modification_check.py --summary || true",
     "python3 scripts/config_inventory.py --summary",
     "python3 scripts/config_base_hygiene_check.py --summary",
     "python3 scripts/public_hygiene_check.py --summary || true",
     "python3 scripts/config_doctor.py --summary || true",
-    "python3 scripts/hook_config_check.py .claude/settings.json --summary || true",
+    "python3 scripts/hook_config_check.py ai/config/claude/settings.base.json --summary || true",
     "python3 scripts/instruction_budget_check.py --summary",
     "python3 scripts/skill_reference_check.py --summary || true",
     "python3 scripts/pctx_sdk_example_check.py --summary",
@@ -34,14 +34,14 @@ class ClaudeAutoGatesWorkflowTests(unittest.TestCase):
         self.assertIn("python3 scripts/guidance_adapter_check.py --summary", text)
         self.assertIn("python3 scripts/autonomous_skill_check.py --summary", text)
         self.assertIn("python3 scripts/mcp_gateway_check.py --summary", text)
-        self.assertIn("python3 scripts/hook_target_check.py .claude/settings.json --summary", text)
+        self.assertIn("python3 scripts/hook_target_check.py ai/config/claude/settings.base.json --summary", text)
         self.assertIn("python3 scripts/hook_output_schema_check.py .claude/hooks --summary || true", text)
         self.assertIn("python3 scripts/self_modification_check.py --summary || true", text)
         self.assertIn("python3 scripts/config_base_hygiene_check.py --summary", text)
         self.assertIn("python3 scripts/public_hygiene_check.py --summary || true", text)
         self.assertIn("python3 scripts/config_doctor.py --summary || true", text)
         self.assertIn(
-            "python3 scripts/hook_config_check.py .claude/settings.json --summary || true",
+            "python3 scripts/hook_config_check.py ai/config/claude/settings.base.json --summary || true",
             text,
         )
         self.assertIn("python3 scripts/instruction_budget_check.py --summary", text)
