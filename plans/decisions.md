@@ -1,6 +1,29 @@
 # Active Decisions Log
 
 
+## 2026-08-02 — Removed the Edit arm of the read-before-edit gate; kept Write only
+
+**Decision:** `pre-tool-gate-v2.sh` §3a no longer gates Edit/MultiEdit. The Write-over-existing-file
+arm survives, rebuilt: read log is session-scoped (`-${EFFECTIVE_SESSION_ID}`) instead of
+uid-lifetime, paths are `realpath`-canonicalized, matching is `grep -qxF` instead of `grep -qF`, and
+`post-tool-analytics.sh` §1 additionally registers absolute-path *string literals* from
+`mcp__pctx__execute_typescript` batches that call ctx_read. Deny text now names ctx_read and
+explicitly states that `Serena.getSymbolsOverview` does not satisfy the gate.
+
+**Why:** The gate was unclearable in lean-ctx replace-mode sessions — native Read has no schema
+there, and neither ctx_read nor Serena wrote the log — so following this repo's own tool-routing
+rules produced a deterministic hard block. The Edit arm was also redundant with the harness's own
+conversation-scoped Read requirement and with `old_string` matching, which is a stronger staleness
+check than any read log. Write has no `old_string` analogue, so it keeps a data-loss backstop.
+Reviewed by a Fable agent; recommendation adopted as written.
+
+**Follow-up:** (1) Upstream request to `lean-ctx`: append server-resolved ctx_read paths to the
+session read log, replacing the regex extractor, which by design misses computed paths
+(concatenation, template literals). (2) Unfixed: a ranged `Read(limit: 1)` still exempts a
+whole-file Write — no cheap fix inside this mechanism. (3) `lifecycle_adapter.py` refuses to bind a
+run owning `.claude/hooks` (`control_plane_owned`), so this branch was authored unbound; merging is
+a human decision.
+
 ## 2026-08-01 — Codex Headroom removal shipped (0015); live Claude settings untracked (0016)
 
 **Decision:** Shipped the held codex config batch: `model_provider`/headroom provider removed from

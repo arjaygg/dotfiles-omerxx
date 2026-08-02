@@ -1,6 +1,25 @@
 # Active Context
 
-## Current (2026-08-01) — Config-sync session: 0015 + 0016 shipped
+## Current (2026-08-02) — read-before-edit gate reworked
+
+status: committed on `fix/read-before-edit-gate` (3a64c5a), worktree `.trees/read-before-edit-gate`.
+  NOT pushed, no PR — arjaygg personal-account billing gate. NOT live: `~/.claude/hooks` symlinks
+  to the main checkout, so the fix takes effect only once merged to main.
+focus: `pre-tool-gate-v2.sh` §3a blocked Edit unless the path was in a uid-lifetime read log that
+  only native Read ever wrote. In lean-ctx replace-mode sessions native Read has no schema, so no
+  compliant action could clear it. Dropped the Edit/MultiEdit arm (harness Edit contract +
+  `old_string` matching already cover it); rebuilt the Write arm session-scoped, realpath-
+  canonicalized, `grep -qxF`, with best-effort ctx_read literal-path parity.
+verification: `scripts/test_read_before_overwrite_gate.py` 12/12; shell-syntax, hook-output-schema,
+  hook-config, hook-target, executable-bits, self-modification suites green.
+in flight: nothing. Awaiting a human decision on merging (control-plane change —
+  `lifecycle_adapter.py` refuses to bind a run owning `.claude/hooks`, by design).
+next candidates:
+  - Upstream `lean-ctx` feature request: have the MCP server append resolved ctx_read paths to the
+    session read log, replacing the regex extractor in `post-tool-analytics.sh` §1.
+  - Unfixed by design: a ranged `Read(limit: 1)` still exempts a whole-file Write.
+
+## Historical (2026-08-01) — Config-sync session: 0015 + 0016 shipped
 
 status: goal 05 closed (#395 merged 2026-07-28). No open goal; this session was dotfiles
   config-sync and hygiene work.
