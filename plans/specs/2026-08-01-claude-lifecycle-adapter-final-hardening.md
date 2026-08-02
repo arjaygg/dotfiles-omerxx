@@ -1,6 +1,6 @@
 ---
 status: frozen
-review_round: 5
+review_round: 6
 ---
 
 # Frozen Spec — Claude lifecycle adapter final hardening
@@ -134,6 +134,11 @@ stack-path findings as release blockers.
 
 ## Review Triage Log
 
+- Round 6 (2026-08-02): parent signal capture is installed before `Popen`
+  without blocking signals inherited by the child. Signals delivered after the
+  detached child starts but before its handle is assigned record the first
+  signal, then immediately enter signal-proof group cleanup once the handle is
+  available. Spawn failure and every cleanup exit restore prior handlers.
 - Round 5 (2026-08-02): bounded child cleanup now blocks and ignores
   catchable terminal signals while terminating, closing streams, and proving
   the complete process group gone. Repeated mixed signals cannot replace the
