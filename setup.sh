@@ -19,7 +19,7 @@ run_setup_check() {
         python3 scripts/autonomous_skill_check.py --summary || true
         python3 scripts/mcp_gateway_check.py --summary || true
         python3 scripts/hook_fixture_runner.py .claude/hooks/pre-tool-gate-v2.sh scripts/fixtures/pretool-gate-v2.json --summary || true
-        [ -f .claude/settings.json ] && python3 scripts/hook_target_check.py .claude/settings.json --summary || true
+        python3 scripts/hook_target_check.py ai/config/claude/settings.base.json --summary || true
         python3 scripts/hook_output_schema_check.py .claude/hooks --summary || true
         python3 scripts/self_modification_check.py --summary || true
         python3 scripts/config_inventory.py --summary || true
@@ -32,7 +32,7 @@ run_setup_check() {
         # those are the two dirs setup.sh promises full 1:1 ai/skills/ coverage for.
         # .cursor/skills and .gemini/skills link a deliberately partial subset.
         bash scripts/check-skill-drift.sh --check-coverage ai/skills .claude/skills "$HOME/.claude/skills" || true
-        [ -f .claude/settings.json ] && python3 scripts/hook_config_check.py .claude/settings.json --summary || true
+        python3 scripts/hook_config_check.py ai/config/claude/settings.base.json --summary || true
         python3 scripts/skill_reference_check.py --summary || true
         python3 scripts/pctx_sdk_example_check.py --summary
     )

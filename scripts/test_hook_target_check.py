@@ -56,7 +56,10 @@ class HookTargetCheckTests(unittest.TestCase):
 
     def test_current_repo_hook_targets_pass(self):
         root = Path(__file__).resolve().parents[1]
-        issues = check_hook_targets(root / ".claude/settings.json", root)
+        settings = root / ".claude/settings.json"
+        if not settings.exists():
+            settings = root / "ai/config/claude/settings.base.json"
+        issues = check_hook_targets(settings, root)
 
         self.assertEqual(summarize_issues(issues)["total"], 0)
 

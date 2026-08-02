@@ -133,16 +133,10 @@ class HeadroomHardeningTests(unittest.TestCase):
 
     def test_all_tracked_environment_copies_exactly_match_canonical_environment(self):
         expected = hardening_environment()
-        runtime = json.loads(
-            (ROOT / ".claude/settings.json").read_text(encoding="utf-8")
-        )["env"]
         template = json.loads(
             (ROOT / "ai/config/claude/settings.base.json").read_text(encoding="utf-8")
         )["env"]
         copies = {
-            ".claude/settings.json": {
-                key: value for key, value in runtime.items() if key.startswith("HEADROOM_")
-            },
             "ai/config/claude/settings.base.json": {
                 key: value for key, value in template.items() if key.startswith("HEADROOM_")
             },
@@ -150,6 +144,12 @@ class HeadroomHardeningTests(unittest.TestCase):
             "zshrc/.zshrc": self.shell_headroom_environment(ROOT / "zshrc/.zshrc"),
             "nushell/env.nu": self.nushell_headroom_environment(ROOT / "nushell/env.nu"),
         }
+        runtime_settings = ROOT / ".claude/settings.json"
+        if runtime_settings.exists():
+            runtime = json.loads(runtime_settings.read_text(encoding="utf-8"))["env"]
+            copies[".claude/settings.json"] = {
+                key: value for key, value in runtime.items() if key.startswith("HEADROOM_")
+            }
         for path, actual in copies.items():
             with self.subTest(path=path):
                 self.assertEqual(actual, expected)

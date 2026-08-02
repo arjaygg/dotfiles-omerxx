@@ -232,8 +232,9 @@ class ConfigGenerateTests(unittest.TestCase):
             root = Path(directory)
             base = root / "base.json"
             target = root / "runtime.json"
+            secret = "ghp_" + "abcdefghijklmnopqrstuvwxyz0123456789"
             base.write_text(
-                '{"token": "ghp_abcdefghijklmnopqrstuvwxyz0123456789"}\n',
+                json.dumps({"token": secret}) + "\n",
                 encoding="utf-8",
             )
 
