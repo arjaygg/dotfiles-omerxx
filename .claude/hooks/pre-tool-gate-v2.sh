@@ -679,20 +679,32 @@ fi
 # ============================================================
 # SECTION 3: Edit guards
 # ============================================================
-# 3a. Edit/MultiEdit (always) or Write to existing files — require prior Read in this session.
+# 3a. Write to an *existing* file — require a prior read in THIS session.
 # Write to a *new* file is allowed. The standalone read-before-write-guard.sh has been
 # removed (ADL-013 fix): it blocked blindly with exit 2 and no read-log check.
-if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "MultiEdit" ]] || \
-   [[ "$TOOL_NAME" == "Write" && -n "$FILE_PATH" && -f "$FILE_PATH" ]]; then
-    if [[ -n "$FILE_PATH" ]]; then
-        READ_LOG="/tmp/.claude-read-log-$(id -u)"
-        if [[ ! -f "$READ_LOG" ]] || ! grep -qF "$FILE_PATH" "$READ_LOG" 2>/dev/null; then
-            if [[ "$TOOL_NAME" == "Write" ]]; then
-                _deny "BLOCKED: Overwriting existing '$FILE_PATH' without reading it first. Read it first to avoid data loss."
-            else
-                _deny "BLOCKED: Editing '$FILE_PATH' without reading it first. Use Read (or Serena.getSymbolsOverview) to understand the file before editing."
-            fi
-        fi
+#
+# Edit/MultiEdit are deliberately NOT gated here. The harness's own Edit contract already
+# requires a conversation-scoped Read, and `old_string` matching fails outright on stale
+# content — a stronger integrity check than any read log. The uid-lifetime log this gate
+# used was a strictly weaker duplicate whose only observable effect was false positives:
+# in lean-ctx replace-mode sessions native Read has no schema at all, and neither ctx_read
+# nor Serena.getSymbolsOverview writes the log, so no compliant action could clear it.
+# Write keeps the gate because whole-file replacement has no `old_string` analogue.
+#
+# The log is session-scoped (not uid-lifetime), realpath-canonicalized (this is a symlink
+# farm — ~/.claude/hooks/x and ~/.dotfiles/.claude/hooks/x are one file), and matched with
+# -x so /a/b.md no longer exempts /a/b. Populated by post-tool-analytics.sh Section 1.
+if [[ "$TOOL_NAME" == "Write" && -n "$FILE_PATH" && -f "$FILE_PATH" ]]; then
+    _CANON_PATH=$(realpath -q "$FILE_PATH" 2>/dev/null || echo "$FILE_PATH")
+    READ_LOG="/tmp/.claude-read-log-$(id -u)-${EFFECTIVE_SESSION_ID}"
+    if [[ ! -f "$READ_LOG" ]] || ! grep -qxF "$_CANON_PATH" "$READ_LOG" 2>/dev/null; then
+        _deny "BLOCKED: Overwriting existing '$FILE_PATH' without reading it in this session.
+  Read it first to avoid data loss:
+    - If the Read tool is available: Read('$FILE_PATH')
+    - Otherwise: mcp__pctx__execute_typescript running
+      LeanCtx.ctxRead({ path: \"$FILE_PATH\", mode: \"full\" })
+      Pass the absolute path as a literal string so the gate can register it.
+  Note: Serena.getSymbolsOverview does NOT satisfy this gate."
     fi
 fi
 

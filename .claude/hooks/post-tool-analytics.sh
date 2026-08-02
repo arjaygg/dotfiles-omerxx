@@ -91,12 +91,44 @@ if [[ -f "${SCRIPT_DIR}/advisor-escalate.py" ]]; then
 fi
 
 # ============================================================
-# SECTION 1: Read tracking (for edit-without-read in PreToolUse)
+# SECTION 1: Read tracking (for read-before-overwrite in PreToolUse §3a)
 # ============================================================
+# Session-scoped (the gate's comment always claimed "this session"; the store never was),
+# realpath-canonicalized so symlink aliases of one file share an entry, and exact-line
+# matched so a path that is a substring of an existing entry is still appended.
+READ_LOG="/tmp/.claude-read-log-$(id -u)-${EFFECTIVE_SESSION_ID}"
+
+_log_read() {
+    local canon
+    [[ -n "$1" ]] || return 0
+    canon=$(realpath -q "$1" 2>/dev/null || echo "$1")
+    grep -qxF "$canon" "$READ_LOG" 2>/dev/null || echo "$canon" >> "$READ_LOG"
+}
+
 if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
-    READ_LOG="/tmp/.claude-read-log-$(id -u)"
-    if [[ ! -f "$READ_LOG" ]] || ! grep -qF "$FILE_PATH" "$READ_LOG" 2>/dev/null; then
-        echo "$FILE_PATH" >> "$READ_LOG"
+    _log_read "$FILE_PATH"
+fi
+
+# ctx_read parity: native Read is absent from lean-ctx replace-mode sessions, so without
+# this the gate would be unclearable there. Best-effort — only absolute-path *string
+# literals* are recoverable from the TS source; computed paths (concatenation, template
+# literals, loop variables) are missed by design, and §3a's deny message tells the model
+# to re-read with a literal path as the recovery. The -f filter keeps non-path literals
+# and directories out. Over-registration (e.g. a ctx_search path in the same batch) is
+# accepted: for a
+# Write-only backstop, exempting a path the model plainly handled this session is a fair
+# trade against a deadlock. Robust fix belongs upstream in lean-ctx, which resolves the
+# absolute path server-side and already ships hook infrastructure.
+if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then
+    _CTX_SRC=$(echo "$INPUT" | jq -r '.tool_input.code // empty' 2>/dev/null)
+    if [[ -n "$_CTX_SRC" ]] && echo "$_CTX_SRC" | grep -qE 'ctx(Read|_read)'; then
+        # if-block, not `[[ ... ]] && ...`: a false test as the loop body's last
+        # command trips `set -e`/the ERR trap and aborts the rest of the hook.
+        while IFS= read -r _p; do
+            if [[ -f "$_p" ]]; then
+                _log_read "$_p"
+            fi
+        done < <(echo "$_CTX_SRC" | grep -oE '"/[^"]+"' | tr -d '"' || true)
     fi
 fi
 
