@@ -2089,6 +2089,76 @@ time.sleep(30)
             self.assertTrue(pid_file.is_file())
             self.assert_pid_exits(int(pid_file.read_text()))
 
+    def test_signal_between_spawn_and_handle_assignment_reaps_process_tree(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            pid_file = root / "spawn-window-pids"
+            script = r"""
+import os, pathlib, signal, subprocess, sys, time
+for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
+    signal.signal(signum, signal.SIG_IGN)
+grandchild_source = "import signal,time; [signal.signal(s, signal.SIG_IGN) for s in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)]; time.sleep(30)"
+grandchild = subprocess.Popen(
+    [sys.executable, "-c", grandchild_source],
+    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+)
+blocked = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+cleanup_blocked = int(any(signum in blocked for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)))
+pathlib.Path(sys.argv[1]).write_text(f"{os.getpid()} {grandchild.pid} {cleanup_blocked}")
+time.sleep(30)
+"""
+            original_popen = subprocess.Popen
+            previous_handlers = {
+                signum: signal.getsignal(signum)
+                for signum in adapter.PROCESS_CLEANUP_SIGNALS
+            }
+
+            def signal_before_return(*args, **kwargs):
+                self.assertNotEqual(
+                    signal.getsignal(signal.SIGHUP), previous_handlers[signal.SIGHUP],
+                )
+                spawned = original_popen(*args, **kwargs)
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline:
+                    if pid_file.is_file() and len(pid_file.read_text().split()) == 3:
+                        break
+                    if spawned.poll() is not None:
+                        break
+                    time.sleep(0.01)
+                else:
+                    os.killpg(spawned.pid, signal.SIGKILL)
+                    spawned.wait(timeout=3)
+                    raise AssertionError("spawned process tree did not become ready")
+                os.kill(os.getpid(), signal.SIGHUP)
+                os.kill(os.getpid(), signal.SIGTERM)
+                return spawned
+
+            with mock.patch.object(subprocess, "Popen", side_effect=signal_before_return):
+                with self.assertRaises(SystemExit) as raised:
+                    adapter.bounded_process(
+                        [sys.executable, "-c", script, str(pid_file)],
+                        root,
+                        timeout=30,
+                    )
+            self.assertEqual(raised.exception.code, 128 + signal.SIGHUP)
+            values = [int(item) for item in pid_file.read_text().split()]
+            self.assertEqual(len(values), 3)
+            pids, child_masked = values[:2], values[2]
+            self.assertEqual(child_masked, 0)
+            for pid in pids:
+                self.assert_pid_exits(pid)
+            for signum, handler in previous_handlers.items():
+                self.assertEqual(signal.getsignal(signum), handler)
+
+            with mock.patch.object(
+                subprocess, "Popen", side_effect=OSError("simulated spawn failure"),
+            ):
+                with self.assertRaises(adapter.AdapterError) as failed:
+                    adapter.bounded_process([sys.executable, "-c", "pass"], root)
+            self.assertEqual(failed.exception.code, "action_command_start_failed")
+            for signum, handler in previous_handlers.items():
+                self.assertEqual(signal.getsignal(signum), handler)
+
     def test_repeated_mixed_signals_cannot_interrupt_process_group_cleanup(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
