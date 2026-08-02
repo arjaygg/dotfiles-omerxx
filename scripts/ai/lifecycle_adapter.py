@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Claude Code adapter for the shared deterministic git lifecycle controller."""
 from __future__ import annotations
-import argparse, fcntl, hashlib, json, os, re, shlex, shutil, signal, stat, subprocess, sys, tempfile, threading, time
+import argparse, fcntl, hashlib, json, os, re, secrets, shlex, shutil, signal, stat, subprocess, sys, tempfile, threading, time
 import contextlib
 import datetime as dt
 import urllib.parse
@@ -38,12 +38,19 @@ OID_RE = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})\Z")
 SAFE_AUDIT_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
 SESSION_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}\Z")
 ACTOR_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\Z")
+ACTION_ATTEMPT_RE = re.compile(r"[0-9a-f]{64}\Z")
+ACTION_EVIDENCE_RE = re.compile(r"adapter:action-evidence:[0-9a-f]{64}\Z")
 WATCHER_DEFAULT_POLLS = 80
 WATCHER_READY_TIMEOUT = 3.0
 WATCHER_STALE_SECONDS = 300.0
 COMMAND_TIMEOUT = 30.0
 MAX_COMMAND_TIMEOUT = 300.0
 PROCESS_TERM_GRACE = 1.0
+PROCESS_CLEANUP_SIGNALS = tuple(
+    getattr(signal, name)
+    for name in ("SIGHUP", "SIGINT", "SIGQUIT", "SIGTERM")
+    if hasattr(signal, name)
+)
 CONTROL_PLANE_PATHS = (
     ".claude-atomic.yaml",
     ".claude/hooks",
@@ -165,6 +172,69 @@ def terminate_process_group(proc: subprocess.Popen[Any]) -> None:
             pass
     proc.wait()
 
+
+def close_process_streams(proc: subprocess.Popen[Any]) -> None:
+    for stream in (proc.stdin, proc.stdout, proc.stderr):
+        if stream is not None:
+            try:
+                stream.close()
+            except OSError:
+                pass
+
+
+def force_process_group_gone(proc: subprocess.Popen[Any]) -> None:
+    while process_group_alive(proc.pid):
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            break
+        except OSError:
+            try:
+                proc.kill()
+            except OSError:
+                pass
+        try:
+            proc.wait(timeout=0.05)
+        except subprocess.TimeoutExpired:
+            pass
+        time.sleep(0.02)
+    try:
+        proc.wait(timeout=0)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
+def signal_proof_process_cleanup(
+    proc: subprocess.Popen[Any],
+    previous_handlers: dict[int, Any],
+    prior_mask: set[signal.Signals] | None,
+) -> None:
+    main_thread = threading.current_thread() is threading.main_thread()
+    if main_thread and prior_mask is None:
+        prior_mask = signal.pthread_sigmask(
+            signal.SIG_BLOCK, set(PROCESS_CLEANUP_SIGNALS),
+        )
+    if main_thread:
+        for signum in PROCESS_CLEANUP_SIGNALS:
+            signal.signal(signum, signal.SIG_IGN)
+
+    cleanup_error: BaseException | None = None
+    try:
+        terminate_process_group(proc)
+    except BaseException as exc:
+        cleanup_error = exc
+    finally:
+        force_process_group_gone(proc)
+        close_process_streams(proc)
+        if main_thread:
+            assert prior_mask is not None
+            for signum, handler in previous_handlers.items():
+                signal.signal(signum, handler)
+            signal.pthread_sigmask(signal.SIG_SETMASK, prior_mask)
+    if cleanup_error is not None:
+        raise cleanup_error
+
+
 def bounded_process(
     args: Sequence[str | Path], cwd: Path, *, check: bool = True,
     timeout: float = COMMAND_TIMEOUT, text: bool = True,
@@ -183,39 +253,49 @@ def bounded_process(
         raise AdapterError("external process could not be started", "action_command_start_failed") from exc
 
     previous_handlers: dict[int, Any] = {}
+    signal_mask_before_cleanup: set[signal.Signals] | None = None
     if threading.current_thread() is threading.main_thread():
         def interrupt(signum: int, _frame: Any) -> None:
+            nonlocal signal_mask_before_cleanup
+            if signal_mask_before_cleanup is None:
+                signal_mask_before_cleanup = signal.pthread_sigmask(
+                    signal.SIG_BLOCK, set(PROCESS_CLEANUP_SIGNALS),
+                )
             raise ProcessSignal(signum)
-        for signum in (signal.SIGHUP, signal.SIGTERM):
+        for signum in PROCESS_CLEANUP_SIGNALS:
             previous_handlers[signum] = signal.getsignal(signum)
             signal.signal(signum, interrupt)
+
+    stdout = stderr = None
+    failure: BaseException | None = None
+    failure_traceback = None
     try:
         try:
             stdout, stderr = proc.communicate(input=input_data, timeout=bounded_timeout)
         except subprocess.TimeoutExpired as exc:
-            terminate_process_group(proc)
-            for stream in (proc.stdin, proc.stdout, proc.stderr):
-                if stream is not None:
-                    try:
-                        stream.close()
-                    except OSError:
-                        pass
-            raise AdapterError("external process timed out", "action_command_timeout") from exc
-        except BaseException:
-            terminate_process_group(proc)
-            for stream in (proc.stdin, proc.stdout, proc.stderr):
-                if stream is not None:
-                    try:
-                        stream.close()
-                    except OSError:
-                        pass
-            raise
-    except ProcessSignal as exc:
-        raise SystemExit(128 + exc.signum) from None
-    finally:
-        for signum, handler in previous_handlers.items():
-            signal.signal(signum, handler)
-    terminate_lingering_processes(proc.pid)
+            failure = AdapterError("external process timed out", "action_command_timeout")
+            failure.__cause__ = exc
+            failure.__suppress_context__ = True
+        except BaseException as exc:
+            failure = exc
+            failure_traceback = exc.__traceback__
+        finally:
+            try:
+                signal_proof_process_cleanup(
+                    proc, previous_handlers, signal_mask_before_cleanup,
+                )
+            except BaseException as exc:
+                if failure is None:
+                    failure = exc
+                    failure_traceback = exc.__traceback__
+    except BaseException as exc:
+        if failure is None:
+            failure = exc
+            failure_traceback = exc.__traceback__
+    if isinstance(failure, ProcessSignal):
+        raise SystemExit(128 + failure.signum) from None
+    if failure is not None:
+        raise failure.with_traceback(failure_traceback)
     result = subprocess.CompletedProcess(values, proc.returncode, stdout, stderr)
     if check and result.returncode:
         raise AdapterError(
@@ -1048,7 +1128,307 @@ def resolve_autonomy(
 def action_target(repo: lifecycle.Repo, state: dict[str, Any]) -> lifecycle.Repo:
     target, _ = lifecycle.target_repo(state, repo)
     return target
-def action_create_stack(repo: lifecycle.Repo, state: dict[str, Any], _: dict[str, Any]) -> None:
+
+
+def action_evidence_id(decision: dict[str, Any]) -> str:
+    return stable_key("action-evidence", {
+        "action": decision.get("action"),
+        "head_sha": decision_head(decision),
+        "run_revision": decision.get("evidence", {}).get("run_revision"),
+        "owned_dirty_paths": decision.get("evidence", {}).get("owned_dirty_paths", []),
+    })
+
+
+def action_attempt_context(decision: dict[str, Any]) -> dict[str, str]:
+    value = decision.get("_adapter_action_attempt")
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"run_id", "attempt_id", "evidence_id"}
+        or not isinstance(value.get("run_id"), str)
+        or not isinstance(value.get("attempt_id"), str)
+        or ACTION_ATTEMPT_RE.fullmatch(value["attempt_id"]) is None
+        or not isinstance(value.get("evidence_id"), str)
+        or ACTION_EVIDENCE_RE.fullmatch(value["evidence_id"]) is None
+    ):
+        raise AdapterError("lifecycle action attempt identity is missing", "action_attempt_missing")
+    return value
+
+
+def stack_receipt_path(common_dir: Path, run_id: str) -> Path:
+    lifecycle.validate_name(run_id, lifecycle.RUN_ID_RE, "run id")
+    key = hashlib.sha256(run_id.encode()).hexdigest()
+    return adapter_root(common_dir) / "action-receipts" / f"{key}-create-stack.json"
+
+
+def atomic_secure_json(path: Path, value: dict[str, Any]) -> None:
+    data = (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+    parent_fd = secure_directory(path.parent)
+    temporary = f".{path.name}.{secrets.token_hex(16)}.tmp"
+    fd: int | None = None
+    try:
+        fd = os.open(
+            temporary,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+            0o600,
+            dir_fd=parent_fd,
+        )
+        os.fchmod(fd, 0o600)
+        write_all(fd, data)
+        os.fsync(fd)
+        os.close(fd)
+        fd = None
+        os.replace(
+            temporary, path.name,
+            src_dir_fd=parent_fd, dst_dir_fd=parent_fd,
+        )
+        os.fsync(parent_fd)
+    finally:
+        if fd is not None:
+            os.close(fd)
+        try:
+            os.unlink(temporary, dir_fd=parent_fd)
+        except FileNotFoundError:
+            pass
+        os.close(parent_fd)
+
+
+def read_secure_json(path: Path, code: str) -> dict[str, Any] | None:
+    parent_fd = secure_directory(path.parent)
+    try:
+        try:
+            fd = os.open(
+                path.name,
+                os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0),
+                dir_fd=parent_fd,
+            )
+        except FileNotFoundError:
+            return None
+    finally:
+        os.close(parent_fd)
+    try:
+        metadata = os.fstat(fd)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_uid != os.getuid()
+            or metadata.st_nlink != 1
+            or stat.S_IMODE(metadata.st_mode) != 0o600
+        ):
+            raise AdapterError("action completion receipt is unsafe", code)
+        data = bytearray()
+        while len(data) <= 65536:
+            block = os.read(fd, min(65537 - len(data), 8192))
+            if not block:
+                break
+            data.extend(block)
+        if not data or len(data) > 65536:
+            raise AdapterError("action completion receipt has invalid size", code)
+    finally:
+        os.close(fd)
+
+    def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, item in pairs:
+            if key in result:
+                raise AdapterError("action completion receipt has duplicate keys", code)
+            result[key] = item
+        return result
+
+    try:
+        value = json.loads(data, object_pairs_hook=unique_object)
+    except (json.JSONDecodeError, UnicodeError) as exc:
+        raise AdapterError("action completion receipt is malformed", code) from exc
+    if not isinstance(value, dict):
+        raise AdapterError("action completion receipt is malformed", code)
+    return value
+
+
+def stack_worktree_description(branch: str) -> str:
+    description = re.sub(r"^(?:feature|feat|fix|hotfix|bugfix|release|chore)/", "", branch)
+    description = re.sub(r"[ _]", "-", description.lower())
+    description = re.sub(r"[^a-z0-9.-]", "", description)
+    description = re.sub(r"-+", "-", description).strip("-")
+    if not description:
+        raise AdapterError("intended branch has no safe worktree name", "stack_verification_failed")
+    return description
+
+
+def stack_completion_facts(
+    repo: lifecycle.Repo, state: dict[str, Any],
+) -> dict[str, Any]:
+    common_dir = repo.common_dir.resolve()
+    if common_dir.name != ".git":
+        raise AdapterError("Git common directory is not a normal repository", "stack_verification_failed")
+    start_repo = lifecycle.discover_repo(state["repository"]["start_worktree"])
+    if start_repo.common_dir != common_dir:
+        raise AdapterError("stack start repository identity drifted", "stack_verification_failed")
+    main_root = common_dir.parent.resolve()
+    trees_root = main_root / ".trees"
+    try:
+        trees_metadata = trees_root.lstat()
+    except OSError as exc:
+        raise AdapterError("strict stack worktree root is missing", "stack_verification_failed") from exc
+    if not stat.S_ISDIR(trees_metadata.st_mode) or trees_metadata.st_uid != os.getuid():
+        raise AdapterError("strict stack worktree root is unsafe", "stack_verification_failed")
+    physical_trees = trees_root.resolve(strict=True)
+    if physical_trees != trees_root or physical_trees.parent != main_root:
+        raise AdapterError("strict stack worktree root escaped containment", "stack_verification_failed")
+
+    expected_path = physical_trees / stack_worktree_description(state["intended_branch"])
+    try:
+        physical_worktree = expected_path.resolve(strict=True)
+    except OSError as exc:
+        raise AdapterError("strict stack worktree is missing", "stack_verification_failed") from exc
+    if physical_worktree.parent != physical_trees:
+        raise AdapterError("strict stack worktree escaped containment", "stack_verification_failed")
+    candidates = [
+        item for item in lifecycle.list_worktrees(start_repo)
+        if item.branch == state["intended_branch"]
+    ]
+    if (
+        len(candidates) != 1
+        or candidates[0].prunable
+        or candidates[0].path != physical_worktree
+        or candidates[0].head != state["base"]["sha"]
+    ):
+        raise AdapterError("strict stack worktree registration is invalid", "stack_verification_failed")
+
+    target = lifecycle.discover_repo(physical_worktree)
+    expected_git_parent = common_dir / "worktrees"
+    if (
+        target.root != physical_worktree
+        or target.common_dir != common_dir
+        or target.git_dir.parent != expected_git_parent
+        or lifecycle.exact_head(target) != state["base"]["sha"]
+    ):
+        raise AdapterError("strict stack worktree identity is invalid", "stack_verification_failed")
+
+    metadata_path = common_dir / ".graphite_repo_config"
+    try:
+        metadata = metadata_path.lstat()
+    except OSError as exc:
+        raise AdapterError("strict stack metadata is missing", "stack_verification_failed") from exc
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or metadata.st_uid != os.getuid()
+        or metadata.st_nlink != 1
+        or stat.S_IMODE(metadata.st_mode) & 0o022
+    ):
+        raise AdapterError("strict stack metadata is unsafe", "stack_verification_failed")
+    metadata_identity = (
+        metadata.st_dev, metadata.st_ino, metadata.st_mode, metadata.st_uid,
+        metadata.st_nlink, metadata.st_size, metadata.st_mtime_ns,
+    )
+
+    tracked = run_command(
+        ["gt", "branch", "info", state["intended_branch"]],
+        target.root,
+        check=False,
+        env=git_hooks_disabled_environment(),
+    )
+    parents = []
+    for line in tracked.stdout.splitlines():
+        match = re.fullmatch(r"Parent:\s*(\S+)\s*", line)
+        if match:
+            parents.append(match.group(1))
+    if tracked.returncode != 0 or parents != [state["base"]["branch"]]:
+        raise AdapterError("strict stack tracking metadata is incomplete", "stack_verification_failed")
+    try:
+        verified_metadata = metadata_path.lstat()
+    except OSError as exc:
+        raise AdapterError("strict stack metadata disappeared", "stack_verification_failed") from exc
+    verified_identity = (
+        verified_metadata.st_dev, verified_metadata.st_ino, verified_metadata.st_mode,
+        verified_metadata.st_uid, verified_metadata.st_nlink, verified_metadata.st_size,
+        verified_metadata.st_mtime_ns,
+    )
+    if verified_identity != metadata_identity:
+        raise AdapterError("strict stack metadata changed during verification", "stack_verification_failed")
+    metadata = verified_metadata
+
+    return {
+        "intended_branch": state["intended_branch"],
+        "base_branch": state["base"]["branch"],
+        "base_sha": state["base"]["sha"],
+        "worktree_path": str(physical_worktree),
+        "git_dir": str(target.git_dir),
+        "git_common_dir": str(common_dir),
+        "tracking_parent": parents[0],
+        "metadata_path": str(metadata_path),
+        "metadata_device": metadata.st_dev,
+        "metadata_inode": metadata.st_ino,
+        "metadata_size": metadata.st_size,
+        "metadata_mtime_ns": metadata.st_mtime_ns,
+    }
+
+
+def write_stack_completion_receipt(
+    repo: lifecycle.Repo,
+    state: dict[str, Any],
+    attempt: dict[str, str],
+    facts: dict[str, Any],
+) -> dict[str, Any]:
+    value = {
+        "schema_version": ADAPTER_SCHEMA_VERSION,
+        "receipt_type": "create_stack_completion",
+        "run_id": attempt["run_id"],
+        "action": "create_stack",
+        "attempt_id": attempt["attempt_id"],
+        "evidence_id": attempt["evidence_id"],
+        "facts": facts,
+        "completed_at": now(),
+    }
+    atomic_secure_json(stack_receipt_path(repo.common_dir, state["run_id"]), value)
+    return value
+
+
+def load_stack_completion_receipt(
+    repo: lifecycle.Repo, run_id: str,
+) -> dict[str, Any] | None:
+    value = read_secure_json(
+        stack_receipt_path(repo.common_dir, run_id), "invalid_stack_receipt",
+    )
+    if value is None:
+        return None
+    if (
+        set(value) != {
+            "schema_version", "receipt_type", "run_id", "action", "attempt_id",
+            "evidence_id", "facts", "completed_at",
+        }
+        or value.get("schema_version") != ADAPTER_SCHEMA_VERSION
+        or value.get("receipt_type") != "create_stack_completion"
+        or value.get("run_id") != run_id
+        or value.get("action") != "create_stack"
+        or not isinstance(value.get("attempt_id"), str)
+        or ACTION_ATTEMPT_RE.fullmatch(value["attempt_id"]) is None
+        or not isinstance(value.get("evidence_id"), str)
+        or ACTION_EVIDENCE_RE.fullmatch(value["evidence_id"]) is None
+        or not isinstance(value.get("facts"), dict)
+        or not isinstance(value.get("completed_at"), str)
+    ):
+        raise AdapterError("stack completion receipt is malformed", "invalid_stack_receipt")
+    return value
+
+
+def stack_completion_receipt_matches(
+    repo: lifecycle.Repo, state: dict[str, Any], journal: dict[str, Any],
+) -> bool:
+    try:
+        receipt = load_stack_completion_receipt(repo, journal["run_id"])
+        if receipt is None or any(
+            receipt[key] != journal[key] for key in ("run_id", "attempt_id", "evidence_id")
+        ):
+            return False
+        return receipt["facts"] == stack_completion_facts(repo, state)
+    except (AdapterError, lifecycle.LifecycleError, OSError):
+        return False
+
+
+def action_create_stack(
+    repo: lifecycle.Repo, state: dict[str, Any], decision: dict[str, Any],
+) -> None:
+    attempt = action_attempt_context(decision)
+    if attempt["run_id"] != state["run_id"]:
+        raise AdapterError("stack action attempt belongs to another run", "action_attempt_missing")
     start_root = Path(state["repository"]["start_worktree"])
     run_command(
         [STACK, "create", state["intended_branch"], state["base"]["branch"],
@@ -1056,6 +1436,8 @@ def action_create_stack(repo: lifecycle.Repo, state: dict[str, Any], _: dict[str
         start_root,
         env=git_hooks_disabled_environment(),
     )
+    facts = stack_completion_facts(repo, state)
+    write_stack_completion_receipt(repo, state, attempt, facts)
 def staged_paths(repo: lifecycle.Repo, env: dict[str, str] | None = None) -> list[str]:
     raw = lifecycle.git(repo.root, "diff", "--cached", "--name-status", "-z",
                         "--find-renames", text=False, env=env).stdout
@@ -1546,6 +1928,7 @@ def load_action_journal(repo: lifecycle.Repo, run_id: str) -> dict[str, Any] | N
     value = read_json(path, "invalid_action_journal")
     required = {
         "schema_version": int, "run_id": str, "action": str, "stage": str,
+        "attempt_id": str, "evidence_id": str,
         "head_sha": (str, type(None)), "status": str, "result": (str, type(None)),
         "reason_code": (str, type(None)), "audit_status": str,
         "created_at": str, "updated_at": str,
@@ -1556,6 +1939,8 @@ def load_action_journal(repo: lifecycle.Repo, run_id: str) -> dict[str, Any] | N
         or value.get("run_id") != run_id
         or value.get("action") not in ACTION_STAGES
         or value.get("stage") != ACTION_STAGES.get(value.get("action"))
+        or ACTION_ATTEMPT_RE.fullmatch(value.get("attempt_id", "")) is None
+        or ACTION_EVIDENCE_RE.fullmatch(value.get("evidence_id", "")) is None
         or value.get("status") not in {"pending", "completed"}
         or value.get("result") not in {None, "success", "failure"}
         or value.get("audit_status") not in {"pending", "complete"}
@@ -1578,6 +1963,8 @@ def begin_action_journal(
         "run_id": run_id,
         "action": decision["action"],
         "stage": stage,
+        "attempt_id": secrets.token_hex(32),
+        "evidence_id": action_evidence_id(decision),
         "head_sha": decision_head(decision),
         "status": "pending",
         "result": None,
@@ -1628,20 +2015,50 @@ def audit_action_journal(repo: lifecycle.Repo, journal: dict[str, Any]) -> dict[
     return value
 
 
+def halt_partial_stack(repo: lifecycle.Repo, journal: dict[str, Any]) -> None:
+    demote_stage(repo.common_dir, journal["stage"], journal["run_id"])
+    lifecycle.halt_run(
+        repo.root,
+        run_id=journal["run_id"],
+        status_value="blocked",
+        reason="Strict stack creation lacks an exact completion receipt",
+        key=stable_key("partial-stack", {
+            "run_id": journal["run_id"], "attempt_id": journal["attempt_id"],
+        }),
+        timeout=10,
+    )
+
+
 def reconcile_action_journal(repo: lifecycle.Repo, run_id: str) -> bool:
     journal = load_action_journal(repo, run_id)
     if journal is None or journal["audit_status"] == "complete":
         return False
     if journal["status"] == "pending":
-        current = inspect_bound(repo, run_id)
-        succeeded = current.get("action") in ACTION_SUCCESSORS[journal["action"]]
-        if succeeded:
-            journal = complete_action_journal(repo, journal, "success")
+        if journal["action"] == "create_stack":
+            state = load_run_state(repo, run_id)
+            receipt_matches = stack_completion_receipt_matches(repo, state, journal)
+            try:
+                current = inspect_bound(repo, run_id)
+                succeeded = current.get("action") in ACTION_SUCCESSORS[journal["action"]]
+            except (AdapterError, lifecycle.LifecycleError):
+                succeeded = False
+            if not receipt_matches or not succeeded:
+                halt_partial_stack(repo, journal)
+                journal = complete_action_journal(
+                    repo, journal, "failure", "partial_stack_creation",
+                )
+            else:
+                journal = complete_action_journal(repo, journal, "success")
         else:
-            demote_stage(repo.common_dir, journal["stage"], run_id)
-            journal = complete_action_journal(
-                repo, journal, "failure", "action_interrupted",
-            )
+            current = inspect_bound(repo, run_id)
+            succeeded = current.get("action") in ACTION_SUCCESSORS[journal["action"]]
+            if succeeded:
+                journal = complete_action_journal(repo, journal, "success")
+            else:
+                demote_stage(repo.common_dir, journal["stage"], run_id)
+                journal = complete_action_journal(
+                    repo, journal, "failure", "action_interrupted",
+                )
     audit_action_journal(repo, journal)
     return True
 def execute_action(repo: lifecycle.Repo, run_id: str, decision: dict[str, Any], state: dict[str, Any],
@@ -1683,8 +2100,26 @@ def execute_action(repo: lifecycle.Repo, run_id: str, decision: dict[str, Any], 
         return adapter_result(run_id, "blocked", decision, ok=False, reason_code=code)
     journal = begin_action_journal(repo, run_id, decision, stage)
     action_audit(repo, run_id, decision, "attempt", stage=stage)
+    action_decision = {
+        **decision,
+        "_adapter_action_attempt": {
+            "run_id": run_id,
+            "attempt_id": journal["attempt_id"],
+            "evidence_id": journal["evidence_id"],
+        },
+    }
     try:
-        action_fn(repo, state, decision)
+        action_fn(repo, state, action_decision)
+        if decision["action"] == "create_stack":
+            stack_after = inspect_bound(repo, run_id)
+            if (
+                stack_after.get("action") not in ACTION_SUCCESSORS["create_stack"]
+                or not stack_completion_receipt_matches(repo, state, journal)
+            ):
+                raise AdapterError(
+                    "strict stack completion receipt validation failed",
+                    "stack_receipt_invalid",
+                )
     except Exception as exc:
         code = exc.code if isinstance(exc, (AdapterError, lifecycle.LifecycleError)) else "action_failed"
         demote_stage(repo.common_dir, stage, run_id)
@@ -1841,6 +2276,12 @@ def spawn_watcher(repo: lifecycle.Repo, run_id: str, sha: str) -> dict[str, Any]
 def tick_locked(repo: lifecycle.Repo, run_id: str) -> dict[str, Any]:
     if reconcile_action_journal(repo, run_id):
         decision = inspect_bound(repo, run_id)
+        journal = load_action_journal(repo, run_id)
+        if journal is not None and journal.get("reason_code") == "partial_stack_creation":
+            return adapter_result(
+                run_id, "blocked", decision, ok=False,
+                reason_code="partial_stack_creation",
+            )
         return adapter_result(run_id, "reconciled", decision)
     decision, state = inspect_bound(repo, run_id), load_run_state(repo, run_id)
     action = decision["action"]
