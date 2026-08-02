@@ -248,18 +248,10 @@ if [ "$VALID_RC" -ne 0 ]; then
     exit 0
 fi
 
-if [ "$EVENT" = "Stop" ]; then
-    UNBOUND_RC=0
-    python3 -c '
-import json, sys
-value = json.load(sys.stdin)
-envelope = value["lifecycle_hook"]
-expected = {"schema_version":1,"processed":True,"event":"Stop","binding":"unbound"}
-raise SystemExit(0 if value == {"lifecycle_hook": expected} else 1)
-' <<< "$OUTPUT" 2>/dev/null || UNBOUND_RC=$?
-    if [ "$UNBOUND_RC" -eq 0 ]; then
-        exit 0
-    fi
-fi
+# The Stop envelope is always emitted, including the unbound case. stop.sh
+# distinguishes "unbound, fall through to the legacy gate" from "bridge broken,
+# fail closed" solely by parsing this envelope, so swallowing the unbound Stop
+# envelope here deadlocks every unbound session: stop.sh sees empty output,
+# cannot resolve a binding, and blocks Stop forever.
 printf '%s\n' "$OUTPUT"
 exit 0
