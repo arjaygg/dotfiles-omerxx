@@ -2368,7 +2368,11 @@ class HookBridgeTests(unittest.TestCase):
             stopped = self.invoke(repo, hook, "Stop", env, payload)
             self.assertEqual(json.loads(stopped.stdout)["decision"], "block")
 
-    def test_disabled_and_explicit_unbound_stop_use_silent_fallback(self):
+    def test_disabled_and_explicit_unbound_stop_emit_the_unbound_envelope(self):
+        # The unbound Stop envelope must reach stdout. stop.sh resolves
+        # "unbound, defer to the legacy gate" from the envelope alone, so a
+        # silent fallback here is indistinguishable from a broken bridge and
+        # makes the dispatcher fail closed on every unbound session.
         with tempfile.TemporaryDirectory() as td:
             repo, hook, adapter_path, env, payload = self.fixture(
                 Path(td), lifecycle_config(enabled=False))
@@ -2380,7 +2384,13 @@ class HookBridgeTests(unittest.TestCase):
             )
             git(adapter_path.parents[2], "add", "scripts/ai/lifecycle_adapter.py")
             unbound = self.invoke(repo, hook, "Stop", env, payload)
-            self.assertEqual(unbound.stdout, "")
+            self.assertEqual(
+                json.loads(unbound.stdout),
+                {"lifecycle_hook": {
+                    "schema_version": 1, "processed": True,
+                    "event": "Stop", "binding": "unbound",
+                }},
+            )
 
 
 class HookDispatcherAndSettingsTests(unittest.TestCase):
