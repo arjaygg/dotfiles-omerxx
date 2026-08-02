@@ -966,6 +966,31 @@ def best_effort_audit(*args: Any, **kwargs: Any) -> None:
 def decision_head(decision: dict[str, Any]) -> str | None:
     git_view = decision.get("evidence", {}).get("git")
     return git_view.get("head_sha") if isinstance(git_view, dict) else None
+def unauthored_run(decision: dict[str, Any]) -> bool:
+    # True when a bound run provably holds nothing the Stop gate exists to protect.
+    #
+    # git_lifecycle.phase_local reports awaiting_work only from the intended worktree,
+    # with the current unit still editing, HEAD exactly on that unit's base, and no
+    # owned path dirty -- and phase_invariants has already rejected any foreign dirty
+    # path in that mode. Requiring HEAD to also sit on the run's declared base SHA adds
+    # the one thing awaiting_work alone does not promise: that no earlier unit of this
+    # run committed something now awaiting push. Together they mean the run authored
+    # nothing at all, so there is no work to commit, push, or lose by allowing Stop.
+    #
+    # Without this the run is trapped. hook_stop allows only action == "done", which
+    # comes solely from lifecycle.halt_run, and the adapter CLI does not expose halt --
+    # so binding a run and then doing read-only work blocked Stop with no reachable exit
+    # but `release`.
+    if decision.get("action") != "awaiting_work":
+        return False
+    git_view = decision.get("evidence", {}).get("git")
+    if not isinstance(git_view, dict) or git_view.get("clean") is not True:
+        return False
+    base = git_view.get("base")
+    if not isinstance(base, dict):
+        return False
+    declared = base.get("declared_sha")
+    return bool(declared) and git_view.get("head_sha") == declared
 def inspect_bound(repo: lifecycle.Repo, run_id: str) -> dict[str, Any]:
     return lifecycle.inspect_run(repo.root, run_id)
 def precheck_binding(repo: lifecycle.Repo, session_id: str, requested: str | None) -> str | None:
@@ -2895,6 +2920,9 @@ def hook_stop(repo: lifecycle.Repo, session_id: str) -> dict[str, Any]:
     action = after.get("action", "blocked")
     if outcome == "done" or action == "done":
         audit_hook(repo, run_id, "allow", "terminal_done", after)
+        return hook_envelope("Stop", "bound", run_id=run_id)
+    if unauthored_run(after):
+        audit_hook(repo, run_id, "allow", "no_work_authored", after)
         return hook_envelope("Stop", "bound", run_id=run_id)
     if outcome == "watching":
         head = decision_head(after)

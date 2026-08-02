@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
 import shutil
@@ -2272,6 +2273,78 @@ class StopTerminationTests(unittest.TestCase):
             self.assertEqual(first["lifecycle_hook"]["binding"], "bound")
             notices = list((adapter.adapter_root(view.common_dir) / "stop-notices").glob("*.json"))
             self.assertEqual(len(notices), 0)
+
+    @staticmethod
+    def awaiting(head: str, declared: str, *, clean: bool = True) -> dict:
+        return {
+            "outcome": "idle",
+            "after": {
+                "action": "awaiting_work",
+                "reason": "current work unit is not semantically ready",
+                "evidence": {"git": {
+                    "head_sha": head, "clean": clean,
+                    "base": {"branch": "main", "declared_sha": declared, "current_sha": declared},
+                }},
+            },
+        }
+
+    def test_stop_allows_a_bound_run_that_authored_nothing(self):
+        # hook_stop allows only action == "done", which comes solely from
+        # lifecycle.halt_run -- and the adapter CLI exposes no halt. So binding a run and
+        # then doing read-only work used to block Stop with `release` as the only exit.
+        # A clean tree sitting on the declared base has nothing to commit, push, or lose.
+        with tempfile.TemporaryDirectory() as td:
+            repo = init_repo(Path(td) / "repo")
+            start_run(repo)
+            view = controller.discover_repo(repo)
+            head = git(repo, "rev-parse", "HEAD").stdout.strip()
+            with mock.patch.object(adapter, "tick", return_value=self.awaiting(head, head)):
+                allowed = adapter.hook_stop(view, "session-1")
+            self.assertNotIn("decision", allowed)
+            self.assertEqual(allowed["lifecycle_hook"]["binding"], "bound")
+
+    def test_stop_still_blocks_awaiting_work_that_hides_an_unpushed_commit(self):
+        # phase_local returns awaiting_work as soon as a new unit opens, short-circuiting
+        # the remote phases -- so a run that committed unit 1 and started unit 2 reports
+        # awaiting_work with commits still unpushed. HEAD must equal the run's declared
+        # base, not merely the unit base, or the allow would leak exactly that work.
+        with tempfile.TemporaryDirectory() as td:
+            repo = init_repo(Path(td) / "repo")
+            start_run(repo)
+            view = controller.discover_repo(repo)
+            declared = git(repo, "rev-parse", "HEAD").stdout.strip()
+            advanced = "0" * 40
+            with mock.patch.object(adapter, "tick", return_value=self.awaiting(advanced, declared)):
+                blocked = adapter.hook_stop(view, "session-1")
+            self.assertEqual(blocked["decision"], "block")
+
+    def test_stop_still_blocks_awaiting_work_with_a_dirty_tree(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = init_repo(Path(td) / "repo")
+            start_run(repo)
+            view = controller.discover_repo(repo)
+            head = git(repo, "rev-parse", "HEAD").stdout.strip()
+            value = self.awaiting(head, head, clean=False)
+            with mock.patch.object(adapter, "tick", return_value=value):
+                blocked = adapter.hook_stop(view, "session-1")
+            self.assertEqual(blocked["decision"], "block")
+
+    def test_unauthored_run_rejects_other_actions_and_malformed_evidence(self):
+        head = "a" * 40
+        good = self.awaiting(head, head)["after"]
+        self.assertTrue(adapter.unauthored_run(good))
+        for mutate in (
+            lambda d: d.update(action="editing"),
+            lambda d: d.update(evidence={}),
+            lambda d: d.update(evidence={"git": "not-a-dict"}),
+            lambda d: d["evidence"]["git"].update(base=None),
+            lambda d: d["evidence"]["git"].update(base={}),
+            lambda d: d["evidence"]["git"]["base"].update(declared_sha=None),
+            lambda d: d["evidence"]["git"].pop("clean"),
+        ):
+            value = copy.deepcopy(good)
+            mutate(value)
+            self.assertFalse(adapter.unauthored_run(value), value)
 
 
 class HookBridgeTests(unittest.TestCase):
