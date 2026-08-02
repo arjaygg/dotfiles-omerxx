@@ -13,6 +13,7 @@ import tempfile
 import threading
 import time
 import unittest
+import uuid
 from pathlib import Path
 from unittest import mock
 
@@ -23,11 +24,18 @@ import git_lifecycle as controller  # noqa: E402
 import lifecycle_adapter as adapter  # noqa: E402
 
 
-def run(cwd: Path, *args: str, check: bool = True, env: dict[str, str] | None = None):
+def run(cwd: Path, *args: str, check: bool = True, env: dict[str, str] | None = None,
+        stdin: str | None = None):
+    # stdin defaults to DEVNULL, never the parent's. The hook scripts under test open
+    # with `_INPUT="$(cat)"`, so an inherited stdin makes them block on the test
+    # runner's own terminal forever rather than failing -- which is how
+    # HookDispatcherAndSettingsTests came to hang the whole suite.
     proc = subprocess.run(
         list(args),
         cwd=str(cwd),
         env=env,
+        input=stdin,
+        stdin=None if stdin is not None else subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -2417,14 +2425,26 @@ class HookDispatcherAndSettingsTests(unittest.TestCase):
             path.chmod(0o755)
         return hooks / "stop.sh", bin_dir
 
-    def run_stop(self, root: Path, **values):
+    def run_stop(self, root: Path, session_id: str | None = None, **values):
         script, bin_dir = self.dispatcher_fixture(root)
         env = os.environ.copy()
         env.update({key: str(value) for key, value in values.items()})
         env["PATH"] = f"{bin_dir}:{env['PATH']}"
         for key in ("TASK_LOG", "LIFECYCLE_LOG", "GIT_LOG"):
             env.setdefault(key, str(root / key.lower()))
-        return run(root, str(script), env=env, check=False), env
+        # A distinct session id per call keeps stop.sh's loop-breaker counter
+        # (/tmp/.claude-lifecycle-stop-<session>) isolated. Sharing one id would let
+        # blocks accumulate across tests until the third asserted block degrades to an
+        # allow instead -- an order-dependent failure that only appears on reruns.
+        session_id = session_id or f"test-stop-{uuid.uuid4().hex}"
+        payload = json.dumps({
+            "session_id": session_id,
+            "cwd": str(root),
+            "stop_hook_active": False,
+        })
+        self.addCleanup(
+            lambda: Path(f"/tmp/.claude-lifecycle-stop-{session_id}").unlink(missing_ok=True))
+        return run(root, str(script), env=env, check=False, stdin=payload), env
 
     def test_stop_is_first_block_wins_and_bound_lifecycle_supersedes_legacy(self):
         with tempfile.TemporaryDirectory() as td:
@@ -2499,7 +2519,68 @@ class HookDispatcherAndSettingsTests(unittest.TestCase):
             self.assertIn("invalid", json.loads(proc.stdout)["reason"].lower())
             self.assertFalse(Path(env["GIT_LOG"]).exists())
 
+    def test_stop_lifecycle_block_degrades_after_two_denies(self):
+        # The lifecycle branch returns before git-pipeline-gate.sh, so it inherits
+        # neither that gate's stop_hook_active short-circuit nor its degradation. Without
+        # its own breaker a lifecycle block repeats every turn until the client's block
+        # cap -- the loop observed in sessions 6e8af5a5 and 8232f66a.
+        forged = json.dumps({
+            "lifecycle_hook": {
+                "schema_version": 1, "processed": True,
+                "event": "Stop", "binding": "bound",
+            }
+        })
+        session_id = f"degrade-{uuid.uuid4().hex}"
+        self.addCleanup(
+            lambda: Path(f"/tmp/.claude-lifecycle-stop-{session_id}").unlink(missing_ok=True))
+
+        decisions = []
+        for _ in range(4):
+            with tempfile.TemporaryDirectory() as td:
+                proc, _env = self.run_stop(
+                    Path(td), session_id=session_id, TASK_OUT="", LIFECYCLE_OUT=forged,
+                    GIT_OUT=json.dumps({"decision": "block", "reason": "legacy"}),
+                )
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                stdout = proc.stdout.strip()
+                decisions.append(json.loads(stdout)["decision"] if stdout else "allow")
+
+        self.assertEqual(decisions, ["block", "block", "allow", "allow"])
+
+    def test_stop_lifecycle_degradation_is_scoped_per_session(self):
+        # A per-reason counter keyed on one shared session would let unrelated sessions
+        # consume each other's budget and degrade a first-ever block into an allow.
+        forged = json.dumps({
+            "lifecycle_hook": {
+                "schema_version": 1, "processed": True,
+                "event": "Stop", "binding": "bound",
+            }
+        })
+        exhausted = f"exhausted-{uuid.uuid4().hex}"
+        self.addCleanup(
+            lambda: Path(f"/tmp/.claude-lifecycle-stop-{exhausted}").unlink(missing_ok=True))
+
+        for _ in range(3):
+            with tempfile.TemporaryDirectory() as td:
+                self.run_stop(
+                    Path(td), session_id=exhausted, TASK_OUT="", LIFECYCLE_OUT=forged,
+                    GIT_OUT=json.dumps({"decision": "block", "reason": "legacy"}))
+
+        with tempfile.TemporaryDirectory() as td:
+            proc, _env = self.run_stop(
+                Path(td), TASK_OUT="", LIFECYCLE_OUT=forged,
+                GIT_OUT=json.dumps({"decision": "block", "reason": "legacy"}))
+            self.assertEqual(json.loads(proc.stdout)["decision"], "block")
+
     def test_stop_dispatcher_blocks_when_lifecycle_bridge_is_missing(self):
+        # A payload without session_id falls into stop.sh's shared "nosession" bucket
+        # (/tmp/.claude-lifecycle-stop-nosession), which outlives the process and is
+        # shared with every other sessionless invocation. Two prior blocks anywhere on
+        # the machine would degrade this one into an allow. Real Stop payloads always
+        # carry a session_id, so send one and scope the counter to this test.
+        session_id = f"missing-bridge-{uuid.uuid4().hex}"
+        self.addCleanup(
+            lambda: Path(f"/tmp/.claude-lifecycle-stop-{session_id}").unlink(missing_ok=True))
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             script, bin_dir = self.dispatcher_fixture(root)
@@ -2509,7 +2590,8 @@ class HookDispatcherAndSettingsTests(unittest.TestCase):
             for key in ("TASK_LOG", "LIFECYCLE_LOG", "GIT_LOG"):
                 env[key] = str(root / key.lower())
             proc = subprocess.run(
-                [str(script)], cwd=str(root), env=env, input=json.dumps({}),
+                [str(script)], cwd=str(root), env=env,
+                input=json.dumps({"session_id": session_id}),
                 capture_output=True, text=True, check=False,
             )
             output = json.loads(proc.stdout)
@@ -2562,11 +2644,6 @@ printf '%s\n' '{"decision":"block","reason":"legacy must not run"}'
             for path in (*hooks.iterdir(), tmux / "claude-tmux-bridge.sh", bin_dir / "lean-ctx"):
                 path.chmod(0o755)
 
-            payload = json.dumps({
-                "cwd": str(root), "session_id": "outer-session",
-                "tool_name": "Write", "tool_input": {"file_path": str(root / "x")},
-                "prompt": "test", "stop_hook_active": False,
-            })
             scripts = {
                 "PreToolUse": hooks / "lifecycle-pretool.sh",
                 "SessionStart": hooks / "sessionstart.sh",
@@ -2576,6 +2653,19 @@ printf '%s\n' '{"decision":"block","reason":"legacy must not run"}'
             for mode in ("empty", "nonzero", "object", "malformed"):
                 for event, script in scripts.items():
                     with self.subTest(mode=mode, event=event):
+                        # Fresh session id per subtest. All four modes drive Stop down
+                        # the same fail-closed path, so a shared id would let stop.sh's
+                        # loop-breaker degrade the third and fourth block into an allow
+                        # and this test would stop measuring fail-closed at all.
+                        session_id = f"outer-{mode}-{event}-{uuid.uuid4().hex}"
+                        self.addCleanup(
+                            lambda s=session_id: Path(
+                                f"/tmp/.claude-lifecycle-stop-{s}").unlink(missing_ok=True))
+                        payload = json.dumps({
+                            "cwd": str(root), "session_id": session_id,
+                            "tool_name": "Write", "tool_input": {"file_path": str(root / "x")},
+                            "prompt": "test", "stop_hook_active": False,
+                        })
                         env = os.environ.copy()
                         env.update({
                             "HOME": str(home), "BRIDGE_MODE": mode,
