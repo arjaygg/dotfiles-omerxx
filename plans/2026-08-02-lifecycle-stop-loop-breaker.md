@@ -1,13 +1,13 @@
 # Lifecycle Stop loop-breaker
 
-**Status:** proposed patch, not applied. `.claude/hooks/stop.sh` is lifecycle control
-plane — `agent-user-global.md` reserves those edits for a human, and
-`lifecycle_adapter.py start --owned-path` refuses paths that overlap it
-(`control_plane_owned`). Apply by hand after review.
+**Status:** applied in `2bc47d8` under explicit human authorization on 2026-08-02.
+`.claude/hooks/stop.sh` is lifecycle control plane — `agent-user-global.md` reserves
+those edits for a human, and `lifecycle_adapter.py start --owned-path` refuses paths
+that overlap it (`control_plane_owned`) — so it was published as a reviewable patch
+first and applied only once authorised.
 
-**Patch:** `plans/2026-08-02-lifecycle-stop-loop-breaker.patch`
-**Related:** commit `9ab3b53` (bridge emits the unbound Stop envelope), `e552f3d`
-(test assertion), `scripts/test_lifecycle_stop_bridge.py`.
+**Related:** `9ab3b53` (bridge emits the unbound Stop envelope), `e552f3d` (test
+assertion), `scripts/test_lifecycle_stop_bridge.py`.
 
 ## Problem
 
