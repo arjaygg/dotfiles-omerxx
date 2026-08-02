@@ -1,6 +1,6 @@
 ---
 status: frozen
-review_round: 4
+review_round: 5
 ---
 
 # Frozen Spec — Claude lifecycle adapter final hardening
@@ -134,6 +134,16 @@ stack-path findings as release blockers.
 
 ## Review Triage Log
 
+- Round 5 (2026-08-02): bounded child cleanup now blocks and ignores
+  catchable terminal signals while terminating, closing streams, and proving
+  the complete process group gone. Repeated mixed signals cannot replace the
+  first exit semantics or leave descendants alive.
+- Round 5: every action journal carries a cryptographically random attempt ID
+  and immutable evidence ID. Strict stack creation writes a secure durable
+  completion receipt only after independently verifying the exact base,
+  intended contained worktree/common-dir identity, and Charcoal parent
+  metadata. Pending stack reconciliation requires that exact receipt;
+  missing, malformed, or stale receipts demote `auto_stack` and halt the run.
 - Round 4 (2026-08-02): the loaded settings command now captures the
   `PreToolUse` dispatcher status and output, then applies its own inline strict
   allow/deny envelope validation. Missing, failed, empty, malformed, duplicate,
