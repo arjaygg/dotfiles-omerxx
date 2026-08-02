@@ -204,17 +204,35 @@ def force_process_group_gone(proc: subprocess.Popen[Any]) -> None:
         pass
 
 
+def restore_process_signal_handlers(
+    previous_handlers: dict[int, Any],
+    prior_mask: set[signal.Signals] | None,
+) -> None:
+    if threading.current_thread() is not threading.main_thread() or not previous_handlers:
+        return
+    blocked_mask = signal.pthread_sigmask(
+        signal.SIG_BLOCK, set(PROCESS_CLEANUP_SIGNALS),
+    )
+    restore_mask = prior_mask if prior_mask is not None else blocked_mask
+    for signum in PROCESS_CLEANUP_SIGNALS:
+        signal.signal(signum, signal.SIG_IGN)
+    for signum, handler in previous_handlers.items():
+        signal.signal(signum, handler)
+    signal.pthread_sigmask(signal.SIG_SETMASK, restore_mask)
+
+
 def signal_proof_process_cleanup(
     proc: subprocess.Popen[Any],
     previous_handlers: dict[int, Any],
     prior_mask: set[signal.Signals] | None,
 ) -> None:
     main_thread = threading.current_thread() is threading.main_thread()
-    if main_thread and prior_mask is None:
-        prior_mask = signal.pthread_sigmask(
+    if main_thread:
+        blocked_mask = signal.pthread_sigmask(
             signal.SIG_BLOCK, set(PROCESS_CLEANUP_SIGNALS),
         )
-    if main_thread:
+        if prior_mask is None:
+            prior_mask = blocked_mask
         for signum in PROCESS_CLEANUP_SIGNALS:
             signal.signal(signum, signal.SIG_IGN)
 
@@ -224,13 +242,11 @@ def signal_proof_process_cleanup(
     except BaseException as exc:
         cleanup_error = exc
     finally:
-        force_process_group_gone(proc)
-        close_process_streams(proc)
-        if main_thread:
-            assert prior_mask is not None
-            for signum, handler in previous_handlers.items():
-                signal.signal(signum, handler)
-            signal.pthread_sigmask(signal.SIG_SETMASK, prior_mask)
+        try:
+            force_process_group_gone(proc)
+        finally:
+            close_process_streams(proc)
+            restore_process_signal_handlers(previous_handlers, prior_mask)
     if cleanup_error is not None:
         raise cleanup_error
 
@@ -242,60 +258,106 @@ def bounded_process(
 ) -> subprocess.CompletedProcess[Any]:
     bounded_timeout = min(max(float(timeout), 0.1), MAX_COMMAND_TIMEOUT)
     values = [str(item) for item in args]
-    try:
-        proc = subprocess.Popen(
-            values, cwd=str(cwd), env=process_environment(env),
-            stdin=subprocess.PIPE if input_data is not None else subprocess.DEVNULL,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=text,
-            start_new_session=True, close_fds=True,
-        )
-    except OSError as exc:
-        raise AdapterError("external process could not be started", "action_command_start_failed") from exc
-
+    proc: subprocess.Popen[Any] | None = None
     previous_handlers: dict[int, Any] = {}
+    pending_signal: int | None = None
+    cleanup_signal_raised = False
     signal_mask_before_cleanup: set[signal.Signals] | None = None
-    if threading.current_thread() is threading.main_thread():
-        def interrupt(signum: int, _frame: Any) -> None:
-            nonlocal signal_mask_before_cleanup
-            if signal_mask_before_cleanup is None:
-                signal_mask_before_cleanup = signal.pthread_sigmask(
-                    signal.SIG_BLOCK, set(PROCESS_CLEANUP_SIGNALS),
-                )
-            raise ProcessSignal(signum)
-        for signum in PROCESS_CLEANUP_SIGNALS:
-            previous_handlers[signum] = signal.getsignal(signum)
-            signal.signal(signum, interrupt)
-
     stdout = stderr = None
     failure: BaseException | None = None
     failure_traceback = None
+
+    def interrupt(signum: int, _frame: Any) -> None:
+        nonlocal pending_signal, cleanup_signal_raised, signal_mask_before_cleanup
+        if pending_signal is None:
+            pending_signal = signum
+        if proc is None or cleanup_signal_raised:
+            return
+        cleanup_signal_raised = True
+        if signal_mask_before_cleanup is None:
+            signal_mask_before_cleanup = signal.pthread_sigmask(
+                signal.SIG_BLOCK, set(PROCESS_CLEANUP_SIGNALS),
+            )
+        raise ProcessSignal(pending_signal)
+
     try:
+        if threading.current_thread() is threading.main_thread():
+            previous_handlers = {
+                signum: signal.getsignal(signum) for signum in PROCESS_CLEANUP_SIGNALS
+            }
+            for signum in PROCESS_CLEANUP_SIGNALS:
+                signal.signal(signum, interrupt)
         try:
-            stdout, stderr = proc.communicate(input=input_data, timeout=bounded_timeout)
-        except subprocess.TimeoutExpired as exc:
-            failure = AdapterError("external process timed out", "action_command_timeout")
+            proc = subprocess.Popen(
+                values, cwd=str(cwd), env=process_environment(env),
+                stdin=subprocess.PIPE if input_data is not None else subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=text,
+                start_new_session=True, close_fds=True,
+            )
+        except OSError as exc:
+            failure = AdapterError(
+                "external process could not be started", "action_command_start_failed",
+            )
             failure.__cause__ = exc
             failure.__suppress_context__ = True
-        except BaseException as exc:
-            failure = exc
-            failure_traceback = exc.__traceback__
-        finally:
-            try:
-                signal_proof_process_cleanup(
-                    proc, previous_handlers, signal_mask_before_cleanup,
+        if proc is not None:
+            if pending_signal is not None:
+                cleanup_signal_raised = True
+                signal_mask_before_cleanup = signal.pthread_sigmask(
+                    signal.SIG_BLOCK, set(PROCESS_CLEANUP_SIGNALS),
                 )
+                raise ProcessSignal(pending_signal)
+            try:
+                stdout, stderr = proc.communicate(input=input_data, timeout=bounded_timeout)
+            except subprocess.TimeoutExpired as exc:
+                failure = AdapterError("external process timed out", "action_command_timeout")
+                failure.__cause__ = exc
+                failure.__suppress_context__ = True
             except BaseException as exc:
-                if failure is None:
-                    failure = exc
-                    failure_traceback = exc.__traceback__
+                failure = exc
+                failure_traceback = exc.__traceback__
     except BaseException as exc:
         if failure is None:
             failure = exc
             failure_traceback = exc.__traceback__
+    finally:
+        if pending_signal is not None and not isinstance(failure, ProcessSignal):
+            failure = ProcessSignal(pending_signal)
+            failure_traceback = None
+        if proc is None:
+            try:
+                restore_process_signal_handlers(previous_handlers, signal_mask_before_cleanup)
+            except BaseException as exc:
+                if failure is None:
+                    failure = exc
+                    failure_traceback = exc.__traceback__
+        else:
+            while True:
+                try:
+                    signal_proof_process_cleanup(
+                        proc, previous_handlers, signal_mask_before_cleanup,
+                    )
+                    break
+                except ProcessSignal as exc:
+                    if pending_signal is None:
+                        pending_signal = exc.signum
+                    if failure is None or not isinstance(failure, ProcessSignal):
+                        failure = ProcessSignal(pending_signal)
+                        failure_traceback = None
+                    continue
+                except BaseException as exc:
+                    if failure is None:
+                        failure = exc
+                        failure_traceback = exc.__traceback__
+                    break
+        if pending_signal is not None and not isinstance(failure, ProcessSignal):
+            failure = ProcessSignal(pending_signal)
+            failure_traceback = None
     if isinstance(failure, ProcessSignal):
         raise SystemExit(128 + failure.signum) from None
     if failure is not None:
         raise failure.with_traceback(failure_traceback)
+    assert proc is not None
     result = subprocess.CompletedProcess(values, proc.returncode, stdout, stderr)
     if check and result.returncode:
         raise AdapterError(
