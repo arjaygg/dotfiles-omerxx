@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -556,6 +557,50 @@ class ReversibleActionTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def stack_action_decision(self, decision):
+        journal = adapter.begin_action_journal(
+            self.repo_view, "run-1", decision, "auto_stack",
+        )
+        return journal, {
+            **decision,
+            "_adapter_action_attempt": {
+                "run_id": "run-1",
+                "attempt_id": journal["attempt_id"],
+                "evidence_id": journal["evidence_id"],
+            },
+        }
+
+    def install_stack_tracking(self):
+        (self.repo / ".git" / ".graphite_repo_config").write_text("{}\n")
+        bin_dir = Path(self.temp.name) / "stack-bin"
+        bin_dir.mkdir(exist_ok=True)
+        log = Path(self.temp.name) / "gt-commands.log"
+        gt = bin_dir / "gt"
+        gt.write_text(
+            "#!/usr/bin/env bash\n"
+            "printf '%s\n' \"$*\" >> \"$GT_LOG\"\n"
+            "case \"$1 $2\" in\n"
+            "  'branch track') exit 0 ;;\n"
+            "  'branch info') printf 'Parent: main\n'; exit 0 ;;\n"
+            "  *) exit 1 ;;\n"
+            "esac\n"
+        )
+        gt.chmod(0o755)
+        bare = Path(self.temp.name) / "stack-origin.git"
+        if not bare.exists():
+            git(Path(self.temp.name), "init", "-q", "--bare", str(bare))
+            git(
+                self.repo, "push", "-q", str(bare),
+                "refs/heads/main:refs/heads/main",
+            )
+        return {
+            "PATH": f"{bin_dir}:{os.environ['PATH']}",
+            "GT_LOG": str(log),
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": f"url.file://{bare}.insteadOf",
+            "GIT_CONFIG_VALUE_0": "https://user@github.com/owner/repo.git",
+        }, log
+
     def test_create_stack_uses_canonical_exact_base_and_a2_gate(self):
         state = adapter.load_run_state(self.repo_view, "run-1")
         decision = adapter.inspect_bound(self.repo_view, "run-1")
@@ -565,8 +610,20 @@ class ReversibleActionTests(unittest.TestCase):
             calls.append(([str(item) for item in args], cwd, check, kwargs))
             return completed_process(args)
 
-        with mock.patch.object(adapter, "run_command", side_effect=record):
-            adapter.action_create_stack(self.repo_view, state, decision)
+        journal, action_decision = self.stack_action_decision(decision)
+        facts = {"strict": "verified"}
+        with (
+            mock.patch.object(adapter, "run_command", side_effect=record),
+            mock.patch.object(adapter, "stack_completion_facts", return_value=facts),
+            mock.patch.object(adapter, "write_stack_completion_receipt") as receipt,
+        ):
+            adapter.action_create_stack(self.repo_view, state, action_decision)
+        receipt.assert_called_once_with(
+            self.repo_view,
+            state,
+            action_decision["_adapter_action_attempt"],
+            facts,
+        )
         self.assertEqual(
             calls[0][0],
             [
@@ -600,7 +657,6 @@ class ReversibleActionTests(unittest.TestCase):
     def test_lifecycle_stack_disables_checkout_and_reference_hooks_only_for_action(self):
         state = adapter.load_run_state(self.repo_view, "run-1")
         git(self.repo, "remote", "remove", "origin")
-        (self.repo / ".git" / ".graphite_repo_config").write_text("{}\n")
         hooks = self.repo / ".git" / "hooks"
         hook_log = Path(self.temp.name) / "stack-hooks.log"
         descendant_log = Path(self.temp.name) / "stack-descendant.log"
@@ -612,18 +668,15 @@ printf '%s|%s|%s\n' "$(basename "$0")" "${GH_TOKEN:-}" "${LIFECYCLE_GITHUB_TOKEN
             path = hooks / name
             path.write_text(hook_source)
             path.chmod(0o755)
-        bin_dir = Path(self.temp.name) / "bin"
-        bin_dir.mkdir()
-        gt = bin_dir / "gt"
-        gt.write_text("#!/usr/bin/env bash\nexit 0\n")
-        gt.chmod(0o755)
-        action_env = {
-            "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        action_env, _ = self.install_stack_tracking()
+        action_env.update({
             "HOOK_LOG": str(hook_log),
             "DESCENDANT_LOG": str(descendant_log),
-        }
+        })
+        decision = adapter.inspect_bound(self.repo_view, "run-1")
+        _, action_decision = self.stack_action_decision(decision)
         with mock.patch.dict(os.environ, action_env):
-            adapter.action_create_stack(self.repo_view, state, {})
+            adapter.action_create_stack(self.repo_view, state, action_decision)
             time.sleep(0.4)
             self.assertFalse(hook_log.exists())
             self.assertFalse(descendant_log.exists())
@@ -1113,6 +1166,173 @@ printf '%s|%s|%s\n' "$(basename "$0")" "${GH_TOKEN:-}" "${LIFECYCLE_GITHUB_TOKEN
         before = audit_path.read_text()
         self.assertFalse(adapter.reconcile_action_journal(self.repo_view, "run-1"))
         self.assertEqual(audit_path.read_text(), before)
+
+    def test_partial_stack_before_strict_tracking_demotes_and_halts(self):
+        state = adapter.load_run_state(self.repo_view, "run-1")
+        decision = adapter.inspect_bound(self.repo_view, "run-1")
+
+        def create_worktree_then_interrupt(_repo, current_state, _decision):
+            trees = self.repo / ".trees"
+            trees.mkdir()
+            git(
+                self.repo,
+                "worktree", "add", "-q", "-b", current_state["intended_branch"],
+                str(trees / "lifecycle"), current_state["base"]["sha"],
+            )
+            raise KeyboardInterrupt
+
+        with mock.patch.object(adapter, "resolve_autonomy", return_value=(True, "authorized")):
+            with self.assertRaises(KeyboardInterrupt):
+                adapter.execute_action(
+                    self.repo_view, "run-1", decision, state,
+                    create_worktree_then_interrupt,
+                )
+        pending = adapter.load_action_journal(self.repo_view, "run-1")
+        self.assertEqual(pending["status"], "pending")
+        self.assertIsNone(adapter.load_stack_completion_receipt(self.repo_view, "run-1"))
+
+        result = adapter.tick(namespace(run_id="run-1"), self.repo)
+        self.assertEqual(result["outcome"], "blocked")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason_code"], "partial_stack_creation")
+        self.assertEqual(adapter.inspect_bound(self.repo_view, "run-1")["action"], "blocked")
+        completed = adapter.load_action_journal(self.repo_view, "run-1")
+        self.assertEqual(completed["result"], "failure")
+        self.assertEqual(completed["reason_code"], "partial_stack_creation")
+        self.assertEqual(completed["audit_status"], "complete")
+        self.assertTrue(
+            (self.repo_view.common_dir / "autonomy-demoted-auto_stack").is_file())
+
+    def test_stack_command_success_without_receipt_demotes_and_halts(self):
+        state = adapter.load_run_state(self.repo_view, "run-1")
+        decision = adapter.inspect_bound(self.repo_view, "run-1")
+        action_env, gt_log = self.install_stack_tracking()
+        with (
+            mock.patch.dict(os.environ, action_env),
+            mock.patch.object(adapter, "verify_contract"),
+            mock.patch.object(adapter, "resolve_autonomy", return_value=(True, "authorized")),
+            mock.patch.object(
+                adapter, "write_stack_completion_receipt", side_effect=KeyboardInterrupt,
+            ),
+        ):
+            with self.assertRaises(KeyboardInterrupt):
+                adapter.execute_action(
+                    self.repo_view, "run-1", decision, state, adapter.action_create_stack)
+            result = adapter.tick(namespace(run_id="run-1"), self.repo)
+
+        commands = gt_log.read_text().splitlines()
+        self.assertIn("branch track feature/lifecycle --parent main", commands)
+        self.assertIn("branch info feature/lifecycle", commands)
+        self.assertTrue((self.repo / ".trees" / "lifecycle").is_dir())
+        self.assertIsNone(adapter.load_stack_completion_receipt(self.repo_view, "run-1"))
+        self.assertEqual(result["outcome"], "blocked")
+        self.assertEqual(result["reason_code"], "partial_stack_creation")
+        self.assertEqual(adapter.inspect_bound(self.repo_view, "run-1")["action"], "blocked")
+        self.assertTrue(
+            (self.repo_view.common_dir / "autonomy-demoted-auto_stack").is_file())
+
+    def test_stale_stack_receipt_from_older_attempt_cannot_reconcile_success(self):
+        state = adapter.load_run_state(self.repo_view, "run-1")
+        decision = adapter.inspect_bound(self.repo_view, "run-1")
+        journal = adapter.begin_action_journal(
+            self.repo_view, "run-1", decision, "auto_stack",
+        )
+        trees = self.repo / ".trees"
+        trees.mkdir()
+        git(
+            self.repo,
+            "worktree", "add", "-q", "-b", state["intended_branch"],
+            str(trees / "lifecycle"), state["base"]["sha"],
+        )
+        action_env, _ = self.install_stack_tracking()
+        stale_attempt = "0" * 64
+        self.assertNotEqual(journal["attempt_id"], stale_attempt)
+        with mock.patch.dict(os.environ, action_env):
+            facts = adapter.stack_completion_facts(self.repo_view, state)
+            adapter.write_stack_completion_receipt(
+                self.repo_view,
+                state,
+                {
+                    "run_id": "run-1",
+                    "attempt_id": stale_attempt,
+                    "evidence_id": journal["evidence_id"],
+                },
+                facts,
+            )
+            with mock.patch.object(adapter, "verify_contract"):
+                result = adapter.tick(namespace(run_id="run-1"), self.repo)
+
+        receipt = adapter.load_stack_completion_receipt(self.repo_view, "run-1")
+        self.assertEqual(receipt["attempt_id"], stale_attempt)
+        self.assertEqual(result["outcome"], "blocked")
+        self.assertEqual(result["reason_code"], "partial_stack_creation")
+        self.assertEqual(adapter.inspect_bound(self.repo_view, "run-1")["action"], "blocked")
+        completed = adapter.load_action_journal(self.repo_view, "run-1")
+        self.assertEqual(completed["result"], "failure")
+        self.assertEqual(completed["reason_code"], "partial_stack_creation")
+
+    def test_malformed_stack_receipt_cannot_advance_existing_worktree(self):
+        state = adapter.load_run_state(self.repo_view, "run-1")
+        decision = adapter.inspect_bound(self.repo_view, "run-1")
+        adapter.begin_action_journal(
+            self.repo_view, "run-1", decision, "auto_stack",
+        )
+        trees = self.repo / ".trees"
+        trees.mkdir()
+        git(
+            self.repo,
+            "worktree", "add", "-q", "-b", state["intended_branch"],
+            str(trees / "lifecycle"), state["base"]["sha"],
+        )
+        adapter.atomic_secure_json(
+            adapter.stack_receipt_path(self.repo_view.common_dir, "run-1"),
+            {},
+        )
+
+        result = adapter.tick(namespace(run_id="run-1"), self.repo)
+        self.assertEqual(result["outcome"], "blocked")
+        self.assertEqual(result["reason_code"], "partial_stack_creation")
+        self.assertEqual(adapter.inspect_bound(self.repo_view, "run-1")["action"], "blocked")
+        completed = adapter.load_action_journal(self.repo_view, "run-1")
+        self.assertEqual(completed["result"], "failure")
+        self.assertEqual(completed["reason_code"], "partial_stack_creation")
+
+    def test_exact_stack_receipt_reconciles_idempotently_after_interruption(self):
+        state = adapter.load_run_state(self.repo_view, "run-1")
+        decision = adapter.inspect_bound(self.repo_view, "run-1")
+        action_env, _ = self.install_stack_tracking()
+        with (
+            mock.patch.dict(os.environ, action_env),
+            mock.patch.object(adapter, "verify_contract"),
+            mock.patch.object(adapter, "resolve_autonomy", return_value=(True, "authorized")),
+            mock.patch.object(
+                adapter, "complete_action_journal", side_effect=KeyboardInterrupt,
+            ),
+        ):
+            with self.assertRaises(KeyboardInterrupt):
+                adapter.execute_action(
+                    self.repo_view, "run-1", decision, state, adapter.action_create_stack)
+
+        pending = adapter.load_action_journal(self.repo_view, "run-1")
+        self.assertEqual(pending["status"], "pending")
+        receipt = adapter.load_stack_completion_receipt(self.repo_view, "run-1")
+        self.assertEqual(receipt["attempt_id"], pending["attempt_id"])
+        with (
+            mock.patch.dict(os.environ, action_env),
+            mock.patch.object(adapter, "verify_contract"),
+        ):
+            result = adapter.tick(namespace(run_id="run-1"), self.repo)
+        self.assertEqual(result["outcome"], "reconciled")
+        self.assertIn(
+            adapter.inspect_bound(self.repo_view, "run-1")["action"],
+            adapter.ACTION_SUCCESSORS["create_stack"],
+        )
+        completed = adapter.load_action_journal(self.repo_view, "run-1")
+        self.assertEqual(completed["result"], "success")
+        self.assertEqual(completed["audit_status"], "complete")
+        self.assertFalse(
+            (self.repo_view.common_dir / "autonomy-demoted-auto_stack").exists())
+        self.assertFalse(adapter.reconcile_action_journal(self.repo_view, "run-1"))
 
     def test_success_audit_failure_blocks_advancement_until_next_tick_reconciles(self):
         linked = add_linked(self.repo)
@@ -1868,6 +2088,82 @@ time.sleep(30)
                         [sys.executable, "-c", script, str(pid_file)], root, timeout=5)
             self.assertTrue(pid_file.is_file())
             self.assert_pid_exits(int(pid_file.read_text()))
+
+    def test_repeated_mixed_signals_cannot_interrupt_process_group_cleanup(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            pid_file = root / "signal-cleanup-pids"
+            harness = r'''
+import pathlib, sys
+sys.path.insert(0, sys.argv[1])
+import lifecycle_adapter as adapter
+child_source = r"""
+import os, pathlib, signal, subprocess, sys, time
+for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
+    signal.signal(signum, signal.SIG_IGN)
+grandchild_source = "import signal,time; [signal.signal(s, signal.SIG_IGN) for s in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)]; time.sleep(30)"
+grandchild = subprocess.Popen(
+    [sys.executable, "-c", grandchild_source],
+    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+)
+pathlib.Path(sys.argv[1]).write_text(f"{os.getpid()} {grandchild.pid}")
+time.sleep(30)
+"""
+adapter.bounded_process(
+    [sys.executable, "-c", child_source, sys.argv[2]],
+    pathlib.Path(sys.argv[3]),
+    timeout=30,
+)
+'''
+            proc = subprocess.Popen(
+                [
+                    sys.executable,
+                    "-c",
+                    harness,
+                    str(ROOT / "scripts" / "ai"),
+                    str(pid_file),
+                    str(root),
+                ],
+                cwd=str(root),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                close_fds=True,
+            )
+            pids = []
+            try:
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline:
+                    if pid_file.is_file():
+                        parts = pid_file.read_text().split()
+                        if len(parts) == 2:
+                            pids = [int(item) for item in parts]
+                            break
+                    if proc.poll() is not None:
+                        break
+                    time.sleep(0.01)
+                self.assertEqual(len(pids), 2, proc.stderr.read() if proc.poll() is not None else "")
+                time.sleep(0.05)
+                os.kill(proc.pid, signal.SIGHUP)
+                time.sleep(0.05)
+                mixed = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
+                for index in range(60):
+                    if proc.poll() is not None:
+                        break
+                    try:
+                        os.kill(proc.pid, mixed[index % len(mixed)])
+                    except ProcessLookupError:
+                        break
+                    time.sleep(0.005)
+                stdout, stderr = proc.communicate(timeout=8)
+                self.assertEqual(proc.returncode, 128 + signal.SIGHUP, stdout + stderr)
+            finally:
+                if proc.poll() is None:
+                    proc.kill()
+                    proc.wait(timeout=3)
+            for pid in pids:
+                self.assert_pid_exits(pid)
 
 
 class StopTerminationTests(unittest.TestCase):
