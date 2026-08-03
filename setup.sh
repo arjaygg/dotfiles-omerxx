@@ -75,8 +75,12 @@ stow .
 # `ln -sfn` until 2026-08-03, which silently overwrote a live file that lean-ctx
 # had regenerated (breaking the link) and that had diverged to 7x the tracked
 # size. Same contract as CLAUDE.md and settings.json (decisions/0016, 0020).
+# Template lives under ai/config/codex/ because .codex/AGENTS.md is an in-repo
+# adapter with repo-relative @../ai/rules/ imports, asserted by
+# scripts/guidance_adapter_check.py. Separate roles, separate files
+# (decisions/0022).
 if [ ! -f "$HOME/.codex/AGENTS.md" ]; then
-    cp "$HOME/.dotfiles/.codex/AGENTS.md" "$HOME/.codex/AGENTS.md"
+    cp "$HOME/.dotfiles/ai/config/codex/AGENTS.global.base.md" "$HOME/.codex/AGENTS.md"
 fi
 
 # Claude Code runtime settings: untracked, runtime-managed projection
