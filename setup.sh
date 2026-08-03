@@ -92,6 +92,34 @@ if [ ! -f "$HOME/.dotfiles/.claude/settings.json" ]; then
 fi
 ln -sfn "$HOME/.dotfiles/.claude/settings.json" "$HOME/.claude/settings.json"
 
+# User-global Claude instructions: same bootstrap-if-absent contract as
+# settings.json above (decisions/0016), because lean-ctx regenerates the
+# <!-- lean-ctx --> block in the live file. Never overwrite a live file.
+# decisions/0020 — this was untracked and unreproducible before that.
+if [ ! -f "$HOME/.claude/CLAUDE.md" ]; then
+    cp "$HOME/.dotfiles/.claude-global/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+fi
+
+# Shared rules: ~/.claude/rules and ~/.codex/rules are REAL dirs holding per-file
+# symlinks into ai/rules/ (unlike ~/.cursor/rules, which is a whole-dir link
+# below). Claude Code and Codex both auto-load *.md from them, so a rule that is
+# not linked here does not load, however it is referenced in CLAUDE.md/AGENTS.md.
+# Keep this list in sync with the "Currently linked" line in .claude-global/CLAUDE.md.
+mkdir -p "$HOME/.claude/rules" "$HOME/.codex/rules"
+for _rule in agent-user-global tool-priority context-and-compaction delegation-and-context-admission; do
+    [ -f "$HOME/.dotfiles/ai/rules/$_rule.md" ] || continue
+    ln -sfn "$HOME/.dotfiles/ai/rules/$_rule.md" "$HOME/.claude/rules/$_rule.md"
+    ln -sfn "$HOME/.dotfiles/ai/rules/$_rule.md" "$HOME/.codex/rules/$_rule.md"
+done
+
+# User-global Codex hooks: bootstrap-if-absent. Carries the subagent model/spec
+# gate (decisions/0018); .codex/hooks.json is project-scoped and does NOT cover
+# work outside ~/.dotfiles.
+if [ ! -f "$HOME/.codex/hooks.json" ]; then
+    python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); d.pop("_comment", None); json.dump(d, open(sys.argv[2],"w"), indent=2)' \
+        "$HOME/.dotfiles/ai/config/codex/hooks.global.base.json" "$HOME/.codex/hooks.json"
+fi
+
 # Cursor config symlinks (explicit — ~/.cursor is a real dir, config items linked from dotfiles)
 # Runtime state (projects, plans, plugins, extensions, etc.) lives in the real dir only.
 mkdir -p ~/.cursor
