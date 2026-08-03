@@ -2,6 +2,10 @@
 
 **Date:** 2026-03-28
 
+**Status: Superseded (2026-08-03) by [0017](0017-remove-pctx-gateway.md).** lean-ctx is now a
+direct MCP server in every client rather than a gateway upstream. The rationale for adopting
+lean-ctx itself still holds; only the upstream-of-pctx wiring is obsolete.
+
 ## Context
 
 The existing token efficiency stack has two layers: rtk (shell output compression via CLI proxy) and post-tool-handler.sh (dumb head/tail truncation for Bash results >300 lines). Neither provides AST-based code skeleton scanning or SessionCache-backed file deduplication.

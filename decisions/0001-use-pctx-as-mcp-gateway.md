@@ -4,7 +4,11 @@
 Use pctx (Port of Context) as the Central MCP Gateway
 
 ## 2. Status
-Accepted
+**Superseded (2026-08-03) by [0017](0017-remove-pctx-gateway.md).** The gateway was removed
+and every MCP server is now registered directly. The context below is retained as the record
+of why it was adopted; it is no longer in force.
+
+Originally: Accepted
 
 ## 3. Context
 We currently use multiple AI agents (Claude Code, Cursor, Windsurf, Gemini, Codex) and multiple MCP servers (context7, directory-tree, filesystem, exa, etc.). Managing these configurations individually across all IDEs and CLI tools leads to configuration drift. Furthermore, when agents execute multi-step logic by calling tools sequentially, it rapidly consumes the context window and is prone to errors.
