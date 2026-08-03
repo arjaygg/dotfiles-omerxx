@@ -1,7 +1,7 @@
 {
   "mcpServers": {
-    "pctx": {
-      "command": "/tmp/example-bin/pctx"
+    "serena": {
+      "command": "/tmp/example-bin/serena_wrapper.sh"
     },
     "notebooklm": {
       "command": "/tmp/example-bin/notebooklm-mcp"

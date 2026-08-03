@@ -42,13 +42,6 @@
       "base": "ai/config/windsurf/mcp_config.base.json",
       "runtime": "~/.windsurf/mcp_config.json",
       "overlay": "~/.config/dotfiles-ai/windsurf.overlay.json"
-    },
-    {
-      "name": "pctx",
-      "format": "json",
-      "base": "ai/config/pctx/pctx.base.json",
-      "runtime": "~/.config/pctx/pctx.json",
-      "overlay": "~/.config/dotfiles-ai/pctx.overlay.json"
     }
   ]
 }

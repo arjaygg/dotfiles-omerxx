@@ -4,10 +4,15 @@ model_reasoning_effort = "high"
 model_instructions_file = "~/.dotfiles/ai/rules/agent-user-global.md"
 project_doc_fallback_filenames = ["AGENTS.md"]
 
-[mcp_servers.pctx]
+[mcp_servers.repomix]
 type = "stdio"
-command = "pctx"
-args = ["mcp", "start", "--stdio", "-c", "${PCTX_CONFIG}"]
+command = "repomix"
+args = ["--mcp"]
+
+[mcp_servers.graphify]
+type = "stdio"
+command = "graphify-mcp-conditional"
+args = []
 startup_timeout_sec = 90
 
 [mcp_servers.notebooklm]

@@ -1,16 +1,25 @@
 {
   "$schema": "https://json.schemastore.org/gemini-cli-settings.json",
   "mcpServers": {
-    "pctx": {
-      "command": "pctx",
+    "serena": {
+      "command": "serena_wrapper.sh",
       "args": [
-        "mcp",
-        "start",
-        "-q",
-        "--stdio",
-        "-c",
-        "${PCTX_CONFIG}"
+        "--context",
+        "claude-code",
+        "--project-from-cwd",
+        "--log-level",
+        "ERROR"
       ]
+    },
+    "repomix": {
+      "command": "repomix",
+      "args": [
+        "--mcp"
+      ]
+    },
+    "graphify": {
+      "command": "graphify-mcp-conditional",
+      "args": []
     },
     "lean-ctx": {
       "command": "bash",
