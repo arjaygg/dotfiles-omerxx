@@ -80,7 +80,7 @@ The `pre-tool-gate-v2.sh` hook will warn you if you attempt `git commit` on `mai
 ~/.dotfiles/
 ├── CLAUDE.md              ← this file (read every session)
 ├── AGENTS.md              ← project guidance (read by all agents)
-├── .mcp.json              ← Claude Code MCP: pctx gateway only
+├── .mcp.json              ← Claude Code MCP: direct servers
 ├── .claude/
 │   ├── settings.json      ← Claude Code user settings
 │   ├── settings.local.json← local permissions (gitignored)
@@ -89,12 +89,12 @@ The `pre-tool-gate-v2.sh` hook will warn you if you attempt `git commit` on `mai
 │   └── skills/            ← symlinks → ai/skills/
 ├── ai/
 │   └── skills/            ← all skill definitions (source of truth)
-├── .cursor/mcp.json       ← Cursor MCP: pctx gateway only
-├── .windsurf/mcp_config.json ← Windsurf MCP: pctx gateway only
+├── .cursor/mcp.json       ← Cursor MCP: direct servers
+├── .windsurf/mcp_config.json ← Windsurf MCP: direct servers
 ├── .gemini/
-│   ├── mcp.json           ← Gemini MCP: pctx gateway only
-│   └── settings.json      ← Gemini settings: also pctx gateway only
-├── .codex/config.toml     ← Codex: pctx mcp_servers section
+│   ├── mcp.json           ← Gemini MCP: direct servers
+│   └── settings.json      ← Gemini settings: also direct servers
+├── .codex/config.toml     ← Codex: mcp_servers section
 ├── plans/
 │   ├── active-context.md  ← current focus (keep updated)
 │   ├── decisions.md       ← concise decision log for active work
@@ -109,12 +109,15 @@ All agent configs (`~/.cursor/mcp.json`, `~/.gemini/*`, `~/.codex/config.toml`, 
 
 ---
 
-## MCP Gateway
+## MCP Servers
 
-All MCP traffic routes through `pctx`:
-- **Gateway config:** `~/.config/pctx/pctx.json`
-- **Servers:** Serena, Qmd, LeanCtx, Repomix, Graphify
-- **Serena context:** `--context claude-code` (19 of 43 tools — includes symbolic editing tools such as `replaceSymbolBody`, `renameSymbol`, `insertAfterSymbol`/`insertBeforeSymbol`, and `safeDeleteSymbol`; see `ai/rules/tool-priority.md` §1 for the full priority stack)
+Every client registers its MCP servers directly; there is no gateway process
+(see `decisions/0017-remove-pctx-gateway.md`).
+
+- **Servers:** Serena, LeanCtx, Repomix, Graphify
+- **Topology check:** `python3 scripts/mcp_topology_check.py --summary` asserts each
+  tracked client config names only approved servers and reaches Serena
+- **Serena context:** `--context claude-code` (19 of 43 tools — includes symbolic editing tools such as `replace_symbol_body`, `rename_symbol`, `insert_after_symbol`/`insert_before_symbol`, and `safe_delete_symbol`; see `ai/rules/tool-priority.md` §1 for the full priority stack)
 
 ---
 
