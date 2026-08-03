@@ -34,10 +34,28 @@ The rules, skills, commands, and output-styles for Codex CLI are managed central
 
 ## Delegation & Model Routing (read first)
 
-The main session is the **Coordinator** and runs `gpt-5.6-sol`. It plans, specs, reviews, and
-answers — it does not fan out searches, read files for orientation, tail build logs, or grind
-mechanical edits. Those go to subagents, pinned to the cheapest tier that fits the task
-(`gpt-5.6-luna` by default, `gpt-5.6-terra` for real judgement, `gpt-5.4-mini` for pure extraction).
+The main session is the **Coordinator (the brain)** and runs `gpt-5.6-sol`. It owns intent,
+plans/specs, architecture and security decisions, review, synthesis, and the final answer. To limit
+context bloat and context rot, admit decision-ready facts—not raw search results, whole-file reads,
+logs, build output, or repetitive edit history.
+
+**Delegate by default** when work is separable, mechanical, discovery-heavy, verbose, spans 3+
+files, or can run independently. Prefer fresh subagents; fork only when conversation-only state is
+indispensable. Give each worker a bounded frozen spec and require compact evidence/results rather
+than raw material.
+
+Choose the **cheapest model likely to complete and verify the spec**:
+
+- `gpt-5.4-mini`: pure extraction, existence checks, and deterministic trivial work.
+- `gpt-5.6-luna`: default worker for searches, mechanical edits, boilerplate, docs, tests, builds,
+  and log triage.
+- `gpt-5.6-terra`: implementation, debugging, or refactoring that needs real judgement.
+- `gpt-5.6-sol`: keep on the Coordinator; use as a worker only for evidenced escalation or genuinely
+  frontier-level reasoning.
+
+Accept a modest capability tradeoff for low-risk, machine-verifiable work, never for ambiguous or
+high-stakes work. If a cheap worker fails, sharpen the spec and retry once before escalating exactly
+one tier.
 
 - **Roles, frozen spec (`plans/specs/<label>.md`), anti-nesting, fresh-vs-fork:**
   `@rules/agent-user-global.md` §§ Orchestrator-Worker Paradigm / Agent Spawning.
