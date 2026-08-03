@@ -34,7 +34,6 @@ run_setup_check() {
         bash scripts/check-skill-drift.sh --check-coverage ai/skills .claude/skills "$HOME/.claude/skills" || true
         python3 scripts/hook_config_check.py ai/config/claude/settings.base.json --summary || true
         python3 scripts/skill_reference_check.py --summary || true
-        python3 scripts/pctx_sdk_example_check.py --summary
     )
 }
 
@@ -62,7 +61,6 @@ if [ "${1:-}" = "--check" ] || [ "${1:-}" = "--dry-run" ] || [ "${1:-}" = "--hel
 fi
 
 # Ensure directories exist for stow to link into if they aren't already managed
-mkdir -p ~/.config/pctx
 mkdir -p ~/.cursor
 mkdir -p ~/.claude
 mkdir -p ~/.gemini
@@ -121,7 +119,7 @@ fi
 if command -v headroom &> /dev/null; then
     export HEADROOM_CONTEXT_TOOL=lean-ctx
     export HEADROOM_DISABLE_KOMPRESS=1
-    export HEADROOM_EXCLUDE_TOOLS="bash,codebase_search,ctx_call,ctx_compose,ctx_expand,ctx_glob,ctx_read,ctx_search,ctx_session,ctx_shell,ctx_tree,exec_command,glob,grep,grep_search,list_directory,list_files,listdirectory,listfiles,mcp__lean-ctx__ctx_call,mcp__lean-ctx__ctx_compose,mcp__lean-ctx__ctx_expand,mcp__lean-ctx__ctx_glob,mcp__lean-ctx__ctx_read,mcp__lean-ctx__ctx_search,mcp__lean-ctx__ctx_session,mcp__lean-ctx__ctx_shell,mcp__lean-ctx__ctx_tree,mcp__lean-ctx__shell,mcp__lean_ctx__ctx_call,mcp__lean_ctx__ctx_compose,mcp__lean_ctx__ctx_expand,mcp__lean_ctx__ctx_glob,mcp__lean_ctx__ctx_read,mcp__lean_ctx__ctx_search,mcp__lean_ctx__ctx_session,mcp__lean_ctx__ctx_shell,mcp__lean_ctx__ctx_tree,mcp__lean_ctx__shell,mcp__pctx__execute_typescript,mcp__pctx__get_function_details,mcp__pctx__list_functions,read,read_file,read_many_files,read_text_file,readfile,run_command,run_shell_command,search,search_file_content,search_files,semantic_search,shell,shell_command,view,view_file"
+    export HEADROOM_EXCLUDE_TOOLS="bash,codebase_search,ctx_call,ctx_compose,ctx_expand,ctx_glob,ctx_read,ctx_search,ctx_session,ctx_shell,ctx_tree,exec_command,glob,grep,grep_search,list_directory,list_files,listdirectory,listfiles,mcp__lean-ctx__ctx_call,mcp__lean-ctx__ctx_compose,mcp__lean-ctx__ctx_expand,mcp__lean-ctx__ctx_glob,mcp__lean-ctx__ctx_read,mcp__lean-ctx__ctx_search,mcp__lean-ctx__ctx_session,mcp__lean-ctx__ctx_shell,mcp__lean-ctx__ctx_tree,mcp__lean-ctx__shell,mcp__lean_ctx__ctx_call,mcp__lean_ctx__ctx_compose,mcp__lean_ctx__ctx_expand,mcp__lean_ctx__ctx_glob,mcp__lean_ctx__ctx_read,mcp__lean_ctx__ctx_search,mcp__lean_ctx__ctx_session,mcp__lean_ctx__ctx_shell,mcp__lean_ctx__ctx_tree,mcp__lean_ctx__shell,read,read_file,read_many_files,read_text_file,readfile,run_command,run_shell_command,search,search_file_content,search_files,semantic_search,shell,shell_command,view,view_file"
     export HEADROOM_NO_SUBSCRIPTION_TRACKING=1
     if [ -f "$HOME/.headroom/ccr_store.db" ]; then
         python3 "$HOME/.dotfiles/scripts/headroom_hardening.py" \
@@ -317,7 +315,7 @@ for _d in skills output-styles; do
     [ -L "$HOME/.cursor/$_d" ] && [ ! -e "$HOME/.cursor/$_d" ] && rm "$HOME/.cursor/$_d"
 done
 mkdir -p ~/.cursor/skills
-for _skill in pctx-code-mode explore quarantine-triage-live; do
+for _skill in explore quarantine-triage-live; do
     [ -d ~/.dotfiles/ai/skills/$_skill ] && ln -sfn ~/.dotfiles/ai/skills/$_skill ~/.cursor/skills/$_skill
 done
 
