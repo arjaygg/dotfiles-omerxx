@@ -13,7 +13,7 @@
 #   WARN  (exit 0): no plans/specs/<label>.md referenced at all
 #   WARN  (exit 0): >3 spawns inside the rolling window (proxy for fan-out)
 #
-# Policy: ai/rules/codex-delegation.md, ai/skills/model-routing/SKILL.md.
+# Policy: ai/rules/delegation-and-context-admission.md, ai/skills/model-routing/SKILL.md.
 set -euo pipefail
 
 INPUT="$(cat || true)"
@@ -62,7 +62,7 @@ if [[ -n "$AGENT_MODEL" ]]; then
     exit 2
   fi
 else
-  echo "WARN: [tier-unset] Subagent spawn declares no model — it inherits the coordinator tier (gpt-5.6-sol), the most expensive option. Pin a tier explicitly: luna for mechanical work, terra for judgement, 5.4-mini for extraction. See ai/rules/codex-delegation.md §4." >&2
+  echo "WARN: [tier-unset] Subagent spawn declares no model — it inherits the coordinator tier (gpt-5.6-sol), the most expensive option. Pin a tier explicitly: luna for mechanical work, terra for judgement, 5.4-mini for extraction. See ai/rules/delegation-and-context-admission.md §4." >&2
 fi
 
 # ------------------------------------------------ 2. frozen spec (HARD DENY)
@@ -79,7 +79,7 @@ if [[ -n "$PROMPT" ]]; then
       exit 2
     fi
   else
-    echo "WARN: [spec-missing] Subagent spawn references no plans/specs/<label>.md. Non-trivial delegated work needs a frozen spec (goal, file scope, constraints, verification, return contract). See ai/rules/codex-delegation.md §5." >&2
+    echo "WARN: [spec-missing] Subagent spawn references no plans/specs/<label>.md. Non-trivial delegated work needs a frozen spec (goal, file scope, constraints, verification, return contract). See ai/rules/delegation-and-context-admission.md §5." >&2
   fi
 fi
 

@@ -1,12 +1,15 @@
-# Codex Delegation — Context Admission & Return Contracts
+# Delegation — Context Admission & Return Contracts
 
-Codex-specific delta only. The **roles** (Coordinator/Executor), the **frozen-spec path**
-(`plans/specs/<label>.md`), the **anti-nesting rule**, and the **fresh-vs-fork choice** are defined
-once in `agent-user-global.md` §§ Orchestrator-Worker Paradigm / Agent Spawning and are **not
-restated here** — that file is Codex's `model_instructions_file`, so it is already loaded.
+**Client-agnostic.** Applies to Claude Code, Codex, Cursor, and any other agent client on this
+machine. Nothing here depends on a particular model family or tool surface.
 
-Model tiers for all clients live in `ai/skills/model-routing/SKILL.md`; the Codex tier table is
-there, not here. Read-volume routing lives in `context-and-compaction.md`.
+The **roles** (Coordinator/Executor), the **frozen-spec path** (`plans/specs/<label>.md`), the
+**anti-nesting rule**, and the **fresh-vs-fork choice** are defined once in `agent-user-global.md`
+§§ Orchestrator-Worker Paradigm / Agent Spawning and are **not restated here**.
+
+Per-client **model tiers** live in `ai/skills/model-routing/SKILL.md` (Claude, Codex, and Cursor
+tables, plus the Enforcement matrix for each). Read-volume routing lives in
+`context-and-compaction.md`.
 
 What this file adds: which inputs may enter Coordinator context, when to delegate, and the shape a
 worker must return.
@@ -32,8 +35,10 @@ reasoned about; decisions and their rationale.
 | Log or data dumps | permanent context residency | worker extracts, or cite the path |
 | Third-party docs / web pages | unbounded | worker returns the lines that matter |
 
-`pre-bash-guard.sh` already denies huge/generated reads via `context_gate.py`; this table covers the
-cases below that threshold, where the cost is cumulative rather than per-call.
+The per-call size gate already exists in every client — `.claude/hooks/pre-tool-gate-v2.sh` §1,
+`.codex/hooks/pre-bash-guard.sh`, and `.cursor/hooks/context-file-gate.sh`, all routing through
+`ai/context/context_gate.py`. This table covers the cases **below** that threshold, where the cost is
+cumulative across a session rather than large in any single call. Nothing enforces it.
 
 ---
 
@@ -45,7 +50,7 @@ cases below that threshold, where the cost is cumulative rather than per-call.
 3. The task is **discovery**: "find", "where is", "which callers", "does this repo have".
 4. The task produces **verbose output not needed verbatim**: builds, test suites, log triage.
 5. The task is **independent** of other pending work → run it alongside its siblings.
-6. The task warrants a **different tier** (see `model-routing/SKILL.md` § Codex).
+6. The task warrants a **different tier** (see `model-routing/SKILL.md` for your client's table).
 7. You are about to do something whose intermediate steps you would not want in the transcript.
 
 **Never delegate:** the final answer; the plan or spec itself; architectural and security decisions;
@@ -78,7 +83,8 @@ refuses oversized returns.
 
 ## 4. Escalation ladder
 
-Applies to worker tier, not the Coordinator (whose model is pinned in `config.toml`).
+Applies to worker tier, not the Coordinator (whose model is a pinned client setting —
+`.claude/settings.json` `model`, `~/.codex/config.toml` `model`).
 
 1. Cheap tier fails → **sharpen the spec**, retry once at the same tier.
 2. Fails again → step up **one** tier.
@@ -105,8 +111,9 @@ quality is the real cost lever; escalating first hides the defect and pays for i
 
 ## 6. Anti-patterns
 
-- Sol reading ten files to answer "how does auth work" → one discovery worker on `luna`.
-- Sol at `xhigh` doing a mechanical rename → `luna` with an exact spec.
+- The Coordinator reading ten files to answer "how does auth work" → one discovery worker on the
+  cheap tier (`haiku` / `gpt-5.6-luna`).
+- The Coordinator at max effort doing a mechanical rename → cheap tier with an exact spec.
 - Spawning a worker without writing its spec → it invents scope, and you pay twice.
 - Delegating the final user-facing answer → the Coordinator owns synthesis.
 - One worker per file for a uniform change → one worker, one spec, all files.
@@ -114,5 +121,6 @@ quality is the real cost lever; escalating first hides the defect and pays for i
 - A worker's raw build log reaching the transcript → that log is what the worker was for.
 
 ---
-*Maintained at: `~/.dotfiles/ai/rules/codex-delegation.md`*
-*Enforcement status: `ai/skills/model-routing/SKILL.md` § Enforcement (Codex rows).*
+*Maintained at: `~/.dotfiles/ai/rules/delegation-and-context-admission.md`*
+*Mirrored to `.cursor/rules/` for Cursor. Enforcement status per client:
+`ai/skills/model-routing/SKILL.md` § Enforcement.*

@@ -151,6 +151,17 @@ this document plus habit.
 | Effort level / fast mode match task type | None — prose rule + `primitive-hint.sh` (advisory suggestion, not a gate) | None |
 | Advisor auto-escalation fires before declaring a task done | None — `Stop` hooks only support `decision: "block"`, not `additionalContext`, so this trigger cannot be hook-injected; see "Known limitation" above | None |
 
+### All-client rows
+
+`ai/rules/delegation-and-context-admission.md` is client-agnostic. Three of its clauses have no
+enforcement on **any** client, and no mechanism is available to add one:
+
+| Policy clause | Mechanism | Enforcement level |
+|---|---|---|
+| Context-admission table (§1) — what may enter Coordinator context | Per-call size gates exist (`pre-tool-gate-v2.sh` §1, `pre-bash-guard.sh`, `.cursor/hooks/context-file-gate.sh` → `ai/context/context_gate.py`) but only catch large *single* reads | Partial — the cumulative-cost cases the table exists for are unenforced prose |
+| Return contract ≤30 lines (§3) | None | None — no client exposes a hook that observes a subagent's return payload. Held only by the Coordinator refusing oversized returns. |
+| Delegation triggers (§2) — delegate at 3+ files, discovery, verbose output | None | None — no hook can see the intended shape of work before it is done |
+
 ### Codex rows
 
 Same hard/warn/unenforceable split, applied to `.codex/hooks/pre-agent-gate.sh` (PreToolUse,
@@ -165,8 +176,7 @@ Codex version whose subagent payload shape differs must never strand a session.
 | Worker tier is explicit, not inherited | `pre-agent-gate.sh` check 1 else-branch | **Warn** — inheriting silently routes mechanical work to the most expensive tier |
 | Fan-out stays ≤3 concurrent | `pre-agent-gate.sh` check 3 — rolling 60s spawn window | **Warn only** — PreToolUse sees spawns, never completions, so "concurrent" is a proxy, not a count. Promotion to deny would need completion signal that does not exist. Same reasoning as ADL-022. |
 | Tier matches task difficulty | None | None — the Claude-side §7b keyword heuristic was not ported; it is a heuristic, not a classifier, and Codex has no equivalent evidence base yet |
-| Return contract ≤30 lines | None | None — no hook observes a subagent's return payload |
-| Context-admission table (§1 of `codex-delegation.md`) | `pre-bash-guard.sh` → `context_gate.py` covers huge/generated reads only | Partial — cumulative-cost cases below the size threshold are unenforced prose |
+| Return contract, context admission, delegation triggers | — | See **All-client rows** above; not Codex-specific |
 
 Two deployment caveats, both real:
 
@@ -205,7 +215,7 @@ tops out at `max`). Sol's shipped default is `low`.
 
 **Selection rule** — cheapest tier satisfying both: the failure mode is machine-detectable (test,
 compiler, exact string), and the task needs no judgement absent from the spec. Otherwise step up
-exactly one tier. Escalation ladder and delegation triggers: `ai/rules/codex-delegation.md`.
+exactly one tier. Escalation ladder and delegation triggers: `ai/rules/delegation-and-context-admission.md`.
 
 Refresh this table from `~/.codex/models_cache.json` when OpenAI ships a tier; the slug enum in
 `.codex/hooks/pre-agent-gate.sh` must be updated in the same commit or valid spawns will be denied.

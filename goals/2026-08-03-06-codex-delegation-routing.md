@@ -109,6 +109,14 @@ tails build logs pays frontier rates for bulk tokens that then degrade the rest 
 - [ ] One real Codex session's fire/no-fire evidence collected before any warn→deny promotion is
       proposed. **Deliberately open** — mirrors Goal 03 Step 6; promotion is a separate decision.
 
+## Amendment (2026-08-03, post-execution)
+
+`ai/rules/codex-delegation.md` was renamed to `ai/rules/delegation-and-context-admission.md` and
+restated as client-agnostic — nothing in its context-admission table, delegation triggers, return
+contract, or escalation ladder is Codex-specific, and Claude Code had no statement of any of them.
+See `decisions/0019-delegation-rule-is-client-agnostic.md`. Step 1 and the first acceptance criterion
+below name the old path; they are left as written because they record what was executed.
+
 ## Evidence to update
 
 - Hook branch matrix (Step 5) — rerun `pre-agent-gate.sh` against the payload fixtures after any
