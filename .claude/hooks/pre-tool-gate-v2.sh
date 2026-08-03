@@ -112,6 +112,18 @@ _branch_for_path() {
     git -C "$dir" branch --show-current 2>/dev/null || echo ""
 }
 
+# True when a path is gitignored in the repo that owns it. The stacking gate
+# tells you to edit in a worktree instead, but an ignored file is not checked
+# out there, so no branch can carry the change — the demand is unsatisfiable
+# and the only way through is to bypass the gate entirely. Untracked-but-not-
+# ignored paths stay gated: those are new files that a worktree *can* hold.
+_path_is_gitignored() {
+    local path="$1"
+    local dir
+    dir=$(dirname -- "$path" 2>/dev/null) || return 1
+    git -C "$dir" check-ignore -q -- "$path" 2>/dev/null
+}
+
 # Declarative block/warn rules from hook-config.yaml (sed/awk/echo/printf/tee
 # redirects, read-guards for node_modules/go.sum/repomix output). Sourced
 # after _deny() so check_bash_cmd_rules/check_read_path_rules use it directly
@@ -691,8 +703,11 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Mult
             #         .claude/projects/*/memory/ (auto-memory storage) — $HOME can
             #         itself be a git repo on main for unrelated project work; that
             #         must never gate Claude's own memory writes.
+            #         gitignored paths — the demanded worktree cannot contain
+            #         them, so the block has no satisfiable remedy.
             if [[ ! "$FILE_PATH" =~ (^|/)(plans|\.trees)/ ]] && \
-               [[ ! "$FILE_PATH" =~ /\.claude/projects/[^/]+/memory/ ]]; then
+               [[ ! "$FILE_PATH" =~ /\.claude/projects/[^/]+/memory/ ]] && \
+               ! _path_is_gitignored "$FILE_PATH"; then
                 _SUGGESTED_BRANCH=""
                 _HINT_FILE="/tmp/.claude-stack-hint-$(id -u)-${EFFECTIVE_SESSION_ID}"
                 [[ -f "$_HINT_FILE" ]] && _SUGGESTED_BRANCH=$(cat "$_HINT_FILE" 2>/dev/null)
