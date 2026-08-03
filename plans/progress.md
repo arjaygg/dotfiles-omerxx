@@ -1,5 +1,12 @@
 # Progress — 2026-06-12
 
+## Done — 2026-08-03 Agent Factory executable-harness audit and plan
+
+- [x] Completed the executable-harness audit against the supplied Agent Factory target.
+- [x] Completed architecture and evidence reviews.
+- [x] Finalized `plans/2026-08-03-agent-factory-gap-plan.md`.
+- [ ] No implementation step is complete; human approval is required before implementation begins.
+
 ## Done — 2026-07-26 deterministic model-routing enforcement (Goal 03)
 
 Goal: `goals/2026-07-26-03-deterministic-model-routing-enforcement.md`. Convert prose-only model/

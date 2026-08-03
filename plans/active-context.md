@@ -1,6 +1,17 @@
 # Active Context
 
-## Current (2026-08-02) — read-before-edit gate reworked
+## Current (2026-08-03) — Agent Factory executable-harness audit
+
+plan: `plans/2026-08-03-agent-factory-gap-plan.md`
+objective: executable-harness audit against the supplied Agent Factory target.
+branch: `chore/agent-factory-gap-plan`
+worktree: `/Users/axos-agallentes/.dotfiles/.trees/agent-factory-gap-plan`
+status: audit and independently reviewed implementation plan complete; no harness implementation performed.
+evidence boundary: the target document is target-only; current-state claims exclude repository docs,
+  decisions, goals, and prior plans.
+in flight: nothing; human approval is required before implementation.
+
+## Historical (2026-08-02) — read-before-edit gate reworked
 
 status: committed on `fix/read-before-edit-gate` (3a64c5a), worktree `.trees/read-before-edit-gate`.
   NOT pushed, no PR — arjaygg personal-account billing gate. NOT live: `~/.claude/hooks` symlinks

@@ -1,5 +1,17 @@
 # Active Decisions Log
 
+## 2026-08-03 — Agent Factory delivery is safety-gated and implementation remains unstarted
+
+**Decision:** Record the audit maturity verdict as **Level 2 with experimental Level-3 components**. The
+first delivery sequence is containment; truthful baseline; contract/trust root; activation cleanup;
+sandbox/artifact boundary; minimal controller; risk-routed review; eval/attestation; telemetry aggregation;
+then A3-candidate pilots. A4/A5 production actuation is deferred pending a separate human-approved policy
+and trusted-merge design.
+
+**Why:** The final plan is an implementation pointer and decision record, not evidence of current harness
+behavior. Its evidence boundary keeps the supplied target target-only and excludes repository docs,
+decisions, goals, and prior plans from current-state claims.
+
 
 ## 2026-08-02 — Removed the Edit arm of the read-before-edit gate; kept Write only
 
