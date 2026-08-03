@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Consolidated PostToolUse analytics (v2)
-# Replaces: post-tool-handler.sh, bash-output-guard.sh, pctx-batch-tracker.sh,
-#           read-tracker.sh, post-task-fence.sh, advisor-escalate.sh
+# Replaces: post-tool-handler.sh, bash-output-guard.sh, read-tracker.sh,
+#           post-task-fence.sh, advisor-escalate.sh
 #           (advisor-escalate folded 2026-07-08, H2)
 # Matcher: .*
 #
@@ -29,23 +29,11 @@ eval "$(echo "$INPUT" | jq -r '
 # Prefer explicit session_id from tool payload; fall back to env var for compatibility.
 EFFECTIVE_SESSION_ID="${SESSION_ID:-${CLAUDE_SESSION_ID:-default}}"
 
-# Extract output text and line count for Bash/Agent/pctx-execute (heavier
-# parse, only when needed). N4 (gate-logic-consolidated-review): pre-tool-
-# gate-v2.sh is PreToolUse-only and cannot inspect a tool's *result* size
-# before it runs, so mcp__pctx__execute_typescript result-size guarding has
-# to live here instead, feeding the same generic Section 2 compaction below
-# rather than a new mechanism. Policy unchanged, scope corrected: identical
-# compaction behavior as Bash/Agent already get, just a third tool name
-# routed into the same existing check — advisory replacement of the tool's
-# returned content, never a block (this hook cannot block; PostToolUse only).
-#
-# LINE_COUNT/OUTPUT must be initialized unconditionally: Section 2 below
-# reads LINE_COUNT for every tool call, and under `set -u` an unset
-# reference on a non-Bash/Agent/pctx-execute call (i.e. most calls) is a
-# fatal shell error, not a false/empty value.
+# Extract output text and line count for Bash/Agent results only. Initialize
+# unconditionally because Section 2 reads both values for every tool call.
 LINE_COUNT=0
 OUTPUT=""
-if [[ "$TOOL_NAME" == "Bash" || "$TOOL_NAME" == "Agent" || "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then
+if [[ "$TOOL_NAME" == "Bash" || "$TOOL_NAME" == "Agent" ]]; then
     eval "$(echo "$INPUT" | jq -r '
       def text_content:
         .tool_response.content // .content //
@@ -101,6 +89,9 @@ READ_LOG="/tmp/.claude-read-log-$(id -u)-${EFFECTIVE_SESSION_ID}"
 _log_read() {
     local canon
     [[ -n "$1" ]] || return 0
+    # Only regular files clear the overwrite gate; a directory read says nothing
+    # about the files inside it.
+    [[ -f "$1" ]] || return 0
     canon=$(realpath -q "$1" 2>/dev/null || echo "$1")
     grep -qxF "$canon" "$READ_LOG" 2>/dev/null || echo "$canon" >> "$READ_LOG"
 }
@@ -109,27 +100,11 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
     _log_read "$FILE_PATH"
 fi
 
-# ctx_read parity: native Read is absent from lean-ctx replace-mode sessions, so without
-# this the gate would be unclearable there. Best-effort — only absolute-path *string
-# literals* are recoverable from the TS source; computed paths (concatenation, template
-# literals, loop variables) are missed by design, and §3a's deny message tells the model
-# to re-read with a literal path as the recovery. The -f filter keeps non-path literals
-# and directories out. Over-registration (e.g. a ctx_search path in the same batch) is
-# accepted: for a
-# Write-only backstop, exempting a path the model plainly handled this session is a fair
-# trade against a deadlock. Robust fix belongs upstream in lean-ctx, which resolves the
-# absolute path server-side and already ships hook infrastructure.
-if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then
-    _CTX_SRC=$(echo "$INPUT" | jq -r '.tool_input.code // empty' 2>/dev/null)
-    if [[ -n "$_CTX_SRC" ]] && echo "$_CTX_SRC" | grep -qE 'ctx(Read|_read)'; then
-        # if-block, not `[[ ... ]] && ...`: a false test as the loop body's last
-        # command trips `set -e`/the ERR trap and aborts the rest of the hook.
-        while IFS= read -r _p; do
-            if [[ -f "$_p" ]]; then
-                _log_read "$_p"
-            fi
-        done < <(echo "$_CTX_SRC" | grep -oE '"/[^"]+"' | tr -d '"' || true)
-    fi
+# Direct LeanCtx/native-wrapper reads must satisfy the same safety gate.
+if [[ -n "$FILE_PATH" ]] && \
+   [[ "$TOOL_NAME" == "ReadFile" || "$TOOL_NAME" == "ctx_read" || \
+      "$TOOL_NAME" == "mcp__lean-ctx__ctx_read" || "$TOOL_NAME" == "mcp__lean_ctx__ctx_read" ]]; then
+    _log_read "$FILE_PATH"
 fi
 
 # ============================================================
@@ -177,7 +152,7 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
                 echo "OUTPUT WARNING: Bash produced $LINE_COUNT lines — significant context consumption." >&2
                 echo "  For data-heavy commands, prefer LeanCtx (compresses output):" >&2
                 echo "    mcp__lean-ctx__ctx_shell — run a command with compressed output" >&2
-                echo "    mcp__pctx__execute_typescript running LeanCtx.ctxShell({ command: ... }) — when batching 2+ ops" >&2
+                echo "    Run independent direct MCP calls in parallel when the client supports it" >&2
             elif [[ "$LINE_COUNT" -gt 50 ]]; then
                 echo "OUTPUT HINT: Bash produced $LINE_COUNT lines. For commands with large output, consider mcp__lean-ctx__ctx_shell to keep raw data out of context." >&2
             fi
@@ -195,67 +170,18 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
 fi
 
 # ============================================================
-# SECTION 4: pctx batch tracker
+# SECTION 4: Direct Serena/LeanCtx session-init flag setters
 # ============================================================
-if [[ "$TOOL_NAME" == mcp__serena__* || "$TOOL_NAME" == mcp__pctx__* ]]; then
-    TRACKER="/tmp/.claude-serena-calls-$(id -u)-${SESSION_ID}"
-
-    if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then
-        # Batched call — reset counter
-        rm -f "$TRACKER" 2>/dev/null || true
-
-        # Detect context-loading calls — actual mandated form is
-        # LeanCtx.ctxCall({ name: "ctx_intent", ... }), a snake_case dispatch
-        # name string, not a top-level ctxIntent()/ctxBatchExecute() call.
-        SCRIPT=$(echo "$INPUT" | jq -r '.tool_input.code // empty' 2>/dev/null)
-        if [[ -n "$SCRIPT" ]]; then
-            if echo "$SCRIPT" | grep -qE "ctx_intent"; then
-                # Mark that context has been loaded in this session
-                touch "/tmp/.claude-ctx-loaded-$(id -u)-${EFFECTIVE_SESSION_ID}" 2>/dev/null || true
-            fi
-        fi
-    else
-        # Track the call
-        NOW=$(date '+%s')
-        echo "$NOW $TOOL_NAME" >> "$TRACKER"
-
-        # Prune entries older than 60 seconds
-        if [[ -f "$TRACKER" ]]; then
-            CUTOFF=$((NOW - 60))
-            TEMP=$(mktemp)
-            awk -v cutoff="$CUTOFF" '$1 >= cutoff' "$TRACKER" > "$TEMP" 2>/dev/null && mv "$TEMP" "$TRACKER" || rm -f "$TEMP"
-        fi
-
-        # Count and warn
-        COUNT=0
-        [[ -f "$TRACKER" ]] && COUNT=$(wc -l < "$TRACKER" | tr -d ' ')
-        if [[ "$COUNT" -ge 2 ]]; then
-            echo "BATCH HINT: You've made $COUNT sequential Serena/pctx MCP calls in the last 60s." >&2
-            echo "  Consider batching into one pctx execute_typescript call with Promise.all()." >&2
-            echo "  See: pctx-unified-rules.md section 2 'Batching & Code Mode'" >&2
-            rm -f "$TRACKER" 2>/dev/null || true
-        fi
-    fi
+if [[ "$TOOL_NAME" == mcp__serena__* || "$TOOL_NAME" == mcp__serena-fallback__* || \
+      "$TOOL_NAME" == "Serena.initialInstructions" ]]; then
+    touch "/tmp/.claude-serena-init-$(id -u)-${EFFECTIVE_SESSION_ID}" 2>/dev/null || true
 fi
 
-# ============================================================
-# SECTION 4b: Serena session-init flag setter
-# Set the flag that pre-tool-gate-v2 Section 0 checks, so Grep is unblocked
-# once the model has called mcp__pctx__list_functions or any Serena tool.
-# ============================================================
-if [[ "$TOOL_NAME" == "mcp__pctx__list_functions" ]] || [[ "$TOOL_NAME" == mcp__serena__* ]]; then
-    _INIT_FLAG="/tmp/.claude-serena-init-$(id -u)-${EFFECTIVE_SESSION_ID}"
-    touch "$_INIT_FLAG" 2>/dev/null || true
-fi
-
-# ============================================================
-# SECTION 5: pctx batching reminder (once per session)
-# ============================================================
-if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]]; then
-    REMINDER_FLAG="/tmp/.claude-pctx-reminder-$(id -u)"
-    if [[ ! -f "$REMINDER_FLAG" ]]; then
-        touch "$REMINDER_FLAG"
-        echo "BATCH CHECK: Was this the only Serena/MCP operation needed this turn? If 2+ ops are coming, combine them into one execute_typescript call." >&2
+if [[ "$TOOL_NAME" == "ctx_call" || "$TOOL_NAME" == "mcp__lean-ctx__ctx_call" || \
+      "$TOOL_NAME" == "mcp__lean_ctx__ctx_call" ]]; then
+    _CALL_NAME=$(echo "$INPUT" | jq -r '.tool_input.name // .tool_input.arguments.name // ""' 2>/dev/null || echo "")
+    if [[ "$_CALL_NAME" == "ctx_intent" ]]; then
+        touch "/tmp/.claude-ctx-loaded-$(id -u)-${EFFECTIVE_SESSION_ID}" 2>/dev/null || true
     fi
 fi
 

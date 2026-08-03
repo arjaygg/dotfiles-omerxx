@@ -72,13 +72,15 @@ class ReadBeforeOverwriteGateTests(unittest.TestCase):
             },
         )
 
-    def observe_ctx_batch(self, code: str) -> subprocess.CompletedProcess:
+    def observe_ctx_read(
+        self, file_path: Path, tool_name: str = "mcp__lean-ctx__ctx_read"
+    ) -> subprocess.CompletedProcess:
         return run_hook(
             POST_ANALYTICS,
             {
                 "session_id": self.session_id,
-                "tool_name": "mcp__pctx__execute_typescript",
-                "tool_input": {"code": code},
+                "tool_name": tool_name,
+                "tool_input": {"path": str(file_path)},
             },
         )
 
@@ -167,43 +169,33 @@ class ReadBeforeOverwriteGateTests(unittest.TestCase):
 
     # --- F1: ctx_read parity -------------------------------------------
 
-    def test_ctx_read_literal_path_clears_the_gate(self):
+    def test_ctx_read_clears_the_gate(self):
         target = self.make_file("via-ctx.txt")
         self.assertDenied(self.gate("Write", target))
-        self.observe_ctx_batch(
-            "async function run() {"
-            f'  return await LeanCtx.ctxRead({{ path: "{target}", mode: "full" }});'
-            "}"
-        )
+        self.observe_ctx_read(target)
         self.assertAllowed(self.gate("Write", target))
 
-    def test_computed_ctx_read_path_is_not_registered(self):
-        """Documented limitation, pinned deliberately: extraction is
-        regex-over-source, so concatenated/templated paths are missed. The
-        deny message's recovery is to re-read with a literal path."""
-        target = self.make_file("computed.txt")
-        self.observe_ctx_batch(
-            "async function run() {"
-            f'  const base = "{self.sandbox}";'
-            '  return await LeanCtx.ctxRead({ path: base + "/computed.txt" });'
-            "}"
-        )
-        self.assertDenied(self.gate("Write", target))
+    def test_ctx_read_alias_tool_names_all_clear_the_gate(self):
+        for tool_name in ("ctx_read", "mcp__lean-ctx__ctx_read", "mcp__lean_ctx__ctx_read"):
+            with self.subTest(tool_name=tool_name):
+                target = self.make_file(f"alias-{tool_name}.txt")
+                self.assertDenied(self.gate("Write", target))
+                self.observe_ctx_read(target, tool_name=tool_name)
+                self.assertAllowed(self.gate("Write", target))
 
-    def test_only_regular_files_are_registered_from_a_batch(self):
-        target = self.make_file("dir-check.txt")
-        self.observe_ctx_batch(
-            "async function run() {"
-            f'  await LeanCtx.ctxRead({{ path: "{target}" }});'
-            f'  return await LeanCtx.ctxTree({{ path: "{self.sandbox}" }});'
-            "}"
-        )
-        entries = self.log.read_text().splitlines()
+    def test_only_regular_files_are_registered(self):
+        self.observe_ctx_read(Path(self.sandbox))
+        entries = self.log.read_text().splitlines() if self.log.exists() else []
         self.assertNotIn(str(Path(self.sandbox).resolve()), entries)
 
-    def test_batch_without_ctx_read_does_not_crash_the_hook(self):
-        result = self.observe_ctx_batch(
-            'async function run() { return await LeanCtx.ctxSearch({ pattern: "x" }); }'
+    def test_ctx_read_without_a_path_does_not_crash_the_hook(self):
+        result = run_hook(
+            POST_ANALYTICS,
+            {
+                "session_id": self.session_id,
+                "tool_name": "mcp__lean-ctx__ctx_read",
+                "tool_input": {},
+            },
         )
         self.assertNotIn("HOOK CRASH", result.stdout + result.stderr)
 
