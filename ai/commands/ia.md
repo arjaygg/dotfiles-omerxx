@@ -32,4 +32,4 @@ Prevents Claude from guessing struct relationships on every feature request.
 ## Related commands
 
 - `/findings` — Consolidate session discoveries into persistent memories
-- `/explore` — Deep codebase navigation using pctx/Serena and LeanCtx
+- `/explore` — Deep codebase navigation using Serena and LeanCtx

@@ -3,9 +3,9 @@
 ## Context ownership
 
 - **LeanCtx exclusively owns file, search, and shell-output compression.**
-- **Headroom owns provider-history optimization only.** It must pass LeanCtx and pctx tool results through unchanged and must never store nested or self-referential CCR content.
+- **Headroom owns provider-history optimization only.** It must pass LeanCtx and Serena tool results through unchanged and must never store nested or self-referential CCR content.
 - Recover a local provider-history CCR with `python3 "$HOME/.dotfiles/scripts/headroom_hardening.py" recover-ccr "$HOME/.headroom/ccr_store.db" <hash>`; invalid or recursive entries are refused.
-- Use pctx for batched/deferred SDK calls; expose only LeanCtx's focused compose/read/search/tree/expand tools directly.
+- Issue independent calls in parallel within one message; expose only LeanCtx's focused compose/read/search/tree/expand tools directly.
 
 ## Progressive file disclosure
 

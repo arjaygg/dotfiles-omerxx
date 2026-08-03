@@ -1,8 +1,8 @@
 # Tool Priority, Batching, and Best Practices
 
-These rules apply to every project on this machine where `pctx` (and its upstream servers like `Serena`) is configured.
+These rules apply to every project on this machine where the MCP servers (`Serena`, `LeanCtx`, `Repomix`, `Graphify`) are configured.
 
-> **Precedence:** In pctx-enabled projects, these rules supersede `ai/rules/lean-ctx.md` for tool selection (stricter: "Never" vs "Prefer"). `agent-user-global.md` says little about tool selection specifically, so the practical conflict this resolves is with `lean-ctx.md`.
+> **Precedence:** Where those servers are configured, these rules supersede `ai/rules/lean-ctx.md` for tool selection (stricter: "Never" vs "Prefer"). `agent-user-global.md` says little about tool selection specifically, so the practical conflict this resolves is with `lean-ctx.md`.
 
 ---
 
@@ -57,23 +57,23 @@ Large-file thresholds, Markdown fidelity rules, and exactness escape hatches are
 
 ## 2. Batching
 
-Use `mcp__pctx__execute_typescript` when 2+ Serena/LeanCtx/Repomix/Qmd operations are planned, or when output needs filtering before it hits context. Batch independent `ctx_read`/`ctx_search`/`ctx_tree` calls instead of chaining native tools. Full schema guardrails and Code Mode rules → `tool-routing` skill.
+Issue independent Serena/LeanCtx/Repomix calls as **parallel tool calls in one message** — they cannot race, and each extra round-trip re-sends the whole growing context. Batch independent `ctx_read`/`ctx_search`/`ctx_tree` calls instead of chaining native tools. Full routing rules → `tool-routing` skill.
 
 ---
 
 ## 3. Serena Quirks and Mandatory Rules
 
-All Serena methods use **camelCase** (`findSymbol`, not `find_symbol`; `searchForPattern`, not `search_for_pattern`). `Serena.initialInstructions()` does not cover any of this — these are project-specific quirks, not part of Serena's own manual.
+Serena is a direct MCP server, so its tools use their native **snake_case** names (`find_symbol`, `search_for_pattern`, `replace_symbol_body`). `initial_instructions` does not cover the quirks below — they are project-specific, not part of Serena's own manual.
 
-- `searchForPattern` is not exposed in this session's Serena claude-code context (nor are `findFile`/`listDir`) — use `LeanCtx.ctxSearch` for pattern/regex search instead. It has no `restrict_search_to_code_files` flag and handles lock/generated files fine without one.
-- `findSymbol` **fails silently** on files inside dot-directories (`.serena/`, `.claude/`, `.cursor/`, `.mcp.json`). Use `Serena.readMemory()` for Serena memories and focused `ctx_read` for other dot-directory files.
+- `search_for_pattern` is not exposed in the Serena claude-code context (nor are `find_file`/`list_dir`) — use `ctx_search` for pattern/regex search instead. It has no `restrict_search_to_code_files` flag and handles lock/generated files fine without one.
+- `find_symbol` **fails silently** on files inside dot-directories (`.serena/`, `.claude/`, `.cursor/`, `.mcp.json`). Use `read_memory` for Serena memories and focused `ctx_read` for other dot-directory files.
 - Serena memory session-init workflow (`listMemories`/`START_HERE`) and memory-naming conventions: **`tool-routing` skill** (`ai/skills/tool-routing/SKILL.md`).
 
 ---
 
 ## 4. Everything Else → `tool-routing` Skill
 
-Multi-file context selection (5+ files → repomix), the full pctx `execute_typescript` schema-guardrails table, the required session-init walkthrough, Qmd-vs-LeanCtx-vs-Serena-vs-Grep decision tables, Graphify's pctx/CLI breakdown, session-continuity tooling, and common tool-selection violations all live in **`ai/skills/tool-routing/SKILL.md`**. Invoke it when unsure which tool fits a docs search, large-file read, shell command, web fetch, or graph query — or after an unexplained hook block.
+Multi-file context selection (5+ files → repomix), the required session-init walkthrough, Qmd-vs-LeanCtx-vs-Serena-vs-Grep decision tables, Graphify's MCP/CLI breakdown, session-continuity tooling, and common tool-selection violations all live in **`ai/skills/tool-routing/SKILL.md`**. Invoke it when unsure which tool fits a docs search, large-file read, shell command, web fetch, or graph query — or after an unexplained hook block.
 
 ---
 
@@ -85,7 +85,7 @@ Multi-file context selection (5+ files → repomix), the full pctx `execute_type
 so any manual edit to it is discarded the next time lean-ctx regenerates the file. The durable
 statement therefore lives here.
 
-Verified 2026-07-26 in a live pctx+lean-ctx session:
+Verified 2026-07-26 in a live lean-ctx session:
 
 | Tool | Generated block claims | Actually observed |
 |---|---|---|
@@ -102,7 +102,7 @@ or `Write` believing they are forbidden.
 
 Section 1's priority stack lists `Glob` first for directory listing and file finding. In
 sessions where `Glob` has no schema, that entry is unactionable — fall through to
-`LeanCtx.ctxGlob` / `ctxTree` rather than treating the stack as violated.
+`ctx_glob` / `ctx_tree` rather than treating the stack as violated.
 
 Upstream fix (not applied here): the generated wording belongs in
 `github.com/yvgude/lean-ctx`; this table is the local workaround until then.

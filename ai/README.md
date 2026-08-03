@@ -37,7 +37,7 @@ The primitives are linked granularly from this directory into the agent-specific
 3. Cursor automatically loads `rules.md` as user-level context in each session
 
 **Active Rules:**
-- **Tool Priority Stack**: Serena/pctx integration, lean-ctx methods, batching requirements
+- **Tool Priority Stack**: Serena integration, lean-ctx methods, parallel-call requirements
 - **User-Global Defaults**: Concise communication, git safety, file discipline
 - **Developer Guidelines**: Git worktree management, parallel development patterns
 - **Context Management**: Session artifacts, compaction rules

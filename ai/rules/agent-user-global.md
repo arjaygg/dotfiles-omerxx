@@ -125,11 +125,10 @@ Choose in this order:
 non-parent model (a fork ignores `model`) or a specialised tool set; work that may spawn its own
 workers; or when the parent context is already large.
 
-**Every fresh agent that touches project files must open its prompt with the pctx init mandate** —
-`Serena.initialInstructions()` + `LeanCtx.ctxCall({name: "ctx_intent", arguments: {...}})` before any
-file access. Without it the agent reaches for `ls`/`grep` and is hard-denied by
-`pre-tool-gate-v2.sh`. Normative statement and the reusable `pctxInit()` block:
-`plans/2026-07-27-native-agent-orchestration.md` §5.
+**Every fresh agent that touches project files must open its prompt with the session-init mandate** —
+Serena's `initial_instructions` + `ctx_intent` before any file access. Without it the agent reaches
+for `ls`/`grep` and is hard-denied by `pre-tool-gate-v2.sh`. Normative statement and the reusable
+init block: `plans/2026-07-27-native-agent-orchestration.md` §5.
 
 ---
 
