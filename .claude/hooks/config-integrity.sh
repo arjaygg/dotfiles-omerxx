@@ -107,6 +107,7 @@ check_symlink ".codex/config.toml" "$HOME/.codex/config.toml" "$DOTFILES/.codex/
 check_symlink "$HOME/.agents/skills" "$HOME/.agents/skills" "$DOTFILES/ai/skills"
 
 check_template_drift "user-global CLAUDE.md" "$HOME/.claude/CLAUDE.md" "$DOTFILES/.claude-global/CLAUDE.md"
+check_template_drift "user-global AGENTS.md" "$HOME/.codex/AGENTS.md" "$DOTFILES/.codex/AGENTS.md"
 check_rule_links
 check_codex_agent_gate
 

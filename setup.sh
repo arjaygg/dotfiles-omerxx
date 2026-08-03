@@ -71,7 +71,13 @@ mkdir -p ~/.windsurf
 stow .
 
 # Specific tool setup (for things Stow might need help with or additional setup)
-ln -sfn "$HOME/.dotfiles/.codex/AGENTS.md" "$HOME/.codex/AGENTS.md"
+# User-global Codex instructions: bootstrap-if-absent, NOT a symlink. Was
+# `ln -sfn` until 2026-08-03, which silently overwrote a live file that lean-ctx
+# had regenerated (breaking the link) and that had diverged to 7x the tracked
+# size. Same contract as CLAUDE.md and settings.json (decisions/0016, 0020).
+if [ ! -f "$HOME/.codex/AGENTS.md" ]; then
+    cp "$HOME/.dotfiles/.codex/AGENTS.md" "$HOME/.codex/AGENTS.md"
+fi
 
 # Claude Code runtime settings: untracked, runtime-managed projection
 # (decisions/0016). Bootstrap from the base template (+ machine overlay when
@@ -111,6 +117,10 @@ for _rule in agent-user-global tool-priority context-and-compaction delegation-a
     ln -sfn "$HOME/.dotfiles/ai/rules/$_rule.md" "$HOME/.claude/rules/$_rule.md"
     ln -sfn "$HOME/.dotfiles/ai/rules/$_rule.md" "$HOME/.codex/rules/$_rule.md"
 done
+# NOTE: global-developer-guidelines.md is deliberately absent. Its source
+# ai/rules/ file was deleted at some point, leaving broken symlinks in
+# ~/.codex/rules and ~/.cursor/rules and dangling @rules/ references — all
+# removed 2026-08-03. Do not re-add a link without restoring the source file.
 
 # User-global Codex hooks: bootstrap-if-absent. Carries the subagent model/spec
 # gate (decisions/0018); .codex/hooks.json is project-scoped and does NOT cover
