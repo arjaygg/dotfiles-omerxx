@@ -73,6 +73,21 @@ check_codex_agent_gate() {
     fi
 }
 
+# The coordinator tier is the one policy value in ~/.codex/config.toml worth
+# tracking; everything else in that file is runtime state. A tracked value that
+# drifts below the live one silently demotes the coordinator on a rebuild, which
+# is exactly what had happened (tracked gpt-5.5 vs live gpt-5.6-sol).
+check_codex_coordinator_model() {
+    local live="$HOME/.codex/config.toml" tracked="$DOTFILES/.codex/config.toml"
+    [ -f "$live" ] && [ -f "$tracked" ] || return 0
+    local lm tm
+    lm=$(grep -m1 '^model = ' "$live" 2>/dev/null | tr -d ' "' || true)
+    tm=$(grep -m1 '^model = ' "$tracked" 2>/dev/null | tr -d ' "' || true)
+    if [ -n "$lm" ] && [ -n "$tm" ] && [ "$lm" != "$tm" ]; then
+        ISSUES+=(".codex/config.toml: coordinator tier differs — live '$lm' vs tracked '$tm'; a rebuild would use the tracked value (decisions/0018)")
+    fi
+}
+
 ALLOWED_MODELS=("haiku" "sonnet" "opus" "fable" "inherit")
 BAD_MODELS=()
 
@@ -100,10 +115,26 @@ check_agent_models() {
 check_agent_models
 
 # Critical config symlinks
-check_symlink ".claude → dotfiles" "$HOME/.claude" "$DOTFILES/.claude"
+# ~/.claude is a REAL directory: 58 entries, mostly Claude Code runtime state
+# (audit.log, bg-jobs, cache, daemon, debug, file-history, todos, shell-snapshots).
+# Only individual config entries are linked into dotfiles; `hooks/` and `skills/`
+# are real dirs too. Expecting the whole directory to be a symlink was wrong — it
+# would require the repo to absorb all runtime state. Check the config entries
+# that are genuinely meant to be links instead (decisions/0021).
+for _entry in agents commands output-styles plugins claude-statusline; do
+    [ -e "$DOTFILES/.claude/$_entry" ] || continue
+    check_symlink ".claude/$_entry" "$HOME/.claude/$_entry" "$DOTFILES/.claude/$_entry"
+done
 check_symlink ".claude/settings.json" "$HOME/.claude/settings.json" "$DOTFILES/.claude/settings.json"
 check_symlink ".gemini/GEMINI.md" "$HOME/.gemini/GEMINI.md" "$DOTFILES/.gemini/GEMINI.md"
-check_symlink ".codex/config.toml" "$HOME/.codex/config.toml" "$DOTFILES/.codex/config.toml"
+
+# ~/.codex/config.toml is runtime-written by Codex itself ([hooks.state]
+# trusted_hash, [notice.model_migrations], [tui.model_availability_nux]), so it
+# cannot be a symlink into the repo without dirtying the tree on every session —
+# same reasoning as settings.json (decisions/0016). Whole-file comparison is
+# useless here (268 diff lines, nearly all runtime). Check only the policy-
+# relevant key: the pinned coordinator tier from decisions/0018.
+check_codex_coordinator_model
 check_symlink "$HOME/.agents/skills" "$HOME/.agents/skills" "$DOTFILES/ai/skills"
 
 check_template_drift "user-global CLAUDE.md" "$HOME/.claude/CLAUDE.md" "$DOTFILES/.claude-global/CLAUDE.md"

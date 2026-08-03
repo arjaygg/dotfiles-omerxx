@@ -1,6 +1,11 @@
 personality = "pragmatic"
-model = "gpt-5.5"
-model_reasoning_effort = "high"
+# Coordinator tier, pinned per decisions/0018 (Codex analogue of 0014's fixed
+# Opus coordinator). Was gpt-5.5/high here while the live config had run
+# gpt-5.6-sol/medium since at least 2026-08-03 — a rebuild would have silently
+# demoted the coordinator. Keep in sync with model-routing/SKILL.md § Codex.
+model = "gpt-5.6-sol"
+model_reasoning_effort = "medium"
+model_provider = "headroom"
 model_instructions_file = "~/.dotfiles/ai/rules/agent-user-global.md"
 project_doc_fallback_filenames = ["AGENTS.md"]
 [projects."~/git/setup"]
