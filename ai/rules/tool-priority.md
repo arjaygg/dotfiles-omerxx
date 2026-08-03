@@ -3,6 +3,8 @@
 These rules apply to every project on this machine where the MCP servers (`Serena`, `LeanCtx`, `Repomix`, `Graphify`) are configured.
 
 > **Precedence:** Where those servers are configured, these rules supersede `ai/rules/lean-ctx.md` for tool selection (stricter: "Never" vs "Prefer"). `agent-user-global.md` says little about tool selection specifically, so the practical conflict this resolves is with `lean-ctx.md`.
+>
+> **`lean-ctx.md` is dormant, and the precedence above is therefore mostly moot** (verified 2026-08-03). It is linked into no client's rules directory, so it never loads as a rule; its guidance reaches sessions only via the lean-ctx MCP server's own injected instructions. It also carries a `<!-- lean-ctx-rules-vN -->` marker, meaning the binary regenerates it and edits to it are discarded — so notes about it belong here, not in it. Leaving it unlinked is deliberate: linking it would add a rule to every session for guidance this file already overrides. Do not "fix" the dangling-looking reference by linking it.
 
 ---
 
