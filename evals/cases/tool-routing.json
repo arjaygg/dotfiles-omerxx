@@ -3,7 +3,7 @@
   "trigger": {
     "positive": [
       "should I use Serena or LeanCtx or Grep for this search",
-      "explain the pctx execute_typescript batching guardrails",
+      "explain the parallel tool call batching guardrails",
       "walk me through the session-init tool setup steps"
     ],
     "negative": [

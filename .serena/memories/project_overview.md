@@ -8,7 +8,7 @@ Personal dotfiles repository for agallentes. Manages configuration for macOS too
 - Package Manager: Homebrew (Brewfile), Nix/nix-darwin
 - Config Deployment: GNU Stow (stows dotfiles into ~/)
 - AI Agents: Claude Code, Gemini CLI, Codex, Cursor, Windsurf
-- MCP Gateway: pctx v0.6.0 (routes all MCP traffic for all agents)
+- MCP: serena, lean-ctx, repomix, graphify registered directly per client (no gateway)
 - Branch Stacking: Charcoal (gt) + custom stack scripts in .claude/scripts/
 - Editor: Neovim (nvim/), VSCode
 - Terminal: Ghostty, tmux
@@ -17,7 +17,7 @@ Personal dotfiles repository for agallentes. Manages configuration for macOS too
 ## Key Files
 - CLAUDE.md — per-session instructions for Claude Code (read every session)
 - setup.sh — creates all agent config symlinks (run on fresh machine)
-- pctx.json — symlink to ~/.config/pctx/pctx.json (MCP gateway config)
+- ai/config/ — portable per-client MCP base templates + manifest.json
 - Brewfile — Homebrew package list
 - .stowrc — GNU Stow configuration
 

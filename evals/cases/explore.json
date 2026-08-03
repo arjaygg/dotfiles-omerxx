@@ -3,7 +3,7 @@
   "trigger": {
     "positive": [
       "find where the auth middleware is implemented in this repo",
-      "explore this codebase using pctx instead of grep",
+      "explore this codebase using Serena instead of grep",
       "give me a structured overview of this unfamiliar module"
     ],
     "negative": [
@@ -35,7 +35,7 @@
       "files": ["src/util.py"],
       "expectations": [
         "does not fall back to raw grep as the first resort",
-        "uses pctx/Serena-style structured search or overview tools"
+        "uses Serena-style structured search or overview tools"
       ]
     },
     {

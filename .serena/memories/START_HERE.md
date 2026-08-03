@@ -18,12 +18,11 @@ Read `AGENTS.md` (repo root) first — it states the precedence order for this r
 3. User-global agent defaults — `ai/rules/agent-user-global.md`
 4. Agent-written memory (this file included) — never authoritative over the above
 
-Tool selection, batching, and Serena/pctx quirks are fully specified in
+Tool selection, batching, and Serena quirks are fully specified in
 `ai/rules/tool-priority.md` — read it before doing any file exploration or editing. Key points:
-Serena first for code nav/edit, pctx `execute_typescript` to batch 2+ Serena/LeanCtx/Qmd/Repomix
-calls, session-init (`mcp__pctx__list_functions` + `Serena.initialInstructions()` +
-`LeanCtx.ctxCall({name:"ctx_intent",...})`) required once per session before Grep/Bash/source-Read
-are unblocked by `pre-tool-gate-v2.sh`.
+Serena first for code nav/edit; issue 2+ independent Serena/LeanCtx/Qmd/Repomix calls as parallel
+tool calls in one message; session-init (`initial_instructions` + `ctx_intent`) is required once
+per session before Grep/Bash/source-Read are unblocked by `pre-tool-gate-v2.sh`.
 
 ## goals / plans / decisions convention
 

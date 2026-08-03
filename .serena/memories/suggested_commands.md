@@ -11,8 +11,8 @@ bash setup.sh
 
 ## AI Agent Stack
 ```bash
-# Check pctx gateway servers
-pctx mcp list -c ~/.config/pctx/pctx.json
+# Check MCP topology across all tracked client configs
+python3 scripts/mcp_topology_check.py --summary
 
 # Verify Claude Code MCP
 claude mcp list

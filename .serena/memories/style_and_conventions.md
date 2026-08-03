@@ -11,11 +11,10 @@ Use tools in this order. Stop at the first that works. Never Bash for file ops.
 NEVER: Bash cat/grep/find/ls for project file operations.
 
 ## MCP Architecture
-- All MCP traffic routes through pctx gateway
-- Gateway config: /Users/axos-agallentes/.config/pctx/pctx.json
-- Servers (verified 2026-07-07): serena, qmd, lean-ctx, repomix, graphify
+- Each client registers its MCP servers directly; no gateway (decisions/0017)
+- Servers: serena, lean-ctx, repomix, graphify
 - Serena uses --context claude-code (LSP tools only, no file mutation)
-- Agent configs contain ONLY the pctx entry — nothing else
+- Verify topology: python3 scripts/mcp_topology_check.py --summary
 
 ## Symlink Management
 - All agent configs are symlinks pointing into ~/.dotfiles/
@@ -32,10 +31,11 @@ NEVER: Bash cat/grep/find/ls for project file operations.
 ## Batching Rule
 Before any tool call accessing the project:
 "What else will I need in the next 3 steps?"
-- 2+ Serena ops → batch into ONE pctx execute_typescript call
+- 2+ Serena ops (independent) → fire in parallel (single message)
 - 2+ Read/Grep/Glob ops (independent) → fire in parallel (single message)
 
 ## Serena API Convention
-All exposed pctx SDK methods use camelCase: findSymbol, findReferencingSymbols,
-getSymbolsOverview, listMemories, initialInstructions, writeMemory, readMemory.
-Current pctx Serena does not expose listDir, findFile, or searchForPattern.
+Serena is a direct MCP server, so tools use native snake_case: find_symbol,
+find_referencing_symbols, get_symbols_overview, list_memories, initial_instructions,
+write_memory, read_memory.
+The claude-code context does not expose list_dir, find_file, or search_for_pattern.
