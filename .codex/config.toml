@@ -157,9 +157,8 @@ args = ["-c", "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/homebrew/bi
 startup_timeout_sec = 90
 
 # Direct lean-ctx entry: sole path to ctx_shell/ctx_read/ctx_glob/ctx_tree/ctx_search/ctx_compose
-# now that the pctx gateway is removed. It was previously dual-registered (here + namespaced
-# lean-ctx__* through pctx) because gateway-only access caused ctx_shell failures (see
-# fix/serena-lean-ctx-codex-sessions).
+# reached directly. An earlier gateway-only registration caused ctx_shell failures (see
+# fix/serena-lean-ctx-codex-sessions), which is why the direct entry exists.
 [mcp_servers.lean-ctx]
 command = "bash"
 args = ["-c", "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"]

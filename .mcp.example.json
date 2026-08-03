@@ -1,15 +1,41 @@
 {
   "mcpServers": {
-    "pctx": {
-      "command": "pctx",
+    "serena": {
+      "command": "bash",
       "args": [
-        "mcp",
-        "start",
-        "--stdio",
         "-c",
-        "/Users/axos-agallentes/.config/pctx/pctx.json"
+        "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec \"$HOME/.dotfiles/.local/bin/serena_wrapper.sh\" \"$@\"",
+        "serena",
+        "--context",
+        "claude-code",
+        "--project-from-cwd",
+        "--log-level",
+        "ERROR"
+      ]
+    },
+    "lean-ctx": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"
       ],
-      "env": {}
+      "env": {
+        "LEAN_CTX_CACHE_TTL": "300"
+      }
+    },
+    "repomix": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "export PATH=\"$HOME/.local/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec repomix --mcp"
+      ]
+    },
+    "graphify": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "exec \"$HOME/.dotfiles/.local/bin/graphify-mcp-conditional\""
+      ]
     }
   }
 }

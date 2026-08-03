@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Bridge AGY's draft MCP discovery probe to legacy stdio MCP servers.
 
-AGY sends ``server/discover`` before the legacy ``initialize`` handshake. PCTX
-closes its stream when it receives that request. Returning the normal JSON-RPC
+AGY sends ``server/discover`` before the legacy ``initialize`` handshake. A
+legacy server closes its stream on that request. Returning the normal JSON-RPC
 "method not found" error lets AGY fall back to ``initialize``. The legacy
 server is started only when that initialize request arrives, so AGY's
 pre-initialize notifications cannot reach or terminate it.

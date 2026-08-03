@@ -1,9 +1,9 @@
 {
   "project": "dotfiles",
-  "containers": ["dotfiles", "ai-config", "claude-code", "pctx"],
+  "containers": ["dotfiles", "ai-config", "claude-code", "mcp"],
   "signals": {
     "keywords": [
-      "hook", "settings", "pctx", "MCP", "skill", "command", "worktree",
+      "hook", "settings", "MCP", "skill", "command", "worktree",
       "pre-tool-gate", "cap", "workflow", "graphify", "supermemory",
       "AGENTS.md", "CLAUDE.md", "setup.sh", "symlink", "serena", "lean-ctx",
       "stack", "branch", "decisions", "plans", "active-context"
@@ -12,9 +12,9 @@
   },
   "staticMemories": [
     "This is the user's dotfiles configuration repository. All AI agent behaviors (hooks, skills, commands, rules) are managed here and apply globally via symlinks.",
-    "pctx gateway config is at ~/.config/pctx/pctx.json (tracked in .config/pctx/pctx.json in this repo). All MCP traffic routes through pctx.",
+    "Each client registers its MCP servers directly (serena, lean-ctx, repomix, graphify). There is no gateway process; the former pctx gateway was removed 2026-08-03.",
     "All changes to ai/rules/, ai/skills/, ai/commands/ apply user-globally across all projects via setup.sh symlinks.",
     "Never commit to main. Use stack branches (.trees/<name>) and the stack-pr skill for PRs.",
-    "The pre-tool-gate-v2.sh hook requires pctx session init before any Grep/Read/Glob calls."
+    "The pre-tool-gate-v2.sh hook requires MCP session init before any Grep/Read/Glob calls."
   ]
 }
