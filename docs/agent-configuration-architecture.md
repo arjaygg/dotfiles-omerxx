@@ -117,7 +117,9 @@ See `decisions/0006-agents-skills-standard-path.md` for rationale.
 - Project discovery: `AGENTS.md`
 - MCP and runtime config: `.codex/config.toml`
 
-The repo keeps `.codex/AGENT.md` only as a compatibility note, not as the primary policy document.
+`.codex/AGENT.md` (singular) was removed 2026-08-03. Codex 0.146.0 recognises only `AGENTS.md` —
+the shipped binary contains no singular form, and `project_doc_fallback_filenames` is `["AGENTS.md"]` —
+so the file was a compatibility note for a filename no Codex version reads.
 
 ## Governance
 
