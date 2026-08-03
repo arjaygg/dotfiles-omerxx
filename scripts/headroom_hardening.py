@@ -56,17 +56,9 @@ LEANCTX_CONTEXT_TOOLS = frozenset(
         "shell",
     }
 )
-PCTX_GATEWAY_TOOLS = frozenset(
-    {
-        "mcp__pctx__execute_typescript",
-        "mcp__pctx__get_function_details",
-        "mcp__pctx__list_functions",
-    }
-)
 HEADROOM_EXCLUDED_TOOLS = frozenset(
     NATIVE_CONTEXT_TOOLS
     | LEANCTX_CONTEXT_TOOLS
-    | PCTX_GATEWAY_TOOLS
     | {
         f"{prefix}{tool}"
         for prefix in ("mcp__lean_ctx__", "mcp__lean-ctx__")

@@ -13,7 +13,6 @@ from scripts.headroom_hardening import (
     HEADROOM_EXCLUDED_TOOLS,
     LEANCTX_CONTEXT_TOOLS,
     NATIVE_CONTEXT_TOOLS,
-    PCTX_GATEWAY_TOOLS,
     audit_ccr_database,
     detect_recursive_ccr,
     docker_containers,
@@ -67,7 +66,7 @@ class HeadroomHardeningTests(unittest.TestCase):
         connection.commit()
         connection.close()
 
-    def test_native_leanctx_and_pctx_tools_are_exactly_named_exclusions(self):
+    def test_native_and_leanctx_tools_are_exactly_named_exclusions(self):
         required_native = {
             "bash",
             "exec_command",
@@ -95,11 +94,6 @@ class HeadroomHardeningTests(unittest.TestCase):
             "ctx_tree",
             "shell",
         }
-        required_pctx = {
-            "mcp__pctx__execute_typescript",
-            "mcp__pctx__get_function_details",
-            "mcp__pctx__list_functions",
-        }
         required_prefixed = {
             "mcp__lean_ctx__ctx_call",
             "mcp__lean_ctx__ctx_read",
@@ -111,12 +105,10 @@ class HeadroomHardeningTests(unittest.TestCase):
         }
         self.assertTrue(required_native.issubset(NATIVE_CONTEXT_TOOLS))
         self.assertEqual(LEANCTX_CONTEXT_TOOLS, required_leanctx)
-        self.assertEqual(PCTX_GATEWAY_TOOLS, required_pctx)
         self.assertTrue(
             (
                 required_native
                 | required_leanctx
-                | required_pctx
                 | required_prefixed
             ).issubset(HEADROOM_EXCLUDED_TOOLS)
         )
