@@ -85,20 +85,27 @@ Multi-file context selection (5+ files → repomix), the required session-init w
 so any manual edit to it is discarded the next time lean-ctx regenerates the file. The durable
 statement therefore lives here.
 
-Verified 2026-07-26 in a live lean-ctx session:
+Verified 2026-07-26, re-verified 2026-08-03 in a live lean-ctx session (`Read` changed):
 
 | Tool | Generated block claims | Actually observed |
 |---|---|---|
 | `Grep` | denied | **denied** — hard-blocked by `pre-tool-gate-v2.sh` |
-| `Read` | denied | **absent from the session toolset** (`ToolSearch` finds no schema) |
+| `Read` | denied | **available** (2026-08-03) — present in the toolset and works; was absent on 2026-07-26. `Edit` likewise. |
 | `Glob` | denied | **absent from the session toolset** |
 | `Bash` | denied | **available** — works after session init |
 | `Write` | "use natively" | **available** — correct |
 
 So the block's blanket "Do NOT attempt native Read, Grep, Glob, or **Bash** — they will be
-denied" is wrong about `Bash`, and its framing ("denied by policy") is misleading for
-`Read`/`Glob`, which are simply not present rather than policy-blocked. Do not skip `Bash`
-or `Write` believing they are forbidden.
+denied" is wrong about **both `Bash` and `Read`** as of 2026-08-03, and its framing ("denied
+by policy") is misleading for `Glob`, which is simply not present rather than policy-blocked.
+Do not skip `Bash`, `Read`, `Edit`, or `Write` believing they are forbidden.
+
+Only `Grep` is genuinely denied. Treating the generated block at face value causes real waste:
+routing every file read through `ctx_read` when `Read` is available is harmless, but believing
+`Bash` is denied leads to contorted workarounds for tasks that a single shell command answers.
+The tool-priority stack in §1 still applies on the merits — prefer `ctx_*` for compression and
+Serena for symbols — but prefer them because they are better here, not because the alternatives
+are blocked.
 
 Section 1's priority stack lists `Glob` first for directory listing and file finding. In
 sessions where `Glob` has no schema, that entry is unactionable — fall through to

@@ -78,8 +78,8 @@ The `pre-tool-gate-v2.sh` hook will warn you if you attempt `git commit` on `mai
 
 ```
 ~/.dotfiles/
-├── CLAUDE.md              ← this file (read every session)
-├── AGENTS.md              ← project guidance (read by all agents)
+├── AGENTS.md              ← this file (project guidance, read by all agents)
+├── CLAUDE.md              ← Claude project adapter (thin; imports @AGENTS.md)
 ├── .mcp.json              ← Claude Code MCP: direct servers
 ├── .claude/
 │   ├── settings.json      ← Claude Code user settings
