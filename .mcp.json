@@ -1,19 +1,8 @@
 {
   "mcpServers": {
-    "pctx": {
-      "command": "bash",
-      "args": [
-        "-c",
-        "exec \"$HOME/.dotfiles/.local/bin/pctx_wrapper.sh\" mcp start --stdio -c \"$HOME/.config/pctx/pctx.json\""
-      ],
-      "env": {}
-    },
     "serena-fallback": {
-      "command": "bash",
+      "command": "/Users/axos-agallentes/.dotfiles/.local/bin/serena_wrapper.sh",
       "args": [
-        "-c",
-        "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec \"$HOME/.dotfiles/.local/bin/serena_wrapper.sh\" \"$@\"",
-        "serena",
         "--context",
         "claude-code",
         "--project-from-cwd",

@@ -1,11 +1,14 @@
 {
   "mcpServers": {
-    "pctx": {
+    "lean-ctx": {
       "command": "bash",
       "args": [
         "-c",
-        "exec pctx mcp start --stdio -c \"$HOME/.config/pctx/pctx.json\""
-      ]
+        "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"
+      ],
+      "env": {
+        "LEAN_CTX_CACHE_TTL": "300"
+      }
     },
     "serena": {
       "command": "bash",

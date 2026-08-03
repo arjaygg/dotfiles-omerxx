@@ -1,12 +1,5 @@
 {
   "mcpServers": {
-    "pctx": {
-      "command": "bash",
-      "args": [
-        "-c",
-        "exec pctx mcp start --stdio -c \"$HOME/.config/pctx/pctx.json\""
-      ]
-    },
     "serena": {
       "command": "bash",
       "args": [

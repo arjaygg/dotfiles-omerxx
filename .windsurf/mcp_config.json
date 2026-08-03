@@ -8,13 +8,6 @@
       ],
       "instructions": "lean-ctx shadow mode: native file/search/shell calls auto-route to ctx_* — no tool-mapping needed.\nExclusive tools (no native trigger): ctx_compose (understand code, call first), ctx_search(action=symbol) (exact symbol), ctx_search(action=semantic) (by meaning), ctx_callgraph (callers), ctx_knowledge / ctx_session (memory).\nOUTPUT STYLE: dense\n- Each statement = one atomic fact line\n- Use abbreviations: fn, cfg, impl, deps, req, res, ctx, err, ret\n- Diff lines only (+/-/~), never repeat unchanged code\n- Symbols: → (causes), + (adds), − (removes), ~ (modifies), ∴ (therefore)\n- No narration, no filler, no hedging\n- BUDGET: ≤200 tokens per response unless code block required"
     },
-    "pctx": {
-      "args": [
-        "-c",
-        "exec pctx mcp start -q --stdio -c \"$HOME/.config/pctx/pctx.json\""
-      ],
-      "command": "bash"
-    },
     "serena": {
       "args": [
         "-c",

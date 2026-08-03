@@ -46,12 +46,6 @@ trust_level = "trusted"
 
 
 
-[mcp_servers.pctx]
-type = "stdio"
-command = "bash"
-args = ["-c", "exec \"$HOME/.dotfiles/.local/bin/pctx_wrapper.sh\" mcp start --stdio -c \"$HOME/.config/pctx/pctx.json\""]
-startup_timeout_sec = 90
-
 [mcp_servers.notebooklm]
 type = "stdio"
 command = "bash"
@@ -162,10 +156,10 @@ command = "bash"
 args = ["-c", "export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec \"$HOME/.dotfiles/.local/bin/serena_wrapper.sh\" \"$@\"", "serena", "--context", "claude-code", "--project-from-cwd", "--log-level", "ERROR"]
 startup_timeout_sec = 90
 
-# Standalone lean-ctx entry: keeps ctx_shell/ctx_read/ctx_glob/ctx_tree/ctx_search/ctx_compose
-# directly accessible even if pctx gateway fails. lean-ctx is also exposed through pctx
-# (namespaced as lean-ctx__*) but that single-path access caused ctx_shell failures (see
-# fix/serena-lean-ctx-codex-sessions). Dual registration: lean-ctx process here + pctx gateway.
+# Direct lean-ctx entry: sole path to ctx_shell/ctx_read/ctx_glob/ctx_tree/ctx_search/ctx_compose
+# now that the pctx gateway is removed. It was previously dual-registered (here + namespaced
+# lean-ctx__* through pctx) because gateway-only access caused ctx_shell failures (see
+# fix/serena-lean-ctx-codex-sessions).
 [mcp_servers.lean-ctx]
 command = "bash"
 args = ["-c", "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"]
