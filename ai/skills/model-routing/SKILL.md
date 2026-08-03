@@ -1,6 +1,6 @@
 ---
 name: model-routing
-description: Model/effort/fast-mode selection for Claude Code — when to use Sonnet vs Opus vs Haiku vs Fable 5, the opusplan default, advisor auto-escalation and its known limitations, effort levels (thinking depth), fast mode, subagent model routing in .claude/agents/*.md frontmatter, and plan mode. Mirrors .cursor/rules/model-routing.mdc for the Cursor equivalent. Invoke before a manual /model or /effort switch, before authoring a subagent's model: frontmatter field, or when deciding whether a task warrants Fable-tier escalation.
+description: Model/effort/fast-mode selection across Claude Code, Codex, and Cursor — when to use Sonnet vs Opus vs Haiku vs Fable 5, the Codex Sol/Terra/Luna/5.4-mini tiers, the opusplan default, advisor auto-escalation and its known limitations, effort levels (thinking depth), fast mode, subagent model routing in .claude/agents/*.md frontmatter, and plan mode. Mirrors .cursor/rules/model-routing.mdc for the Cursor equivalent. Invoke before a manual /model or /effort switch, before authoring a subagent's model: frontmatter field, before choosing a Codex subagent tier, or when deciding whether a task warrants Fable-tier escalation.
 triggers:
   - which model should I use
   - model routing
@@ -9,6 +9,8 @@ triggers:
   - fable
   - advisor tool
   - subagent model
+  - codex model tier
+  - sol terra luna
 ---
 
 # Model, Effort & Thinking Mode
@@ -149,6 +151,31 @@ this document plus habit.
 | Effort level / fast mode match task type | None — prose rule + `primitive-hint.sh` (advisory suggestion, not a gate) | None |
 | Advisor auto-escalation fires before declaring a task done | None — `Stop` hooks only support `decision: "block"`, not `additionalContext`, so this trigger cannot be hook-injected; see "Known limitation" above | None |
 
+### Codex rows
+
+Same hard/warn/unenforceable split, applied to `.codex/hooks/pre-agent-gate.sh` (PreToolUse,
+matching the subagent tool). All checks **fail open** — a malformed payload, missing `jq`, or a
+Codex version whose subagent payload shape differs must never strand a session.
+
+| Policy clause | Mechanism | Enforcement level |
+|---|---|---|
+| Coordinator tier is `gpt-5.6-sol` | `config.toml` `model =` | **Pinned**, but manual — same structural gap as the Claude row above; no hook can switch a main-loop model |
+| Subagent `model` is a supported slug | `pre-agent-gate.sh` check 1 — fixed enum of 6 slugs | **Hard deny** (`exit 2`) — deterministic, mirrors `check_agent_models()` |
+| Frozen spec exists before spawn | `pre-agent-gate.sh` check 2 — `[[ -f ]]` on a `plans/specs/*.md` path named in the prompt | **Hard deny** (`exit 2`) when referenced-but-missing; **warn** when no spec is referenced at all (the hook cannot judge whether the work warranted one) |
+| Worker tier is explicit, not inherited | `pre-agent-gate.sh` check 1 else-branch | **Warn** — inheriting silently routes mechanical work to the most expensive tier |
+| Fan-out stays ≤3 concurrent | `pre-agent-gate.sh` check 3 — rolling 60s spawn window | **Warn only** — PreToolUse sees spawns, never completions, so "concurrent" is a proxy, not a count. Promotion to deny would need completion signal that does not exist. Same reasoning as ADL-022. |
+| Tier matches task difficulty | None | None — the Claude-side §7b keyword heuristic was not ported; it is a heuristic, not a classifier, and Codex has no equivalent evidence base yet |
+| Return contract ≤30 lines | None | None — no hook observes a subagent's return payload |
+| Context-admission table (§1 of `codex-delegation.md`) | `pre-bash-guard.sh` → `context_gate.py` covers huge/generated reads only | Partial — cumulative-cost cases below the size threshold are unenforced prose |
+
+Two deployment caveats, both real:
+
+- `.dotfiles/.codex/hooks.json` is **project-scoped** — it applies when Codex runs with this repo as
+  cwd. For machine-wide coverage the same `PreToolUse` entry must also exist in `~/.codex/hooks.json`.
+- Codex records a `trusted_hash` per hook entry in `config.toml` under `[hooks.state]`. Editing a
+  hook script or its wiring **invalidates that hash**, and Codex will re-prompt for trust on the next
+  session. Expect one approval prompt after this lands.
+
 **Why main-loop tier selection can't be closed:** every other row either has a concrete
 hook today or a documented reason promotion to `deny` hasn't happened yet. Main-loop model
 selection is different in kind — there is no `PreToolUse`/`PostToolUse`/`Stop` hook surface
@@ -157,6 +184,32 @@ calls; they cannot reach into session/model state. Any future Claude Code versio
 exposes such a surface would change this row; until then, treat it as permanently
 advisory and rely on the `opusplan` default plus manual `/model` switches.
 
+## Codex equivalent
+
+Codex CLI runs its own model family and its own tier table. The **Coordinator is pinned in
+`~/.codex/config.toml`** (`model = "gpt-5.6-sol"`), which is the Codex analogue of ADR 0014's fixed
+Opus coordinator — deliberate, not drift. Worker tiers are chosen per spawn via the subagent call's
+`model` argument; `features.multi_agent = true` is required.
+
+| Tier | Slug | Effort | Use for |
+|---|---|---|---|
+| Coordinator | `gpt-5.6-sol` | `medium`; `high`/`xhigh` for architecture | Planning, spec authoring, review, synthesis, final answer. Always the main thread. |
+| Escalation | `gpt-5.6-sol` | `xhigh`/`max` | Worker stalled twice, or genuinely hard debugging/design. After evidence, never first. |
+| Standard worker | `gpt-5.6-terra` | `medium` | Multi-file implementation, non-trivial debugging, refactors needing judgement. |
+| Cheap worker | `gpt-5.6-luna` | `low`/`medium` | Mechanical edits, boilerplate, test scaffolding, doc updates, broad searches, log triage, running builds. **Default worker tier.** |
+| Cheapest | `gpt-5.4-mini` | `low` | Pure extraction: grep-and-summarize, existence checks, single-file trivial edits. |
+| Second opinion | `gpt-5.5` | `medium` | Independent review of Sol's own output. |
+
+Codex effort levels extend past Claude's: `low, medium, high, xhigh, max, ultra` (`gpt-5.6-luna`
+tops out at `max`). Sol's shipped default is `low`.
+
+**Selection rule** — cheapest tier satisfying both: the failure mode is machine-detectable (test,
+compiler, exact string), and the task needs no judgement absent from the spec. Otherwise step up
+exactly one tier. Escalation ladder and delegation triggers: `ai/rules/codex-delegation.md`.
+
+Refresh this table from `~/.codex/models_cache.json` when OpenAI ships a tier; the slug enum in
+`.codex/hooks/pre-agent-gate.sh` must be updated in the same commit or valid spawns will be denied.
+
 ## Cursor equivalent
 
 `.cursor/rules/model-routing.mdc` documents the same tiers for Cursor, which has no
@@ -164,5 +217,5 @@ advisory and rely on the `opusplan` default plus manual `/model` switches.
 or via an explicit `Task` subagent `model` argument, and auto-escalation is
 self-triggered (the agent decides to spawn a `Task` at three moments — before an
 ambiguous/high-stakes commitment, after 3 identical hook-tracked failures, before
-declaring a hard/ambiguous task done) rather than server-side. Keep the two files'
-tier tables in sync when either changes.
+declaring a hard/ambiguous task done) rather than server-side. Keep all three tier
+tables — Claude, Codex, Cursor — in sync when any one changes.

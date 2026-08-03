@@ -31,6 +31,15 @@
             "command": "/usr/bin/env bash \"$HOME/.dotfiles/.codex/hooks/pre-bash-guard.sh\""
           }
         ]
+      },
+      {
+        "matcher": "^(multi_agent_call|Agent|agent|subagent|Task)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env bash \"$HOME/.dotfiles/.codex/hooks/pre-agent-gate.sh\""
+          }
+        ]
       }
     ],
     "PostToolUse": [
