@@ -1,0 +1,81 @@
+{
+  "_comment": [
+    "Template for the LIVE ~/.codex/hooks.json (user-global Codex hooks).",
+    "setup.sh installs this bootstrap-if-absent; it never overwrites a live file,",
+    "since lean-ctx and Codex both write there. config-integrity.sh warns when the",
+    "live file is missing the pre-agent-gate matcher.",
+    "Distinct from .codex/hooks.json, which is PROJECT-scoped (applies only when",
+    "Codex runs with ~/.dotfiles as cwd). Both must carry the agent gate for it to",
+    "fire everywhere — see decisions/0018 and decisions/0020."
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "lean-ctx hook observe",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      },
+      {
+        "hooks": [
+          {
+            "command": "lean-ctx hook codex-session-start",
+            "timeout": 15,
+            "type": "command"
+          }
+        ],
+        "matcher": "startup|resume|clear"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "lean-ctx hook codex-pretooluse",
+            "timeout": 15,
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "/usr/bin/env bash \"$HOME/.dotfiles/.codex/hooks/pre-agent-gate.sh\"",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "^(multi_agent_call|Agent|agent|subagent|Task)$"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "lean-ctx hook observe",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "command": "lean-ctx hook observe",
+            "timeout": 3,
+            "type": "command"
+          }
+        ],
+        "matcher": ".*"
+      }
+    ]
+  }
+}
