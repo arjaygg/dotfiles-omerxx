@@ -10,7 +10,6 @@ from scripts.config_doctor import CONFIG_SPECS, Issue, compare_runtime_file, run
 CONFIG_FILES = (
     (".claude/settings.json", "json"),
     (".codex/config.toml", "toml"),
-    (".config/pctx/pctx.json", "json"),
     (".gemini/settings.json", "json"),
     (".gemini/mcp.json", "json"),
     (".gemini/config/mcp_config.json", "json"),
@@ -122,7 +121,6 @@ class ConfigDoctorTests(unittest.TestCase):
     def test_doctor_covers_tracked_client_config_paths(self):
         tracked_config_paths = {
             ".codex/config.toml",
-            ".config/pctx/pctx.json",
             ".gemini/settings.json",
             ".gemini/mcp.json",
             ".gemini/config/mcp_config.json",

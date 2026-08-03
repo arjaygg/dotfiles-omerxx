@@ -14,7 +14,7 @@ class ConfigBaseHygieneCheckTests(unittest.TestCase):
             base = root / "ai/config/codex/config.base.toml"
             base.parent.mkdir(parents=True)
             example_home = "/" + "Users/example"
-            base.write_text(f'path = "{example_home}/.config/pctx/pctx.json"\n', encoding="utf-8")
+            base.write_text(f'path = "{example_home}/.config/lean-ctx/config.toml"\n', encoding="utf-8")
             ignored = root / "ai/config/codex/README.md"
             ignored.write_text(f"{example_home}/not-a-base\n", encoding="utf-8")
             manifest = root / "ai/config/manifest.json"

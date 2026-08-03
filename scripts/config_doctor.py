@@ -20,7 +20,6 @@ from scripts.public_hygiene_check import Finding, scan_text
 CONFIG_SPECS: tuple[tuple[str, str], ...] = (
     (".claude/settings.json", "json"),
     (".codex/config.toml", "toml"),
-    (".config/pctx/pctx.json", "json"),
     (".gemini/settings.json", "json"),
     (".gemini/mcp.json", "json"),
     (".gemini/config/mcp_config.json", "json"),

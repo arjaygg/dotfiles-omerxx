@@ -14,7 +14,6 @@ TEMPLATES = (
     TEMPLATE_ROOT / "gemini" / "settings.base.json",
     TEMPLATE_ROOT / "cursor" / "mcp.base.json",
     TEMPLATE_ROOT / "windsurf" / "mcp_config.base.json",
-    TEMPLATE_ROOT / "pctx" / "pctx.base.json",
 )
 CODEX_TEMPLATE = TEMPLATE_ROOT / "codex" / "config.base.toml"
 CODEX_OVERLAY = TEMPLATE_ROOT / "codex" / "codex.overlay.example.toml"
@@ -26,7 +25,6 @@ WINDSURF_TEMPLATE = TEMPLATE_ROOT / "windsurf" / "mcp_config.base.json"
 WINDSURF_OVERLAY = TEMPLATE_ROOT / "windsurf" / "windsurf.overlay.example.json"
 VARIABLES = {
     "MARKETPLACE_CACHE": "/tmp/marketplace-cache",
-    "PCTX_CONFIG": "/tmp/pctx.json",
     "PROJECT_ROOT": "/tmp/example-project",
     "USER_NAME": "portable-user",
     "LEAN_CTX_DATA_DIR": "/tmp/lean-ctx-data",
@@ -47,7 +45,8 @@ class PortableConfigTemplateTests(unittest.TestCase):
         text = CODEX_TEMPLATE.read_text(encoding="utf-8")
         self.assertEqual(scan_text(CODEX_TEMPLATE.as_posix(), text), [])
         config = tomllib.loads(text)
-        self.assertEqual(config["mcp_servers"]["pctx"]["command"], "pctx")
+        self.assertEqual(config["mcp_servers"]["repomix"]["command"], "repomix")
+        self.assertNotIn("pctx", config["mcp_servers"])
         self.assertEqual(config["project_doc_fallback_filenames"], ["AGENTS.md"])
         self.assertIn("status_line", config["tui"])
         self.assertNotIn("status_line", config)
@@ -65,7 +64,7 @@ class PortableConfigTemplateTests(unittest.TestCase):
         proposal_text = build_proposal(CODEX_TEMPLATE, variables=VARIABLES)
         proposal = tomllib.loads(proposal_text)
         self.assertIsInstance(proposal, dict)
-        self.assertEqual(proposal["mcp_servers"]["pctx"]["args"][4], "/tmp/pctx.json")
+        self.assertEqual(proposal["mcp_servers"]["repomix"]["args"], ["--mcp"])
         self.assertEqual(CODEX_TEMPLATE.read_bytes(), before)
 
     def test_codex_example_overlay_parses_and_generates_without_mutation(self):
@@ -112,7 +111,8 @@ class PortableConfigTemplateTests(unittest.TestCase):
     def test_gemini_settings_template_has_expected_keys_and_excludes_preferences(self):
         config = json.loads(GEMINI_SETTINGS_TEMPLATE.read_text(encoding="utf-8"))
         self.assertEqual(config["selectedAuthType"], "oauth-personal")
-        self.assertEqual(config["mcpServers"]["pctx"]["command"], "pctx")
+        self.assertEqual(config["mcpServers"]["serena"]["command"], "serena_wrapper.sh")
+        self.assertNotIn("pctx", config["mcpServers"])
         self.assertEqual(config["security"]["auth"]["selectedType"], "oauth-personal")
         self.assertEqual(config["context"]["fileName"], ["AGENTS.md", "GEMINI.md"])
         self.assertTrue(config["experimental"]["enableAgents"])
@@ -170,7 +170,7 @@ class PortableConfigTemplateTests(unittest.TestCase):
         overlay_text = overlay_before.decode("utf-8")
         self.assertEqual(scan_text(CURSOR_OVERLAY.as_posix(), overlay_text), [])
         overlay = json.loads(overlay_text)
-        self.assertEqual(overlay["mcpServers"]["pctx"]["command"], "/tmp/example-bin/pctx")
+        self.assertEqual(overlay["mcpServers"]["serena"]["command"], "/tmp/example-bin/serena_wrapper.sh")
 
         proposal = json.loads(
             build_proposal(CURSOR_TEMPLATE, CURSOR_OVERLAY, variables=VARIABLES)
