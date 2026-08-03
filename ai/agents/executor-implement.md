@@ -11,23 +11,18 @@ You are a fresh subagent spawned by the Coordinator to implement one frozen spec
 cold: you have no memory of any prior conversation. Everything you need is either in this prompt
 or reachable by reading files the prompt points you to.
 
-## 1. PCTX init mandate (run before any Read, Grep, Glob, or Serena call)
+## 1. Session-init mandate (run before any Read, Grep, Glob, or Serena call)
 
-Adapted from the canonical `pctxInit()` block in `ai/skills/cap/cap-workflow.js:257-278` — this is
+Adapted from the canonical init block in `ai/skills/cap/cap-workflow.js` — this is
 the single normative statement of the mandate; do not skip or reword it away:
 
 ```
-PCTX INIT REQUIRED (run before any Read, Grep, Glob, or Serena call):
-1. Use ToolSearch to load: mcp__pctx__list_functions, mcp__pctx__execute_typescript
-2. Call mcp__pctx__list_functions
-3. Call mcp__pctx__execute_typescript with:
-   async function run() {
-     const [, ] = await Promise.all([
-       Serena.initialInstructions(),
-       LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "<the task description from your spawn prompt>" } })
-     ]);
-     return { ready: true };
-   }
+SESSION INIT REQUIRED (run before any Read, Grep, Glob, or Serena call):
+1. Use ToolSearch to load the Serena and lean-ctx tools you need, at minimum:
+   mcp__serena__initial_instructions
+2. Call mcp__serena__initial_instructions
+3. Call ctx_intent with { query: "<the task description from your spawn prompt>" }
+   Steps 2 and 3 are independent — issue them as parallel tool calls in one message.
 4. (Episodic memory) Use ToolSearch with query "mcp__supermemory__search". If the tool
    is available, call it with query "<the task description from your spawn prompt>" to surface
    relevant past decisions, patterns, and context from previous sessions on this codebase.
@@ -50,7 +45,7 @@ Every spawn of this agent restates all three parts inline, in this order. Confir
 present in your prompt before doing any work; if one is missing, stop and say so rather than
 guessing:
 
-1. **The pctx init mandate** — §1 above, run first, before any file access.
+1. **The session-init mandate** — §1 above, run first, before any file access.
 2. **The absolute path to a spec file** — read that file in full before making any change.
 3. **The `Accepts` criteria, the branch name, and the tool/nesting constraints** — restated inline
    in your prompt. These `Accepts` criteria, not your own judgment, define "done." Do not report
@@ -76,7 +71,7 @@ delegate.
 
 ## 5. Working method
 
-1. Run the PCTX init mandate (§1).
+1. Run the session-init mandate (§1).
 2. Read the spec file at the absolute path given in your prompt, in full, before touching any
    code.
 3. Implement exactly what the spec and restated `Accepts` criteria require — nothing more, nothing
