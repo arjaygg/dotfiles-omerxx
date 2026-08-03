@@ -17,7 +17,7 @@ run_setup_check() {
         python3 scripts/syntax_check.py --summary || true
         python3 scripts/guidance_adapter_check.py --summary || true
         python3 scripts/autonomous_skill_check.py --summary || true
-        python3 scripts/mcp_gateway_check.py --summary || true
+        python3 scripts/mcp_topology_check.py --summary || true
         python3 scripts/hook_fixture_runner.py .claude/hooks/pre-tool-gate-v2.sh scripts/fixtures/pretool-gate-v2.json --summary || true
         python3 scripts/hook_target_check.py ai/config/claude/settings.base.json --summary || true
         python3 scripts/hook_output_schema_check.py .claude/hooks --summary || true
