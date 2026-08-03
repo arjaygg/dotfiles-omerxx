@@ -401,7 +401,7 @@ class PreWriteAndContextHookTests(unittest.TestCase):
                     self.payload("session-1", "Bash", {"command": command}), repo, "session-1")
                 self.assertEqual(result["lifecycle_hook"]["binding"], "bound")
 
-    def test_bash_default_deny_rejects_final_review_bypasses_and_pctx_execution(self):
+    def test_bash_default_deny_rejects_final_review_bypasses(self):
         repo = controller.discover_repo(self.linked)
         exact_adapter = str(Path(adapter.__file__).resolve())
         lookalike = self.linked / "owned" / "lifecycle_adapter.py"
@@ -479,12 +479,6 @@ class PreWriteAndContextHookTests(unittest.TestCase):
             )
         self.assertEqual(aliased["hookSpecificOutput"]["permissionDecision"], "deny")
 
-        pctx = adapter.hook_pre_write(
-            self.payload("session-1", "mcp__pctx__execute_typescript", {"code": "return 1"}),
-            repo,
-            "session-1",
-        )
-        self.assertEqual(pctx["hookSpecificOutput"]["permissionDecision"], "deny")
         for tool_name in ("EnterWorktree", "ExitWorktree"):
             with self.subTest(tool_name=tool_name):
                 worktree = adapter.hook_pre_write(
@@ -497,11 +491,9 @@ class PreWriteAndContextHookTests(unittest.TestCase):
                 self.assertIn(
                     "Worktree", worktree["hookSpecificOutput"]["permissionDecisionReason"])
         settings = json.loads((ROOT / "ai/config/claude/settings.base.json").read_text())
-        matcher = next(
-            item["matcher"] for item in settings["hooks"]["PreToolUse"]
-            if "mcp__pctx__execute_typescript" in item["matcher"]
-        )
-        self.assertNotIn("mcp__pctx__list_functions", matcher)
+        matchers = [item["matcher"] for item in settings["hooks"]["PreToolUse"]]
+        self.assertTrue(any("EnterWorktree" in matcher for matcher in matchers))
+        self.assertFalse(any("pctx" in matcher for matcher in matchers))
 
     def test_control_plane_is_rejected_at_start_and_every_write_gate(self):
         repo = controller.discover_repo(self.linked)
@@ -2767,8 +2759,7 @@ printf '%s\n' '{"decision":"block","reason":"legacy must not run"}'
         lifecycle_entry = next(
             item for item in settings["hooks"]["PreToolUse"]
             if item["matcher"] == (
-                "Edit|Write|MultiEdit|NotebookEdit|Bash|EnterWorktree|ExitWorktree|"
-                "mcp__pctx__execute_typescript"
+                "Edit|Write|MultiEdit|NotebookEdit|Bash|EnterWorktree|ExitWorktree"
             )
         )
         command = lifecycle_entry["hooks"][0]["command"]
@@ -2895,7 +2886,7 @@ printf '%s\n' '{"decision":"block","reason":"legacy must not run"}'
         settings = json.loads(settings_path.read_text())
         entries = settings["hooks"]["PreToolUse"]
         lifecycle_entries = [item for item in entries
-                             if item["matcher"] == "Edit|Write|MultiEdit|NotebookEdit|Bash|EnterWorktree|ExitWorktree|mcp__pctx__execute_typescript"]
+                             if item["matcher"] == "Edit|Write|MultiEdit|NotebookEdit|Bash|EnterWorktree|ExitWorktree"]
         self.assertEqual(len(lifecycle_entries), 1)
         command = lifecycle_entries[0]["hooks"][0]["command"]
         self.assertIn('dispatcher="$HOME/.dotfiles/.claude/hooks/lifecycle-pretool.sh"', command)

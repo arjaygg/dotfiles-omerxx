@@ -2834,9 +2834,6 @@ def hook_pre_write(payload: dict[str, Any], repo: lifecycle.Repo, session_id: st
     except Exception:
         best_effort_audit(repo.common_dir, run_id, "hook", "deny", reason_code="invalid_binding")
         return deny("Bound lifecycle state or immutable run contract is invalid.", run_id=run_id)
-    if tool_name == "mcp__pctx__execute_typescript":
-        audit_hook(repo, run_id, "deny", "pctx_execution_denied", decision)
-        return deny("Mutation-capable pctx TypeScript execution is disabled while lifecycle control is enabled.", run_id=run_id)
     if tool_name in {"EnterWorktree", "ExitWorktree"}:
         audit_hook(repo, run_id, "deny", "worktree_tool_denied", decision)
         return deny("Worktree entry and exit are disabled while lifecycle control owns the run.", run_id=run_id)
