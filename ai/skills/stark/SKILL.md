@@ -48,7 +48,6 @@ allowed-tools:
   - mcp__serena__search_for_pattern
   - mcp__serena__read_memory
   - mcp__serena__list_memories
-  - mcp__pctx__execute_typescript
   - mcp__qmd__search
   - mcp__qmd__vector_search
   - mcp__repomix__compress
@@ -102,7 +101,7 @@ Everything else requires a plan.
 
 ### Step 0 — Load Context (Parallel)
 
-Load the following in parallel using pctx batching:
+Load the following as parallel tool calls in one message:
 
 ```typescript
 // Load architecture memories, project decisions, and guidance

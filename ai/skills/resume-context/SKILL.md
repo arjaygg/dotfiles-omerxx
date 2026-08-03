@@ -48,7 +48,7 @@ Read these files if they exist:
 ### Step 3 — Load relevant Serena memories
 
 Based on the `focus:` line in `plans/active-context.md`, identify 2–3 Serena memory names
-that are most relevant to the current work. Load them via pctx:
+that are most relevant to the current work. Load them via Serena:
 
 ```typescript
 // Match focus keywords to memory namespaces
@@ -59,7 +59,7 @@ that are most relevant to the current work. Load them via pctx:
 // Always include: workflows/task_completion_checklist (if exists)
 ```
 
-If pctx is unavailable, skip Serena loading and note it in the output.
+If Serena is unavailable, skip memory loading and note it in the output.
 
 ### Step 4 — Print summary
 

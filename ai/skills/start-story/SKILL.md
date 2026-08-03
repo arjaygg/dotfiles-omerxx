@@ -72,7 +72,7 @@ If no PR, note: "No open PR yet for this branch."
 
 ### Step 5 — Load relevant Serena memories
 
-Based on the story domain, load the relevant memories via pctx (batch them in one execute_typescript call):
+Based on the story domain, load the relevant memories via Serena (issue the reads as parallel tool calls in one message):
 
 | Story domain | Memories to load |
 |---|---|
@@ -85,7 +85,7 @@ Based on the story domain, load the relevant memories via pctx (batch them in on
 
 Infer the domain from story title + acceptance criteria keywords. If unclear, load `workflows/task_completion_checklist` only and note what was loaded.
 
-If pctx is unavailable, skip Serena loading and note it.
+If Serena is unavailable, skip memory loading and note it.
 
 ### Step 6 — Update plans/active-context.md
 
@@ -110,7 +110,7 @@ PR:        #N — [title] / (none)
 Acceptance Criteria: [count] items
 Tasks:     [count] existing / 0 if none
 
-Memories loaded: [list or "none — pctx unavailable"]
+Memories loaded: [list or "none — Serena unavailable"]
 ─────────────────────────────────────────────────────
 Ready. What would you like to work on first?
 ```

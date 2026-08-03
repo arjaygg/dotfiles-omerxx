@@ -40,7 +40,7 @@ Converts a binary document to markdown via LiteParse and adds it to the `claude-
 QMD collection at `~/.local/share/claude-pdf-index/`.
 
 After ingestion the document is immediately queryable by Claude Code, Cursor, Gemini, and any
-other agent going through the pctx gateway — no config changes needed.
+other agent with the same MCP servers registered — no config changes needed.
 
 **Re-ingestion:** Running the script with the same slug overwrites the existing `.md` file and
 re-embeds it. Use this for periodically updated files (weekly reports, updated specs) — same

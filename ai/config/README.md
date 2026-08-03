@@ -27,7 +27,8 @@ mode.
 - `codex/codex.overlay.example.toml` demonstrates non-secret local Codex project,
   skill, and marketplace configuration using explicit path placeholders.
 - `gemini/mcp.base.json`, `cursor/mcp.base.json`, and
-  `windsurf/mcp_config.base.json` contain portable PCTX client definitions.
+  `windsurf/mcp_config.base.json` contain portable direct MCP server definitions
+  (`serena`, `lean-ctx`, `repomix`, `graphify`).
 - `gemini/settings.base.json` is the portable proposal for `~/.gemini/settings.json`
   (auth type, MCP servers, context file names, status line). Personal preferences
   such as `model` and `trustedWorkspaces` are intentionally left out of the base and
@@ -39,7 +40,7 @@ mode.
 - `windsurf/mcp_config.base.json` also models the `lean-ctx` MCP server. Its
   `LEAN_CTX_DATA_DIR` env var is a `${LEAN_CTX_DATA_DIR}` placeholder supplied via
   `--set` or a local overlay (see `windsurf/windsurf.overlay.example.json`).
-- `pctx/pctx.base.json` uses executable names resolved by the local `PATH`, rather
+- All client bases use executable names resolved by the local `PATH`, rather
   than machine-specific installation paths.
 
 `.claude/settings.json` is untracked as of 2026-08-01
@@ -62,13 +63,12 @@ Or generate a Codex TOML proposal:
 python3 scripts/config_generate.py \
   ai/config/codex/config.base.toml \
   --overlay ai/config/codex/codex.overlay.example.toml \
-  --set "PCTX_CONFIG=/tmp/proposal-pctx.json" \
   --set "PROJECT_ROOT=/tmp/example-project" \
   --set "MARKETPLACE_CACHE=/tmp/marketplace-cache"
 ```
 
 The `/tmp` paths above are fake printable-proposal inputs. Placeholder substitution
-is literal; this example does not rely on Codex, pctx, or the shell expanding `~`.
+is literal; this example does not rely on Codex or the shell expanding `~`.
 Review proposal output only; never redirect it to a live configuration path.
 
 Portable client bases use explicit `${NAME}` markers. Supply replacements with
@@ -76,8 +76,8 @@ Portable client bases use explicit `${NAME}` markers. Supply replacements with
 
 ```sh
 python3 scripts/config_generate.py \
-  ai/config/gemini/mcp.base.json \
-  --set PCTX_CONFIG=/tmp/pctx.json
+  ai/config/windsurf/mcp_config.base.json \
+  --set LEAN_CTX_DATA_DIR=/tmp/lean-ctx-data
 ```
 
 For a content-safe review against an existing JSON or TOML target, use
@@ -99,7 +99,6 @@ python3 scripts/config_generate.py \
   ai/config/codex/config.base.toml \
   --overlay "$HOME/.config/dotfiles-ai/codex.overlay.toml" \
   --compare-against "$HOME/.codex/config.toml" \
-  --set "PCTX_CONFIG=$HOME/.config/pctx/pctx.json" \
   --set "PROJECT_ROOT=$HOME/git/example-project" \
   --set "MARKETPLACE_CACHE=$HOME/.cache/marketplace"
 ```

@@ -59,7 +59,6 @@ allowed-tools:
   - mcp__serena__search_for_pattern
   - mcp__serena__read_memory
   - mcp__serena__list_memories
-  - mcp__pctx__execute_typescript
   - mcp__repomix__compress
 disable_model_invocation: false
 ---

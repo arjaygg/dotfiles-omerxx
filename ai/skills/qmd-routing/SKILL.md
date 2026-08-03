@@ -18,7 +18,7 @@ QMD is a local semantic search engine over private markdown collections. Use it 
 
 ## Tool Selection
 
-Qmd's search functions are consolidated into a single `Qmd.query({ searches: [{type: "lex"|"vec"|"hyde", query}] })` call (via `mcp__pctx__execute_typescript`) — the typed sub-query replaces the old separate `search`/`vector_search`/`deep_search` functions. `Qmd.get`/`multiGet`/`status` remain separate, unchanged calls.
+Qmd's search functions are consolidated into a single `query({ searches: [{type: "lex"|"vec"|"hyde", query}] })` call — the typed sub-query replaces the old separate `search`/`vector_search`/`deep_search` functions. `Qmd.get`/`multiGet`/`status` remain separate, unchanged calls.
 
 | Scenario | Sub-query type | Notes |
 |---|---|---|

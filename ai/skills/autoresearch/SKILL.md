@@ -211,10 +211,10 @@ Load the appropriate reference file based on the subcommand:
 - `/autoresearch` → Read `references/autonomous-loop-protocol.md`, follow its 8-phase protocol
 - `/autoresearch:<cmd>` → Read `references/<cmd>-workflow.md`, follow its protocol
 
-**pctx/Serena integration** — In Step 1 (READ STATE), batch scope understanding:
+**Serena integration** — In Step 1 (READ STATE), batch scope understanding:
 
 ```typescript
-// Via mcp__pctx__execute_typescript — ONE call, not sequential
+// Issue these as parallel tool calls in ONE message, not sequentially
 const [scopeFiles, overview] = await Promise.all([
   LeanCtx.ctxGlob({ pattern: "**/*", path: "<scope-dir>", max_results: 200 }),
   Serena.getSymbolsOverview({ relative_path: "<scope-dir>" }),
