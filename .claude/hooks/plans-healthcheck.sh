@@ -47,7 +47,7 @@ trap flush_userprompt_json EXIT
 CWD=$(pwd)
 TODAY=$(date '+%Y-%m-%d')
 
-# Environment checks below (setup/pctx/hooks/stack) describe machine/repo state
+# Environment checks below (setup/mcp/hooks/stack) describe machine/repo state
 # that rarely changes mid-session — surface once per session instead of on
 # every prompt. Session id comes from stdin JSON already drained above, so
 # re-read it isn't available here; fall back to a per-UID, per-day flag.
@@ -119,44 +119,19 @@ if [[ ${#MISSING_BINARIES[@]} -gt 0 && "$_SKIP_ENV_CHECKS" -eq 0 ]]; then
     echo ""
 fi
 
-PCTX_WARNINGS=()
-if ! command -v "pctx" &> /dev/null; then
-    PCTX_WARNINGS+=("pctx binary not found in PATH (npm i -g @portofcontext/pctx)")
-fi
+# MCP servers are registered directly per client (no gateway); check their launchers.
+MCP_WARNINGS=()
 if ! command -v "lean-ctx" &> /dev/null; then
-    PCTX_WARNINGS+=("lean-ctx binary not found in PATH (primary context runtime)")
+    MCP_WARNINGS+=("lean-ctx binary not found in PATH (primary context runtime)")
 fi
-if [[ ! -r "$HOME/.config/pctx/pctx.json" ]]; then
-    PCTX_WARNINGS+=("~/.config/pctx/pctx.json is missing or unreadable")
-else
-    # Use python3 for proper JSON lookup (avoids false positives from substring grep matches)
-    # pctx.json uses {"servers": [{"name": "serena"}, ...]} structure
-    MISSING_SERVERS=$(python3 -c "
-import json
-try:
-    with open('$HOME/.config/pctx/pctx.json') as f:
-        d = json.load(f)
-    raw = d.get('servers', [])
-    # Support both list-of-objects and dict-of-objects formats
-    if isinstance(raw, list):
-        names = {s.get('name','') for s in raw if isinstance(s, dict)}
-    else:
-        names = set(raw.keys())
-    required = ['serena', 'lean-ctx']
-    missing = [s for s in required if s not in names]
-    print('\n'.join(missing))
-except Exception as e:
-    print(f'parse-error: {e}')
-" 2>/dev/null || echo "")
-    while IFS= read -r srv; do
-        [[ -n "$srv" ]] && PCTX_WARNINGS+=("Server '$srv' not found in pctx.json")
-    done <<< "$MISSING_SERVERS"
+if [[ ! -x "$HOME/.dotfiles/.local/bin/serena_wrapper.sh" ]]; then
+    MCP_WARNINGS+=("serena_wrapper.sh missing or not executable (symbol tooling)")
 fi
 
-if [[ ${#PCTX_WARNINGS[@]} -gt 0 && "$_SKIP_ENV_CHECKS" -eq 0 ]]; then
-    echo "hook: pctx-health"
-    echo "status: gateway configuration issues"
-    for warn in "${PCTX_WARNINGS[@]}"; do
+if [[ ${#MCP_WARNINGS[@]} -gt 0 && "$_SKIP_ENV_CHECKS" -eq 0 ]]; then
+    echo "hook: mcp-health"
+    echo "status: MCP server issues"
+    for warn in "${MCP_WARNINGS[@]}"; do
         echo "  - $warn"
     done
     echo ""

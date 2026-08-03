@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # UserPromptSubmit hook: environment preflight for PROD operations
 # Fires when the prompt contains deployment/migration/PROD keywords.
-# Checks: K8s auth, pctx running, CWD validity (not a stale worktree).
+# Checks: K8s auth, direct MCP servers running, CWD validity (not a stale worktree).
 # Output: advisory JSON context if any check fails. Never blocks.
 
 set -euo pipefail
@@ -50,13 +50,13 @@ if command -v kubectl >/dev/null 2>&1; then
     fi
 fi
 
-# 3. pctx health: is the MCP gateway running?
-if ! pgrep -f 'pctx.*mcp' >/dev/null 2>&1; then
-    # pctx may start on-demand; only warn if Serena init flag is also absent
+# 3. Direct MCP server health: is any of serena/lean-ctx/repomix/graphify running?
+if ! pgrep -f 'serena_wrapper|lean_ctx_wrapper|graphify-mcp|repomix.*mcp' >/dev/null 2>&1; then
+    # Direct servers start on-demand; only warn if Serena init flag is also absent
     _SESSION_ID=$(echo "$_INPUT" | jq -r '.session_id // ""' 2>/dev/null)
     _SERENA_FLAG="/tmp/.claude-serena-init-$(id -u)-${_SESSION_ID:-0}"
     if [[ ! -f "$_SERENA_FLAG" ]]; then
-        _WARNINGS+=("⚠️  pctx MCP process not detected and Serena init not complete. MCP tools may be unavailable.")
+        _WARNINGS+=("⚠️  No direct MCP server process detected (serena/lean-ctx/repomix/graphify) and Serena init not complete. MCP tools may be unavailable.")
     fi
 fi
 

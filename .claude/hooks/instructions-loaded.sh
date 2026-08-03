@@ -14,29 +14,26 @@ DATE=$(date '+%Y-%m-%d %H:%M %Z')
 GIT_BRANCH=$(git -C "$CWD" branch --show-current 2>/dev/null || echo "")
 GIT_DIRTY=$(git -C "$CWD" status --short 2>/dev/null | wc -l | tr -d ' ')
 
-# --- pctx server health (advisory, non-blocking) ---
-PCTX_STATUS="ok"
-PCTX_MISSING=""
-if [[ -r "$HOME/.config/pctx/pctx.json" ]]; then
-    PCTX_MISSING=$(python3 -c "
+# --- direct MCP server health (advisory, non-blocking) ---
+MCP_STATUS="ok"
+MCP_MISSING=""
+_MCP_CONFIG="$HOME/.dotfiles/.mcp.json"
+if [[ -r "$_MCP_CONFIG" ]]; then
+    MCP_MISSING=$(python3 -c "
 import json
 try:
-    with open('$HOME/.config/pctx/pctx.json') as f:
+    with open('$_MCP_CONFIG') as f:
         d = json.load(f)
-    raw = d.get('servers', [])
-    if isinstance(raw, list):
-        names = {s.get('name','') for s in raw if isinstance(s, dict)}
-    else:
-        names = set(raw.keys())
-    required = ['serena', 'exa', 'markitdown', 'lean-ctx']
-    missing = [s for s in required if s not in names]
+    names = set(d.get('mcpServers', {}).keys())
+    required = ['serena', 'lean-ctx', 'repomix', 'graphify']
+    missing = [s for s in required if not any(s in n for n in names)]
     print(','.join(missing))
 except:
     pass
 " 2>/dev/null || echo "")
-    [[ -n "$PCTX_MISSING" ]] && PCTX_STATUS="missing: $PCTX_MISSING"
+    [[ -n "$MCP_MISSING" ]] && MCP_STATUS="missing: $MCP_MISSING"
 else
-    PCTX_STATUS="pctx.json not found"
+    MCP_STATUS="$_MCP_CONFIG not found"
 fi
 
 # --- Stack enforcement advisory ---
@@ -52,10 +49,10 @@ if [[ "$GIT_BRANCH" == "main" || "$GIT_BRANCH" == "master" ]]; then
 fi
 
 # --- Emit context injection ---
-python3 - "$DATE" "$GIT_BRANCH" "$GIT_DIRTY" "$PCTX_STATUS" "$STACK_WARNING" "$CWD" <<'PYEOF'
+python3 - "$DATE" "$GIT_BRANCH" "$GIT_DIRTY" "$MCP_STATUS" "$STACK_WARNING" "$CWD" <<'PYEOF'
 import sys, json
 
-date, branch, dirty_count, pctx_status, stack_warning, cwd = sys.argv[1:7]
+date, branch, dirty_count, mcp_status, stack_warning, cwd = sys.argv[1:7]
 
 lines = [f"[SESSION START — {date}]"]
 
@@ -66,8 +63,8 @@ if branch:
 if stack_warning:
     lines.append(stack_warning)
 
-if pctx_status != "ok":
-    lines.append(f"pctx advisory: {pctx_status}")
+if mcp_status != "ok":
+    lines.append(f"MCP config advisory: {mcp_status}")
 
 # Only emit if there's something actionable to surface
 if len(lines) > 1:
