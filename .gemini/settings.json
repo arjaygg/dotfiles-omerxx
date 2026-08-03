@@ -55,10 +55,28 @@
       ],
       "command": "bash"
     },
-    "pctx": {
+    "lean-ctx": {
       "args": [
         "-c",
-        "exec pctx mcp start --stdio -c \"$HOME/.config/pctx/pctx.json\""
+        "exec \"$HOME/.dotfiles/.local/bin/lean_ctx_wrapper.sh\" mcp --stdio"
+      ],
+      "command": "bash",
+      "env": {
+        "LEAN_CTX_CACHE_TTL": "300",
+        "RUST_LOG": "error"
+      }
+    },
+    "repomix": {
+      "args": [
+        "-c",
+        "export PATH=\"$HOME/.local/bin:$HOME/homebrew/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}\"; exec repomix --mcp"
+      ],
+      "command": "bash"
+    },
+    "graphify": {
+      "args": [
+        "-c",
+        "exec \"$HOME/.dotfiles/.local/bin/graphify-mcp-conditional\""
       ],
       "command": "bash"
     }
