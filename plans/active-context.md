@@ -1,15 +1,21 @@
 # Active Context
 
-## Current (2026-08-03) — Agent Factory executable-harness audit
+## Current (2026-08-03) — Project-scoped agent harness migration plan
+
+plan: `plans/2026-08-03-project-agent-harness-migration.md`
+step: 5 of 5
+focus: plan complete; await human approval
+objective: plan extraction of the reusable user-scoped harness from `.dotfiles` into
+  `/Users/axos-agallentes/git/agent-harness`, then temporarily disable user scope only after
+  migration parity, while preserving explicit re-enable and a future plugin packaging boundary.
+status: plan revised and validated for migrate-first, reversible user-scope disablement; no
+  harness/config/runtime implementation performed.
+in flight: nothing; human approval is required before implementation.
+
+## Historical (2026-08-03) — Agent Factory executable-harness audit
 
 plan: `plans/2026-08-03-agent-factory-gap-plan.md`
-objective: executable-harness audit against the supplied Agent Factory target.
-branch: `chore/agent-factory-gap-plan`
-worktree: `/Users/axos-agallentes/.dotfiles/.trees/agent-factory-gap-plan`
 status: audit and independently reviewed implementation plan complete; no harness implementation performed.
-evidence boundary: the target document is target-only; current-state claims exclude repository docs,
-  decisions, goals, and prior plans.
-in flight: nothing; human approval is required before implementation.
 
 ## Historical (2026-08-02) — read-before-edit gate reworked
 

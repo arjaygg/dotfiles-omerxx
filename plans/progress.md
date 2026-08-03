@@ -7,6 +7,22 @@
 - [x] Finalized `plans/2026-08-03-agent-factory-gap-plan.md`.
 - [ ] No implementation step is complete; human approval is required before implementation begins.
 
+## Done — 2026-08-03 project-scoped agent harness migration plan
+
+- [x] Load repository/session guidance and planning conventions.
+- [x] Inventory current harness categories and user-scoped activation boundaries.
+- [x] Design project-local extraction, temporary disablement, rollback, and plugin-ready interfaces.
+- [x] Write `plans/2026-08-03-project-agent-harness-migration.md` and update the active pointer.
+- [x] Validate the plan against the discovery report and repository plan conventions.
+
+No migration or live disablement is authorized until the human approves the plan.
+
+### 2026-08-03 sequencing clarification
+
+- [x] Keep live user scope active throughout extraction, project-adapter migration, and parity proof.
+- [x] Move live user-scope disablement to Step 9, after canonical ownership cutover.
+- [x] Preserve destination-backed `enable-user-scope` and `disable-user-scope` commands; final state is disabled but reversible.
+
 ## Done — 2026-07-26 deterministic model-routing enforcement (Goal 03)
 
 Goal: `goals/2026-07-26-03-deterministic-model-routing-enforcement.md`. Convert prose-only model/
