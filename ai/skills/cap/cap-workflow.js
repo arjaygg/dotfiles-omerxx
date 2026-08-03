@@ -256,19 +256,14 @@ const LANG_CONFIG = {
 
 // ── Init block injected into every fresh subagent prompt ─────────────────────
 
-function pctxInit(taskDesc) {
+function sessionInit(taskDesc) {
   return `
-PCTX INIT REQUIRED (run before any Read, Grep, Glob, or Serena call):
-1. Use ToolSearch to load: mcp__pctx__list_functions, mcp__pctx__execute_typescript
-2. Call mcp__pctx__list_functions
-3. Call mcp__pctx__execute_typescript with:
-   async function run() {
-     const [, ] = await Promise.all([
-       Serena.initialInstructions(),
-       LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "${taskDesc}" } })
-     ]);
-     return { ready: true };
-   }
+SESSION INIT REQUIRED (run before any Read, Grep, Glob, or Serena call):
+1. Use ToolSearch to load the Serena and lean-ctx tools you need, at minimum
+   mcp__serena__initial_instructions.
+2. Call mcp__serena__initial_instructions.
+3. Call ctx_intent with { query: "${taskDesc}" }.
+   Steps 2 and 3 are independent — issue them as parallel tool calls in one message.
 4. (Episodic memory) Use ToolSearch with query "mcp__supermemory__search". If the tool
    is available, call it with query "${taskDesc}" to surface relevant past decisions,
    patterns, and context from previous sessions on this codebase.
@@ -282,7 +277,7 @@ Without steps 1-3, Grep will be blocked by the pre-tool-gate hook.
 // ── Prompt helpers ────────────────────────────────────────────────────────────
 
 function scopePrompt(feature, mode) {
-  return `${pctxInit('cap scope analysis')}
+  return `${sessionInit('cap scope analysis')}
 
 You are Cap's scoping assistant. Analyze the following feature request and return structured scope.
 
@@ -306,7 +301,7 @@ Return SCOPE_SCHEMA JSON only. The language field is required.`
 
 function preflightPrompt(scope) {
   const lang = LANG_CONFIG[scope.language] || LANG_CONFIG.go
-  return `${pctxInit('cap preflight code health gate')}
+  return `${sessionInit('cap preflight code health gate')}
 
 You are Cap's preflight checker. Run the code health gate on the affected packages and report results.
 
@@ -324,7 +319,7 @@ Return HEALTH_SCHEMA JSON only.`
 }
 
 function starkPrompt(scope, feedback) {
-  return `${pctxInit('stark architectural planning for ' + scope.feature)}
+  return `${sessionInit('stark architectural planning for ' + scope.feature)}
 
 You are Stark, the Architect. Write a complete architectural plan to plans/active-context.md.
 
@@ -354,7 +349,7 @@ Return PLAN_SCHEMA JSON. Set valid=false and list issues if any section is incom
 
 function furyPrompt(scope, plan, feedback) {
   const lang = LANG_CONFIG[scope.language] || LANG_CONFIG.go
-  return `${pctxInit('fury test writing for ' + scope.feature)}
+  return `${sessionInit('fury test writing for ' + scope.feature)}
 
 You are Fury, the QA agent. Write failing tests for all components in the plan.
 
@@ -385,7 +380,7 @@ function ironmanPrompt(scope, plan, tests, findings) {
   const raceStep = lang.raceCmd
     ? `- When all unit tests pass: ${lang.raceCmd}`
     : `- No race detector for ${scope.language} — set raceClean: null in output`
-  return `${pctxInit('ironman implementation for ' + scope.feature)}
+  return `${sessionInit('ironman implementation for ' + scope.feature)}
 
 You are Ironman, the Implementation Agent. Make the failing tests pass.
 ${fixPassHeader}
@@ -410,7 +405,7 @@ function hawkDimPrompt(dim, scope, impl) {
   const files = impl.changedFiles.join(', ')
   const lang = LANG_CONFIG[scope.language] || LANG_CONFIG.go
   const checks = lang.reviewChecks[dim.key] || dim.fallbackChecks || 'Apply standard code review checks for this dimension.'
-  return `${pctxInit('hawk ' + dim.key + ' review')}
+  return `${sessionInit('hawk ' + dim.key + ' review')}
 
 You are a code reviewer specializing in ${dim.label} for ${scope.language} projects. Review the changed files below.
 
@@ -427,7 +422,7 @@ Each finding must include severity, category, file, line, description, fix, and 
 }
 
 function verifyFindingPrompt(finding) {
-  return `${pctxInit('adversarial verify hawk finding')}
+  return `${sessionInit('adversarial verify hawk finding')}
 
 You are an adversarial verifier. Your job is to REFUTE the following finding if it is a false positive.
 Default to isReal=false if you are uncertain.
@@ -455,7 +450,7 @@ function finalizePrompt(scope, impl, confirmed, autonomous) {
   const raceStep = lang.raceCmd
     ? `2. Run: ${lang.raceCmd} (confirm race detector clean)`
     : `2. Skip race detector — not applicable for ${scope.language}`
-  return `${pctxInit('cap finalize and commit')}
+  return `${sessionInit('cap finalize and commit')}
 
 You are Cap's finalization agent. Run the final verification sequence and commit.
 

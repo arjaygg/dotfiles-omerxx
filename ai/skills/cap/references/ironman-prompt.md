@@ -11,21 +11,13 @@ This is a FIX PASS. Address the following Hawk review findings before running te
 {{findings}}
 {{/if}}
 
-## PCTX INIT REQUIRED (before any file access)
+## SESSION INIT REQUIRED (before any file access)
 
-Run these in order before any Read/Grep/Glob/Serena call:
-1. Use ToolSearch to load: `mcp__pctx__list_functions`, `mcp__pctx__execute_typescript`
-2. Call `mcp__pctx__list_functions`
-3. Call `mcp__pctx__execute_typescript` with:
-   ```
-   async function run() {
-     const [init, intent] = await Promise.all([
-       Serena.initialInstructions(),
-       LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "ironman implementation for {{feature}}" } })
-     ]);
-     return { ready: true };
-   }
-   ```
+Run these before any Read/Grep/Glob/Serena call. Steps 2 and 3 are independent —
+issue them as parallel tool calls in one message:
+1. Use ToolSearch to load `mcp__serena__initial_instructions` plus the lean-ctx tools you need.
+2. Call `mcp__serena__initial_instructions`.
+3. Call `ctx_intent` with `{ query: "ironman implementation for {{feature}}" }`.
 
 ## Context
 
