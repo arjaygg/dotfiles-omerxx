@@ -63,21 +63,7 @@ date '+%s' > "$TIMESTAMP_FILE"
 # Warn if a substantial session already ran in this directory recently
 _DUPLICATE_WARN="$(bash "$HOME/.dotfiles/.claude/hooks/duplicate-session-check.sh" 2>/dev/null || true)"
 
-# Kill stale pctx processes from other worktrees to prevent cross-contamination.
-# Each stdio pctx session inherits its CWD, so a process started in worktree A
-# must not serve worktree B. Only kill processes with hardcoded worktree paths.
 CWD="$(pwd)"
-if [[ "$CWD" == */.trees/* ]]; then
-    WORKTREE_NAME="${CWD##*/.trees/}"
-    WORKTREE_NAME="${WORKTREE_NAME%%/*}"
-    while IFS= read -r line; do
-        pid="${line%% *}"
-        if echo "$line" | grep -q '\.trees/[^/]*/\.config/pctx\.json' && \
-           ! echo "$line" | grep -q "\.trees/${WORKTREE_NAME}/\.config/pctx\.json"; then
-            kill "$pid" 2>/dev/null || true
-        fi
-    done < <(pgrep -fl 'pctx.*mcp.*start' 2>/dev/null || true)
-fi
 
 # Inject mandatory session-init instruction so Claude sees it at session start
 # Serena.initialInstructions() is only needed when a .serena/ config dir is present.
@@ -108,11 +94,9 @@ if $HAS_SERENA; then
 hook: session-init
 status: pending
 steps not yet run this session:
-  - mcp__pctx__list_functions (then write result to plans/pctx-functions.md)
-  - Serena.initialInstructions() — load project-specific rules
+  - Serena.initialInstructions() — load project-specific rules through direct Serena
 ${_MEM_HINT}
-  - LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "<task-description>" } }) — primes lean-ctx task scoping for ctx_search/ctx_read (raw grep/rg stay blocked by global permissions.deny regardless of this call)
-note: skip if plans/pctx-functions.md already exists and was written today
+  - LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "<task-description>" } }) — prime task scoping through direct LeanCtx
 EOT
 )"
 else
@@ -120,9 +104,8 @@ else
 hook: session-init
 status: pending
 steps not yet run this session:
-  - mcp__pctx__list_functions (then write result to plans/pctx-functions.md)
-  - LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "<task-description>" } }) — primes lean-ctx task scoping for ctx_search/ctx_read (raw grep/rg stay blocked by global permissions.deny regardless of this call)
-note: Serena.initialInstructions skipped — no .serena/ config found in this directory tree; skip all steps if plans/pctx-functions.md already exists and was written today
+  - LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: "<task-description>" } }) — prime task scoping through direct LeanCtx
+note: Serena.initialInstructions skipped — no .serena/ config found in this directory tree
 EOT
 )"
 fi

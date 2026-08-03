@@ -174,32 +174,26 @@ if [[ -x "$CONTEXT_GATE" ]]; then
     fi
 fi
 
-_INIT_STEPS=$'  1. Call mcp__pctx__list_functions\n  2. Write result to plans/pctx-functions.md\n  3. Call Serena.initialInstructions()'
+_HAS_SERENA=false
+_serena_dir="${CLAUDE_PROJECT_DIR:-$PWD}"
+while [[ "$_serena_dir" != "/" ]]; do
+    if [[ -d "$_serena_dir/.serena" ]]; then
+        _HAS_SERENA=true
+        break
+    fi
+    _serena_dir="$(dirname "$_serena_dir")"
+done
+_INIT_STEPS=$'  1. Call Serena.initialInstructions() through the direct Serena MCP server'
 
 # ============================================================
 # SECTION 0: Serena session-init gate
 # Only active in real Claude sessions (session_id present in the stdin payload).
-# Blocks Grep AND source-file Reads before Serena has been initialized, so the
-# model is forced to call mcp__pctx__list_functions → Serena.initialInstructions() first.
+# Blocks Grep, source-file Reads, and Bash before direct Serena initialization
+# when the project has a .serena directory. Non-Serena projects remain usable.
 # Plan/config files (.md, .json, .yaml) are exempt — only code files are gated.
 # ============================================================
-if [[ -n "$SESSION_ID" ]]; then
+if [[ -n "$SESSION_ID" ]] && $_HAS_SERENA; then
     _INIT_FLAG="/tmp/.claude-serena-init-$(id -u)-${EFFECTIVE_SESSION_ID}"
-
-    # Honor "skip if plans/pctx-functions.md was written today" — auto-set the temp flag
-    # so a warmed session (file exists from today) doesn't re-block tools on a new session ID.
-    if [[ ! -f "$_INIT_FLAG" ]]; then
-        _PCTX_FILE="plans/pctx-functions.md"
-        _TODAY=$(date '+%Y-%m-%d')
-        _FILE_DATE=""
-        if [[ -f "$_PCTX_FILE" ]]; then
-            _FILE_DATE=$(date -r "$_PCTX_FILE" '+%Y-%m-%d' 2>/dev/null || \
-                         stat -c '%y' "$_PCTX_FILE" 2>/dev/null | cut -d' ' -f1 || echo "")
-        fi
-        if [[ "$_FILE_DATE" == "$_TODAY" ]]; then
-            touch "$_INIT_FLAG" 2>/dev/null || true
-        fi
-    fi
 
     if [[ ! -f "$_INIT_FLAG" ]]; then
         if [[ "$TOOL_NAME" == "Grep" ]]; then
@@ -222,9 +216,8 @@ ${_INIT_STEPS}
             fi
         fi
 
-        # Block Bash before init — Claude must not bypass init via shell commands.
-        # The init sequence uses only MCP tools (mcp__pctx__list_functions,
-        # mcp__pctx__execute_typescript) and the Write tool — no Bash needed.
+        # Block Bash before init — Claude must not bypass direct Serena setup.
+        # Serena.initialInstructions uses the direct Serena MCP server.
         if [[ "$TOOL_NAME" == "Bash" ]]; then
             _deny "BLOCKED: Bash not available before session init.
   Complete the session init sequence first:
@@ -243,28 +236,9 @@ if [[ -n "$SESSION_ID" ]]; then
     _CTX_FLAG="/tmp/.claude-ctx-loaded-$(id -u)-${EFFECTIVE_SESSION_ID}"
     if [[ "$TOOL_NAME" == "Grep" && ! -f "$_CTX_FLAG" ]]; then
         _deny "BLOCKED: Context not yet loaded in this session.
-  Before using Grep, load project context with:
+  Before using Grep, call the direct LeanCtx MCP server:
     LeanCtx.ctxCall({ name: "ctx_intent", arguments: { query: '<your task description>' } })
-  Batch it in: mcp__pctx__execute_typescript
   This indexes live project context — derived from current codebase, not manually curated."
-    fi
-fi
-
-# ============================================================
-# SECTION 1B: Serena/pctx batching threshold gate
-# Blocks excessive sequential calls to Serena/pctx tools without execute_typescript batching.
-# ============================================================
-if [[ "$TOOL_NAME" == mcp__serena__* ]] || [[ "$TOOL_NAME" == mcp__pctx__* ]]; then
-    if [[ "$TOOL_NAME" != "mcp__pctx__execute_typescript" ]]; then
-        # Direct Serena/pctx call (not batched) — check counter
-        _COUNTER_FILE="/tmp/.claude-serena-calls-$(id -u)-${EFFECTIVE_SESSION_ID}"
-        if [[ -f "$_COUNTER_FILE" ]]; then
-            _COUNT=$(wc -l < "$_COUNTER_FILE" 2>/dev/null || echo 0)
-            if [[ "$_COUNT" -ge 4 ]]; then
-                _deny "BLOCKED: $_COUNT sequential Serena/pctx calls without batching.
-  Use: mcp__pctx__execute_typescript with Promise.all() to batch multiple calls."
-            fi
-        fi
     fi
 fi
 
@@ -292,13 +266,13 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
     # reads into hard blocks and would defeat the classifier's fail-open path.
 
     # 1c. .go files without limit — use Serena
-    if [[ "$FILE_PATH" == *.go && -z "$LIMIT" ]]; then
+    if [[ "$FILE_PATH" == *.go && -z "$LIMIT" ]] && $_HAS_SERENA; then
         _deny "BLOCKED: Reading entire .go file '$FILE_PATH' without limit/offset. Use Serena.getSymbolsOverview to understand structure, then Read with limit/offset for the specific symbol.
-  Call via: mcp__pctx__execute_typescript with: await Serena.getSymbolsOverview('${FILE_PATH}')"
+  Call direct Serena: Serena.getSymbolsOverview('${FILE_PATH}')"
     fi
 
     # 1d. Source code without limit (non-.go, non-config) — check enforcement level
-    if [[ -z "$LIMIT" && -f "$FILE_PATH" && -f "${HOME}/.config/pctx/pctx.json" ]]; then
+    if [[ -z "$LIMIT" && -f "$FILE_PATH" ]] && $_HAS_SERENA; then
         NON_CODE_EXT="md|json|yaml|yml|sql|txt|env|toml|csv|tsv|xml|html|css|lock|sum|mod|cfg|ini|conf|sh|bash|zsh"
         ext="${FILE_PATH##*.}"
         ext="${ext,,}"
@@ -311,7 +285,7 @@ if [[ "$TOOL_NAME" == "Read" && -n "$FILE_PATH" ]]; then
             fi
             if [[ "$_SERENA_LEVEL" == "block" ]]; then
                 _deny "BLOCKED: Reading entire source file '$FILE_PATH' without limit/offset. Use Serena.getSymbolsOverview to understand structure, then LeanCtx.ctxRead or Read with limit/offset for specific symbols.
-  Call via: mcp__pctx__execute_typescript with: await Serena.getSymbolsOverview('${FILE_PATH}')"
+  Call direct Serena: Serena.getSymbolsOverview('${FILE_PATH}')"
             else
                 echo "HINT: Consider Serena.getSymbolsOverview for '$FILE_PATH' to see structure first, then Read with limit/offset for specific symbols."
                 exit 0
@@ -586,8 +560,8 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
     # 2a. grep/rg (but not git grep) — no Grep tool exists in this session; use LeanCtx.ctxSearch
     if [[ ( "$CMD" == grep\ * || "$CMD" == rg\ * ) && "$CMD" != *"git grep"* ]]; then
         _deny_routing "search" "BLOCKED: Use LeanCtx.ctxSearch instead of 'grep'/'rg' (no Grep tool exists in this session).
-  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ pattern: '<pattern>', path: '.' })
-  Requires session init to have run first (Serena.initialInstructions / pctx list_functions) or the call itself may be blocked."
+  Call direct LeanCtx: LeanCtx.ctxSearch({ pattern: '<pattern>', path: '.' })
+  Serena projects require direct Serena.initialInstructions before source exploration."
     fi
 
     # N7: dot-directory carve-out for find/ls — LeanCtx.ctxGlob/ctxTree's coverage of
@@ -672,7 +646,7 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
         fi
         _deny "BLOCKED: Piped '$PIPE_CMD' is not allowed after a command.
   Use the Read tool with a limit parameter, jq for JSON output, or LeanCtx.ctxSearch for text search.
-  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ pattern: '<pattern>', path: '.' })"
+  Call direct LeanCtx: LeanCtx.ctxSearch({ pattern: '<pattern>', path: '.' })"
     fi
 fi
 
@@ -701,9 +675,8 @@ if [[ "$TOOL_NAME" == "Write" && -n "$FILE_PATH" && -f "$FILE_PATH" ]]; then
         _deny "BLOCKED: Overwriting existing '$FILE_PATH' without reading it in this session.
   Read it first to avoid data loss:
     - If the Read tool is available: Read('$FILE_PATH')
-    - Otherwise: mcp__pctx__execute_typescript running
-      LeanCtx.ctxRead({ path: \"$FILE_PATH\", mode: \"full\" })
-      Pass the absolute path as a literal string so the gate can register it.
+    - Otherwise: LeanCtx.ctxRead({ path: \"$FILE_PATH\", mode: \"full\" })
+      Pass the absolute path so direct read tracking can register it.
   Note: Serena.getSymbolsOverview does NOT satisfy this gate."
     fi
 fi
@@ -821,7 +794,7 @@ if [[ "$TOOL_NAME" == "Write" && -n "$FILE_PATH" ]]; then
         FILENAME="${FILE_PATH##*/}"
         # Skip system files
         case "$FILENAME" in
-            active-context*|decisions*|progress*|plan-state*|pctx-functions*|hook-learning*|plan.md) ;;
+            active-context*|decisions*|progress*|plan-state*|hook-learning*|plan.md) ;;
             *)
                 # Check naming convention: YYYY-MM-DD-context.md
                 if [[ ! "$FILENAME" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-.+\.md$ ]]; then
@@ -837,12 +810,8 @@ fi
 # ============================================================
 # SECTION 6: Grep/Glob — Serena/LeanCtx tool priority
 # ============================================================
-# NOTE: intentionally NOT gated behind `-f "${HOME}/.config/pctx/pctx.json"`.
-# Whether Grep/Glob should be denied in favor of Serena/LeanCtx is a fact
-# about session tool availability, not about whether this machine happens to
-# have a personal pctx install. Gating deny on pctx.json made this section's
-# fixture cases pass/fail based on incidental host state (present on dev
-# machines, absent in CI runners) rather than deterministic hook logic.
+# Routing depends on direct Serena/LeanCtx tool availability and session flags,
+# never on a machine-local gateway configuration file.
 # Read enforcement level from hook-config.yaml
 _HOOK_CFG="${HOME}/.dotfiles/.claude/hooks/hook-config.yaml"
 _SERENA_LEVEL="block"
@@ -864,21 +833,21 @@ if [[ "$TOOL_NAME" == "Grep" && -n "$PATTERN" ]]; then
 
     if [[ "$PATTERN" =~ ^(func|class|type|struct|interface|def|fn)[[:space:]] ]]; then
         _MSG="$_SERENA_PREFIX: For symbol lookups, use Serena.findSymbol (structural) or LeanCtx.ctxSearch (token-efficient) instead of Grep.
-  Call via: mcp__pctx__execute_typescript with: await Serena.findSymbol({ name: '<symbol>' })"
+  Call direct Serena: Serena.findSymbol({ name: '<symbol>' })"
         [[ "$_SERENA_LEVEL" == "block" ]] && _deny "$_MSG"
         echo "$_MSG" >&2
         exit 0
     fi
     if [[ "$PATTERN" =~ ^[A-Z][a-zA-Z0-9]+$ ]]; then
         _MSG="$_SERENA_PREFIX: '$PATTERN' looks like a symbol name. Use Serena.findSymbol('$PATTERN') for structural results, or LeanCtx.ctxSearch for pattern matching.
-  Call via: mcp__pctx__execute_typescript with: await Serena.findSymbol({ name: '${PATTERN}' })"
+  Call direct Serena: Serena.findSymbol({ name: '${PATTERN}' })"
         [[ "$_SERENA_LEVEL" == "block" ]] && _deny "$_MSG"
         echo "$_MSG" >&2
         exit 0
     fi
     # General pattern — LeanCtx.ctxSearch is a direct drop-in
     _MSG="$_SERENA_PREFIX: Use LeanCtx.ctxSearch instead of Grep — it's gitignore-aware, session-cached, and token-efficient.
-  Call via: mcp__pctx__execute_typescript with: await LeanCtx.ctxSearch({ pattern: '${PATTERN}', path: '.' })"
+  Call direct LeanCtx: LeanCtx.ctxSearch({ pattern: '${PATTERN}', path: '.' })"
     [[ "$_SERENA_LEVEL" == "block" ]] && _deny "$_MSG"
     echo "$_MSG" >&2
     exit 0
