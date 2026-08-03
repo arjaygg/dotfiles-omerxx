@@ -90,11 +90,4 @@ except:
     fi
 fi
 
-# --- Batching reminder after pctx execute_typescript (max once per session) ---
-REMINDER_FLAG="/tmp/.claude-pctx-reminder-$(id -u)"
-if [[ "$TOOL_NAME" == "mcp__pctx__execute_typescript" ]] && [[ ! -f "$REMINDER_FLAG" ]]; then
-    touch "$REMINDER_FLAG"
-    echo "BATCH CHECK: Was this the only Serena/MCP operation needed this turn? If 2+ ops are coming, combine them into one execute_typescript call."
-fi
-
 exit 0

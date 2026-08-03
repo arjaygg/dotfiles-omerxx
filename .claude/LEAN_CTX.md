@@ -1,24 +1,24 @@
 # lean-ctx — Context Runtime
 
-**Integration mode:** primary file, tree, text-search, and shell-output runtime. LeanCtx is available both as a native MCP server and through pctx.
+**Integration mode:** primary file, tree, text-search, and shell-output runtime. LeanCtx is registered as a direct MCP server in every client.
 
 ## Authoritative Routing
 
-- **Serena through pctx:** semantic code navigation, symbols, references, impact analysis, and symbol-aware edits.
-- **LeanCtx directly:** focused `ctx_compose`, `ctx_read`, `ctx_search`, `ctx_tree`, and `ctx_expand` operations.
-- **pctx `execute_typescript`:** two or more operations, mixed Serena/LeanCtx/Qmd calls, or filtering before results enter context.
+- **Serena:** semantic code navigation, symbols, references, impact analysis, and symbol-aware edits.
+- **LeanCtx:** focused `ctx_compose`, `ctx_read`, `ctx_search`, `ctx_tree`, and `ctx_expand` operations.
+- **Two or more independent operations:** issue them as parallel tool calls in a single message.
 - **Native tools:** editing or specialized capabilities Serena/LeanCtx do not provide.
 - **Fallback:** if LeanCtx is unavailable, use the client’s native dedicated tool rather than installing a second output compressor.
 
 ## Core LeanCtx Tools
 
-- `ctx_compose` / `LeanCtx.ctxCompose` — task-scoped source selection before focused reads.
-- `ctx_read` / `LeanCtx.ctxRead` — cached file reads with intent-specific modes.
-- `ctx_tree` / `LeanCtx.ctxTree` — compact directory maps.
-- `ctx_search` / `LeanCtx.ctxSearch` — text and regex search.
-- `ctx_expand` / `LeanCtx.ctxExpand` — lossless expansion of LeanCtx references.
+- `ctx_compose` — task-scoped source selection before focused reads.
+- `ctx_read` — cached file reads with intent-specific modes.
+- `ctx_tree` — compact directory maps.
+- `ctx_search` — text and regex search.
+- `ctx_expand` — lossless expansion of LeanCtx references.
 
-Shell hooks route noisy command output through LeanCtx without adding another direct MCP schema. Use pctx for deferred `ctx_patch`, session, graph, and batch functions.
+Shell hooks route noisy command output through LeanCtx without adding another direct MCP schema. `ctx_patch`, session, and graph functions are reached through the same direct server.
 
 ## Shell and Exact Evidence
 
@@ -32,7 +32,7 @@ Never wrap a LeanCtx shell call in another output compressor or enable parallel 
 
 ## Headroom boundary
 
-Headroom receives `HEADROOM_CONTEXT_TOOL=lean-ctx`, `HEADROOM_EXCLUDE_TOOLS` for every direct LeanCtx/pctx tool, and `HEADROOM_DISABLE_KOMPRESS=1`. It runs only as the persistent provider proxy; never register `headroom mcp serve` in a client.
+Headroom receives `HEADROOM_CONTEXT_TOOL=lean-ctx`, `HEADROOM_EXCLUDE_TOOLS` for every direct LeanCtx tool, and `HEADROOM_DISABLE_KOMPRESS=1`. It runs only as the persistent provider proxy; never register `headroom mcp serve` in a client.
 
 ## Fallbacks
 
