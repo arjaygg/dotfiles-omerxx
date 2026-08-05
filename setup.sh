@@ -6,6 +6,11 @@
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+if [ -e "$ROOT/.harness-disabled" ]; then
+    echo "AI coding-agent harness is disabled; run scripts/ai-harness-toggle.sh enable to restore it."
+    exit 0
+fi
+
 run_setup_check() {
     echo "setup check: validating tracked config boundaries without writing runtime files"
     (

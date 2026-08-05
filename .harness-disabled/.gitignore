@@ -1,0 +1,6 @@
+repo/**/node_modules/
+repo/**/.DS_Store
+repo/**/*.log
+repo/**/*.log.jsonl
+repo/**/.pytest_cache/
+repo/**/cache/

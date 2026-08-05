@@ -1,0 +1,197 @@
+{
+  "version": 2,
+  "plugins": {
+    "document-skills@anthropic-agent-skills": [
+      {
+        "scope": "project",
+        "projectPath": "/Users/axos-agallentes/.dotfiles",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/anthropic-agent-skills/document-skills/b29e7cf65e5c",
+        "version": "b29e7cf65e5c",
+        "installedAt": "2025-11-11T08:56:55.823Z",
+        "lastUpdated": "2026-07-25T09:28:11.653Z",
+        "gitCommitSha": "b29e7cf65e5cb78a5ac33d582270551bc74a14eb"
+      }
+    ],
+    "osgrep@osgrep": [
+      {
+        "scope": "project",
+        "projectPath": "/Users/axos-agallentes/.dotfiles",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/osgrep/osgrep/0.4.3",
+        "version": "0.4.3",
+        "installedAt": "2025-11-25T21:55:23.719Z",
+        "lastUpdated": "2026-06-17T09:37:21.593Z",
+        "gitCommitSha": "9f2faf7e52783d622a583f5250f81ab24cee7864"
+      }
+    ],
+    "gopls@claude-code-lsps": [
+      {
+        "scope": "project",
+        "projectPath": "/Users/axos-agallentes/.dotfiles",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/claude-code-lsps/gopls/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-01-16T10:30:05.202Z",
+        "lastUpdated": "2026-03-18T06:39:14.351Z",
+        "gitCommitSha": "7fe8b98fca70ae7e4a209e8760575e2f731163ed"
+      }
+    ],
+    "claude-md-management@claude-plugins-official": [
+      {
+        "scope": "project",
+        "projectPath": "/Users/axos-agallentes/.dotfiles",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/claude-plugins-official/claude-md-management/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-01-22T12:37:25.418Z",
+        "lastUpdated": "2026-03-18T06:39:14.351Z",
+        "gitCommitSha": "e30768372b4150ca1bc0839d93283e8edc30d60d"
+      }
+    ],
+    "superpowers@claude-plugins-official": [
+      {
+        "scope": "project",
+        "projectPath": "/Users/axos-agallentes/.dotfiles",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/claude-plugins-official/superpowers/6.2.0",
+        "version": "6.2.0",
+        "installedAt": "2026-01-22T12:37:27.145Z",
+        "lastUpdated": "2026-07-25T09:28:12.133Z",
+        "gitCommitSha": "a01a135fe185559ff9dc84dd70d6e9bb57d92bdf"
+      }
+    ],
+    "example-skills@anthropic-agent-skills": [
+      {
+        "scope": "user",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/anthropic-agent-skills/example-skills/b29e7cf65e5c",
+        "version": "b29e7cf65e5c",
+        "installedAt": "2026-02-13T03:42:57.950Z",
+        "lastUpdated": "2026-07-24T21:19:20.045Z",
+        "gitCommitSha": "b29e7cf65e5cb78a5ac33d582270551bc74a14eb"
+      }
+    ],
+    "rust-analyzer-lsp@claude-plugins-official": [
+      {
+        "scope": "local",
+        "projectPath": "/Users/axos-agallentes/git/universe-lsp",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-03-02T05:52:52.007Z",
+        "lastUpdated": "2026-03-02T05:52:52.007Z",
+        "gitCommitSha": "55b58ec6e5649104f926ba7558b567dc8d33c5ff"
+      },
+      {
+        "scope": "user",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-03-14T09:03:05.560Z",
+        "lastUpdated": "2026-03-14T09:03:05.560Z",
+        "gitCommitSha": "d5c15b861cd23e3102215c26020368ad5134dc47"
+      }
+    ],
+    "typescript-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/claude-plugins-official/typescript-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-03-05T08:35:06.947Z",
+        "lastUpdated": "2026-03-05T08:35:06.947Z",
+        "gitCommitSha": "205b6e0b30366a969412d9aab7b99bea99d58db1"
+      }
+    ],
+    "frontend-design@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/claude-plugins-official/frontend-design/unknown",
+        "version": "unknown",
+        "installedAt": "2026-03-06T06:15:27.594Z",
+        "lastUpdated": "2026-08-03T11:01:57.720Z",
+        "gitCommitSha": "56f2d40254edeeef04122c8d537910837fd9476f"
+      },
+      {
+        "scope": "local",
+        "projectPath": "/Users/axos-agallentes/git/auc-conversion/.trees/visual-loading-sequence-graph",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/claude-plugins-official/frontend-design/unknown",
+        "version": "unknown",
+        "installedAt": "2026-06-11T12:52:43.278Z",
+        "lastUpdated": "2026-08-01T20:35:39.825Z",
+        "gitCommitSha": "56f2d40254edeeef04122c8d537910837fd9476f"
+      }
+    ],
+    "vtsls@claude-code-lsps": [
+      {
+        "scope": "user",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/claude-code-lsps/vtsls/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-03-06T06:15:27.604Z",
+        "lastUpdated": "2026-03-06T06:15:27.604Z",
+        "gitCommitSha": "7fe8b98fca70ae7e4a209e8760575e2f731163ed"
+      }
+    ],
+    "skill-creator@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/claude-plugins-official/skill-creator/unknown",
+        "version": "unknown",
+        "installedAt": "2026-03-28T11:56:36.889Z",
+        "lastUpdated": "2026-08-03T11:01:57.779Z",
+        "gitCommitSha": "56f2d40254edeeef04122c8d537910837fd9476f"
+      }
+    ],
+    "gopls-lsp@claude-plugins-official": [
+      {
+        "scope": "project",
+        "projectPath": "/Users/axos-agallentes/.dotfiles",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/claude-plugins-official/gopls-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-03-18T06:39:14.351Z",
+        "lastUpdated": "2026-03-18T06:39:14.351Z",
+        "gitCommitSha": "6b70f99f769f58b9b642dc8a271936b17862cf8c"
+      },
+      {
+        "scope": "user",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/claude-plugins-official/gopls-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-03-28T13:30:17.689Z",
+        "lastUpdated": "2026-03-28T13:30:17.689Z"
+      }
+    ],
+    "claude-mem@thedotmack": [
+      {
+        "scope": "project",
+        "projectPath": "/Users/axos-agallentes/.dotfiles",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/thedotmack/claude-mem/9.0.6",
+        "version": "9.0.6",
+        "installedAt": "2026-03-18T06:39:14.351Z",
+        "lastUpdated": "2026-03-18T06:39:14.351Z",
+        "gitCommitSha": "fa218b0d7126a5a442d038465c7cf624917d57c3"
+      }
+    ],
+    "bash-language-server@claude-code-lsps": [
+      {
+        "scope": "user",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/claude-code-lsps/bash-language-server/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-04-02T17:07:46.869Z",
+        "lastUpdated": "2026-04-02T17:07:46.869Z",
+        "gitCommitSha": "7fe8b98fca70ae7e4a209e8760575e2f731163ed"
+      }
+    ],
+    "supermemory@supermemory-plugins": [
+      {
+        "scope": "user",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/supermemory-plugins/supermemory/0.0.13",
+        "version": "0.0.13",
+        "installedAt": "2026-06-15T07:42:26.741Z",
+        "lastUpdated": "2026-07-25T22:57:21.703Z",
+        "gitCommitSha": "193290b5ccba3e7dd12b1708ff2777db0c226006"
+      }
+    ],
+    "autoresearch@autoresearch": [
+      {
+        "scope": "user",
+        "installPath": "/Users/axos-agallentes/.claude/plugins/cache/autoresearch/autoresearch/2.2.1",
+        "version": "2.2.1",
+        "installedAt": "2026-06-18T21:29:59.930Z",
+        "lastUpdated": "2026-07-01T09:06:05.224Z",
+        "gitCommitSha": "870e9b8eca4fbe53cd6cb1247410373692e4aec3"
+      }
+    ]
+  }
+}
