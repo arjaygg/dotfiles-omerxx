@@ -131,6 +131,33 @@ calculate_cache_hit_rate() {
     echo "$((cache_read * 100 / total))"
 }
 
+# Observed: bash 5.3.9 treats an unescaped '&' in the replacement of
+# ${var//pat/repl} as the matched text (and unescapes '\&'/'\\'), sed-style;
+# bash 3.2.57 (macOS /bin/bash) has no such handling, so applying that escaping
+# there would corrupt the value instead of protecting it. Only 5.3.9 and 3.2.57
+# were tested on this machine (no 4.x/5.0/5.1/5.2 binaries available); per the
+# bash changelog this behavior is believed to have been introduced in 5.2, but
+# that boundary itself is not independently verified here. Detect once at load time.
+if (( BASH_VERSINFO[0] > 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 2) )); then
+    _needs_repl_escape=1
+else
+    _needs_repl_escape=0
+fi
+
+# Sanitize a value for safe use as the replacement in ${var//pattern/replacement}
+# substitutions, so literal '&' (and '\') in the value survive verbatim instead
+# of being reinterpreted. Only touches '&' and '\', so ANSI escape sequences
+# (which contain neither) pass through unchanged. Fork-free: assigns the global
+# $_repl instead of echoing, so callers must consume $_repl immediately (no
+# nameref used — this script must keep working on bash 3.2, which predates them).
+sanitize_repl() {
+    _repl="$1"
+    if [[ "$_needs_repl_escape" -eq 1 ]]; then
+        _repl="${_repl//\\/\\\\}"
+        _repl="${_repl//&/\\&}"
+    fi
+}
+
 # Determine context trend (↑ climbing, → stable, ↓ falling)
 calculate_context_trend() {
     local current="$1"
@@ -1262,29 +1289,47 @@ case "$STATUSLINE_MODE" in
     "custom")
         # Custom mode: Use template with variable substitution
         output="$CUSTOM_FORMAT"
-        output="${output//\%model\%/$model_display}"
-        output="${output//\%context\%/$context_info}"
-        output="${output//\%percent\%/${context_percent}%}"
-        output="${output//\%remaining\%/${remaining_display}}"
-        output="${output//\%session\%/$session_display}"
-        output="${output//\%time\%/$combined_time}"
-        output="${output//\%last\%/$last_msg}"
-        output="${output//\%project\%/$project_name}"
+        sanitize_repl "$model_display"; output="${output//\%model\%/$_repl}"
+        sanitize_repl "$context_info"; output="${output//\%context\%/$_repl}"
+        if [[ -n "${context_percent:-}" ]]; then
+            percent_display="${context_percent}%"
+        else
+            percent_display="N/A"
+        fi
+        sanitize_repl "$percent_display"; output="${output//\%percent\%/$_repl}"
+        if [[ -n "${remaining_k:-}" ]]; then
+            if [[ $remaining_k -lt 0 ]]; then
+                remaining_k=0
+            fi
+            remaining_display="${remaining_k}k left"
+        else
+            remaining_display="N/A"
+        fi
+        sanitize_repl "$remaining_display"; output="${output//\%remaining\%/$_repl}"
+        sanitize_repl "$session_display"; output="${output//\%session\%/$_repl}"
+        sanitize_repl "$combined_time"; output="${output//\%time\%/$_repl}"
+        sanitize_repl "$last_msg"; output="${output//\%last\%/$_repl}"
+        sanitize_repl "$project_name"; output="${output//\%project\%/$_repl}"
         task_list_id_fmt=""
         [[ -n "$task_list_id" ]] && task_list_id_fmt=" ▸ $task_list_id"
-        output="${output//\%task_list_id\%/$task_list_id_fmt}"
-        output="${output//\%message\%/$message_display}"
-        output="${output//\%output_style\%/$output_style}"
-        output="${output//\%cache\%/$cache_info}"
-        output="${output//\%cache_hit\%/${cache_hit_percent}%}"
-        output="${output//\%tokens\%/$tokens_info}"
-        output="${output//\%tokens_input\%/${tokens_input_display}}"
-        output="${output//\%tokens_output\%/${tokens_output_display}}"
-        output="${output//\%tokens_ratio\%/$tokens_info}"
-        output="${output//\%version\%/$claude_version}"
-        output="${output//\%git_status\%/$git_status_indicator}"
-        output="${output//\%git_dirty\%/$git_status_indicator}"
-        output="${output//\%cost\%/$cost_info}"
+        sanitize_repl "$task_list_id_fmt"; output="${output//\%task_list_id\%/$_repl}"
+        sanitize_repl "$message_display"; output="${output//\%message\%/$_repl}"
+        sanitize_repl "$output_style"; output="${output//\%output_style\%/$_repl}"
+        sanitize_repl "$cache_info"; output="${output//\%cache\%/$_repl}"
+        if [[ -n "${cache_hit_percent:-}" ]]; then
+            cache_hit_display="${cache_hit_percent}%"
+        else
+            cache_hit_display="N/A"
+        fi
+        sanitize_repl "$cache_hit_display"; output="${output//\%cache_hit\%/$_repl}"
+        sanitize_repl "$tokens_info"; output="${output//\%tokens\%/$_repl}"
+        sanitize_repl "$tokens_input_display"; output="${output//\%tokens_input\%/$_repl}"
+        sanitize_repl "$tokens_output_display"; output="${output//\%tokens_output\%/$_repl}"
+        sanitize_repl "$tokens_info"; output="${output//\%tokens_ratio\%/$_repl}"
+        sanitize_repl "$claude_version"; output="${output//\%version\%/$_repl}"
+        sanitize_repl "$git_status_indicator"; output="${output//\%git_status\%/$_repl}"
+        sanitize_repl "$git_status_indicator"; output="${output//\%git_dirty\%/$_repl}"
+        sanitize_repl "$cost_info"; output="${output//\%cost\%/$_repl}"
         echo "$output"
         ;;
 
