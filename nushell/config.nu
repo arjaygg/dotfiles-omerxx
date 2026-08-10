@@ -982,7 +982,6 @@ def --wrapped hcy [...rest] {
 }
 
 # Claude Code Multi-Backend Aliases
-alias claude = bash ~/.dotfiles/.claude/scripts/claude-launch.sh native
 alias claude-gemini = bash ~/.dotfiles/.claude/scripts/claude-launch.sh gemini
 alias claude-codex = bash ~/.dotfiles/.claude/scripts/claude-launch.sh codex
 alias claude-cursor = bash ~/.dotfiles/.claude/scripts/claude-launch.sh cursor
