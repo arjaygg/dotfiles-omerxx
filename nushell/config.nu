@@ -994,3 +994,20 @@ def --wrapped tmux-side [...rest] {
     ^bash ~/.dotfiles/tmux/scripts/tmux-side.sh ...$rest
 }
 
+# Complete tmux session names
+def "nu-complete tmux sessions" [] {
+    let out = (^tmux list-sessions -F '#S' | complete)
+    if $out.exit_code == 0 { $out.stdout | lines } else { [] }
+}
+
+# Open a new Ghostty window attached to an existing tmux session
+# (direct attach — both clients mirror; use tmux-side for independent views)
+def gw [session: string@"nu-complete tmux sessions"] {
+    if (^tmux has-session -t $"=($session)" | complete).exit_code != 0 {
+        print -e $"Session '($session)' not found. Available sessions:"
+        ^tmux list-sessions -F '  #S'
+        return
+    }
+    ^open -na Ghostty --args -e tmux attach-session -t $session
+}
+
