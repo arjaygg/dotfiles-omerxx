@@ -12,9 +12,15 @@ ACTION="${1:-}"
 shift || true
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
-set_pane_var()   { tmux set -p @"$1" "$2" 2>/dev/null || true; }
-unset_pane_var() { tmux set -pu @"$1" 2>/dev/null || true; }
-get_pane_var()   { tmux display-message -p "#{@$1}" 2>/dev/null || echo ""; }
+# Always target the pane Claude runs in ($TMUX_PANE). Untargeted tmux commands
+# resolve to the attached client's ACTIVE pane — i.e. whatever window the user
+# is currently looking at — which corrupts other windows' state.
+PANE="${TMUX_PANE:-}"
+[[ -n "$PANE" ]] || exit 0
+
+set_pane_var()   { tmux set -p -t "$PANE" @"$1" "$2" 2>/dev/null || true; }
+unset_pane_var() { tmux set -pu -t "$PANE" @"$1" 2>/dev/null || true; }
+get_pane_var()   { tmux display-message -p -t "$PANE" "#{@$1}" 2>/dev/null || echo ""; }
 
 derive_project_name() {
     local dir="${1:-$(pwd)}"
@@ -51,7 +57,7 @@ derive_window_name() {
     fi
 }
 
-rename_window() { tmux rename-window "$1" 2>/dev/null || true; }
+rename_window() { tmux rename-window -t "$PANE" "$1" 2>/dev/null || true; }
 
 # ── Actions ──────────────────────────────────────────────────────────────────
 case "$ACTION" in
@@ -61,7 +67,7 @@ case "$ACTION" in
         branch=$(derive_branch "$local_dir")
 
         # Store original window name for restoration on stop
-        original=$(tmux display-message -p '#W' 2>/dev/null || echo "")
+        original=$(tmux display-message -p -t "$PANE" '#W' 2>/dev/null || echo "")
         set_pane_var "claude_prev_window_name" "$original"
 
         # Set state variables (abbreviated for status bar display)
@@ -72,6 +78,9 @@ case "$ACTION" in
 
         # Rename window
         rename_window "$(derive_window_name "$project" "$branch")"
+
+        # Hook-driven status supersedes activity monitoring for this window
+        tmux set-window-option -t "$PANE" monitor-activity off 2>/dev/null || true
         ;;
 
     session-stop)
@@ -80,16 +89,21 @@ case "$ACTION" in
         if [[ -n "$prev" ]]; then
             rename_window "$prev"
         else
-            tmux set-window-option automatic-rename on 2>/dev/null || true
+            tmux set-window-option -t "$PANE" automatic-rename on 2>/dev/null || true
         fi
 
         # Clear all Claude pane variables
         for var in claude_status claude_project claude_branch claude_session_id claude_worktree claude_prev_window_name claude_activity_start; do
             unset_pane_var "$var"
         done
+
+        tmux set-window-option -u -t "$PANE" monitor-activity 2>/dev/null || true
         ;;
 
     activity-start)
+        # Fired on UserPromptSubmit and PostToolUse — cheap no-op when already working
+        if [[ "$(get_pane_var claude_status)" == "working" ]]; then exit 0; fi
+
         set_pane_var "claude_status" "working"
         set_pane_var "claude_activity_start" "$(date +%s)"
 
@@ -102,11 +116,16 @@ case "$ACTION" in
         fi
         ;;
 
+    waiting)
+        # Notification hook: permission prompt or input request mid-turn.
+        # Only escalate from "working" — an idle-reminder after done/idle stays quiet.
+        [[ "$(get_pane_var claude_status)" == "working" ]] || exit 0
+        set_pane_var "claude_status" "waiting"
+        ;;
+
     activity-stop)
-        set_pane_var "claude_status" "idle"
+        set_pane_var "claude_status" "done"
         unset_pane_var "claude_activity_start"
-        _notify_project=$(get_pane_var "claude_project")
-        tmux display-message -d 2000 "✓ Claude: ${_notify_project:-done}"
         ;;
 
     worktree-enter)
