@@ -39,7 +39,7 @@ fi
 
 # ── Format display lines ─────────────────────────────────────────────────────
 # Output: "TARGET  ICON  PROJECT[BRANCH]  [wt:WORKTREE]  (session)"
-display_list=$(printf '%s\n' "$active_panes" | awk -F'\t' '{
+display_list=$(printf '%s\n' "$active_panes" | awk -v now="$(date +%s)" -F'\t' '{
     target  = $1
     status  = $2
     project = $3
@@ -49,7 +49,7 @@ display_list=$(printf '%s\n' "$active_panes" | awk -F'\t' '{
     start   = $8
     elapsed = ""
     if (start != "" && status == "working") {
-        diff = systime() - start + 0
+        diff = now - start + 0
         if (diff < 60) elapsed = " " diff "s"
         else elapsed = " " int(diff/60) "m"
     }
@@ -62,7 +62,7 @@ _rebuild_list() {
     tmux list-panes -a \
         -F '#{session_name}:#{window_index}.#{pane_index}	#{@claude_status}	#{@claude_project}	#{@claude_branch}	#{@claude_worktree}	#{session_name}	#{window_name}	#{@claude_activity_start}' \
         2>/dev/null \
-    | awk -F'\t' '$2 != "" {
+    | awk -v now="$(date +%s)" -F'\t' '$2 != "" {
         target  = $1; status = $2; project = $3
         branch  = ($4 != "") ? "[" $4 "]" : ""
         wt      = ($5 != "") ? "  wt:" $5 : ""
@@ -70,7 +70,7 @@ _rebuild_list() {
         start   = $8
         elapsed = ""
         if (start != "" && status == "working") {
-            diff = systime() - start + 0
+            diff = now - start + 0
             if (diff < 60) elapsed = " " diff "s"
             else elapsed = " " int(diff/60) "m"
         }
