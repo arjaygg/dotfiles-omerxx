@@ -97,8 +97,8 @@ main() {
             --border \
             --delimiter=$'\t' \
             --with-nth=2,3,1 \
-            --header="Enter: Claude | Alt-C: Cursor Agent | Alt-O: Cursor | Alt-W: Windsurf" \
-            --expect=enter,alt-c,alt-o,alt-w ||
+            --header="Enter: Claude | Alt-C: Cursor Agent | Alt-O: Cursor | Alt-V: VS Code | Alt-W: Windsurf" \
+            --expect=enter,alt-c,alt-o,alt-v,alt-w ||
         true)
 
     [[ -n "$result" ]] || exit 0
@@ -123,6 +123,9 @@ main() {
             ;;
         alt-o)
             "$SCRIPT_DIR/open-cursor.sh" "$worktree_path"
+            ;;
+        alt-v)
+            code "$worktree_path"
             ;;
         alt-w)
             "$SCRIPT_DIR/open-windsurf.sh" "$worktree_path"
