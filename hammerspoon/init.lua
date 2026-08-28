@@ -75,6 +75,7 @@ hs.hotkey.bind({"ctrl", "alt"}, "/", function()
     "-------------------\n" ..
     "Ctrl+Alt+T  Move Teams to primary screen\n" ..
     "Ctrl+Alt+C  Toggle Cisco auto-hide\n" ..
+    "Ctrl+Alt+A  Toggle agent-Chrome no-interrupt\n" ..
     "Ctrl+Alt+/  Show this help",
     4
   )
@@ -207,4 +208,80 @@ ciscoFilter:subscribe({
     local app = win:application()
     if app then app:hide() end
   end
+end)
+
+--------------------------------------------------------------------------------
+-- AGENT-DRIVEN CHROME — BACKGROUND, NO FOCUS STEAL
+-- Coding agents (chrome-devtools-mcp, Playwright, Puppeteer, etc.) launch
+-- Chrome with an explicit --user-data-dir outside the normal profile
+-- location, so they spawn as their own process even though they're still
+-- "Google Chrome". Detect that from the process command line and float those
+-- windows (skip AeroSpace tiling) plus hand focus straight back to whatever
+-- you were doing, so parallel agent runs never interrupt foreground work.
+--------------------------------------------------------------------------------
+
+local AEROSPACE_BIN = "/Users/axos-agallentes/homebrew/bin/aerospace"
+local automationNoSteal = true  -- on by default
+
+hs.hotkey.bind({"ctrl", "alt"}, "A", function()
+  automationNoSteal = not automationNoSteal
+  hs.alert.show("Agent-Chrome no-interrupt: " .. (automationNoSteal and "ON" or "OFF"))
+end)
+
+-- Command line of a pid, or "" if it can't be read
+local function commandLineFor(pid)
+  local out = hs.execute("/bin/ps -o command= -p " .. tostring(pid) .. " 2>/dev/null")
+  return out or ""
+end
+
+-- Agents always pass --user-data-dir explicitly; everyday Chrome windows
+-- never do (they use the implicit default profile location). That's a more
+-- reliable signal than trying to name every possible agent tool.
+local function isAgentChrome(pid)
+  local cmd = commandLineFor(pid)
+  return cmd:find("%-%-user%-data%-dir") ~= nil
+    and not cmd:find("Application Support/Google/Chrome", 1, true)
+end
+
+-- Best-effort: pull the AeroSpace window-id for this pid and float it so it
+-- doesn't get tiled into the current workspace layout. No-ops quietly if
+-- AeroSpace isn't running.
+local function floatAerospaceWindow(pid)
+  local out = hs.execute(string.format(
+    '%s list-windows --monitor all --pid %d --format "%%{window-id}" 2>/dev/null',
+    AEROSPACE_BIN, pid
+  ))
+  local winId = out and out:match("%d+")
+  if winId then
+    hs.execute(string.format('%s layout floating --window-id %s >/dev/null 2>&1', AEROSPACE_BIN, winId))
+  end
+end
+
+-- Keep a rolling record of "what was frontmost right before the current app"
+-- so we know what to restore focus to when an agent Chrome window grabs it.
+local frontmostPrev, frontmostCur = nil, nil
+local frontmostWatcher = hs.application.watcher.new(function(_, event, app)
+  if event == hs.application.watcher.activated and app ~= frontmostCur then
+    frontmostPrev = frontmostCur
+    frontmostCur = app
+  end
+end)
+frontmostWatcher:start()
+
+local agentChromeFilter = hs.window.filter.new(function(win)
+  local app = win and win:application()
+  return app and app:bundleID() == "com.google.Chrome"
+end)
+
+agentChromeFilter:subscribe(hs.window.filter.windowCreated, function(win)
+  if not automationNoSteal or not win then return end
+  local app = win:application()
+  local pid = app and app:pid()
+  if not pid or not isAgentChrome(pid) then return end
+
+  floatAerospaceWindow(pid)
+
+  hs.timer.doAfter(0.05, function()
+    if frontmostPrev then frontmostPrev:activate() end
+  end)
 end)
