@@ -70,7 +70,7 @@ launch_cursor_agent() {
     tmux new-window \
         -c "$worktree_path" \
         -n "cursor:${worktree_name:0:12}" \
-        "bash -l -c 'printf \"📂 Worktree: %s\\n\" \"\$PWD\"; printf \"🌿 Branch: %s\\n\\n\" \"\$(git branch --show-current 2>/dev/null)\"; printf \"Starting Cursor Agent...\\n\"; exec \"\$HOME/.local/bin/cursor-agent\" --model gpt-5.2 -f'"
+        "bash -l -c 'printf \"📂 Worktree: %s\\n\" \"\$PWD\"; printf \"🌿 Branch: %s\\n\\n\" \"\$(git branch --show-current 2>/dev/null)\"; printf \"Starting Cursor Agent...\\n\"; exec nu -l -c \"cursor-agent --sandbox disabled --yolo\"'"
 }
 
 main() {

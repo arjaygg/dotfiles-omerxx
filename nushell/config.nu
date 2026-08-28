@@ -981,13 +981,14 @@ def --wrapped hcy [...rest] {
     hclaude --dangerously-skip-permissions ...$rest
 }
 
-# Claude Code Multi-Backend Aliases
-alias claude = bash ~/.dotfiles/.claude/scripts/claude-launch.sh native
-alias claude-gemini = bash ~/.dotfiles/.claude/scripts/claude-launch.sh gemini
-alias claude-codex = bash ~/.dotfiles/.claude/scripts/claude-launch.sh codex
-alias claude-cursor = bash ~/.dotfiles/.claude/scripts/claude-launch.sh cursor
-alias claude-native = bash ~/.dotfiles/.claude/scripts/claude-launch.sh native
-alias claude-router = bash ~/.dotfiles/.claude/scripts/claude-launch.sh router
+# cursor-agent, pulling CURSOR_API_KEY from Keychain instead of the environment
+def --wrapped cursor-agent [...rest] {
+    with-env {
+        CURSOR_API_KEY: (security find-generic-password -a (whoami) -s "CURSOR_API_KEY_AF_REVIEW" -w)
+    } {
+        ^cursor-agent ...$rest
+    }
+}
 
 # Dual-monitor tmux side client (session group)
 def --wrapped tmux-side [...rest] {
