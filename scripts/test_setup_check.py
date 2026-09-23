@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -9,59 +10,64 @@ ROOT = Path(__file__).resolve().parents[1]
 SETUP = ROOT / "setup.sh"
 
 
+def make_setup_fixture(root: Path, *, disabled: bool) -> Path:
+    setup = root / "setup.sh"
+    shutil.copy2(SETUP, setup)
+    helper = root / "scripts/check-skill-drift.sh"
+    helper.parent.mkdir(parents=True)
+    helper.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+    helper.chmod(0o755)
+    if disabled:
+        (root / ".harness-disabled").mkdir()
+    return setup
+
+
 class SetupCheckTests(unittest.TestCase):
-    def test_setup_check_runs_non_mutating_validators(self):
-        result = subprocess.run(
-            ["bash", str(SETUP), "--check"],
-            cwd=ROOT,
+    def run_setup(self, setup: Path, mode: str, home: Path) -> subprocess.CompletedProcess[str]:
+        environment = os.environ.copy()
+        environment["HOME"] = str(home)
+        return subprocess.run(
+            ["bash", str(setup), mode],
+            cwd=setup.parent,
+            env=environment,
             capture_output=True,
             text=True,
             check=False,
         )
 
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("validating tracked config boundaries", result.stdout)
-        self.assertIn('"by_source_status"', result.stdout)
-        self.assertIn('"by_status"', result.stdout)
-        self.assertIn('"by_rule"', result.stdout)
-        self.assertIn('"by_scope"', result.stdout)
-        self.assertNotIn("Setup complete", result.stdout)
+    def test_disabled_fixture_is_successful_noop_without_runtime_writes(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            setup = make_setup_fixture(root, disabled=True)
+            home = root / "home"
+            home.mkdir()
 
-    def test_setup_dry_run_stops_before_mutating_install_steps(self):
-        result = subprocess.run(
-            ["bash", str(SETUP), "--dry-run"],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+            for mode in ("--check", "--dry-run"):
+                with self.subTest(mode=mode):
+                    result = self.run_setup(setup, mode, home)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn("AI coding-agent harness is disabled", result.stdout)
+                    self.assertNotIn("validating tracked config boundaries", result.stdout)
+                    self.assertNotIn("Setup complete", result.stdout)
+                    self.assertEqual(list(home.iterdir()), [], f"{mode} wrote under fake HOME")
 
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("no stow, symlink, install, prune, extension, or cleanup commands", result.stdout)
-        self.assertNotIn("Setup complete", result.stdout)
+    def test_enabled_fixture_runs_non_mutating_check_path(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            setup = make_setup_fixture(root, disabled=False)
+            home = root / "home"
+            home.mkdir()
 
-    def test_check_and_dry_run_do_not_create_runtime_dirs_in_fresh_home(self):
-        for mode in ("--check", "--dry-run"):
-            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as td:
-                home = Path(td)
-                environment = os.environ.copy()
-                environment["HOME"] = str(home)
+            check = self.run_setup(setup, "--check", home)
+            dry_run = self.run_setup(setup, "--dry-run", home)
 
-                result = subprocess.run(
-                    ["bash", str(SETUP), mode],
-                    cwd=ROOT,
-                    env=environment,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
-
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(
-                    sorted(path.name for path in home.iterdir()),
-                    [],
-                    f"{mode} created runtime files under fake HOME",
-                )
+        self.assertEqual(check.returncode, 0, check.stderr)
+        self.assertIn("validating tracked config boundaries", check.stdout)
+        self.assertNotIn("AI coding-agent harness is disabled", check.stdout)
+        self.assertNotIn("Setup complete", check.stdout)
+        self.assertEqual(dry_run.returncode, 0, dry_run.stderr)
+        self.assertIn("no stow, symlink, install, prune, extension, or cleanup commands", dry_run.stdout)
+        self.assertNotIn("Setup complete", dry_run.stdout)
 
 
 if __name__ == "__main__":
