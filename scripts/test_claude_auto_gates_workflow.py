@@ -25,6 +25,23 @@ SHARED_AUDIT_SUMMARY_COMMANDS = [
 
 
 class ClaudeAutoGatesWorkflowTests(unittest.TestCase):
+    def test_jobs_validate_harness_state_before_running_state_specific_checks(self):
+        text = WORKFLOW.read_text()
+
+        self.assertEqual(text.count("id: harness_state"), 2)
+        self.assertIn(
+            'python3 scripts/harness_state_check.py --summary --github-output "$GITHUB_OUTPUT"',
+            text,
+        )
+        self.assertIn("python3 scripts/run_script_tests.py", text)
+        self.assertNotIn("python3 -m unittest discover -s scripts -p 'test_*.py'", text)
+        self.assertIn(
+            "if: steps.harness_state.outputs.state == 'enabled'",
+            text,
+        )
+        self.assertIn("Report quarantined harness audits", text)
+        self.assertIn("Archived integration audits are intentionally unexecuted", text)
+
     def test_config_audit_summary_job_is_non_blocking_for_known_baselines(self):
         text = WORKFLOW.read_text()
 
