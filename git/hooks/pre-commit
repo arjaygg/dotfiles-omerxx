@@ -10,5 +10,11 @@ bash "$DIR/protect-main.sh"      || exit 1
 bash "$DIR/detect-private-key.sh" || exit 1
 bash "$DIR/check-large-files.sh"  || exit 1
 bash "$DIR/check-atomicity.sh"    || exit 1
-python3 "$HOME/.dotfiles/scripts/validate_skills.py" || exit 1
-python3 "$HOME/.dotfiles/scripts/run_evals.py"    || exit 1
+# Skill lint + evals validate the dotfiles AI harness (ai/skills). Skip them
+# while the harness is quarantined (.harness-disabled, see
+# scripts/ai-harness-toggle.sh): ai/ is archived and the validators would fail
+# every commit in every repo using this hooksPath.
+if [ ! -e "$HOME/.dotfiles/.harness-disabled" ]; then
+  python3 "$HOME/.dotfiles/scripts/validate_skills.py" || exit 1
+  python3 "$HOME/.dotfiles/scripts/run_evals.py"    || exit 1
+fi
