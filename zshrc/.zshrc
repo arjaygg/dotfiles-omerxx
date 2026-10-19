@@ -31,7 +31,7 @@ bindkey '^L' vi-forward-word
 bindkey '^k' up-line-or-search
 bindkey '^j' down-line-or-search
 
-eval "$(starship init zsh)"
+[[ "$TERM" != "dumb" ]] && eval "$(starship init zsh)"
 export STARSHIP_CONFIG=~/.config/starship/starship.toml
 
 # You may need to manually set your language environment
