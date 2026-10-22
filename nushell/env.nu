@@ -105,7 +105,12 @@ path add ($env.HOME | path join ".local/bin")
 # source ($nu.default-config-dir | path join 'custom.nu')
 
 mkdir ~/.cache/starship
-starship init nu | save -f ~/.cache/starship/init.nu
+# On a dumb terminal starship errors on every prompt; leave an empty init so `use` still works
+if $env.TERM? == "dumb" {
+  "" | save -f ~/.cache/starship/init.nu
+} else {
+  starship init nu | save -f ~/.cache/starship/init.nu
+}
 zoxide init nushell | save -f ~/.zoxide.nu
 mkdir ~/.cache/mise
 try {
@@ -114,7 +119,7 @@ try {
   # mise not in PATH or not installed; init.nu will be created when you run: mise activate nushell
 }
 
-$env.STARSHIP_CONFIG = "/Users/omerxx/.config/starship/starship.toml"
+$env.STARSHIP_CONFIG = ($env.HOME | path join ".config/starship/starship.toml")
 $env.CARAPACE_BRIDGES = 'zsh,fish,bash,inshellisense' # optional
 mkdir ~/.cache/carapace
 carapace _carapace nushell | save --force ~/.cache/carapace/init.nu
