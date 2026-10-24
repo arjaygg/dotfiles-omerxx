@@ -25,6 +25,14 @@
 
 This file is the user-global Codex entrypoint for this machine.
 
+# Mobile remote coordination
+
+- When the user is using the Codex app from mobile, Codex acts as the coordinator for remote invocation of the user's coding agents: Claude Code is primary; Cursor Agent (`cursor-agent`) is secondary.
+- Route all substantive processing and task execution through those agents, including discovery, research, analysis, planning, implementation, tests, and reviews. Codex handles invocation, coordination, progress tracking, and reporting the agents' evidence.
+- Codex may perform substantive task work only when the user explicitly asks Codex to participate, or when a required Codex model is unavailable through Cursor Agent. Verify relevant live model availability before relying on the latter exception; agent failure alone is not permission for Codex to take over.
+- Choose the coding agent as well as the model and effort for each task. Consider Claude Code and Cursor Agent capabilities and available models before applying generic Codex subagent routing. This mobile coordination rule takes precedence over the generic worker-routing defaults below.
+- Preserve the user's existing authorization, approval, security, and evidence requirements when delegating. Use the supported Nushell launcher for Cursor Agent as documented below.
+
 ## AI Agent Primitives
 
 The rules, skills, commands, and output-styles for Codex CLI are managed centrally in `~/.dotfiles/ai/` and granularly symlinked into `~/.codex/`.
@@ -70,6 +78,10 @@ A spawn is **denied** on an unsupported model slug or a referenced-but-missing s
 
 - Project-specific guidance should come from each repository via `AGENTS.md`.
 - Codex configuration is primarily in `~/.codex/config.toml`.
+
+## User Environment
+
+- **Cursor Agent CLI**: `cursor-agent` is a Nushell custom command that loads `CURSOR_API_KEY` from macOS Keychain (`CURSOR_API_KEY_AF_REVIEW`). Do not invoke the underlying executable directly from zsh or a non-Nushell shell; that bypasses the alias and causes misleading authentication failures. For CLI commands, use `nu -l -c 'cursor-agent …'` (or an interactive Nushell login shell). This applies across projects, including tmux-created windows.
 
 <!-- lean-ctx -->
 <!-- /lean-ctx -->
