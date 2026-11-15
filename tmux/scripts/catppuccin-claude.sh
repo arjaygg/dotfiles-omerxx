@@ -6,11 +6,8 @@ show_claude() {
   # Read pane-level Claude state
   local status="$(tmux display-message -p '#{@claude_status}' 2>/dev/null)"
 
-  # No active Claude session → show nothing
-  if [[ -z "$status" ]]; then
-    echo ""
-    return
-  fi
+  # No active Claude pane → nothing to show
+  [[ -n "$status" ]] || return 0
 
   local project="$(tmux display-message -p '#{@claude_project}' 2>/dev/null)"
   local branch="$(tmux display-message -p '#{@claude_branch}' 2>/dev/null)"

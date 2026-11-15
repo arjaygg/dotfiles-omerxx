@@ -1,12 +1,9 @@
 #!/usr/bin/env bash
 # claude-tmux-bridge.sh — Claude Code <-> tmux integration bridge
 # All tmux communication from Claude Code hooks goes through this script.
-# Exits silently (exit 0) when not inside tmux.
+# Tmux updates no-op outside tmux.
 
 set -euo pipefail
-
-# ── Guard: not in tmux → no-op ──────────────────────────────────────────────
-[[ -n "${TMUX:-}" ]] || exit 0
 
 ACTION="${1:-}"
 shift || true
@@ -16,11 +13,23 @@ shift || true
 # resolve to the attached client's ACTIVE pane — i.e. whatever window the user
 # is currently looking at — which corrupts other windows' state.
 PANE="${TMUX_PANE:-}"
-[[ -n "$PANE" ]] || exit 0
+TMUX_ACTIVE=0
+if [[ -n "${TMUX:-}" && -n "$PANE" ]]; then
+    TMUX_ACTIVE=1
+fi
 
-set_pane_var()   { tmux set -p -t "$PANE" @"$1" "$2" 2>/dev/null || true; }
-unset_pane_var() { tmux set -pu -t "$PANE" @"$1" 2>/dev/null || true; }
-get_pane_var()   { tmux display-message -p -t "$PANE" "#{@$1}" 2>/dev/null || echo ""; }
+set_pane_var() {
+    [[ "$TMUX_ACTIVE" -eq 1 ]] || return 0
+    tmux set -p -t "$PANE" @"$1" "$2" 2>/dev/null || true
+}
+unset_pane_var() {
+    [[ "$TMUX_ACTIVE" -eq 1 ]] || return 0
+    tmux set -pu -t "$PANE" @"$1" 2>/dev/null || true
+}
+get_pane_var() {
+    [[ "$TMUX_ACTIVE" -eq 1 ]] || { echo ""; return 0; }
+    tmux display-message -p -t "$PANE" "#{@$1}" 2>/dev/null || echo ""
+}
 
 derive_project_name() {
     local dir="${1:-$(pwd)}"
@@ -57,11 +66,15 @@ derive_window_name() {
     fi
 }
 
-rename_window() { tmux rename-window -t "$PANE" "$1" 2>/dev/null || true; }
+rename_window() {
+    [[ "$TMUX_ACTIVE" -eq 1 ]] || return 0
+    tmux rename-window -t "$PANE" "$1" 2>/dev/null || true
+}
 
 # ── Actions ──────────────────────────────────────────────────────────────────
 case "$ACTION" in
     session-start)
+        [[ "$TMUX_ACTIVE" -eq 1 ]] || exit 0
         local_dir="${CLAUDE_PROJECT_DIR:-$(pwd)}"
         project=$(derive_project_name "$local_dir")
         branch=$(derive_branch "$local_dir")
@@ -84,6 +97,7 @@ case "$ACTION" in
         ;;
 
     session-stop)
+        [[ "$TMUX_ACTIVE" -eq 1 ]] || exit 0
         # Restore original window name or re-enable automatic-rename
         prev=$(get_pane_var "claude_prev_window_name")
         if [[ -n "$prev" ]]; then
@@ -101,6 +115,7 @@ case "$ACTION" in
         ;;
 
     activity-start)
+        [[ "$TMUX_ACTIVE" -eq 1 ]] || exit 0
         # Fired on UserPromptSubmit and PostToolUse — cheap no-op when already working
         if [[ "$(get_pane_var claude_status)" == "working" ]]; then exit 0; fi
 
@@ -117,18 +132,26 @@ case "$ACTION" in
         ;;
 
     waiting)
+        [[ "$TMUX_ACTIVE" -eq 1 ]] || exit 0
         # Notification hook: permission prompt or input request mid-turn.
         # Only escalate from "working" — an idle-reminder after done/idle stays quiet.
         [[ "$(get_pane_var claude_status)" == "working" ]] || exit 0
         set_pane_var "claude_status" "waiting"
         ;;
 
+    question)
+        # PreToolUse(AskUserQuestion): no-op, kept so the existing settings.json hook entry stays valid.
+        cat >/dev/null 2>&1 || true
+        ;;
+
     activity-stop)
+        [[ "$TMUX_ACTIVE" -eq 1 ]] || exit 0
         set_pane_var "claude_status" "done"
         unset_pane_var "claude_activity_start"
         ;;
 
     worktree-enter)
+        [[ "$TMUX_ACTIVE" -eq 1 ]] || exit 0
         # Read worktree name from stdin JSON if available
         local_input=""
         if [[ ! -t 0 ]]; then
@@ -153,6 +176,7 @@ case "$ACTION" in
         ;;
 
     worktree-exit)
+        [[ "$TMUX_ACTIVE" -eq 1 ]] || exit 0
         unset_pane_var "claude_worktree"
 
         # Revert to project-level window name
