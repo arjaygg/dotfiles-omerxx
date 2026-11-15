@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+"""Track Claude Code sessions per tmux pane so they can be resumed after a crash.
+
+  claude-registry hook-start     SessionStart hook (JSON on stdin) -> writes/refreshes the pane entry
+  claude-registry hook-end       SessionEnd hook   (JSON on stdin) -> deletes the entry (clean exit)
+  claude-registry restore [-n]   after tmux restore: respawn leftover entries as `claude ... --resume <id>`
+  claude-registry list           show entries
+
+An entry that survives = Claude never reached SessionEnd (battery death, kill -9, tmux killed).
+Flags (incl. --remote-control) come from the claude process's own argv, so launch-goal and hand-started
+sessions are both covered. Not captured: remote control turned on mid-session with /remote-control.
+"""
+import json, os, shlex, subprocess, sys, time, argparse
+from pathlib import Path
+
+DIR = Path(os.environ.get("CLAUDE_REGISTRY_DIR", "~/.local/state/claude-tmux")).expanduser()
+TTL = 7 * 86400
+DROP_WITH_VALUE = {"--resume", "-r", "--continue", "-c", "--session-id", "--from-pr", "--teleport"}
+
+def tmux(*a):
+    r = subprocess.run(["tmux", *a], capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+def claude_argv():
+    """Walk up from our parent to the claude process; return its argv (list) or None."""
+    pid = os.getppid()
+    for _ in range(6):
+        out = subprocess.run(["ps", "-o", "ppid=,command=", "-p", str(pid)], capture_output=True, text=True).stdout.strip()
+        if not out: return None
+        ppid, _, cmd = out.partition(" ")
+        cmd = cmd.strip()
+        try: argv = shlex.split(cmd)
+        except ValueError: argv = cmd.split()
+        if argv and os.path.basename(argv[0]) in ("claude", "claude-code"):
+            return argv
+        pid = int(ppid)
+    return None
+
+def clean_flags(argv):
+    """Drop binary name, resume/continue selectors and a bare positional prompt; keep model/name/remote-control etc."""
+    out, i, args = [], 0, argv[1:]
+    while i < len(args):
+        a = args[i]
+        if a in DROP_WITH_VALUE:
+            if i + 1 < len(args) and not args[i + 1].startswith("-"): i += 1
+        elif a.startswith("-"): out.append(a)
+        elif out and out[-1].startswith("-") and out[-1] not in ("--chrome", "--no-chrome"): out.append(a)  # value of previous flag
+        # else: positional prompt -> dropped
+        i += 1
+    return out
+
+def log(msg):
+    try:
+        DIR.mkdir(parents=True, exist_ok=True)
+        with open(DIR / "registry.log", "a") as fh: fh.write(time.strftime("%F %T ") + msg + "\n")
+    except Exception: pass
+
+def kfile(sid): return DIR / ("sid-" + "".join(c for c in sid if c.isalnum() or c in "-_") + ".json")
+
+def pane_info(pane):
+    f = "#{session_name}\t#{window_name}\t#{pane_current_path}\t#{window_index}\t#{pane_index}\t#{pid}\t#{pane_pid}"
+    v = tmux("display-message", "-p", "-t", pane, f).split("\t")
+    return dict(zip(("session", "window", "path", "widx", "pidx", "server_pid", "pane_pid"), v)) if len(v) == 7 else None
+
+def hook_start():
+    pane = os.environ.get("TMUX_PANE")
+    if not pane: return
+    try:
+        ev = json.load(sys.stdin)
+        argv = claude_argv()
+        if argv and any(a in ("-p", "--print") for a in argv): return  # headless child, not a pane session
+        info = pane_info(pane)
+        if not info: return
+        DIR.mkdir(parents=True, exist_ok=True)
+        f = kfile(ev["session_id"])
+        old = json.loads(f.read_text()) if f.exists() else {}
+        cpid = None
+        pid = os.getppid()
+        for _ in range(6):
+            out = subprocess.run(["ps", "-o", "ppid=,command=", "-p", str(pid)], capture_output=True, text=True).stdout.strip()
+            if not out: break
+            pp, _, cmd = out.partition(" ")
+            if os.path.basename(cmd.split()[0]) in ("claude", "claude-code"): cpid = pid; break
+            pid = int(pp)
+        entry = {"pane": pane, "session": info["session"], "window": info["window"], "widx": info["widx"], "pidx": info["pidx"],
+                 "cwd": os.path.realpath(ev.get("cwd") or info["path"]), "session_id": ev["session_id"],
+                 "flags": clean_flags(argv) if argv else old.get("flags", []),
+                 "remote_control": any(a.startswith("--remote-control") for a in (argv or [])) or old.get("remote_control", False),
+                 "server_pid": info["server_pid"], "own_pane": str(cpid) == info["pane_pid"], "updated": int(time.time())}
+        f.write_text(json.dumps(entry, indent=1)); log(f"start {ev['session_id']} {pane} rc={entry['remote_control']}")
+    except Exception as ex: log(f"start error {ex!r}")
+
+def hook_end():
+    try:
+        ev = json.load(sys.stdin)
+        log(f"end {ev.get('session_id')} reason={ev.get('reason')}")
+        if ev.get("reason") in ("logout", "prompt_input_exit", "clear", "other", None) or True:
+            kfile(ev["session_id"]).unlink(missing_ok=True)
+    except Exception as ex: log(f"end error {ex!r}")
+
+def entries():
+    for f in sorted(DIR.glob("sid-*.json")):
+        try: yield f, json.loads(f.read_text())
+        except Exception: pass
+
+def snapshot():
+    """post-save hook: record where each live entry sits in the layout resurrect just saved."""
+    for f, e in entries():
+        info = pane_info(e["pane"])
+        if info and info["server_pid"] == e.get("server_pid"):
+            e.update(session=info["session"], window=info["window"], widx=info["widx"], pidx=info["pidx"], updated=int(time.time()))
+            f.write_text(json.dumps(e, indent=1))
+
+def restore(dry):
+    me = tmux("display-message", "-p", "#{pid}")
+    panes = [dict(zip(("id", "session", "window", "widx", "pidx", "cwd", "cmd"), l.split("\t")))
+             for l in tmux("list-panes", "-a", "-F", "#{pane_id}\t#{session_name}\t#{window_name}\t#{window_index}\t#{pane_index}\t#{pane_current_path}\t#{pane_current_command}").splitlines()]
+    used = set()
+    for f, e in entries():
+        if time.time() - e["updated"] > TTL: print(f"expired  {e['session']}:{e['window']}"); (None if dry else f.unlink()); continue
+        if e.get("server_pid") == me: continue  # same tmux server -> it did not crash; never touch
+        def ok(p): return p["id"] not in used and p["session"] == e["session"] and p["cmd"] in ("zsh", "bash", "fish", "nu", "sh")
+        cands = [p for p in panes if ok(p) and p["widx"] == e["widx"] and p["pidx"] == e["pidx"]]
+        cands = [p for p in cands if os.path.realpath(p["cwd"]) == e["cwd"]] or \
+                sorted([p for p in panes if ok(p) and os.path.realpath(p["cwd"]) == e["cwd"]], key=lambda p: p["window"] != e["window"])
+        if not cands: print(f"no-match {e['session']}:{e['window']} {e['cwd']} (kept)"); log(f"no-match {e['session_id']}"); continue
+        p = cands[0]; used.add(p["id"])
+        cmd = " ".join(["claude", *map(shlex.quote, e["flags"]), "--resume", shlex.quote(e["session_id"])])
+        print(f"{'would ' if dry else ''}resume {e['session']}:{p['window']} {p['id']}  rc={e['remote_control']}  {cmd}")
+        if dry: continue
+        if e.get("own_pane", True): subprocess.run(["tmux", "respawn-pane", "-k", "-t", p["id"], "-c", e["cwd"], cmd])
+        else: subprocess.run(["tmux", "send-keys", "-t", p["id"], cmd, "Enter"])
+        log(f"resumed {e['session_id']} -> {p['id']}"); f.unlink()
+
+def main():
+    ap = argparse.ArgumentParser(); ap.add_argument("cmd", choices=["hook-start", "hook-end", "restore", "snapshot", "list"])
+    ap.add_argument("-n", "--dry-run", action="store_true"); a = ap.parse_args()
+    {"hook-start": hook_start, "hook-end": hook_end, "snapshot": snapshot}.get(a.cmd, lambda: None)()
+    if a.cmd == "restore":
+        try: restore(a.dry_run)
+        except Exception as ex: log(f"restore error {ex!r}"); raise
+    elif a.cmd == "list":
+        for _, e in entries(): print(json.dumps(e))
+main()

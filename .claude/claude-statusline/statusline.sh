@@ -196,7 +196,7 @@ terminal_project_path_budget() {
     if [[ -z "$cols" || "$cols" -le 0 ]]; then
         cols="${COLUMNS:-80}"
     fi
-    local reserved=45  # other fixed-ish segments
+    local reserved=95  # other segments (model/pct/cost/cache/dual-TZ time) + git status
     local budget=$((cols - reserved))
     # Clamp to a sane range so very narrow/huge terminals still behave
     if [[ $budget -lt 15 ]]; then
@@ -213,14 +213,27 @@ format_project_path() {
     local max_length="${2:-$(terminal_project_path_budget)}"
 
     # Replace home directory with ~
-    local display_path="${project_path/#$HOME/~}"
+    local display_path="${project_path/#$HOME/'~'}"
 
-    # If path is too long, show only the last 2-3 components
+    # If too long: abbreviate root/intermediate components fish-style (first
+    # char), keeping the last 2 components (the actual dir) in full.
     if [[ ${#display_path} -gt $max_length ]]; then
-        # Extract last 2-3 path components
-        local depth=2
-        local short_path=$(echo "$display_path" | awk -F'/' '{for(i=NF-'$depth'+1;i<=NF;i++)printf "%s%s",$i,(i<NF?"/":" ")}')
-        echo "$short_path"
+        local IFS='/'
+        local -a parts=($display_path)
+        local n=${#parts[@]}
+        local keep=2 i out=""
+        for ((i=0; i<n; i++)); do
+            local c="${parts[i]}"
+            if [[ $i -lt $((n-keep)) && ${#c} -gt 1 && "$c" != "~" ]]; then
+                if [[ "$c" == .* ]]; then c="${c:0:2}"; else c="${c:0:1}"; fi
+            fi
+            if [[ $i -eq 0 ]]; then out="$c"; else out="$out/$c"; fi
+        done
+        # Still too long: drop the abbreviated root, keep last 2 in full
+        if [[ ${#out} -gt $max_length && $n -gt $keep ]]; then
+            out="…/${parts[n-2]}/${parts[n-1]}"
+        fi
+        echo "$out"
     else
         echo "$display_path"
     fi
