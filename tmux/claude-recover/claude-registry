@@ -94,7 +94,8 @@ def hook_end():
     try:
         ev = json.load(sys.stdin)
         log(f"end {ev.get('session_id')} reason={ev.get('reason')}")
-        if ev.get("reason") in ("logout", "prompt_input_exit", "clear", "other", None) or True:
+        # reason=other is what Claude reports when its terminal is hung up (tmux killed / pane closed): keep the entry so restore can resume it.
+        if ev.get("reason") in ("logout", "prompt_input_exit", "clear", "resume", "bypass_permissions_disabled"):
             kfile(ev["session_id"]).unlink(missing_ok=True)
     except Exception as ex: log(f"end error {ex!r}")
 
