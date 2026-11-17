@@ -107,6 +107,13 @@ if [ ! -f "$HOME/.dotfiles/.claude/settings.json" ]; then
 fi
 ln -sfn "$HOME/.dotfiles/.claude/settings.json" "$HOME/.claude/settings.json"
 
+# User-scoped guard hooks (worktree-guard, git-push-guard): versioned here, linked per file
+# so ~/.claude/hooks stays a real dir holding other tools' hooks. Tests: scripts/test_worktree_guard.py.
+mkdir -p "$HOME/.claude/hooks"
+for _hook in worktree-guard.py git-push-guard.py; do
+    ln -sfn "$HOME/.dotfiles/.claude/hooks/$_hook" "$HOME/.claude/hooks/$_hook"
+done
+
 # User-global Claude instructions: same bootstrap-if-absent contract as
 # settings.json above (decisions/0016), because lean-ctx regenerates the
 # <!-- lean-ctx --> block in the live file. Never overwrite a live file.
