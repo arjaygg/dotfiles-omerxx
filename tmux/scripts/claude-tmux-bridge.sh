@@ -68,6 +68,8 @@ derive_window_name() {
 
 rename_window() {
     [[ "$TMUX_ACTIVE" -eq 1 ]] || return 0
+    # Respect a manual rename (prefix+r sets @custom_name)
+    [[ -z "$(tmux display-message -p -t "$PANE" '#{@custom_name}' 2>/dev/null)" ]] || return 0
     tmux rename-window -t "$PANE" "$1" 2>/dev/null || true
 }
 
@@ -111,6 +113,7 @@ case "$ACTION" in
             unset_pane_var "$var"
         done
 
+        tmux set-window-option -u -t "$PANE" @custom_name 2>/dev/null || true
         tmux set-window-option -u -t "$PANE" monitor-activity 2>/dev/null || true
         ;;
 
