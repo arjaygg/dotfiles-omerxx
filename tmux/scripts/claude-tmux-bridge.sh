@@ -111,6 +111,7 @@ case "$ACTION" in
             unset_pane_var "$var"
         done
 
+        tmux set-window-option -u -t "$PANE" @custom_name 2>/dev/null || true
         tmux set-window-option -u -t "$PANE" monitor-activity 2>/dev/null || true
         ;;
 
